@@ -1,0 +1,24 @@
+{
+  "name": "ignatovich-electron-vite-svelte",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12",
+    "svelte": "^5.28.1",
+    "vite": "^6.3.5"
+  }
+}
