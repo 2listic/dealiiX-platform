@@ -74,46 +74,52 @@ ipcMain.handle('execute-ssh-command-with-password', async (event, { host, userna
 
 function connectToSSH() {
   const conn = new Client();
-  
-  // Get the path to your private key (corresponding to the public key in the Docker container)
   const privateKeyPath = path.join(__userHomeDir, '.ssh/id_rsa');
-  
-  conn.on('ready', () => {
-    console.log('SSH Connection established');
-    
-    // Example: Execute a command
-    conn.exec('whoami', (err, stream) => {
-      if (err) throw err;
-      
-      stream.on('close', (code, signal) => {
-        console.log('Command completed with code', code);
-        conn.end();
-      }).on('data', (data) => {
-        console.log('STDOUT:', data.toString());
-      }).stderr.on('data', (data) => {
-        console.log('STDERR:', data.toString());
+
+  return new Promise((resolve, reject) => {
+    conn.on('ready', () => {
+      console.log('SSH Connection established');
+
+      conn.exec('whoami', (err, stream) => {
+        if (err) return reject(err);
+
+        let data = '';
+        stream.on('close', (code, signal) => {
+          console.log('Command completed with code', code);
+          conn.end();
+          resolve(data);
+        }).on('data', (chunk) => {
+          console.log('STDOUT:', chunk.toString());
+          data += chunk;
+        }).stderr.on('data', (chunk) => {
+          console.log('STDERR:', chunk.toString());
+          data += chunk;
+        });
       });
+    }).on('error', (err) => {
+      console.error('SSH Connection error:', err);
+      reject(err);
+    }).connect({
+      host: 'localhost',
+      port: 2222,
+      username: 'root',
+      privateKey: fs.readFileSync(privateKeyPath),
+      debug: console.log,
+      hostVerifier: (keyHash) => {  // consider hashing the private key
+        return true;
+      },
+      readyTimeout: 5000,           // additional options
+      keepaliveInterval: 10000
     });
-  }).on('error', (err) => {
-    console.error('SSH Connection error:', err);
-  }).connect({
-    host: 'localhost',
-    port: 2222,
-    username: 'root',
-    privateKey: fs.readFileSync(privateKeyPath),
-    // For debugging:
-    debug: console.log,
-    // ... other options ...
-    hostVerifier: (keyHash) => {
-    // Implement verification logic
-      return true; // or false if the host key doesn't match expectations
-    },
-    readyTimeout: 5000, // 5 seconds
-    keepaliveInterval: 10000 // 10 seconds
   });
 }
 
 // Listen for messages from the renderer process
 ipcMain.handle('connect-ssh', async (event) => {
-  await connectToSSH();
+  try {
+    const result = await connectToSSH();
+    return result;
+  } catch (err) {
+    throw err;
+  }
 });

@@ -1,0 +1,6 @@
+name: ssh2
+version: 0.0.1
+schema: v1
+docs:
+  - name: ssh2
+    startUrl: https://github.com/mscdex/ssh2#readme

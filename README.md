@@ -1,3 +1,16 @@
+# Installation
+
+`npm install`
+
+# Run
+
+`npm start`
+
+# How to setup a new project like this
+
+Read [here](https://docs.proton.me/doc?mode=open&volumeId=WvnTzeccQaa6G5y0iQbKTk1d5C1hBxf4tfJ3fBoV_L2dWdRPmmyH2SnFeb7v4rb4Fr4uoomuUr9ct62B6hpEfg%3D%3D&linkId=vFweVDJAbdn2kv9lAIgKe5pszcudkj8dOxPrGD865z5-EyKNx4drvb_4U56oCXcJa3uGx2xLHeqUhwCRdjhOhA%3D%3D)    
+   
+
 # Svelte + Vite
 
 This template should help get you started developing with Svelte in Vite.
