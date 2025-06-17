@@ -1,7 +1,28 @@
 <script>
+// @ts-nocheck
+
   import svelteLogo from './assets/svelte.svg'
   import viteLogo from '/vite.svg'
   import Counter from './lib/Counter.svelte'
+  
+  // import { onMount } from 'svelte';
+  
+  const executeSSHCommandWithPassword = async () => {
+    // @ts-ignore
+    const result = await window.electron.invoke('execute-ssh-command-with-password', {
+      host: 'localhost',
+      username: 'root',
+      password: 'root',
+      command: 'echo "Hello from Electron!"'
+    });
+    console.log('SSH Command Result:', result);
+  }
+
+  const connectToSSH = async () => {
+    // @ts-ignore
+    const result = await window.electron.invoke('connect-ssh');
+    console.log('SSH Connection Result:', result);
+  }
 </script>
 
 <main>
@@ -13,12 +34,14 @@
       <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
     </a>
   </div>
-  <h1>Vite + Svelteeeee</h1>
+  <h1>Vite + Svelte</h1>
 
   <div class="card">
     <Counter />
   </div>
 
+  <button on:click={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
+  <button on:click={connectToSSH}>Connect to SSH</button>
   <p>
     Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
   </p>

@@ -10,7 +10,7 @@
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "electron ."
+    "start": "npm run build && electron ."
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
@@ -20,5 +20,9 @@
     "electron-builder": "^26.0.12",
     "svelte": "^5.28.1",
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "ssh2": "^1.16.0"
   }
 }
