@@ -40,7 +40,7 @@
   <div class="card">
     <Counter />
     <button on:click={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
-    <button on:click={connectToSSH}>Connect to SSH</button>
+    <button on:click={connectToSSH}>Connect to SSH with key</button>
   </div>
 
   <Flow />
