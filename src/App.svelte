@@ -5,6 +5,8 @@
   import viteLogo from '/vite.svg'
   import Counter from './lib/components/Counter.svelte'
   import Flow from './lib/components/FlowCanvas.svelte'
+  import FlowCanvas from './lib/components/FlowCanvas.svelte';
+  import { SvelteFlowProvider } from '@xyflow/svelte';
   
   // import { onMount } from 'svelte';
   
@@ -43,7 +45,11 @@
     <button onclick={connectToSSH}>Connect to SSH with key</button>
   </div>
 
-  <Flow />
+  <SvelteFlowProvider>
+    <div style:width="100vw" style:height="50vh">
+      <FlowCanvas />
+    </div>
+  </SvelteFlowProvider>
 </main>
 
 <style>

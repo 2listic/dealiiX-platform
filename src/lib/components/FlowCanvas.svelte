@@ -2,9 +2,11 @@
   import {
     SvelteFlow,
     Background,
+    useSvelteFlow,
     type Node,
     type Edge,
     type EdgeTypes,
+    type OnConnectEnd,
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/style.css";
@@ -18,7 +20,7 @@
     'custom-edge': CustomEdge,
   };
 
-  let nodes = $state.raw<Node[]>([
+  let initialNodes: Node[] = [ 
     {
       id: "1",
       type: 'input',
@@ -35,7 +37,7 @@
     },
     {
       id: "2",
-      type: 'output',
+      type: 'default',
       data: { label: "World" },
       position: { x: 150, y: 150 },
     },
@@ -51,7 +53,7 @@
       position: { x: 300, y: 300 },
       data: { text: 'some text' },
     },
-  ]);
+  ]
 
   let edges = $state.raw<Edge[]>([
     {
@@ -68,17 +70,50 @@
       target: 'node-2',
       type: 'custom-edge',
     },
-  ]);
+  ])
+
+  let nodes = $state.raw<Node[]>(initialNodes)
+  
+  let id = 2
+  const getId = () => `${id++}`
+
+  const { screenToFlowPosition } = useSvelteFlow();
+
+  const handleConnectEnd: OnConnectEnd = (event, connectionState) => {
+    if (connectionState.isValid) return
+
+    const sourceNodeId = connectionState.fromNode?.id ?? '2'
+    const id = getId()
+    const { clientX, clientY } =
+      'changedTouches' in event ? event.changedTouches[0] : event
+    
+    const newNode: Node = {
+      id,
+      data: { label: `Node ${id}` },
+      position: screenToFlowPosition({ x: clientX, y: clientY }),
+      origin: [0.5, 0.0],
+    }
+    nodes = [...nodes, newNode]
+    edges = [
+      ...edges,
+      {
+        source: sourceNodeId,
+        target: id,
+        id: `${sourceNodeId}-${id}`,
+      },
+    ]
+
+  }
+
 </script>
 
-<div style:width="100vw" style:height="50vh">
-  <SvelteFlow 
-    bind:nodes
-    bind:edges
-    {nodeTypes}
-    {edgeTypes}
-    fitView
-  >
-    <Background />
-  </SvelteFlow>
-</div>
+<SvelteFlow 
+  bind:nodes
+  bind:edges
+  {nodeTypes}
+  {edgeTypes}
+  fitView
+  onconnectend={handleConnectEnd}
+>
+  <Background />
+</SvelteFlow>
