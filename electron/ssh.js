@@ -36,40 +36,40 @@ function connectToSSHWithPassword(host, username, password, command) {
 function connectToSSHWithKey() {
   return new Promise((resolve, reject) => {
     const conn = new Client();
-      conn.on('ready', () => {
-      console.log('SSH Connection established');
+    conn.on('ready', () => {
+    console.log('SSH Connection established');
 
-      conn.exec('whoami', (err, stream) => {
-          if (err) return reject(err);
+    conn.exec('whoami', (err, stream) => {
+      if (err) return reject(err);
 
-          let data = '';
-          stream.on('close', (code, signal) => {
-          console.log('Command completed with code', code);
-          conn.end();
-          resolve(data);
-          }).on('data', (chunk) => {
-          console.log('STDOUT:', chunk.toString());
-          data += chunk;
-          }).stderr.on('data', (chunk) => {
-          console.log('STDERR:', chunk.toString());
-          data += chunk;
-          });
+      let data = '';
+      stream.on('close', (code, signal) => {
+      console.log('Command completed with code', code);
+      conn.end();
+      resolve(data);
+      }).on('data', (chunk) => {
+        console.log('STDOUT:', chunk.toString());
+        data += chunk;
+      }).stderr.on('data', (chunk) => {
+        console.log('STDERR:', chunk.toString());
+        data += chunk;
       });
-      }).on('error', (err) => {
+    });
+    }).on('error', (err) => {
       console.error('SSH Connection error:', err);
       reject(err);
-      }).connect({
+    }).connect({
       host: 'localhost',
       port: 2222,
       username: 'root',
       privateKey: fs.readFileSync(privateKeyPath),
       debug: console.log,
       hostVerifier: (keyHash) => {  // consider hashing the private key
-          return true;
+        return true;
       },
       readyTimeout: 5000,           // additional options
       keepaliveInterval: 10000
-      });
+    });
   });
 }
 
