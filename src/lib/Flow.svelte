@@ -37,9 +37,9 @@
 </script>
 
 <div style:width="100vw" style:height="50vh">
-    <SvelteFlow bind:nodes bind:edges fitView>
-        <Background />
-    </SvelteFlow>
+  <SvelteFlow bind:nodes bind:edges fitView>
+    <Background />
+  </SvelteFlow>
 </div>
 <!-- <div style:height="100vh">
   <SvelteFlow bind:nodes bind:edges fitView>
