@@ -3,8 +3,8 @@
 
   import svelteLogo from './assets/svelte.svg'
   import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
-  import Flow from './lib/Flow.svelte'
+  import Counter from './lib/components/Counter.svelte'
+  import Flow from './lib/components/FlowCanvas.svelte'
   
   // import { onMount } from 'svelte';
   
@@ -39,8 +39,8 @@
 
   <div class="card">
     <Counter />
-    <button on:click={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
-    <button on:click={connectToSSH}>Connect to SSH with key</button>
+    <button onclick={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
+    <button onclick={connectToSSH}>Connect to SSH with key</button>
   </div>
 
   <Flow />
