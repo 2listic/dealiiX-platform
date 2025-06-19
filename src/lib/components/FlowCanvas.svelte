@@ -8,6 +8,7 @@
     type Edge,
     type EdgeTypes,
     Controls,
+    Panel,
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/style.css";
@@ -41,8 +42,6 @@
     }
   }
 </script>
-<div class="flow-container">
-  <div>number of nodes {idCounter}</div>
   <SvelteFlow 
     bind:nodes
     bind:edges
@@ -54,13 +53,20 @@
     <MiniMap />
     <Controls />
     <Background />
+    <Panel position="top-right">
+      <div class="custom-panel">
+        number of nodes {idCounter}
+      </div>
+    </Panel>
   </SvelteFlow>
-</div>
-
 <style>
-  .flow-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  .custom-panel {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 24px;
+    color: #333;
   }
 </style>
