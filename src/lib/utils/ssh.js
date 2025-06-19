@@ -7,12 +7,16 @@ const executeSSHCommandWithPassword = async () => {
     command: 'echo "Hello from Electron!"'
   });
   console.log('SSH Command Result:', result);
+  let panel = document.getElementById('ssh-response');
+  panel.textContent = result;
 }
 
 const connectToSSH = async () => {
   // @ts-ignore
   const result = await window.electron.invoke('connect-ssh');
   console.log('SSH Connection Result:', result);
+  let panel = document.getElementById('ssh-response');
+  panel.textContent = result;
 }
 
 export { executeSSHCommandWithPassword, connectToSSH };

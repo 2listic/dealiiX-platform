@@ -54,10 +54,13 @@
     <Panel position="top-left">
       <button onclick={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
       <button onclick={connectToSSH}>Connect to SSH with key</button>
+      <div id="ssh-response" class="custom-panel">
+        -
+      </div>
     </Panel>
     <Panel position="top-right">
       <div class="custom-panel">
-        number of nodes {idCounter}
+        number of nodes: {idCounter}
       </div>
     </Panel>
     <Controls />
@@ -70,6 +73,7 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     padding: 10px;
+    margin-top: 1px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     font-size: 1.5em;
     color: #333;

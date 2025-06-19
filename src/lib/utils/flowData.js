@@ -5,7 +5,7 @@ export const initialNodes = [
     id: '1',
     type: 'input',
     data: { label: 'Hello' },
-    position: { x: 0, y: 0 },
+    position: { x: 0, y: 10 },
     style: 'width: 170px; height: 80px;',
   },
   {
