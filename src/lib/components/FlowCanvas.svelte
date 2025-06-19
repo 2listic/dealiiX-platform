@@ -16,6 +16,7 @@
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
   import { handleConnectEnd } from '../utils/flowUtils.js';
+  import { executeSSHCommandWithPassword, connectToSSH } from '../utils/ssh.js';
 
   const { screenToFlowPosition } = useSvelteFlow();
 
@@ -50,14 +51,18 @@
     fitView
     onconnectend={onConnectEnd}
   >
-    <MiniMap />
-    <Controls />
-    <Background />
+    <Panel position="top-left">
+      <button onclick={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
+      <button onclick={connectToSSH}>Connect to SSH with key</button>
+    </Panel>
     <Panel position="top-right">
       <div class="custom-panel">
         number of nodes {idCounter}
       </div>
     </Panel>
+    <Controls />
+    <MiniMap />
+    <Background />
   </SvelteFlow>
 <style>
   .custom-panel {
@@ -66,7 +71,7 @@
     border-radius: 4px;
     padding: 10px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    font-size: 24px;
+    font-size: 1.5em;
     color: #333;
   }
 </style>
