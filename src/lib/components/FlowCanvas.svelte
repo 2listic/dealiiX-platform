@@ -18,6 +18,8 @@
 
   const { screenToFlowPosition } = useSvelteFlow();
 
+  let idCounter = $state(initialNodes.length)
+
   const nodeTypes = {
     textUpdater: TextUpdaterNode,
   };
@@ -29,19 +31,36 @@
   let edges = $state.raw<Edge[]>(initialEdges)
 
   const onConnectEnd = (event, connectionState) => {
-    handleConnectEnd(event, connectionState, nodes, edges, screenToFlowPosition)
+    if (connectionState.isValid) return;
+    const result = handleConnectEnd(event, connectionState, screenToFlowPosition, idCounter)
+    if (result) {
+      const { newNode, newEdge } = result;
+      nodes = [...nodes, newNode];
+      edges = [...edges, newEdge];
+      idCounter++;
+    }
   }
 </script>
+<div class="flow-container">
+  <div>number of nodes {idCounter}</div>
+  <SvelteFlow 
+    bind:nodes
+    bind:edges
+    {nodeTypes}
+    {edgeTypes}
+    fitView
+    onconnectend={onConnectEnd}
+  >
+    <MiniMap />
+    <Controls />
+    <Background />
+  </SvelteFlow>
+</div>
 
-<SvelteFlow 
-  bind:nodes
-  bind:edges
-  {nodeTypes}
-  {edgeTypes}
-  fitView
-  onconnectend={onConnectEnd}
->
-  <MiniMap />
-  <Controls />
-  <Background />
-</SvelteFlow>
+<style>
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+</style>
