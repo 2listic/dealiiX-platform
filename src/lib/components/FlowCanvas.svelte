@@ -3,9 +3,11 @@
     SvelteFlow,
     Background,
     useSvelteFlow,
+    MiniMap,
     type Node,
     type Edge,
     type EdgeTypes,
+    Controls,
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/style.css";
@@ -39,5 +41,7 @@
   fitView
   onconnectend={onConnectEnd}
 >
+  <MiniMap />
+  <Controls />
   <Background />
 </SvelteFlow>
