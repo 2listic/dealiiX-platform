@@ -17,6 +17,7 @@
     type NodeTypes,
     Controls,
     Panel,
+    addEdge,
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/base.css";
@@ -39,6 +40,13 @@
   let nodes = $state.raw<Node[]>(initialNodes)
   let edges = $state.raw<Edge[]>(initialEdges)
 
+  const onConnect = (params) => {
+    const newEdge = {
+      ...params,
+      id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
+    };
+    edges = addEdge(newEdge, edges);
+  };
 </script>
   <SvelteFlow 
     bind:nodes
@@ -46,6 +54,7 @@
     {nodeTypes}
     {edgeTypes}
     fitView
+    onconnect={onConnect}
   >
     <Panel position="top-left">
       <button onclick={executeWithPassword}>Execute with password</button>

@@ -89,16 +89,16 @@ export const initialEdges = [
   //   source: '2',
   //   target: '3',
   // },
-  {
-    id: 'e1-4-top',
-    source: '1',
-    target: '4',
-    targetHandle: 'top-input',
-  },
-  {
-    id: 'e2-4-bottom',
-    source: '2',
-    target: '4',
-    targetHandle: 'bottom-input',
-  },
+  // {
+  //   id: 'e1-4-top',
+  //   source: '1',
+  //   target: '4',
+  //   targetHandle: 'top-input',
+  // },
+  // {
+  //   id: 'e2-4-bottom',
+  //   source: '2',
+  //   target: '4',
+  //   targetHandle: 'bottom-input',
+  // },
 ];

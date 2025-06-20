@@ -6,8 +6,8 @@
   import {
     Handle,
     Position,
-    useNodeConnections,
-    useNodesData,
+    useNodes,
+    useEdges,
     type NodeProps,
     type Node,
   } from '@xyflow/svelte';
@@ -15,38 +15,29 @@
   let props: NodeProps = $props();
   let { id, data }: NodeProps<ConcatNodeType> = props;
  
-  const connectionTop = useNodeConnections({
-    handleId: 'top-input',
-    handleType: 'target',
-  });
-  
-  const connectionBottom = useNodeConnections({
-    handleId: 'bottom-input',
-    handleType: 'target',
-  });
- 
-  const topNodesData = useNodesData(
-    connectionTop.current.map((connection) => connection.source),
-  );
-  
-  const bottomNodesData = useNodesData(
-    connectionBottom.current.map((connection) => connection.source),
-  );
+  const nodes = useNodes();
+  const edges = useEdges();
 
   const getTextFromNode = (nodeData: any): string => {
     return nodeData?.data?.text || '';
   };
-  
-  const topText = $derived(topNodesData.current.length > 0 
-    ? getTextFromNode(topNodesData.current[0]) 
-    : '');
+
+  const getConnectedNodeText = (targetHandle: string, allEdges: any[], allNodes: Node[]) => {
+    // Find edges that connect to this node's specific handle
+    const connectedEdge = allEdges.find(edge => 
+      edge.target === id && edge.targetHandle === targetHandle
+    );
     
-  const bottomText = $derived(bottomNodesData.current.length > 0 
-    ? getTextFromNode(bottomNodesData.current[0]) 
-    : '');
+    if (!connectedEdge) return '';
+    
+    // Find the source node
+    const sourceNode = allNodes.find(node => node.id === connectedEdge.source);
+    
+    return getTextFromNode(sourceNode);
+  };
   
-//   const topText = $derived(topNodesData.current.length > 0 ? topNodesData.current[0]?.data?.text || '' : '');
-//   const bottomText = $derived(bottomNodesData.current.length > 0 ? bottomNodesData.current[0]?.data?.text || '' : '');
+  const topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current));
+  const bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current));
   const concatenatedText = $derived(topText + " && " + bottomText);
 </script>
  
