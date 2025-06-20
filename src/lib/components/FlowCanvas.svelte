@@ -1,29 +1,34 @@
+<script module>
+  import TextNode, { type TextNodeType } from './TextNode.svelte';
+  import ResultNode, { type ResultNodeType } from './ResultNode.svelte';
+ 
+  export type CustomNodes = TextNodeType | ResultNodeType;
+</script>
+
 <script lang="ts">
   import {
     SvelteFlow,
     Background,
-    useSvelteFlow,
     MiniMap,
     type Node,
     type Edge,
     type EdgeTypes,
+    type NodeTypes,
     Controls,
     Panel,
   } from "@xyflow/svelte";
 
-  import "@xyflow/svelte/dist/style.css";
-  import TextUpdaterNode from './TextUpdaterNode.svelte';
+  import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { handleConnectEnd } from '../utils/flowUtils.js';
   import { executeSSHCommandWithPassword, connectToSSH } from '../utils/ssh.js';
-
-  const { screenToFlowPosition } = useSvelteFlow();
 
   let idCounter = $state(initialNodes.length)
 
-  const nodeTypes = {
-    textUpdater: TextUpdaterNode,
+  const nodeTypes: NodeTypes = {
+    // textUpdater: TextUpdaterNode,
+    text: TextNode,
+    result: ResultNode,
   };
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
@@ -32,16 +37,6 @@
   let nodes = $state.raw<Node[]>(initialNodes)
   let edges = $state.raw<Edge[]>(initialEdges)
 
-  const onConnectEnd = (event, connectionState) => {
-    if (connectionState.isValid) return;
-    const result = handleConnectEnd(event, connectionState, screenToFlowPosition, idCounter)
-    if (result) {
-      const { newNode, newEdge } = result;
-      nodes = [...nodes, newNode];
-      edges = [...edges, newEdge];
-      idCounter++;
-    }
-  }
 </script>
   <SvelteFlow 
     bind:nodes
@@ -49,7 +44,6 @@
     {nodeTypes}
     {edgeTypes}
     fitView
-    onconnectend={onConnectEnd}
   >
     <Panel position="top-left">
       <button onclick={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
