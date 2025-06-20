@@ -18,6 +18,7 @@
   const connections = useNodeConnections({
     handleType: 'target',
   });
+  console.log('connections', connections.current)
  
   const nodesData = useNodesData(
     connections.current.map((connection) => connection.source),
@@ -26,7 +27,7 @@
  
 <div class="custom-node">
   <Handle type="target" position={Position.Left} />
-  <div class="label">incoming texts:</div>
+  <div class="label">Commands:</div>
  
   {#if nodesData.current.length === 0}
     <div>no connected nodes</div>

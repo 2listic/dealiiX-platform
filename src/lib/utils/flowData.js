@@ -37,7 +37,7 @@ export const initialNodes = [
     id: '1',
     type: 'text',
     data: {
-      text: 'hello',
+      text: 'whoami',
     },
     position: { x: -100, y: -50 },
   },
@@ -45,15 +45,21 @@ export const initialNodes = [
     id: '2',
     type: 'text',
     data: {
-      text: 'world',
+      text: 'ls',
     },
     position: { x: 0, y: 100 },
   },
+  // {
+  //   id: '3',
+  //   type: 'result',
+  //   data: {},
+  //   position: { x: 300, y: 50 },
+  // },
   {
-    id: '3',
-    type: 'result',
+    id: '4',
+    type: 'concat',
     data: {},
-    position: { x: 300, y: 50 },
+    position: { x: 300, y: 200 },
   },
 ];
 
@@ -72,15 +78,27 @@ export const initialEdges = [
   //   target: '4',
   //   type: 'custom-edge',
   // },
+  // {
+  //   id: 'e1-3',
+  //   source: '1',
+  //   target: '3',
+  //   type: 'custom-edge',
+  // },
+  // {
+  //   id: 'e2-3',
+  //   source: '2',
+  //   target: '3',
+  // },
   {
-    id: 'e1-3',
+    id: 'e1-4-top',
     source: '1',
-    target: '3',
-    type: 'custom-edge',
+    target: '4',
+    targetHandle: 'top-input',
   },
   {
-    id: 'e2-3',
+    id: 'e2-4-bottom',
     source: '2',
-    target: '3',
+    target: '4',
+    targetHandle: 'bottom-input',
   },
 ];

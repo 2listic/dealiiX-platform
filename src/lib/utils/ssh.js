@@ -1,4 +1,4 @@
-const executeSSHCommandWithPassword = async () => {
+const executeWithPassword = async () => {
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-command-with-password', {
     host: 'localhost',
@@ -11,7 +11,7 @@ const executeSSHCommandWithPassword = async () => {
   panel.textContent = result;
 }
 
-const connectToSSH = async () => {
+const executeWithKey = async () => {
   // @ts-ignore
   const result = await window.electron.invoke('connect-ssh');
   console.log('SSH Connection Result:', result);
@@ -19,4 +19,4 @@ const connectToSSH = async () => {
   panel.textContent = result;
 }
 
-export { executeSSHCommandWithPassword, connectToSSH };
+export { executeWithPassword, executeWithKey };

@@ -1,8 +1,9 @@
 <script module>
   import TextNode, { type TextNodeType } from './TextNode.svelte';
   import ResultNode, { type ResultNodeType } from './ResultNode.svelte';
+  import ConcatNode, { type ConcatNodeType } from './ConcatNode.svelte';
  
-  export type CustomNodes = TextNodeType | ResultNodeType;
+  export type CustomNodes = TextNodeType | ResultNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -21,7 +22,7 @@
   import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { executeSSHCommandWithPassword, connectToSSH } from '../utils/ssh.js';
+  import { executeWithPassword, executeWithKey } from '../utils/ssh.js';
 
   let idCounter = $state(initialNodes.length)
 
@@ -29,6 +30,7 @@
     // textUpdater: TextUpdaterNode,
     text: TextNode,
     result: ResultNode,
+    concat: ConcatNode,
   };
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
@@ -46,8 +48,8 @@
     fitView
   >
     <Panel position="top-left">
-      <button onclick={executeSSHCommandWithPassword}>Execute SSH Command with password</button>
-      <button onclick={connectToSSH}>Connect to SSH with key</button>
+      <button onclick={executeWithPassword}>Execute with password</button>
+      <button onclick={executeWithKey}>Execute with key</button>
       <div id="ssh-response" class="custom-panel">
         -
       </div>
