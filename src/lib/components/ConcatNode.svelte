@@ -38,7 +38,7 @@
   
   const topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current));
   const bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current));
-  const concatenatedText = $derived(topText + " && " + bottomText);
+  const concatenatedText = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText);
 </script>
  
 <div class="custom-node">
