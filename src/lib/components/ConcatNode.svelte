@@ -11,6 +11,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte';
+  import { concatState } from '../states/concatState.svelte';
 
   let props: NodeProps = $props();
   let { id, data }: NodeProps<ConcatNodeType> = props;
@@ -36,9 +37,13 @@
     return getTextFromNode(sourceNode);
   };
   
-  const topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current));
-  const bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current));
-  const concatenatedText = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText);
+  let topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current));
+  let bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current));
+  let command = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText);
+  // Then use an effect to update the state when the derived value changes
+  $effect(() => {
+      concatState.command = command;
+  });
 </script>
  
 <div class="custom-node">
@@ -60,7 +65,7 @@
   
   <div class="result">
     <span class="result-label">Result:</span>
-    <span class="result-value">{concatenatedText}</span>
+    <span id="concatenated-text" class="result-value">{command}</span>
   </div>
 </div>
  

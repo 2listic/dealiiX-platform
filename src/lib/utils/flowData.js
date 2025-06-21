@@ -45,7 +45,7 @@ export const initialNodes = [
     id: '2',
     type: 'text',
     data: {
-      text: 'ls',
+      text: 'ls -a',
     },
     position: { x: 0, y: 100 },
   },

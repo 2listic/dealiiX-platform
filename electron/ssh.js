@@ -33,13 +33,13 @@ function connectToSSHWithPassword(host, username, password, command) {
   })
 }
 
-function connectToSSHWithKey() {
+function connectToSSHWithKey(command) {
   return new Promise((resolve, reject) => {
     const conn = new Client();
     conn.on('ready', () => {
     console.log('SSH Connection established');
 
-    conn.exec('whoami', (err, stream) => {
+    conn.exec(command, (err, stream) => {
       if (err) return reject(err);
 
       let data = '';

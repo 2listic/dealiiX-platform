@@ -51,9 +51,9 @@ ipcMain.handle('execute-ssh-command-with-password', async (event, { host, userna
 })
 
 // Listen for messages from the renderer process
-ipcMain.handle('connect-ssh', async (event) => {
+ipcMain.handle('connect-ssh', async (event, { command }) => {
   try {
-    return await connectToSSHWithKey()
+    return await connectToSSHWithKey(command)
   } catch (err) {
     throw err
   }

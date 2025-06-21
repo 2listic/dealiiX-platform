@@ -1,3 +1,4 @@
+import { concatState } from '../states/concatState.svelte';
 const executeWithPassword = async () => {
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-command-with-password', {
@@ -12,8 +13,12 @@ const executeWithPassword = async () => {
 }
 
 const executeWithKey = async () => {
+  // const command = document.getElementById("concatenated-text").textContent
+  console.log('command', concatState.command)
   // @ts-ignore
-  const result = await window.electron.invoke('connect-ssh');
+  const result = await window.electron.invoke('connect-ssh', {
+    command: concatState.command
+  });
   console.log('SSH Connection Result:', result);
   let panel = document.getElementById('ssh-response');
   panel.textContent = result;
