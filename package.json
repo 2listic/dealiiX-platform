@@ -1,9 +1,19 @@
 {
-  "name": "ignatovich-electron-vite-svelte",
+  "name": "DealiiX Platform",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "main": "electron/main.js",
+  "build": {
+    "appId": "com.example.app",
+    "productName": "MyApp",
+    "linux": {
+      "target": "deb",
+      "category": "Utility",
+      "maintainer": "xxx",
+      "description": "DealiiX Platform"
+    }
+  },
   "scripts": {
     "dev:vite": "vite",
     "dev": "npm run build && cross-env NODE_ENV=development electron .",
