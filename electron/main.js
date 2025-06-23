@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } from './ssh.js'
+import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } from './utils/sshConnections.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

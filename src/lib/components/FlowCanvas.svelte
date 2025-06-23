@@ -23,7 +23,7 @@
   import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { executeWithPassword, executeWithKey, uploadFileWithKey } from '../utils/ssh.js';
+  import { executeWithPassword, executeWithKey, uploadFileWithKey } from '../utils/sshMessages.js';
 
   let idCounter = $state(initialNodes.length)
 
