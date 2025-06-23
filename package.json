@@ -1,0 +1,27 @@
+{
+  "name": "ignatovich-electron-vite-svelte",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev": "npm run build && cross-env NODE_ENV=development electron .",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@xyflow/svelte": "^1.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12",
+    "svelte": "^5.28.1",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "ssh2": "^1.16.0"
+  }
+}
