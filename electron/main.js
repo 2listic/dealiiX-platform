@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { connectToSSHWithPassword, connectToSSHWithKey } from './ssh.js'
+import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } from './ssh.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -43,18 +43,16 @@ app.on('window-all-closed', () => {
 
 // Handle SSH command execution with password and Python fake-ssh server
 ipcMain.handle('execute-ssh-command-with-password', async (event, { host, username, password, command }) => {
-  try {
-    return await connectToSSHWithPassword(host, username, password, command)
-  } catch (err) {
-    throw err
-  }
+  return await connectToSSHWithPassword(host, username, password, command)
 })
 
 // Listen for messages from the renderer process
 ipcMain.handle('connect-ssh', async (event, { command }) => {
-  try {
-    return await connectToSSHWithKey(command)
-  } catch (err) {
-    throw err
-  }
+  return await connectToSSHWithKey(command)
+})
+
+ipcMain.handle('upload-file-with-key', async (event) => {
+  const localPath = path.join(__dirname, '/example.json')
+  const remotePath = '/root/example.json'
+  return await connectAndUploadFile(localPath, remotePath)
 })

@@ -24,4 +24,12 @@ const executeWithKey = async () => {
   panel.textContent = result;
 }
 
-export { executeWithPassword, executeWithKey };
+const uploadFileWithKey = async () => {
+  // @ts-ignore
+  const result = await window.electron.invoke('upload-file-with-key');
+  console.log('SSH Connection Result:', result);
+  let panel = document.getElementById('ssh-response');
+  panel.textContent = result;
+}
+
+export { executeWithPassword, executeWithKey, uploadFileWithKey };

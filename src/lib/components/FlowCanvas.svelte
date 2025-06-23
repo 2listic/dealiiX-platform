@@ -23,7 +23,7 @@
   import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { executeWithPassword, executeWithKey } from '../utils/ssh.js';
+  import { executeWithPassword, executeWithKey, uploadFileWithKey } from '../utils/ssh.js';
 
   let idCounter = $state(initialNodes.length)
 
@@ -59,6 +59,7 @@
     <Panel position="top-left">
       <button onclick={executeWithPassword}>Execute with password</button>
       <button onclick={executeWithKey}>Execute with key</button>
+      <button onclick={uploadFileWithKey}>Upload file</button>
       <div id="ssh-response" class="custom-panel">
         -
       </div>

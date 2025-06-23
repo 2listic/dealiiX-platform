@@ -10,19 +10,25 @@ function connectToSSHWithPassword(host, username, password, command) {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn.on('ready', () => {
+      console.log('SSH Connection with password established');
+
       conn.exec(command, (err, stream) => {
         if (err) reject(err)
         let data = ''
         stream.on('close', (code, signal) => {
+          console.log('Command completed with code', code);
           conn.end()
           resolve(data)
         }).on('data', (chunk) => {
+          console.log('STDOUT:', chunk.toString());
           data += chunk
         }).stderr.on('data', (chunk) => {
+          console.log('STDERR:', chunk.toString());
           data += chunk
         })
       })
     }).on('error', (err) => {
+      console.error('SSH Connection error');
       reject(err)
     }).connect({
       host,
@@ -37,7 +43,7 @@ function connectToSSHWithKey(command) {
   return new Promise((resolve, reject) => {
     const conn = new Client();
     conn.on('ready', () => {
-    console.log('SSH Connection established');
+    console.log('SSH Connection with key established');
 
     conn.exec(command, (err, stream) => {
       if (err) return reject(err);
@@ -56,7 +62,7 @@ function connectToSSHWithKey(command) {
       });
     });
     }).on('error', (err) => {
-      console.error('SSH Connection error:', err);
+      console.error('SSH Connection error');
       reject(err);
     }).connect({
       host: 'localhost',
@@ -73,4 +79,41 @@ function connectToSSHWithKey(command) {
   });
 }
 
-export { connectToSSHWithPassword, connectToSSHWithKey } // export the functions to be used in the main.js inde
+function connectAndUploadFile(localPath, remotePath) {
+  return new Promise((resolve, reject) => {
+    console.log('uploadFileWithKey called')
+    const conn = new Client();
+    conn.on('ready', () => {
+      console.log('SSH Connection with key established');
+      conn.sftp((err, sftp) => {
+        if (err) return reject(err)
+        console.log('Checking if file exists:', localPath)
+        if (!fs.existsSync(localPath)) {
+          throw new Error(`File does not exist: ${localPath}`)
+        }
+        const localData = fs.readFileSync(localPath)
+
+        sftp.writeFile(remotePath, localData, (err) => {
+          if (err) {
+            conn.end()
+            return reject(err)
+          }
+          console.log('File uploaded successfully')
+          conn.end()
+          resolve(`File uploaded: ${localPath} -> ${remotePath}`)
+        })
+      })
+    }).on('error', (err) => {
+      console.error('SFTP Connection error')
+      reject(err)
+    }).connect({
+      host: 'localhost',
+      port: 2222,
+      username: 'root',
+      privateKey: fs.readFileSync(privateKeyPath),
+      debug: console.log,
+    });
+  })
+}
+
+export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } // export the functions to be used in the main.js inde
