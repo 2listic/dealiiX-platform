@@ -1,12 +1,9 @@
-name: Build .deb Package
+name: Release .deb Package
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -36,11 +33,10 @@ jobs:
       - name: Package as .deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run package
+        run: npx electron-builder --linux deb
 
       - name: Upload .deb to GitHub Release
         uses: softprops/action-gh-release@v1
-        if: github.event_name == 'push'
         with:
           files: dist/*.deb
         env:
