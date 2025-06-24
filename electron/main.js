@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } from './utils/sshConnections.js'
+import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile, connectAndUploadGraph } from './utils/sshConnections.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -55,4 +55,10 @@ ipcMain.handle('upload-file-with-key', async (event) => {
   const localPath = path.join(__dirname, '/example.json')
   const remotePath = '/root/example.json'
   return await connectAndUploadFile(localPath, remotePath)
+})
+
+ipcMain.handle('upload-graph-with-key', async (event, { nodes, edges }) => {
+  const jsonGraph = JSON.stringify({ nodes, edges })
+  const remotePath = '/root/graph.json'
+  return await connectAndUploadGraph(jsonGraph, remotePath)
 })

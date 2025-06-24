@@ -18,12 +18,17 @@
     Controls,
     Panel,
     addEdge,
+    useNodes,
+    useEdges,
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { executeWithPassword, executeWithKey, uploadFileWithKey } from '../utils/sshMessages.js';
+  import { executeWithPassword, executeWithKey, uploadFileWithKey, uploadGraphWithKey } from '../utils/sshMessages.js';
+
+  const currentNodes = useNodes();
+  const currentEdges = useEdges();
 
   let idCounter = $state(initialNodes.length)
 
@@ -47,6 +52,14 @@
     };
     edges = addEdge(newEdge, edges);
   };
+
+  const handleUpload = async () => {
+    try {
+      await uploadGraphWithKey(currentNodes.current, currentEdges.current);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+  };
 </script>
   <SvelteFlow 
     bind:nodes
@@ -60,6 +73,7 @@
       <button onclick={executeWithPassword}>Execute with password</button>
       <button onclick={executeWithKey}>Execute with key</button>
       <button onclick={uploadFileWithKey}>Upload file</button>
+      <button onclick={handleUpload}>Upload graph</button>
       <div id="ssh-response" class="custom-panel">
         -
       </div>

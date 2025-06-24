@@ -1,4 +1,5 @@
 import { concatState } from '../states/concatState.svelte';
+
 const executeWithPassword = async () => {
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-command-with-password', {
@@ -32,4 +33,15 @@ const uploadFileWithKey = async () => {
   panel.textContent = result;
 }
 
-export { executeWithPassword, executeWithKey, uploadFileWithKey };
+const uploadGraphWithKey = async (nodes, edges) => {
+  // @ts-ignore
+  const result = await window.electron.invoke('upload-graph-with-key', {
+    nodes: nodes,
+    edges: edges
+  });
+  console.log('SSH Connection Result:', result);
+  let panel = document.getElementById('ssh-response');
+  panel.textContent = result;
+}
+
+export { executeWithPassword, executeWithKey, uploadFileWithKey, uploadGraphWithKey };
