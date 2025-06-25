@@ -14,4 +14,4 @@
   };
 </script>
  
-<button onclick={handleUpload}>Upload graph</button>
+<button onclick={handleUpload}>Export graph</button>
