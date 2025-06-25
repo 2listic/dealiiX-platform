@@ -14,6 +14,4 @@
   };
 </script>
  
-<div >
-  <button onclick={handleUpload}>Upload graph</button>
-</div>
+<button onclick={handleUpload}>Upload graph</button>

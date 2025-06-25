@@ -55,11 +55,13 @@
     onconnect={onConnect}
   >
     <Panel position="top-left">
-      <button onclick={executeWithPassword}>Execute with password</button>
-      <button onclick={executeWithKey}>Execute with key</button>
-      <button onclick={uploadFileWithKey}>Upload file</button>
-      <ExportGraphButton />
-      <div id="ssh-response" class="custom-panel">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
+        <button onclick={executeWithPassword}>Execute with password</button>
+        <button onclick={executeWithKey}>Execute with key</button>
+        <button onclick={uploadFileWithKey}>Upload file</button>
+        <ExportGraphButton />
+      </div>
+      <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
         -
       </div>
     </Panel>
