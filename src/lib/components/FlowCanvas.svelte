@@ -1,9 +1,8 @@
 <script module>
-  import TextNode, { type TextNodeType } from './TextNode.svelte';
-  import ResultNode, { type ResultNodeType } from './ResultNode.svelte';
-  import ConcatNode, { type ConcatNodeType } from './ConcatNode.svelte';
+  import TextNode, { type TextNodeType } from './nodes/TextNode.svelte';
+  import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte';
  
-  export type CustomNodes = TextNodeType | ResultNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -23,7 +22,7 @@
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/base.css";
-  import CustomEdge from "./CustomEdge.svelte";
+  import CustomEdge from "./edges/CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
   import { executeWithPassword, executeWithKey, uploadFileWithKey, uploadGraphWithKey } from '../utils/sshMessages.js';
 
@@ -33,9 +32,7 @@
   let idCounter = $state(initialNodes.length)
 
   const nodeTypes: NodeTypes = {
-    // textUpdater: TextUpdaterNode,
     text: TextNode,
-    result: ResultNode,
     concat: ConcatNode,
   };
   const edgeTypes: EdgeTypes = {
