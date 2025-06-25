@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "DealiiX Platform",
   "main": "electron/main.js",
+  "author": "Dualistic",
   "build": {
     "appId": "com.example.app",
     "productName": "MyApp",
@@ -19,19 +21,28 @@
     "dev": "npm run build && cross-env NODE_ENV=development electron .",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "electron .",
-    "package": "electron-builder --linux deb"
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.8.1",
+    "@electron-forge/maker-deb": "^7.8.1",
+    "@electron-forge/maker-rpm": "^7.8.1",
+    "@electron-forge/maker-squirrel": "^7.8.1",
+    "@electron-forge/maker-zip": "^7.8.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
+    "@electron-forge/plugin-fuses": "^7.8.1",
+    "@electron/fuses": "^1.8.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@xyflow/svelte": "^1.1.0",
     "cross-env": "^7.0.3",
     "electron": "^36.4.0",
-    "electron-builder": "^26.0.12",
     "svelte": "^5.28.1",
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "electron-squirrel-startup": "^1.0.1",
     "fs": "^0.0.1-security",
     "ssh2": "^1.16.0"
   }

@@ -41,13 +41,15 @@ jobs:
       - name: Package as .deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --linux deb
+        run: |
+          npx electron-forge import
+          npx electron-forge make --targets=@electron-forge/maker-deb
 
       - name: Upload .deb as artifact (always)
         uses: actions/upload-artifact@v4
         with:
           name: electron-app-deb
-          path: dist/*.deb
+          path: out/make/**/*.deb
 
       - name: Upload .deb to GitHub Release (only on tag)
         uses: softprops/action-gh-release@v2
