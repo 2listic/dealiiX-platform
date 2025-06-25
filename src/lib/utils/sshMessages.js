@@ -14,10 +14,9 @@ const executeWithPassword = async () => {
 }
 
 const executeWithKey = async () => {
-  // const command = document.getElementById("concatenated-text").textContent
   console.log('command', concatState.command)
   // @ts-ignore
-  const result = await window.electron.invoke('connect-ssh', {
+  const result = await window.electron.invoke('execute-ssh-with-key', {
     command: concatState.command
   });
   console.log('SSH Connection Result:', result);

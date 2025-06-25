@@ -5,7 +5,7 @@ export const initialNodes = [
     data: {
       text: 'whoami',
     },
-    position: { x: -100, y: -50 },
+    position: { x: 0, y: 100 },
   },
   {
     id: '2',
@@ -13,13 +13,13 @@ export const initialNodes = [
     data: {
       text: 'ls -a',
     },
-    position: { x: 0, y: 100 },
+    position: { x: 100, y: 200 },
   },
   {
     id: '4',
     type: 'concat',
     data: {},
-    position: { x: 300, y: 200 },
+    position: { x: 400, y: 200 },
   },
 ];
 

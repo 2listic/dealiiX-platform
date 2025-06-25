@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile, connectAndUploadGraph } from './utils/sshConnections.js'
+import { parseGraph } from './utils/utils.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,7 +48,7 @@ ipcMain.handle('execute-ssh-command-with-password', async (event, { host, userna
 })
 
 // Listen for messages from the renderer process
-ipcMain.handle('connect-ssh', async (event, { command }) => {
+ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   return await connectToSSHWithKey(command)
 })
 
@@ -56,34 +57,6 @@ ipcMain.handle('upload-file-with-key', async (event) => {
   const remotePath = '/root/example.json'
   return await connectAndUploadFile(localPath, remotePath)
 })
-
-const parseGraph = (nodes, edges) => {
-  const nodesGraph = nodes.reduce((acc, obj) => {
-    acc[obj.id] = {
-      id: obj.id,
-      type: obj.type,
-      data: obj.data,
-    }
-    return acc
-  }, {});
-  const edgesGraph = edges.reduce((acc, obj) => {
-    acc[obj.id] = {
-      id: obj.id,
-      source: obj.source,
-      target: obj.target,
-    }
-    return acc
-  }, {});
-  return {
-    workflow: {
-      nodes: nodesGraph,
-      edges: edgesGraph
-    },
-    version: 1,
-    author: 'name',
-    dateTimeUtc: new Date().toISOString(),
-  }
-}
 
 ipcMain.handle('upload-graph-with-key', async (event, { nodes, edges }) => {
   const graph = parseGraph(nodes, edges)
