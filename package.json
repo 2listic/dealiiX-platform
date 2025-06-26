@@ -21,7 +21,8 @@
     "dev": "npm run build && cross-env NODE_ENV=development electron .",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "electron-forge start",
+    "start": "electron .",
+    "start:forge": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
