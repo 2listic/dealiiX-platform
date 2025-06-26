@@ -24,17 +24,9 @@ const executeWithKey = async () => {
   panel.textContent = result;
 }
 
-const uploadFileWithKey = async () => {
+const exportGraph = async (nodes, edges) => {
   // @ts-ignore
-  const result = await window.electron.invoke('upload-file-with-key');
-  console.log('SSH Connection Result:', result);
-  let panel = document.getElementById('ssh-response');
-  panel.textContent = result;
-}
-
-const uploadGraphWithKey = async (nodes, edges) => {
-  // @ts-ignore
-  const result = await window.electron.invoke('upload-graph-with-key', {
+  const result = await window.electron.invoke('export-graph-ssh', {
     nodes: nodes,
     edges: edges
   });
@@ -43,4 +35,4 @@ const uploadGraphWithKey = async (nodes, edges) => {
   panel.textContent = result;
 }
 
-export { executeWithPassword, executeWithKey, uploadFileWithKey, uploadGraphWithKey };
+export { executeWithPassword, executeWithKey, exportGraph };

@@ -79,57 +79,14 @@ function connectToSSHWithKey(command) {
   });
 }
 
-function connectAndUploadFile(localPath, remotePath) {
-  return new Promise((resolve, reject) => {
-    console.log('uploadFileWithKey called')
-    const conn = new Client();
-    conn.on('ready', () => {
-      console.log('SSH Connection with key established');
-      conn.sftp((err, sftp) => {
-        if (err) return reject(err)
-        console.log('Checking if file exists:', localPath)
-        if (!fs.existsSync(localPath)) {
-          throw new Error(`File does not exist: ${localPath}`)
-        }
-        const localData = fs.readFileSync(localPath)
-
-        sftp.writeFile(remotePath, localData, (err) => {
-          if (err) {
-            conn.end()
-            return reject(err)
-          }
-          console.log('File uploaded successfully')
-          conn.end()
-          resolve(`File uploaded: ${localPath} -> ${remotePath}`)
-        })
-      })
-    }).on('error', (err) => {
-      console.error('SFTP Connection error')
-      reject(err)
-    }).connect({
-      host: 'localhost',
-      port: 2222,
-      username: 'root',
-      privateKey: fs.readFileSync(privateKeyPath),
-      debug: console.log,
-    });
-  })
-}
-
 function connectAndUploadGraph(jsonGraph, remotePath) {
   return new Promise((resolve, reject) => {
-    console.log('uploadFileWithKey called')
+    console.log('connectAndUploadGraph called')
     const conn = new Client();
     conn.on('ready', () => {
       console.log('SSH Connection with key established');
       conn.sftp((err, sftp) => {
         if (err) return reject(err)
-        // console.log('Checking if file exists:', localPath)
-        // if (!fs.existsSync(localPath)) {
-        //   throw new Error(`File does not exist: ${localPath}`)
-        // }
-        // const localData = fs.readFileSync(localPath)
-
         sftp.writeFile(remotePath, jsonGraph, (err) => {
           if (err) {
             conn.end()
@@ -153,4 +110,4 @@ function connectAndUploadGraph(jsonGraph, remotePath) {
   })
 }
 
-export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile, connectAndUploadGraph } // export the functions to be used in the main.js inde
+export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadGraph } // export the functions to be used in the main.js inde

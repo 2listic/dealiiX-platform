@@ -1,13 +1,13 @@
 <script lang="ts">
   import { useNodes, useEdges } from '@xyflow/svelte';
-  import { uploadGraphWithKey } from '../utils/sshMessages';
+  import { exportGraph } from '../utils/sshMessages';
  
   const currentNodes = useNodes();
   const currentEdges = useEdges();
 
   const handleUpload = async () => {
     try {
-      await uploadGraphWithKey(currentNodes.current, currentEdges.current);
+      await exportGraph(currentNodes.current, currentEdges.current);
     } catch (error) {
       console.error('Upload failed:', error);
     }
