@@ -3,19 +3,23 @@
 `npm install`
 
 
-# Run
+# Run 
+
+`npm run dev` to build the front-end and run the electron app in development mode
 
 ## Build the front-end
 
-`npm run build`
+- `npm run build` to build the front-end
+- `npm run dev:vite` to run only the front-end with hot-reload
 
-## Run
+## Run the electron app
 
-- `npm start` or   
+- `npm start` to run the electron app (build front-end before), or 
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).  
-- `npm run dev:vite` to run only the front-end part with hot-reload
 
 # How to setup a new project like this
+
+## TODO: update this part
 
 Read [here](https://docs.proton.me/doc?mode=open&volumeId=WvnTzeccQaa6G5y0iQbKTk1d5C1hBxf4tfJ3fBoV_L2dWdRPmmyH2SnFeb7v4rb4Fr4uoomuUr9ct62B6hpEfg%3D%3D&linkId=vFweVDJAbdn2kv9lAIgKe5pszcudkj8dOxPrGD865z5-EyKNx4drvb_4U56oCXcJa3uGx2xLHeqUhwCRdjhOhA%3D%3D)
 
