@@ -2,9 +2,18 @@
 
 `npm install`
 
+
 # Run
 
-`npm start`
+## Build the front-end
+
+`npm run build`
+
+## Run
+
+- `npm start` or   
+- `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).  
+- `npm run dev:vite` to run only the front-end part with hot-reload
 
 # How to setup a new project like this
 
