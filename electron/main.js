@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadFile } from './utils/sshConnections.js'
+import { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadGraph } from './utils/sshConnections.js'
+import { parseGraph } from './utils/utils.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,12 +48,13 @@ ipcMain.handle('execute-ssh-command-with-password', async (event, { host, userna
 })
 
 // Listen for messages from the renderer process
-ipcMain.handle('connect-ssh', async (event, { command }) => {
+ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   return await connectToSSHWithKey(command)
 })
 
-ipcMain.handle('upload-file-with-key', async (event) => {
-  const localPath = path.join(__dirname, '/example.json')
-  const remotePath = '/root/example.json'
-  return await connectAndUploadFile(localPath, remotePath)
+ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
+  const graph = parseGraph(nodes, edges)
+  const jsonGraph = JSON.stringify(graph)
+  const remotePath = '/root/graph.json'
+  return await connectAndUploadGraph(jsonGraph, remotePath)
 })
