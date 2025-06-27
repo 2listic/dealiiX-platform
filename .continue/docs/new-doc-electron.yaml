@@ -1,6 +1,0 @@
-name: Electron
-version: 0.0.1
-schema: v1
-docs:
-  - name: Electron
-    startUrl: https://www.electronjs.org/docs/latest/
