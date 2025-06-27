@@ -24,7 +24,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Building
 - Add electron-forge. See PR #12 
-- Add .deb distributable for Linux. See PR #4 
+- Add .deb distributable for Linux. See PR [#4](https://github.com/2listic/dealiiX-platform/pull/14)
 - Add .dmg distributable for macOS. See PR #14 
 
 ### Testing
