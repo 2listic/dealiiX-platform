@@ -26,8 +26,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "make:deb": "electron-forge make --targets=@electron-forge/maker-deb",
-    "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg"
-
+    "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg",
+    "eslint": "eslint . "
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",
@@ -39,10 +39,13 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
     "@electron-forge/plugin-fuses": "^7.8.1",
     "@electron/fuses": "^1.8.0",
+    "@eslint/js": "^9.29.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@xyflow/svelte": "^1.1.0",
     "cross-env": "^7.0.3",
     "electron": "^37.1.0",
+    "eslint": "^9.29.0",
+    "globals": "^16.2.0",
     "svelte": "^5.28.1",
     "vite": "^6.3.5"
   },
