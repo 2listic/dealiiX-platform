@@ -1,23 +1,29 @@
 ## [Unreleased]
-### Added
-- Initial setup for changelog.
-
-## [1.0.0] - 2023-10-01
-### Added
+### Documentation
 - Feature A
+
+## [0.1.0] - 2023-10-01
+### Documentation
+- (\#1) Feature A
+
+### Canvas-graph
+- (\#1) Feature A
 - Feature B
 
-### Changed
-- Improved performance of Feature A
+### Canvas-UI
+- Feature A
 
-### Deprecated
-- OldFeature
+### Backend
+- Feature A
 
-### Removed
-- Removed OldFeature
+### Project-Structure
+- Feature A
 
-### Fixed
-- Bug in Feature B
+### Building
+- Feature A
 
-### Security
-- Security fix for vulnerability X
+### Testing
+- Feature A
+
+### SSH
+- Feature A
