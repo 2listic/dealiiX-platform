@@ -11,7 +11,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte';
-  import { concatState } from '../states/concatState.svelte';
+  import { concatState } from '../../states/concatState.svelte';
 
   let props: NodeProps = $props();
   let { id, data }: NodeProps<ConcatNodeType> = props;

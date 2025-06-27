@@ -1,9 +1,8 @@
 <script module>
-  import TextNode, { type TextNodeType } from './TextNode.svelte';
-  import ResultNode, { type ResultNodeType } from './ResultNode.svelte';
-  import ConcatNode, { type ConcatNodeType } from './ConcatNode.svelte';
+  import TextNode, { type TextNodeType } from './nodes/TextNode.svelte';
+  import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte';
  
-  export type CustomNodes = TextNodeType | ResultNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -21,16 +20,15 @@
   } from "@xyflow/svelte";
 
   import "@xyflow/svelte/dist/base.css";
-  import CustomEdge from "./CustomEdge.svelte";
+  import CustomEdge from "./edges/CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
-  import { executeWithPassword, executeWithKey, uploadFileWithKey } from '../utils/sshMessages.js';
+  import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js';
+  import ExportGraphButton from "./ExportGraphButton.svelte";
 
   let idCounter = $state(initialNodes.length)
 
   const nodeTypes: NodeTypes = {
-    // textUpdater: TextUpdaterNode,
     text: TextNode,
-    result: ResultNode,
     concat: ConcatNode,
   };
   const edgeTypes: EdgeTypes = {
@@ -57,10 +55,12 @@
     onconnect={onConnect}
   >
     <Panel position="top-left">
-      <button onclick={executeWithPassword}>Execute with password</button>
-      <button onclick={executeWithKey}>Execute with key</button>
-      <button onclick={uploadFileWithKey}>Upload file</button>
-      <div id="ssh-response" class="custom-panel">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
+        <button onclick={executeWithPassword}>Execute with password</button>
+        <button onclick={executeWithKey}>Execute with key</button>
+        <ExportGraphButton />
+      </div>
+      <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
         -
       </div>
     </Panel>
