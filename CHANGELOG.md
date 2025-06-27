@@ -10,7 +10,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-UI
 - Buttons to run concatenated command via SSH on server
-- (\#9) Button to export and upload graph to server
+- (#9) Button to export and upload graph to server
 
 ### Backend
 - Electron setup with IPC communication
@@ -23,9 +23,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - 
 
 ### Building
-- (\#12) Add electron-forge
-- (\#4) Add .deb distributable for Linux
-- (\#14) Add .dmg distributable for macOS
+- (#12) Add electron-forge
+- (#4) Add .deb distributable for Linux
+- (#14) Add .dmg distributable for macOS
 
 ### Testing
 - 
