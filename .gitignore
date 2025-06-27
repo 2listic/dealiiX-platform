@@ -26,6 +26,6 @@ dist-ssr
 # Electron-forge outputs
 out/
 
-# Vscode and extension
+# Vscode and extensions
 .vscode/
 .continue/
