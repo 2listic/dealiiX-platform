@@ -3,7 +3,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 ### Documentation
-- 
+- Create readme with install, run and packaging instructions [#8](https://github.com/2listic/dealiiX-platform/issues/8)
 
 ### Canvas-graph
 - Initial nodes and edges with string concatenation
