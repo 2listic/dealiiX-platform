@@ -1,5 +1,5 @@
 TODO before merge:
 
-Link related issue(s)
+This closes #
 
-[ ] Update CHANGELOG
+- [ ] Update CHANGELOG
