@@ -10,40 +10,40 @@
     useEdges,
     type NodeProps,
     type Node,
-  } from '@xyflow/svelte';
-  import { concatState } from '../../states/concatState.svelte';
+  } from '@xyflow/svelte'
+  import { concatState } from '../../states/concatState.svelte'
 
-  let props: NodeProps = $props();
-  let { id, data }: NodeProps<ConcatNodeType> = props;
+  let props: NodeProps = $props()
+  let { id }: NodeProps<ConcatNodeType> = props
  
-  const nodes = useNodes();
-  const edges = useEdges();
+  const nodes = useNodes()
+  const edges = useEdges()
 
   const getTextFromNode = (nodeData: any): string => {
-    return nodeData?.data?.text || '';
-  };
+    return nodeData?.data?.text || ''
+  }
 
   const getConnectedNodeText = (targetHandle: string, allEdges: any[], allNodes: Node[]) => {
     // Find edges that connect to this node's specific handle
     const connectedEdge = allEdges.find(edge => 
       edge.target === id && edge.targetHandle === targetHandle
-    );
+    )
     
-    if (!connectedEdge) return '';
+    if (!connectedEdge) return ''
     
     // Find the source node
-    const sourceNode = allNodes.find(node => node.id === connectedEdge.source);
+    const sourceNode = allNodes.find(node => node.id === connectedEdge.source)
     
-    return getTextFromNode(sourceNode);
-  };
+    return getTextFromNode(sourceNode)
+  }
   
-  let topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current));
-  let bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current));
-  let command = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText);
+  let topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current))
+  let bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current))
+  let command = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText)
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
-      concatState.command = command;
-  });
+      concatState.command = command
+  })
 </script>
  
 <div class="custom-node">
