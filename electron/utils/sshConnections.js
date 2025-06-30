@@ -43,24 +43,24 @@ function connectToSSHWithKey(command) {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn.on('ready', () => {
-    console.log('SSH Connection with key established')
+      console.log('SSH Connection with key established')
 
-    conn.exec(command, (err, stream) => {
-      if (err) return reject(err)
+      conn.exec(command, (err, stream) => {
+        if (err) return reject(err)
 
-      let data = ''
-      stream.on('close', (code) => {
-      console.log('Command completed with code', code)
-      conn.end()
-      resolve(data)
-      }).on('data', (chunk) => {
-        console.log('STDOUT:', chunk.toString())
-        data += chunk
-      }).stderr.on('data', (chunk) => {
-        console.log('STDERR:', chunk.toString())
-        data += chunk
+        let data = ''
+        stream.on('close', (code) => {
+          console.log('Command completed with code', code)
+          conn.end()
+          resolve(data)
+        }).on('data', (chunk) => {
+          console.log('STDOUT:', chunk.toString())
+          data += chunk
+        }).stderr.on('data', (chunk) => {
+          console.log('STDERR:', chunk.toString())
+          data += chunk
+        })
       })
-    })
     }).on('error', (err) => {
       console.error('SSH Connection error')
       reject(err)

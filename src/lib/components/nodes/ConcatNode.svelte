@@ -39,10 +39,10 @@
   
   let topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current))
   let bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current))
-  let command = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText)
+  let command = $derived(topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText)
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
-      concatState.command = command
+    concatState.command = command
   })
 </script>
  

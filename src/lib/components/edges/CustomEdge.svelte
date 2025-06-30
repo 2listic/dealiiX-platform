@@ -20,8 +20,8 @@
   <button
     class="nodrag nopan"
     onclick={() => {
-        edges.update((eds) => eds.filter((edge) => edge.id !== id))
-      }}
+      edges.update((eds) => eds.filter((edge) => edge.id !== id))
+    }}
     >
     delete
   </button>

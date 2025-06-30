@@ -1,7 +1,7 @@
-import js from "@eslint/js"
-import { defineConfig } from "eslint/config"
-import svelte from "eslint-plugin-svelte"
-import globals from "globals"
+import js from '@eslint/js'
+import { defineConfig } from 'eslint/config'
+import svelte from 'eslint-plugin-svelte'
+import globals from 'globals'
 import ts from 'typescript-eslint'
 import svelteConfig from './svelte.config.js'
 
@@ -10,7 +10,7 @@ export default defineConfig([
   js.configs.recommended,
   ...svelte.configs.recommended,
   { 
-    ignores: ["out/**", "dist/**"],
+    ignores: ['out/**', 'dist/**'],
   },
   {
     languageOptions: {
@@ -37,7 +37,9 @@ export default defineConfig([
   },
   {
     rules: {
-      "semi": ["error", "never"],
+      'semi': ['error', 'never'],
+      'quotes': ['error', 'single', { 'avoidEscape': true }],
+      'indent': ['error', 2]
     },
   },
 ])

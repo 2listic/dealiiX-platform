@@ -17,13 +17,13 @@
     Controls,
     Panel,
     addEdge,
-  } from "@xyflow/svelte"
+  } from '@xyflow/svelte'
 
-  import "@xyflow/svelte/dist/base.css"
-  import CustomEdge from "./edges/CustomEdge.svelte"
-  import { initialNodes, initialEdges } from "../utils/flowData"
+  import '@xyflow/svelte/dist/base.css'
+  import CustomEdge from './edges/CustomEdge.svelte'
+  import { initialNodes, initialEdges } from '../utils/flowData'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
-  import ExportGraphButton from "./ExportGraphButton.svelte"
+  import ExportGraphButton from './ExportGraphButton.svelte'
 
   let idCounter = $state(initialNodes.length)
 
