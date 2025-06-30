@@ -19,7 +19,8 @@
 
 # Linting
 
-`npm run lint` or `npm run lint:fix` to auto-fix
+`npm run lint` or `npm run lint:fix` to auto-fix.  
+Automatic linting check is done on commit with husky.
 
 # Packaging
 
