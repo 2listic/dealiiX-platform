@@ -3,7 +3,7 @@ export const initialNodes = [
     id: '1',
     type: 'text',
     data: {
-      text: 'whoami',
+      value: 'whoami',
     },
     position: { x: 0, y: 100 },
   },
@@ -11,9 +11,17 @@ export const initialNodes = [
     id: '2',
     type: 'text',
     data: {
-      text: 'ls -a',
+      value: 'ls -a',
     },
     position: { x: 100, y: 200 },
+  },
+  {
+    id: '3',
+    type: 'bool',
+    data: {
+      value: true,
+    },
+    position: { x: 100, y: 300 },
   },
   {
     id: '4',
@@ -28,12 +36,12 @@ export const initialEdges = [
   //   id: 'e1-4-top',
   //   source: '1',
   //   target: '4',
-  //   targetHandle: 'top-input',
+  //   targetHandle: 'input-0',
   // },
   // {
   //   id: 'e2-4-bottom',
   //   source: '2',
   //   target: '4',
-  //   targetHandle: 'bottom-input',
+  //   targetHandle: 'input-1',
   // },
 ];

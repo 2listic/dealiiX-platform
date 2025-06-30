@@ -1,8 +1,9 @@
 <script module>
   import TextNode, { type TextNodeType } from './nodes/TextNode.svelte';
+  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte';
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte';
  
-  export type CustomNodes = TextNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -23,12 +24,14 @@
   import CustomEdge from "./edges/CustomEdge.svelte";
   import { initialNodes, initialEdges } from "../utils/flowData";
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js';
+  import { validateConnection } from '../utils/connetionsValidation.js';
   import ExportGraphButton from "./ExportGraphButton.svelte";
 
   let idCounter = $state(initialNodes.length)
 
   const nodeTypes: NodeTypes = {
     text: TextNode,
+    bool: BoolNode,
     concat: ConcatNode,
   };
   const edgeTypes: EdgeTypes = {
@@ -38,6 +41,10 @@
   let nodes = $state.raw<Node[]>(initialNodes)
   let edges = $state.raw<Edge[]>(initialEdges)
 
+  const isValidConnection = (connection) => {
+    return validateConnection(connection, () => nodes, () => edges)
+  }
+  
   const onConnect = (params) => {
     const newEdge = {
       ...params,
@@ -46,13 +53,14 @@
     edges = addEdge(newEdge, edges);
   };
 </script>
-  <SvelteFlow 
+<SvelteFlow 
     bind:nodes
     bind:edges
     {nodeTypes}
     {edgeTypes}
     fitView
     onconnect={onConnect}
+    isValidConnection={isValidConnection} 
   >
     <Panel position="top-left">
       <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">

@@ -1,5 +1,5 @@
 <script module>
-  export type TextNodeType = Node<{ value: string, type: string }, 'text'>;
+  export type BoolNodeType = Node<{ value: boolean, type: string }, 'bool'>;
 </script>
  
 <script lang="ts">
@@ -11,19 +11,25 @@
     type Node,
   } from '@xyflow/svelte';
  
-  let { id, data }: NodeProps<TextNodeType> = $props();
-  data.type = 'string';
+  let { id, data }: NodeProps<BoolNodeType> = $props();
+  data.type = 'boolean';
+
+  if (data.value === undefined) {
+    data.value = false;
+  }
  
   const { updateNodeData } = useSvelteFlow();
 </script>
  
 <div class="custom-node">
-  <div class="label">text</div>
+  <div class="label">boolean</div>
   <div>
     <input
-      value={data.value}
-      oninput={(evt) => updateNodeData(id, { value: evt.currentTarget.value })}
+      type="checkbox"
+      checked={data.value}
+      oninput={(evt) => updateNodeData(id, { value: evt.currentTarget.checked })}
     />
+    <span>{data.value ? 'true' : 'false'}</span>
   </div>
   <Handle type="source" position={Position.Right} />
 </div>
