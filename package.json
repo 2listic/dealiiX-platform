@@ -27,7 +27,8 @@
     "make": "electron-forge make",
     "make:deb": "electron-forge make --targets=@electron-forge/maker-deb",
     "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",
