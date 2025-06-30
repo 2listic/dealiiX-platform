@@ -22,12 +22,14 @@
 
   import "@xyflow/svelte/dist/base.css";
   import CustomEdge from "./edges/CustomEdge.svelte";
-  import { initialNodes, initialEdges } from "../utils/flowData";
+  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte';
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js';
-  import { validateConnection } from '../utils/connetionsValidation.js';
+  import { isValidConnection } from '../utils/connetionsValidation.js';
   import ExportGraphButton from "./ExportGraphButton.svelte";
 
-  let idCounter = $state(initialNodes.length)
+  let nodes = getNodes()
+  let edges = getEdges()
+  let idCounter = $state(nodes.length)
 
   const nodeTypes: NodeTypes = {
     text: TextNode,
@@ -38,13 +40,6 @@
     'custom-edge': CustomEdge,
   };
   
-  let nodes = $state.raw<Node[]>(initialNodes)
-  let edges = $state.raw<Edge[]>(initialEdges)
-
-  const isValidConnection = (connection) => {
-    return validateConnection(connection, () => nodes, () => edges)
-  }
-  
   const onConnect = (params) => {
     const newEdge = {
       ...params,
@@ -54,8 +49,8 @@
   };
 </script>
 <SvelteFlow 
-    bind:nodes
-    bind:edges
+    bind:nodes={getNodes, setNodes}
+    bind:edges={getEdges, setEdges}
     {nodeTypes}
     {edgeTypes}
     fitView

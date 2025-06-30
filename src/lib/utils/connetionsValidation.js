@@ -1,4 +1,6 @@
-const validateConnection = (connection, getNodes, getEdges) => {
+import { getNodes, getEdges } from '../states/store.svelte';
+
+const isValidConnection = (connection) => {
   console.log('connection', connection)
   console.log(connection.source, connection.target, connection.targetHandle)
   const nodes = getNodes()
@@ -36,4 +38,4 @@ const validateConnection = (connection, getNodes, getEdges) => {
   return expectedInputType === sourceType
 }
 
-export { validateConnection }
+export { isValidConnection }
