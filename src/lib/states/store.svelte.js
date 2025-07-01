@@ -1,10 +1,10 @@
-import { initialNodes, initialEdges } from "../utils/flowData";
+import { initialNodes, initialEdges } from '../utils/flowData'
 
  
 let nodes = $state.raw(initialNodes)
 let edges = $state.raw(initialEdges)
  
-export const getNodes = () => nodes;
-export const getEdges = () => edges;
-export const setNodes = (newNodes) => nodes = newNodes;
-export const setEdges = (newEdges) => edges = newEdges;
+export const getNodes = () => nodes
+export const getEdges = () => edges
+export const setNodes = (newNodes) => nodes = newNodes
+export const setEdges = (newEdges) => edges = newEdges

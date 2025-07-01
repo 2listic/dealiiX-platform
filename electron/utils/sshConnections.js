@@ -4,31 +4,31 @@ import os from 'os'
 import path from 'path'
 
 const __userHomeDir = path.resolve(os.homedir())
-const privateKeyPath = path.join(__userHomeDir, '.ssh/id_rsa');
+const privateKeyPath = path.join(__userHomeDir, '.ssh/id_rsa')
 
 function connectToSSHWithPassword(host, username, password, command) {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn.on('ready', () => {
-      console.log('SSH Connection with password established');
+      console.log('SSH Connection with password established')
 
       conn.exec(command, (err, stream) => {
         if (err) reject(err)
         let data = ''
-        stream.on('close', (code, signal) => {
-          console.log('Command completed with code', code);
+        stream.on('close', (code) => {
+          console.log('Command completed with code', code)
           conn.end()
           resolve(data)
         }).on('data', (chunk) => {
-          console.log('STDOUT:', chunk.toString());
+          console.log('STDOUT:', chunk.toString())
           data += chunk
         }).stderr.on('data', (chunk) => {
-          console.log('STDERR:', chunk.toString());
+          console.log('STDERR:', chunk.toString())
           data += chunk
         })
       })
     }).on('error', (err) => {
-      console.error('SSH Connection error');
+      console.error('SSH Connection error')
       reject(err)
     }).connect({
       host,
@@ -41,50 +41,50 @@ function connectToSSHWithPassword(host, username, password, command) {
 
 function connectToSSHWithKey(command) {
   return new Promise((resolve, reject) => {
-    const conn = new Client();
+    const conn = new Client()
     conn.on('ready', () => {
-    console.log('SSH Connection with key established');
+      console.log('SSH Connection with key established')
 
-    conn.exec(command, (err, stream) => {
-      if (err) return reject(err);
+      conn.exec(command, (err, stream) => {
+        if (err) return reject(err)
 
-      let data = '';
-      stream.on('close', (code, signal) => {
-      console.log('Command completed with code', code);
-      conn.end();
-      resolve(data);
-      }).on('data', (chunk) => {
-        console.log('STDOUT:', chunk.toString());
-        data += chunk;
-      }).stderr.on('data', (chunk) => {
-        console.log('STDERR:', chunk.toString());
-        data += chunk;
-      });
-    });
+        let data = ''
+        stream.on('close', (code) => {
+          console.log('Command completed with code', code)
+          conn.end()
+          resolve(data)
+        }).on('data', (chunk) => {
+          console.log('STDOUT:', chunk.toString())
+          data += chunk
+        }).stderr.on('data', (chunk) => {
+          console.log('STDERR:', chunk.toString())
+          data += chunk
+        })
+      })
     }).on('error', (err) => {
-      console.error('SSH Connection error');
-      reject(err);
+      console.error('SSH Connection error')
+      reject(err)
     }).connect({
       host: 'localhost',
       port: 2222,
       username: 'root',
       privateKey: fs.readFileSync(privateKeyPath),
       debug: console.log,
-      hostVerifier: (keyHash) => {  // consider hashing the private key
-        return true;
-      },
+      // hostVerifier: (keyHash) => {  // consider hashing the private key
+      //   return true
+      // },
       readyTimeout: 5000,           // additional options
       keepaliveInterval: 10000
-    });
-  });
+    })
+  })
 }
 
 function connectAndUploadGraph(jsonGraph, remotePath) {
   return new Promise((resolve, reject) => {
     console.log('connectAndUploadGraph called')
-    const conn = new Client();
+    const conn = new Client()
     conn.on('ready', () => {
-      console.log('SSH Connection with key established');
+      console.log('SSH Connection with key established')
       conn.sftp((err, sftp) => {
         if (err) return reject(err)
         sftp.writeFile(remotePath, jsonGraph, (err) => {
@@ -106,7 +106,7 @@ function connectAndUploadGraph(jsonGraph, remotePath) {
       username: 'root',
       privateKey: fs.readFileSync(privateKeyPath),
       debug: console.log,
-    });
+    })
   })
 }
 

@@ -1,7 +1,7 @@
 <script module>
-  import TextNode, { type TextNodeType } from './nodes/TextNode.svelte';
-  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte';
-  import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte';
+  import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
+  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
+  import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
  
   export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
 </script>
@@ -11,21 +11,19 @@
     SvelteFlow,
     Background,
     MiniMap,
-    type Node,
-    type Edge,
     type EdgeTypes,
     type NodeTypes,
     Controls,
     Panel,
     addEdge,
-  } from "@xyflow/svelte";
+  } from '@xyflow/svelte'
 
-  import "@xyflow/svelte/dist/base.css";
-  import CustomEdge from "./edges/CustomEdge.svelte";
-  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte';
-  import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js';
-  import { isValidConnection } from '../utils/connetionsValidation.js';
-  import ExportGraphButton from "./ExportGraphButton.svelte";
+  import '@xyflow/svelte/dist/base.css'
+  import CustomEdge from './edges/CustomEdge.svelte'
+  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
+  import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
+  import { isValidConnection } from '../utils/connetionsValidation.js'
+  import ExportGraphButton from './ExportGraphButton.svelte'
 
   let nodes = getNodes()
   let edges = getEdges()
@@ -35,18 +33,18 @@
     text: TextNode,
     bool: BoolNode,
     concat: ConcatNode,
-  };
+  }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
-  };
+  }
   
   const onConnect = (params) => {
     const newEdge = {
       ...params,
       id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
-    };
-    edges = addEdge(newEdge, edges);
-  };
+    }
+    edges = addEdge(newEdge, edges)
+  }
 </script>
 <SvelteFlow 
     bind:nodes={getNodes, setNodes}

@@ -20,7 +20,7 @@ function createWindow () {
       contextIsolation: true,          enableRemoteModule: false,
       webSecurity: true, // Ensure web security is enabled
       contentSecurityPolicy: "default-src 'self'; script-src 'self'" // Set a basic CSP
-     }
+    }
   })
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
@@ -32,11 +32,11 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
-})
+  })
 })
 
 app.on('window-all-closed', () => {
-  // eslint-disable-next-line no-undef
+   
   if (process.platform !== 'darwin') {
     app.quit()
   }

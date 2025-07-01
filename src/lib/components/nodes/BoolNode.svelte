@@ -9,16 +9,16 @@
     useSvelteFlow,
     type NodeProps,
     type Node,
-  } from '@xyflow/svelte';
+  } from '@xyflow/svelte'
  
-  let { id, data }: NodeProps<BoolNodeType> = $props();
-  data.type = 'boolean';
+  let { id, data }: NodeProps<BoolNodeType> = $props()
+  data.type = 'boolean'
 
   if (data.value === undefined) {
-    data.value = false;
+    data.value = false
   }
  
-  const { updateNodeData } = useSvelteFlow();
+  const { updateNodeData } = useSvelteFlow()
 </script>
  
 <div class="custom-node">

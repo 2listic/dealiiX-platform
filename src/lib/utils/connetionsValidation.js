@@ -1,4 +1,4 @@
-import { getNodes, getEdges } from '../states/store.svelte';
+import { getNodes, getEdges } from '../states/store.svelte'
 
 const isValidConnection = (connection) => {
   console.log('connection', connection)

@@ -10,41 +10,41 @@
     useEdges,
     type NodeProps,
     type Node,
-  } from '@xyflow/svelte';
-  import { concatState } from '../../states/concatState.svelte';
+  } from '@xyflow/svelte'
+  import { concatState } from '../../states/concatState.svelte'
 
-  let { id, data }: NodeProps<ConcatNodeType> = $props();
-  data.type = 'conocatenation';
+  let { id, data }: NodeProps<ConcatNodeType> = $props()
+  data.type = 'conocatenation'
   data.inputs = ['string', 'string']
  
-  const nodes = useNodes();
-  const edges = useEdges();
+  const nodes = useNodes()
+  const edges = useEdges()
 
   const getTextFromNode = (nodeData: any): string => {
-    return nodeData?.data?.value || '';
-  };
+    return nodeData?.data?.value || ''
+  }
 
   const getConnectedNodeText = (targetHandle: string, allEdges: any[], allNodes: Node[]) => {
     // Find edges that connect to this node's specific handle
     const connectedEdge = allEdges.find(edge => 
       edge.target === id && edge.targetHandle === targetHandle
-    );
+    )
     
-    if (!connectedEdge) return '';
+    if (!connectedEdge) return ''
     
     // Find the source node
-    const sourceNode = allNodes.find(node => node.id === connectedEdge.source);
+    const sourceNode = allNodes.find(node => node.id === connectedEdge.source)
     
-    return getTextFromNode(sourceNode);
-  };
+    return getTextFromNode(sourceNode)
+  }
   
-  let topText = $derived(getConnectedNodeText('input-0', edges.current, nodes.current));
-  let bottomText = $derived(getConnectedNodeText('input-1', edges.current, nodes.current));
-  let command = $derived(topText && bottomText ? topText + " && " + bottomText : topText + bottomText);
+  let topText = $derived(getConnectedNodeText('input-0', edges.current, nodes.current))
+  let bottomText = $derived(getConnectedNodeText('input-1', edges.current, nodes.current))
+  let command = $derived(topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText)
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
-      concatState.command = command;
-  });
+    concatState.command = command
+  })
 </script>
  
 <div class="custom-node">

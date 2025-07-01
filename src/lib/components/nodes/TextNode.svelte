@@ -9,12 +9,12 @@
     useSvelteFlow,
     type NodeProps,
     type Node,
-  } from '@xyflow/svelte';
+  } from '@xyflow/svelte'
  
-  let { id, data }: NodeProps<TextNodeType> = $props();
-  data.type = 'string';
+  let { id, data }: NodeProps<TextNodeType> = $props()
+  data.type = 'string'
  
-  const { updateNodeData } = useSvelteFlow();
+  const { updateNodeData } = useSvelteFlow()
 </script>
  
 <div class="custom-node">
