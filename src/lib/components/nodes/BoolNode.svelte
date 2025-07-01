@@ -1,5 +1,5 @@
 <script module>
-  export type BoolNodeType = Node<{ value: boolean, inputs: string[], outputs: string[] }, 'bool'>;
+  export type BoolNodeType = Node<{ value: boolean, inputs: symbol[], outputs: symbol[] }, 'bool'>;
 </script>
  
 <script lang="ts">
@@ -10,10 +10,11 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
+  import { inOutTypes } from '../../utils/enums'
  
   let { id, data }: NodeProps<BoolNodeType> = $props()
   data.inputs = []
-  data.outputs = ['boolean']
+  data.outputs = [inOutTypes.BOOL]
 
   if (data.value === undefined) {
     data.value = false

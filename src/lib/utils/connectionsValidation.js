@@ -39,7 +39,7 @@ const isValidConnection = (connection) => {
   const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
   const expectedInputType = targetNode.data.inputs[handleIndexInput]
   
-  console.log(`Handle ${connection.targetHandle} expects ${expectedInputType}, source provides ${sourceType}`)
+  console.log(`Handle ${connection.targetHandle} expects ${expectedInputType.toString()}, source provides ${sourceType.toString()}`)
   const isValid = expectedInputType === sourceType
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid)   // Cache the result

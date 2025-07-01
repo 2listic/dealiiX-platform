@@ -1,5 +1,5 @@
 <script module>
-  export type TextNodeType = Node<{ value: string, inputs: string[], outputs: string[] }, 'text'>;
+  export type TextNodeType = Node<{ value: string, inputs: symbol[], outputs: symbol[] }, 'text'>;
 </script>
  
 <script lang="ts">
@@ -10,10 +10,11 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
+  import { inOutTypes } from '../../utils/enums'
  
   let { id, data }: NodeProps<TextNodeType> = $props()
   data.inputs = []
-  data.outputs = ['string']
+  data.outputs = [inOutTypes.STRING]
  
   const { updateNodeData } = useSvelteFlow()
 </script>

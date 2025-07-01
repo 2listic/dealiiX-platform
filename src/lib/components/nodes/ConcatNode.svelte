@@ -1,5 +1,5 @@
 <script module>
-  export type ConcatNodeType = Node<{ type: string, inputs: string[], outputs: string[] }, 'concat'>;
+  export type ConcatNodeType = Node<{ type: string, inputs: symbol[], outputs: symbol[] }, 'concat'>;
 </script>
  
 <script lang="ts">
@@ -12,9 +12,10 @@
     type Node,
   } from '@xyflow/svelte'
   import { concatState } from '../../states/concatState.svelte'
+  import { inOutTypes } from '../../utils/enums'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
-  data.inputs = ['string', 'string']
+  data.inputs = [inOutTypes.STRING, inOutTypes.STRING]
   data.outputs = []
  
   const nodes = useNodes()
