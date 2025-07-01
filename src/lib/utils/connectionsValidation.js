@@ -1,8 +1,19 @@
 import { getNodes, getEdges } from '../states/store.svelte'
 
+let connectionCache = new Map()
+
 const isValidConnection = (connection) => {
   console.log('connection', connection)
-  console.log(connection.source, connection.target, connection.targetHandle)
+  
+  // Create a cache key from the connection
+  const cacheKey = `${connection.source}-${connection.target}-${connection.targetHandle}`
+  // Return cached result if available
+  if (connectionCache.has(cacheKey)) {
+    console.log('cache hit')
+    return connectionCache.get(cacheKey)
+  }
+
+  // Get the current nodes and edges
   const nodes = getNodes()
   const edges = getEdges()
   console.log('nodes', nodes)
@@ -15,27 +26,23 @@ const isValidConnection = (connection) => {
   )
   if (isHandleAlreadyConnected) {
     console.error(`Handle ${connection.targetHandle} on node ${connection.target} is already connected`)
+    connectionCache.set(cacheKey, false)   // Cache the result
     return false
   }
 
   // Check if the source type matches the target handle type
   const targetNode = nodes.find(node => node.id === connection.target)
   const sourceNode = nodes.find(node => node.id === connection.source)
-  console.log('targetNode', targetNode)
-  console.log('sourceNode', sourceNode)
 
   const handleIndex = parseInt(connection.targetHandle.split('-')[1])
-  console.log('handleIndex', handleIndex)
   const expectedInputType = targetNode.data.inputs[handleIndex]
   const sourceType = sourceNode.data.type
   
-  if (expectedInputType != sourceType) {
-    console.error(`Handle ${connection.targetHandle} expects ${expectedInputType}, source provides ${sourceType}`)
-  } else {
-    console.log(`Handle ${connection.targetHandle} expects ${expectedInputType}, source provides ${sourceType}`)
-  }
-
-  return expectedInputType === sourceType
+  console.log(`Handle ${connection.targetHandle} expects ${expectedInputType}, source provides ${sourceType}`)
+  const isValid = expectedInputType === sourceType
+  console.log('connection is valid', isValid)
+  connectionCache.set(cacheKey, isValid)   // Cache the result
+  return isValid
 }
 
 export { isValidConnection }

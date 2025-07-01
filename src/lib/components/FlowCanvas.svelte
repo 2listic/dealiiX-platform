@@ -22,7 +22,7 @@
   import CustomEdge from './edges/CustomEdge.svelte'
   import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
-  import { isValidConnection } from '../utils/connetionsValidation.js'
+  import { isValidConnection } from '../utils/connectionsValidation.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
 
   let nodes = getNodes()
@@ -52,7 +52,7 @@
     {nodeTypes}
     {edgeTypes}
     fitView
-    onconnect={onConnect}
+    onbeforeconnect={onConnect}
     isValidConnection={isValidConnection} 
   >
     <Panel position="top-left">
