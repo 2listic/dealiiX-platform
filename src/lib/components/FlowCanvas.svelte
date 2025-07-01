@@ -25,9 +25,9 @@
   import { isValidConnection } from '../utils/connectionsValidation.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
 
-  let nodes = getNodes()
-  let edges = getEdges()
-  let idCounter = $state(nodes.length)
+  let nodesStore = getNodes()
+  let edgesStore = getEdges()
+  let idCounter = $state(nodesStore.length)
 
   const nodeTypes: NodeTypes = {
     text: TextNode,
@@ -43,7 +43,7 @@
       ...params,
       id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
     }
-    edges = addEdge(newEdge, edges)
+    setEdges(addEdge(newEdge, edgesStore))
   }
 </script>
 <SvelteFlow 
@@ -52,7 +52,7 @@
     {nodeTypes}
     {edgeTypes}
     fitView
-    onbeforeconnect={onConnect}
+    onconnect={onConnect}
     isValidConnection={isValidConnection} 
   >
     <Panel position="top-left">
