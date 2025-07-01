@@ -1,5 +1,5 @@
 <script module>
-  export type TextNodeType = Node<{ value: string, type: string }, 'text'>;
+  export type TextNodeType = Node<{ value: string, inputs: string[], outputs: string[] }, 'text'>;
 </script>
  
 <script lang="ts">
@@ -12,7 +12,8 @@
   } from '@xyflow/svelte'
  
   let { id, data }: NodeProps<TextNodeType> = $props()
-  data.type = 'string'
+  data.inputs = []
+  data.outputs = ['string']
  
   const { updateNodeData } = useSvelteFlow()
 </script>
@@ -25,7 +26,7 @@
       oninput={(evt) => updateNodeData(id, { value: evt.currentTarget.value })}
     />
   </div>
-  <Handle type="source" position={Position.Right} />
+  <Handle id="output-0" type="source" position={Position.Right} />
 </div>
  
 <style>

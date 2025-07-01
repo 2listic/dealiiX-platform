@@ -1,5 +1,5 @@
 <script module>
-  export type ConcatNodeType = Node<{ type: string, inputs: string[] }, 'concat'>;
+  export type ConcatNodeType = Node<{ type: string, inputs: string[], outputs: string[] }, 'concat'>;
 </script>
  
 <script lang="ts">
@@ -14,8 +14,8 @@
   import { concatState } from '../../states/concatState.svelte'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
-  data.type = 'concatenation'
   data.inputs = ['string', 'string']
+  data.outputs = []
  
   const nodes = useNodes()
   const edges = useEdges()

@@ -3,16 +3,16 @@ import { getNodes, getEdges } from '../states/store.svelte'
 let connectionCache = new Map()
 
 const isValidConnection = (connection) => {
-  console.log('connection', connection)
   
   // Create a cache key from the connection
-  const cacheKey = `${connection.source}-${connection.target}-${connection.targetHandle}`
+  const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available
   if (connectionCache.has(cacheKey)) {
     console.log('cache hit')
     return connectionCache.get(cacheKey)
   }
-
+  console.log('connection', connection)
+  
   // Get the current nodes and edges
   const nodes = getNodes()
   const edges = getEdges()
@@ -34,13 +34,14 @@ const isValidConnection = (connection) => {
   const targetNode = nodes.find(node => node.id === connection.target)
   const sourceNode = nodes.find(node => node.id === connection.source)
 
-  const handleIndex = parseInt(connection.targetHandle.split('-')[1])
-  const expectedInputType = targetNode.data.inputs[handleIndex]
-  const sourceType = sourceNode.data.type
+  const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
+  const sourceType = sourceNode.data.outputs[handleIndexOutput]
+  const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
+  const expectedInputType = targetNode.data.inputs[handleIndexInput]
   
   console.log(`Handle ${connection.targetHandle} expects ${expectedInputType}, source provides ${sourceType}`)
   const isValid = expectedInputType === sourceType
-  console.log('connection is valid', isValid)
+  console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid)   // Cache the result
   return isValid
 }

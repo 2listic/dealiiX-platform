@@ -1,5 +1,5 @@
 <script module>
-  export type BoolNodeType = Node<{ value: boolean, type: string }, 'bool'>;
+  export type BoolNodeType = Node<{ value: boolean, inputs: string[], outputs: string[] }, 'bool'>;
 </script>
  
 <script lang="ts">
@@ -12,7 +12,8 @@
   } from '@xyflow/svelte'
  
   let { id, data }: NodeProps<BoolNodeType> = $props()
-  data.type = 'boolean'
+  data.inputs = []
+  data.outputs = ['boolean']
 
   if (data.value === undefined) {
     data.value = false
@@ -31,7 +32,7 @@
     />
     <span>{data.value ? 'true' : 'false'}</span>
   </div>
-  <Handle type="source" position={Position.Right} />
+  <Handle id="output-0" type="source" position={Position.Right} />
 </div>
  
 <style>
