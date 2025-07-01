@@ -26,9 +26,8 @@
   import ExportGraphButton from './ExportGraphButton.svelte'
 
   let nodesStore = getNodes()
-  let edgesStore = getEdges()
   let idCounter = $state(nodesStore.length)
-
+  
   const nodeTypes: NodeTypes = {
     text: TextNode,
     bool: BoolNode,
@@ -39,6 +38,7 @@
   }
   
   const onConnect = (params) => {
+    const edgesStore = getEdges()
     const newEdge = {
       ...params,
       id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
