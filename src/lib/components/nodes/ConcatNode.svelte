@@ -14,7 +14,7 @@
   import { concatState } from '../../states/concatState.svelte'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
-  data.type = 'conocatenation'
+  data.type = 'concatenation'
   data.inputs = ['string', 'string']
  
   const nodes = useNodes()
