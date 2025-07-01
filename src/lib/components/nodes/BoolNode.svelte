@@ -1,5 +1,6 @@
 <script module>
-  export type BoolNodeType = Node<{ value: boolean, inputs: symbol[], outputs: symbol[] }, 'bool'>;
+  import type { BoolNodeData } from '../../types/nodeTypes'
+  export type BoolNodeType = Node<BoolNodeData, 'bool'>;
 </script>
  
 <script lang="ts">

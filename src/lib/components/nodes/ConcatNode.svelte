@@ -1,6 +1,7 @@
 <script module>
-  export type ConcatNodeType = Node<{ value: string, inputs: symbol[], outputs: symbol[] }, 'concat'>;
-</script>
+  import type { ConcatNodeData } from '../../types/nodeTypes'
+  export type ConcatNodeType = Node<ConcatNodeData, 'concat'>;
+  </script>
  
 <script lang="ts">
   import {

@@ -1,5 +1,6 @@
 <script module>
-  export type TextNodeType = Node<{ value: string, inputs: symbol[], outputs: symbol[] }, 'text'>;
+  import type { TextNodeData } from '../../types/nodeTypes'
+  export type TextNodeType = Node<TextNodeData, 'text'>;
 </script>
  
 <script lang="ts">
