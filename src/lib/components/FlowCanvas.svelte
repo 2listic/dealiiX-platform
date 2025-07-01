@@ -17,6 +17,7 @@
     Controls,
     Panel,
     addEdge,
+    useSvelteFlow,
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
@@ -24,6 +25,10 @@
   import { initialNodes, initialEdges } from '../utils/flowData'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
+  import { useDnD } from './DnDProvider.svelte'
+  import Sidebar from './layout/Sidebar.svelte'
+
+  const { screenToFlowPosition } = useSvelteFlow()
 
   let idCounter = $state(initialNodes.length)
 
@@ -45,7 +50,44 @@
     }
     edges = addEdge(newEdge, edges)
   }
+
+  const type = useDnD()
+ 
+  const onDragOver = (event: DragEvent) => {
+    event.preventDefault()
+ 
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move'
+    }
+  }
+ 
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault()
+ 
+    if (!type.current) {
+      return
+    }
+ 
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    })
+ 
+    const newNode = {
+      id: `${Math.random()}`,
+      type: type.current,
+      position,
+      data: { 
+        type: `${type.current}`,
+        value: ''
+      },
+      origin: [0.5, 0.0],
+    } satisfies Node
+ 
+    nodes = [...nodes, newNode]
+  }
 </script>
+  <Sidebar />
   <SvelteFlow 
     bind:nodes
     bind:edges
@@ -53,6 +95,8 @@
     {edgeTypes}
     fitView
     onconnect={onConnect}
+    ondragover={onDragOver}
+    ondrop={onDrop}
   >
     <Panel position="top-left">
       <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
