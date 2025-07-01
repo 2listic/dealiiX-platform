@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { BaseEdge, EdgeLabel, getStraightPath, useEdges, type EdgeProps } from '@xyflow/svelte';
+  import { BaseEdge, EdgeLabel, getStraightPath, useEdges, type EdgeProps } from '@xyflow/svelte'
  
-  let { id, sourceX, sourceY, targetX, targetY }: EdgeProps = $props();
+  let { id, sourceX, sourceY, targetX, targetY }: EdgeProps = $props()
  
   let [edgePath, labelX, labelY] = $derived(
     getStraightPath({
@@ -10,7 +10,7 @@
       targetX,
       targetY,
     })
-  );
+  )
 
   const edges = useEdges()
 </script>
@@ -20,8 +20,8 @@
   <button
     class="nodrag nopan"
     onclick={() => {
-        edges.update((eds) => eds.filter((edge) => edge.id !== id));
-      }}
+      edges.update((eds) => eds.filter((edge) => edge.id !== id))
+    }}
     >
     delete
   </button>

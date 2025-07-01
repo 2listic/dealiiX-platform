@@ -1,6 +1,6 @@
 <script>
-  import FlowCanvas from './lib/components/FlowCanvas.svelte';
-  import { SvelteFlowProvider } from '@xyflow/svelte';
+  import FlowCanvas from './lib/components/FlowCanvas.svelte'
+  import { SvelteFlowProvider } from '@xyflow/svelte'
 </script>
 
 <main>

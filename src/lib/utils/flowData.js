@@ -21,7 +21,7 @@ export const initialNodes = [
     data: {},
     position: { x: 400, y: 200 },
   },
-];
+]
 
 export const initialEdges = [
   // {
@@ -36,4 +36,4 @@ export const initialEdges = [
   //   target: '4',
   //   targetHandle: 'bottom-input',
   // },
-];
+]

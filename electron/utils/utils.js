@@ -6,7 +6,7 @@ export const parseGraph = (nodes, edges) => {
       data: obj.data,
     }
     return acc
-  }, {});
+  }, {})
   const edgesGraph = edges.reduce((acc, obj) => {
     acc[obj.id] = {
       id: obj.id,
@@ -14,7 +14,7 @@ export const parseGraph = (nodes, edges) => {
       target: obj.target,
     }
     return acc
-  }, {});
+  }, {})
   return {
     workflow: {
       nodes: nodesGraph,

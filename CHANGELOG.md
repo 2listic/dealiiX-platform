@@ -21,6 +21,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 - gitignore .vscode and .continue folders [#7](https://github.com/2listic/dealiiX-platform/issues/7)
+- added husky to automatically lint on commit [#1](https://github.com/2listic/dealiiX-platform/issues/1)
 
 ### Building
 - Add electron-forge [#12](https://github.com/2listic/dealiiX-platform/pull/12)

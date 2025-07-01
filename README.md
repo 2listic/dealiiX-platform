@@ -17,6 +17,11 @@
 - `npm start` to run the electron app (build front-end before), or 
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).  
 
+# Linting
+
+`npm run lint` or `npm run lint:fix` to auto-fix.  
+Automatic linting check is done on commit with husky.
+
 # Packaging
 
 ## Linux
