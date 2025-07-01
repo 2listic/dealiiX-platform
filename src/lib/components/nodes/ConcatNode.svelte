@@ -1,5 +1,5 @@
 <script module>
-  export type ConcatNodeType = Node<{ type: string, inputs: symbol[], outputs: symbol[] }, 'concat'>;
+  export type ConcatNodeType = Node<{ value: string, inputs: symbol[], outputs: symbol[] }, 'concat'>;
 </script>
  
 <script lang="ts">
@@ -44,6 +44,7 @@
   let command = $derived(topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText)
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
+    data.value = command
     concatState.command = command
   })
 </script>
