@@ -1,6 +1,7 @@
 <script module>
-  export type ConcatNodeType = Node<{}, 'concat'>;
-</script>
+  import type { ConcatNodeData } from '../../types/nodeTypes'
+  export type ConcatNodeType = Node<ConcatNodeData, 'concat'>;
+  </script>
  
 <script lang="ts">
   import {
@@ -12,15 +13,17 @@
     type Node,
   } from '@xyflow/svelte'
   import { concatState } from '../../states/concatState.svelte'
+  import { InOutTypes } from '../../types/nodeTypes'
 
-  let props: NodeProps = $props()
-  let { id }: NodeProps<ConcatNodeType> = props
+  let { id, data }: NodeProps<ConcatNodeType> = $props()
+  data.inputsTypes = [InOutTypes.STR, InOutTypes.STR]
+  data.outputsTypes = []
  
   const nodes = useNodes()
   const edges = useEdges()
 
   const getTextFromNode = (nodeData: any): string => {
-    return nodeData?.data?.text || ''
+    return nodeData?.data?.value || ''
   }
 
   const getConnectedNodeText = (targetHandle: string, allEdges: any[], allNodes: Node[]) => {
@@ -37,28 +40,29 @@
     return getTextFromNode(sourceNode)
   }
   
-  let topText = $derived(getConnectedNodeText('top-input', edges.current, nodes.current))
-  let bottomText = $derived(getConnectedNodeText('bottom-input', edges.current, nodes.current))
+  let topText = $derived(getConnectedNodeText('input-0', edges.current, nodes.current))
+  let bottomText = $derived(getConnectedNodeText('input-1', edges.current, nodes.current))
   let command = $derived(topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText)
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
+    data.value = command
     concatState.command = command
   })
 </script>
  
 <div class="custom-node">
-  <Handle id="top-input" type="target" position={Position.Left} style="top: 30%;" />
-  <Handle id="bottom-input" type="target" position={Position.Left} style="top: 70%;" />
+  <Handle id="input-0" type="target" position={Position.Left} style="top: 30%;" />
+  <Handle id="input-1" type="target" position={Position.Left} style="top: 70%;" />
   
   <div class="label">Concatenation:</div>
   
   <div class="inputs">
     <div class="input-row">
-      <span class="input-label">Input 1:</span>
+      <span class="input-label">Input 0:</span>
       <span class="input-value">{topText || 'not connected'}</span>
     </div>
     <div class="input-row">
-      <span class="input-label">Input 2:</span>
+      <span class="input-label">Input 1:</span>
       <span class="input-value">{bottomText || 'not connected'}</span>
     </div>
   </div>

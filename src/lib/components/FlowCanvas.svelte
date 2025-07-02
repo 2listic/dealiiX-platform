@@ -1,8 +1,9 @@
 <script module>
   import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
+  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
  
-  export type CustomNodes = TextNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -10,8 +11,6 @@
     SvelteFlow,
     Background,
     MiniMap,
-    type Node,
-    type Edge,
     type EdgeTypes,
     type NodeTypes,
     Controls,
@@ -21,38 +20,40 @@
 
   import '@xyflow/svelte/dist/base.css'
   import CustomEdge from './edges/CustomEdge.svelte'
-  import { initialNodes, initialEdges } from '../utils/flowData'
+  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
+  import { isValidConnection } from '../utils/connectionsValidation.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
 
-  let idCounter = $state(initialNodes.length)
-
+  let nodesStore = getNodes()
+  let idCounter = $state(nodesStore.length)
+  
   const nodeTypes: NodeTypes = {
     text: TextNode,
+    bool: BoolNode,
     concat: ConcatNode,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
   
-  let nodes = $state.raw<Node[]>(initialNodes)
-  let edges = $state.raw<Edge[]>(initialEdges)
-
   const onConnect = (params) => {
+    const edgesStore = getEdges()
     const newEdge = {
       ...params,
       id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
     }
-    edges = addEdge(newEdge, edges)
+    setEdges(addEdge(newEdge, edgesStore))
   }
 </script>
-  <SvelteFlow 
-    bind:nodes
-    bind:edges
+<SvelteFlow 
+    bind:nodes={getNodes, setNodes}
+    bind:edges={getEdges, setEdges}
     {nodeTypes}
     {edgeTypes}
     fitView
     onconnect={onConnect}
+    isValidConnection={isValidConnection} 
   >
     <Panel position="top-left">
       <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
