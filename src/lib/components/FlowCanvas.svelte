@@ -20,7 +20,7 @@
 
   import '@xyflow/svelte/dist/base.css'
   import CustomEdge from './edges/CustomEdge.svelte'
-  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
+  import { getNodes, getEdges, setNodes, setEdges, getNextNodeId } from '../states/store.svelte'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
@@ -59,16 +59,15 @@
       x: event.clientX,
       y: event.clientY,
     })
-    const nodesStore = getNodes()
     const newNode = {
-      id: `${nodesStore.length + 1}`,
+      id: getNextNodeId().toString(),
       type: type.current,
       data: {},
       position,
       origin: [0.5, 0.0],
     }
 
-    setNodes([...nodesStore, newNode])
+    setNodes([...getNodes(), newNode])
   }
 </script>
 
