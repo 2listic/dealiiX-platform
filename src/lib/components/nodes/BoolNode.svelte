@@ -11,11 +11,11 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { inOutTypes } from '../../utils/enums'
+  import { InOutTypes } from '../../types/nodeTypes'
  
   let { id, data }: NodeProps<BoolNodeType> = $props()
   data.inputs = []
-  data.outputs = [inOutTypes.BOOL]
+  data.outputs = [InOutTypes.BOOL]
 
   if (data.value === undefined) {
     data.value = false

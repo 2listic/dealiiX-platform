@@ -11,11 +11,11 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { inOutTypes } from '../../utils/enums'
+  import { InOutTypes } from '../../types/nodeTypes'
  
   let { id, data }: NodeProps<TextNodeType> = $props()
   data.inputs = []
-  data.outputs = [inOutTypes.STRING]
+  data.outputs = [InOutTypes.STR]
  
   const { updateNodeData } = useSvelteFlow()
 </script>

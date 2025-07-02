@@ -1,4 +1,4 @@
-import { initialNodes, initialEdges } from '../utils/flowData'
+import { initialNodes, initialEdges } from '../data/flowData'
 
  
 let nodes = $state.raw(initialNodes)

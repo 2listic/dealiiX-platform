@@ -13,10 +13,10 @@
     type Node,
   } from '@xyflow/svelte'
   import { concatState } from '../../states/concatState.svelte'
-  import { inOutTypes } from '../../utils/enums'
+  import { InOutTypes } from '../../types/nodeTypes'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
-  data.inputs = [inOutTypes.STRING, inOutTypes.STRING]
+  data.inputs = [InOutTypes.STR, InOutTypes.STR]
   data.outputs = []
  
   const nodes = useNodes()
