@@ -1,8 +1,9 @@
 <script module>
   import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
+  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
  
-  export type CustomNodes = TextNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
 </script>
 
 <script lang="ts">
@@ -10,8 +11,6 @@
     SvelteFlow,
     Background,
     MiniMap,
-    type Node,
-    type Edge,
     type EdgeTypes,
     type NodeTypes,
     Controls,
@@ -22,40 +21,40 @@
 
   import '@xyflow/svelte/dist/base.css'
   import CustomEdge from './edges/CustomEdge.svelte'
-  import { initialNodes, initialEdges } from '../utils/flowData'
+  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
+  import { isValidConnection } from '../utils/connectionsValidation.js'
   import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
   import Sidebar from './layout/Sidebar.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
-  let idCounter = $state(initialNodes.length)
-
+  let nodesStore = getNodes()
+  let idCounter = $state(nodesStore.length)
+  
   const nodeTypes: NodeTypes = {
     text: TextNode,
+    bool: BoolNode,
     concat: ConcatNode,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
   
-  let nodes = $state.raw<Node[]>(initialNodes)
-  let edges = $state.raw<Edge[]>(initialEdges)
-
   const onConnect = (params) => {
+    const edgesStore = getEdges()
     const newEdge = {
       ...params,
       id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
     }
-    edges = addEdge(newEdge, edges)
+    setEdges(addEdge(newEdge, edgesStore))
   }
 
   const type = useDnD()
  
   const onDragOver = (event: DragEvent) => {
     event.preventDefault()
- 
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move'
     }
@@ -63,18 +62,17 @@
  
   const onDrop = (event: DragEvent) => {
     event.preventDefault()
- 
     if (!type.current) {
       return
     }
- 
+    
     const position = screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
     })
- 
+    const nodesStore = getNodes()
     const newNode = {
-      id: `${Math.random()}`,
+      id: `${nodesStore.length + 1}`,
       type: type.current,
       position,
       data: { 
@@ -82,19 +80,21 @@
         value: ''
       },
       origin: [0.5, 0.0],
-    } satisfies Node
- 
-    nodes = [...nodes, newNode]
+    }
+
+    setNodes([...nodesStore, newNode])
   }
 </script>
+
   <Sidebar />
   <SvelteFlow 
-    bind:nodes
-    bind:edges
+    bind:nodes={getNodes, setNodes}
+    bind:edges={getEdges, setEdges}
     {nodeTypes}
     {edgeTypes}
     fitView
     onconnect={onConnect}
+    isValidConnection={isValidConnection} 
     ondragover={onDragOver}
     ondrop={onDrop}
   >
