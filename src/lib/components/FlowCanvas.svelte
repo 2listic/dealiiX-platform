@@ -30,8 +30,7 @@
 
   const { screenToFlowPosition } = useSvelteFlow()
 
-  let nodesStore = getNodes()
-  let idCounter = $state(nodesStore.length)
+  let idCounter = $derived(getNodes().length)
   
   const nodeTypes: NodeTypes = {
     text: TextNode,
