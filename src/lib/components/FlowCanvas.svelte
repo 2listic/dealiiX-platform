@@ -74,11 +74,8 @@
     const newNode = {
       id: `${nodesStore.length + 1}`,
       type: type.current,
+      data: {},
       position,
-      data: { 
-        type: `${type.current}`,
-        value: ''
-      },
       origin: [0.5, 0.0],
     }
 

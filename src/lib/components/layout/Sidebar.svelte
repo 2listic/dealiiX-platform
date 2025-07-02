@@ -17,12 +17,19 @@
 <aside>
   <div class="label">You can drag these nodes to the pane below.</div>
   <div class="nodes-container">
-    <div
-      class="input-node node"
+    <div role="option" aria-selected="false" tabindex="0"
+      class="node"
       on:dragstart={(event) => onDragStart(event, 'text')}
       draggable={true}
     >
       Text Node
+    </div>
+    <div role="option" aria-selected="false" tabindex="0"
+      class="node"
+      on:dragstart={(event) => onDragStart(event, 'bool')}
+      draggable={true}
+    >
+      Bool Node
     </div>
   </div>
 </aside>
