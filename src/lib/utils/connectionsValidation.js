@@ -35,9 +35,9 @@ const isValidConnection = (connection) => {
   const sourceNode = nodes.find(node => node.id === connection.source)
 
   const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
-  const sourceType = sourceNode.data.outputs[handleIndexOutput]
+  const sourceType = sourceNode.data.outputsTypes[handleIndexOutput]
   const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const expectedInputType = targetNode.data.inputs[handleIndexInput]
+  const expectedInputType = targetNode.data.inputsTypes[handleIndexInput]
   
   console.log(`Handle ${connection.targetHandle} expects ${expectedInputType.toString()}, source provides ${sourceType.toString()}`)
   const isValid = expectedInputType === sourceType

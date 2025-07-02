@@ -14,8 +14,8 @@
   import { InOutTypes } from '../../types/nodeTypes'
  
   let { id, data }: NodeProps<TextNodeType> = $props()
-  data.inputs = []
-  data.outputs = [InOutTypes.STR]
+  data.inputsTypes = []
+  data.outputsTypes = [InOutTypes.STR]
  
   const { updateNodeData } = useSvelteFlow()
 </script>

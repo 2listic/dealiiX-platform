@@ -4,6 +4,6 @@ export enum InOutTypes {
   INT = 'integer'
 }
 
-export type TextNodeData = { value: string, inputs: InOutTypes[], outputs: InOutTypes[] }
-export type BoolNodeData = { value: boolean, inputs: InOutTypes[], outputs: InOutTypes[] }
-export type ConcatNodeData = { value: string, inputs: InOutTypes[], outputs: InOutTypes[] }
+export type TextNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }

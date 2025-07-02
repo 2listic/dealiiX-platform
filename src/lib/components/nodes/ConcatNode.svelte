@@ -16,8 +16,8 @@
   import { InOutTypes } from '../../types/nodeTypes'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
-  data.inputs = [InOutTypes.STR, InOutTypes.STR]
-  data.outputs = []
+  data.inputsTypes = [InOutTypes.STR, InOutTypes.STR]
+  data.outputsTypes = []
  
   const nodes = useNodes()
   const edges = useEdges()
