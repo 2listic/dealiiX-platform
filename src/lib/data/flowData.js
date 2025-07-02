@@ -35,12 +35,15 @@ export const initialEdges = [
   // {
   //   id: 'e1-4-top',
   //   source: '1',
+  //   sourceHandle: 'output-0',
   //   target: '4',
   //   targetHandle: 'input-0',
+  //   type: 'custom-edge'
   // },
   // {
   //   id: 'e2-4-bottom',
   //   source: '2',
+  //   sourceHandle: 'output-0',
   //   target: '4',
   //   targetHandle: 'input-1',
   // },
