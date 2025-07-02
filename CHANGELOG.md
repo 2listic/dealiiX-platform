@@ -3,15 +3,15 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 ### Documentation
-- Create readme with install, run and packaging instructions [#8](https://github.com/2listic/dealiiX-platform/issues/8)
+- [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
 
 ### Canvas-graph
-- Add validation for new connections [#18](https://github.com/2listic/dealiiX-platform/issues/18)
+- [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add validation for new connections
 - Initial nodes and edges with string concatenation
 
 ### Canvas-UI
 - Buttons to run concatenated command via SSH on server
-- Button to export and upload graph to server [#9](https://github.com/2listic/dealiiX-platform/pull/9)
+- [#9](https://github.com/2listic/dealiiX-platform/pull/9) Button to export and upload graph to server
 
 ### Backend
 - Electron setup with IPC communication
@@ -21,13 +21,13 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - SSH file writing via private key
 
 ### Project-Structure
-- gitignore .vscode and .continue folders [#7](https://github.com/2listic/dealiiX-platform/issues/7)
-- added husky to automatically lint on commit [#1](https://github.com/2listic/dealiiX-platform/issues/1)
+- [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
+- [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
 
 ### Building
-- Add electron-forge [#12](https://github.com/2listic/dealiiX-platform/pull/12)
-- Add .deb distributable for Linux [#4](https://github.com/2listic/dealiiX-platform/pull/4)
-- Add .dmg distributable for macOS [#14](https://github.com/2listic/dealiiX-platform/pull/14)
+- [#12](https://github.com/2listic/dealiiX-platform/pull/12) Add electron-forge
+- [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
+- [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
 
 ### Testing
 - 
