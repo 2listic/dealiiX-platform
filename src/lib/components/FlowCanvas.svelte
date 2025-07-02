@@ -15,7 +15,6 @@
     type NodeTypes,
     Controls,
     Panel,
-    addEdge,
     useSvelteFlow,
   } from '@xyflow/svelte'
 
@@ -39,15 +38,6 @@
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
-  }
-  
-  const onConnect = (params) => {
-    const edgesStore = getEdges()
-    const newEdge = {
-      ...params,
-      id: `e${params.source}-${params.target}-${params.targetHandle || 'default'}`
-    }
-    setEdges(addEdge(newEdge, edgesStore))
   }
 
   const type = useDnD()
@@ -89,7 +79,6 @@
     {nodeTypes}
     {edgeTypes}
     fitView
-    onconnect={onConnect}
     isValidConnection={isValidConnection} 
     ondragover={onDragOver}
     ondrop={onDrop}
