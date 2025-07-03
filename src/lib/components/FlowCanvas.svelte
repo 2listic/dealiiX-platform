@@ -20,14 +20,16 @@
 
   import '@xyflow/svelte/dist/base.css'
   import CustomEdge from './edges/CustomEdge.svelte'
-  import { getNodes, getEdges, setNodes, setEdges, getNextNodeId } from '../states/store.svelte'
+  import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
   import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
-  import { isValidConnection } from '../utils/connectionsValidation.js'
+  import { isValidConnection } from '../utils/connectionsValidation'
   import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
   import Sidebar from './layout/Sidebar.svelte'
+  import { onDragOver, onDrop } from '../utils/dragAndDrop'
 
   const { screenToFlowPosition } = useSvelteFlow()
+  const type = useDnD()
 
   let idCounter = $derived(getNodes().length)
   
@@ -38,36 +40,6 @@
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
-  }
-
-  const type = useDnD()
- 
-  const onDragOver = (event: DragEvent) => {
-    event.preventDefault()
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move'
-    }
-  }
- 
-  const onDrop = (event: DragEvent) => {
-    event.preventDefault()
-    if (!type.current) {
-      return
-    }
-    
-    const position = screenToFlowPosition({
-      x: event.clientX,
-      y: event.clientY,
-    })
-    const newNode = {
-      id: getNextNodeId().toString(),
-      type: type.current,
-      data: {},
-      position,
-      origin: [0.5, 0.0],
-    }
-
-    setNodes([...getNodes(), newNode])
   }
 </script>
 
@@ -80,7 +52,7 @@
     fitView
     isValidConnection={isValidConnection} 
     ondragover={onDragOver}
-    ondrop={onDrop}
+    ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
   >
     <Panel position="top-left">
       <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
