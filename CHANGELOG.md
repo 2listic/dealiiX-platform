@@ -10,6 +10,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - Initial nodes and edges with string concatenation
 
 ### Canvas-UI
+- [#24](https://github.com/2listic/dealiiX-platform/pull/24) Added a toolbar with drag and drop functionality to add new nodes. Added functionality to generate unique and incremental ids for new nodes.
 - Buttons to run concatenated command via SSH on server
 - [#9](https://github.com/2listic/dealiiX-platform/pull/9) Button to export and upload graph to server
 
