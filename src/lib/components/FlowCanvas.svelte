@@ -2,8 +2,9 @@
   import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
   import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
+  import Unsigned, { type UnsignedType } from './nodes/elementaryConstructor/Unsigned.svelte'
  
-  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType | UnsignedType;
 </script>
 
 <script lang="ts">
@@ -37,6 +38,7 @@
     text: TextNode,
     bool: BoolNode,
     concat: ConcatNode,
+    unsigned: Unsigned
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,

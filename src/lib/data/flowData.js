@@ -29,6 +29,12 @@ export const initialNodes = [
     data: {},
     position: { x: 400, y: 200 },
   },
+  {
+    id: '5',
+    type: 'unsigned',
+    data: {},
+    position: { x: 100, y: 400 },
+  },
 ]
 
 export const initialEdges = [
