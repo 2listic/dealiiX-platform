@@ -1,3 +1,5 @@
+import { MethodName, Type } from '../types/nodeTypes'
+
 export const initialNodes = [
   // {
   //   id: '1',
@@ -31,19 +33,19 @@ export const initialNodes = [
   // },
   {
     id: '5',
-    type: 'unsigned',
+    type: Type.UNSIGNED,
     data: {},
     position: { x: 100, y: 400 },
   },
   {
     id: '6',
-    type: 'triangulation22',
+    type: Type.TRIANGULATION22,
     data: {},
     position: { x: 100, y: 500 },
   },
   {
     id: '7',
-    type: 'triangulationRefineGlobal',
+    type: MethodName.TRIANGULATION2_REFINEGLOBAL,
     data: {},
     position: { x: 400, y: 400 },
   }

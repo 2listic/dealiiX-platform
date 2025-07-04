@@ -30,6 +30,7 @@
   import { useDnD } from './DnDProvider.svelte'
   import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
+  import { MethodName, Type } from '../types/nodeTypes'
 
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
@@ -40,9 +41,9 @@
     text: TextNode,
     bool: BoolNode,
     concat: ConcatNode,
-    unsigned: Unsigned,
-    triangulation22: Triangulation,
-    triangulationRefineGlobal: TriangulationRefineGlobal,
+    [Type.UNSIGNED]: Unsigned,
+    [Type.TRIANGULATION22]: Triangulation,
+    [MethodName.TRIANGULATION2_REFINEGLOBAL]: TriangulationRefineGlobal,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
