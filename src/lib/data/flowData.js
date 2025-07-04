@@ -35,6 +35,12 @@ export const initialNodes = [
     data: {},
     position: { x: 100, y: 400 },
   },
+  {
+    id: '6',
+    type: 'triangulation',
+    data: {},
+    position: { x: 100, y: 500 },
+  }
 ]
 
 export const initialEdges = [
