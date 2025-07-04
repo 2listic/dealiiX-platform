@@ -4,8 +4,9 @@
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
   import Unsigned, { type UnsignedType } from './nodes/elementaryConstructor/Unsigned.svelte'
   import Triangulation, { type TriangulationType } from './nodes/emptyConstructor/Triangulation.svelte'
+  import TriangulationRefineGlobal, { type TriangulationRefineGlobalType } from './nodes/voidMethod/TriangulationRefineGlobal.svelte'
  
-  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType | UnsignedType | TriangulationType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType | UnsignedType | TriangulationType | TriangulationRefineGlobalType;
 </script>
 
 <script lang="ts">
@@ -40,7 +41,8 @@
     bool: BoolNode,
     concat: ConcatNode,
     unsigned: Unsigned,
-    triangulation: Triangulation
+    triangulation22: Triangulation,
+    triangulationRefineGlobal: TriangulationRefineGlobal,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,

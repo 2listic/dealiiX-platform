@@ -1,6 +1,6 @@
 <script module>
   import type { NodeData } from '../../../types/nodeTypes'
-  export type TriangulationType = Node<NodeData, 'Triangulation'>;
+  export type TriangulationType = Node<NodeData, 'triangulation22'>;
 </script>
  
 <script lang="ts">
@@ -32,5 +32,9 @@
     border-radius: 5px;
     background: #EFEFEF;
     border: 2px solid yellow;
+  }
+
+  .label {
+    font-weight: bold;
   }
 </style>

@@ -1,6 +1,6 @@
 <script module>
   import type { NodeData } from '../../../types/nodeTypes'
-  export type UnsignedType = Node<NodeData, 'Unsigned'>;
+  export type UnsignedType = Node<NodeData, 'unsigned'>;
 </script>
  
 <script lang="ts">
@@ -57,6 +57,10 @@
     border-radius: 5px;
     background: #EFEFEF;
     border: 2px solid yellow;
+  }
+
+  .label {
+    font-weight: bold;
   }
 
   input:invalid {

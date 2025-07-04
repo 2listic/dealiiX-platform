@@ -1,34 +1,34 @@
 export const initialNodes = [
-  {
-    id: '1',
-    type: 'text',
-    data: {
-      value: 'whoami',
-    },
-    position: { x: 0, y: 100 },
-  },
-  {
-    id: '2',
-    type: 'text',
-    data: {
-      value: 'ls -a',
-    },
-    position: { x: 100, y: 200 },
-  },
-  {
-    id: '3',
-    type: 'bool',
-    data: {
-      value: true,
-    },
-    position: { x: 100, y: 300 },
-  },
-  {
-    id: '4',
-    type: 'concat',
-    data: {},
-    position: { x: 400, y: 200 },
-  },
+  // {
+  //   id: '1',
+  //   type: 'text',
+  //   data: {
+  //     value: 'whoami',
+  //   },
+  //   position: { x: 0, y: 100 },
+  // },
+  // {
+  //   id: '2',
+  //   type: 'text',
+  //   data: {
+  //     value: 'ls -a',
+  //   },
+  //   position: { x: 100, y: 200 },
+  // },
+  // {
+  //   id: '3',
+  //   type: 'bool',
+  //   data: {
+  //     value: true,
+  //   },
+  //   position: { x: 100, y: 300 },
+  // },
+  // {
+  //   id: '4',
+  //   type: 'concat',
+  //   data: {},
+  //   position: { x: 400, y: 200 },
+  // },
   {
     id: '5',
     type: 'unsigned',
@@ -37,9 +37,15 @@ export const initialNodes = [
   },
   {
     id: '6',
-    type: 'triangulation',
+    type: 'triangulation22',
     data: {},
     position: { x: 100, y: 500 },
+  },
+  {
+    id: '7',
+    type: 'triangulationRefineGlobal',
+    data: {},
+    position: { x: 400, y: 400 },
   }
 ]
 
