@@ -41,4 +41,5 @@ export type NodeData = {
   type: Type,
   typeHash: string,
   value: string,
+  isValid: boolean,
 }
