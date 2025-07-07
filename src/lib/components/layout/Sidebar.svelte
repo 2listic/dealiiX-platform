@@ -1,6 +1,6 @@
 <script lang="ts">
   import { setImportedData } from '../../states/store.svelte'
-  import { MethodName, Type } from '../../types/nodeTypes'
+  import { NodeType } from '../../types/nodeTypes'
   import { useDnD } from '../DnDProvider.svelte'
  
   const type = useDnD()
@@ -9,27 +9,23 @@
     if (!event.dataTransfer) {
       return null
     }
- 
     type.current = nodeType
- 
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  let json = $state()
+  let uploadedJson = $state(Object.create(null))
 	
-	async function onChange(e) {
+	const onFileChange = async (e) => {
 	  const file = e.target.files[0]
 	  if (file == null) {
-	    json = null
+	    uploadedJson = null
 	    return
 	  }
-		
-	  json = await readJsonFile(file)
-	  console.log(json)
-	  setImportedData(json)
+	  uploadedJson = await readJsonFile(file)
+	  setImportedData(uploadedJson)
 	}
 
-	function readJsonFile(file) {
+	const readJsonFile = (file) => {
 	  const reader = new FileReader()
 	  return new Promise((resolve, reject) => {
 	    reader.onload = () => resolve(JSON.parse(reader.result as string))
@@ -37,35 +33,28 @@
 	    reader.readAsText(file)
 	  })
 	}
+
+  const returnNodeType = (node) => node.node_type === NodeType.VOID_METHOD ? node.method_name : node.type
+    
 </script>
 
 <aside>
   <div class= "nodes-container">
     <div class="label">Upload an import file to load the nodes to be drag in the canvas below.</div>
-    <input type=file onchange={onChange} accept=".json"/>
+    <input type=file onchange={onFileChange} accept=".json"/>
   </div>
   <div class="nodes-container">
-    <div role="option" aria-selected="false" tabindex="0"
-      class="node"
-      ondragstart={(event) => onDragStart(event, Type.UNSIGNED)}
-      draggable={true}
-    >
-      Unsigned
-    </div>
-    <div role="option" aria-selected="false" tabindex="0"
-      class="node"
-      ondragstart={(event) => onDragStart(event, Type.TRIANGULATION22)}
-      draggable={true}
-    >
-      Triangulation&lt;2, 2&gt;
-    </div>
-    <div role="option" aria-selected="false" tabindex="0"
-      class="node"
-      ondragstart={(event) => onDragStart(event, MethodName.TRIANGULATION2_REFINEGLOBAL)}
-      draggable={true}
-    >
-      triangulation&lt;2&gt;::refine_global
-    </div>
+    {#if uploadedJson}
+      {#each Object.keys(uploadedJson) as nodeId (nodeId)}
+        <div role="option" aria-selected="false" tabindex="0"
+        class="node"
+        ondragstart={(event) => onDragStart(event, returnNodeType(uploadedJson[nodeId]))}
+        draggable={true}
+        >
+          {returnNodeType(uploadedJson[nodeId])}
+        </div>
+      {/each}
+    {/if}
   </div>
 </aside>
  
@@ -82,7 +71,6 @@
   }
  
   .label {
-    /* margin: 1rem 1rem 0 0; */
     font-size: 0.9rem;
   }
  
