@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
 
 ### Canvas-graph
+- [#27](https://github.com/2listic/dealiiX-platform/pull/27) Added first new real Deal.II nodes: Unsigned, Triangulation<2,2> and Triangulation<2>::refine_global. Also included validation for new connections, validation for Unsigned internal values, drag&drop functionality and a bug fix on node id generation.
 - [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
 - Initial nodes and edges with string concatenation
 
