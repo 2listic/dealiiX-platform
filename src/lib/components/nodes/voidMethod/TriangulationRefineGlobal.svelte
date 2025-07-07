@@ -29,7 +29,7 @@
     }
   ]
   data.inputs = [ 0, 1 ]
-  data.nodeType = NodeType.EMPTY_CONTRUCTOR
+  data.nodeType = NodeType.VOID_METHOD
   data.outputs = [ 0 ]
   data.type = Type.VOID_TRIANGULATION22_UNSIGNED
   data.typeHash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
