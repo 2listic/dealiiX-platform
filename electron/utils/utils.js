@@ -6,8 +6,8 @@ export const parseGraph = (nodes, edges) => {
     }
     return acc
   }, {})
-  const edgesGraph = edges.reduce((acc, obj) => {
-    acc[obj.id] = {
+  const edgesGraph = edges.reduce((acc, obj, index) => {
+    acc[index+1] = {
       source: obj.source,
       target: obj.target,
       sourceOutput: obj.sourceHandle.split('-')[1],
