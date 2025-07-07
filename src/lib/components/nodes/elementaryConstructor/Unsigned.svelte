@@ -48,7 +48,7 @@
       }
     />
   </div>
-  <Handle id="output-0" type="source" position={Position.Right} />
+  <Handle id="output-self" type="source" position={Position.Right} />
 </div>
  
 <style>

@@ -10,7 +10,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { ConnectionType, MethodName, NodeType, Outputs, Type } from '../../../types/nodeTypes'
+  import { ConnectionType, MethodName, NodeType, Type } from '../../../types/nodeTypes'
  
   let { data }: NodeProps<TriangulationRefineGlobalType> = $props()
   
@@ -30,7 +30,7 @@
   ]
   data.inputs = [ 0, 1 ]
   data.nodeType = NodeType.EMPTY_CONTRUCTOR
-  data.outputs = [ Outputs.SELF ]
+  data.outputs = [ 0 ]
   data.type = Type.VOID_TRIANGULATION22_UNSIGNED
   data.typeHash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
   data.isValid = true
@@ -39,6 +39,7 @@
 <div class="custom-node">
   <Handle id="input-0" type="target" position={Position.Left} style="top: 50%;" />
   <Handle id="input-1" type="target" position={Position.Left} style="top: 70%;" />
+  <Handle id="output-0" type="source" position={Position.Right} />
 
   <div class="label">triangulation&lt;2&gt;::refine_global</div>
 
