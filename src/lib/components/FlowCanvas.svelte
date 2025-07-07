@@ -24,7 +24,7 @@
   import '@xyflow/svelte/dist/base.css'
   import CustomEdge from './edges/CustomEdge.svelte'
   import { getNodes, getEdges, setNodes, setEdges } from '../states/store.svelte'
-  import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
+  // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
@@ -63,8 +63,8 @@
   >
     <Panel position="top-left">
       <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
-        <button onclick={executeWithPassword}>Execute with password</button>
-        <button onclick={executeWithKey}>Execute with key</button>
+        <!-- <button onclick={executeWithPassword}>Execute with password</button>
+        <button onclick={executeWithKey}>Execute with key</button> -->
         <ExportGraphButton />
       </div>
       <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">

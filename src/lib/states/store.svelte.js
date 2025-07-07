@@ -14,3 +14,10 @@ export const getNextNodeId = () => {
   lastNodeId++
   return lastNodeId
 }
+
+let importedData = $state({})
+export const setImportedData = (data) => {
+  importedData = data
+  console.log('Imported data set:', importedData)
+}
+export const getImportedData = () => importedData
