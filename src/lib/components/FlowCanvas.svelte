@@ -58,7 +58,7 @@
     ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
   >
     <Panel position="top-left">
-      <div style="display: flex; flex-wrap: wrap; gap: 10px; max-width: 50vw">
+      <div class="export-button-container">
         <!-- <button onclick={executeWithPassword}>Execute with password</button>
         <button onclick={executeWithKey}>Execute with key</button> -->
         <ExportGraphButton />
@@ -77,6 +77,13 @@
     <Background />
   </SvelteFlow>
 <style>
+  .export-button-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1vw;
+    max-width: 50vw;
+  }
+
   .custom-panel {
     background-color: white;
     border: 1px solid #ccc;

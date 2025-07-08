@@ -22,14 +22,17 @@
   data.inputs = []
   data.node_type = NodeType.ELEMENTARY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
-  if (type === Type.BOOLEAN) {
+  switch (type) {
+  case Type.BOOLEAN:
     data.type = Type.BOOLEAN
     data.type_hash = 'b826a7e2a6063644'
     data.value = 'false'
-  } else if (type === Type.UNSIGNED) {
+    break
+  case Type.UNSIGNED:
     data.type = Type.UNSIGNED
     data.type_hash = 'b826a7e2a606584c'
     data.value = '0'
+    break
   }
   data.is_valid = true
 
