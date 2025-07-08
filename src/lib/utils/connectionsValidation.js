@@ -31,7 +31,7 @@ const isValidConnection = (connection) => {
   
   // Check if the source node value is valid
   const sourceNode = nodes.find(node => node.id === connection.source)
-  if (!sourceNode.data.isValid) {
+  if (!sourceNode.data.is_valid) {
     console.error(`Source node ${connection.source} is not valid`)
     // connectionCache.set(cacheKey, false)   // Cache the result
     return false

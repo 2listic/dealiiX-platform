@@ -14,11 +14,11 @@
  
   let { data }: NodeProps<TriangulationType> = $props()
     
-  data.nodeType = NodeType.EMPTY_CONSTRUCTOR
+  data.node_type = NodeType.EMPTY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
   data.type = Type.TRIANGULATION22
-  data.typeHash = 'c95847e89853e6da'
-  data.isValid = true
+  data.type_hash = 'c95847e89853e6da'
+  data.is_valid = true
 </script>
  
 <div class="custom-node">

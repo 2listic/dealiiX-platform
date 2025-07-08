@@ -16,10 +16,10 @@ export enum ConnectionType {
 }
 
 type Argument = { 
-  connectionType: ConnectionType,
+  connection_type: ConnectionType,
   name: string,
   type: Type,
-  typeHash: string,
+  type_hash: string,
 }
 
 export enum Inputs {
@@ -58,11 +58,11 @@ export enum Type {
 export type NodeData = { 
   arguments: Argument[], 
   inputs: Inputs[],
-  methodName: MethodName,
-  nodeType: NodeType,
+  method_name: MethodName,
+  node_type: NodeType,
   outputs: Outputs[]
   type: Type,
-  typeHash: string,
+  type_hash: string,
   value: string,
-  isValid: boolean,
+  is_valid: boolean,
 }

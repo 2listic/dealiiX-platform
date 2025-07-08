@@ -16,24 +16,25 @@
   
   data.arguments = [
     { 
-      connectionType: ConnectionType.PASSTHROUGH,
+      connection_type: ConnectionType.PASSTHROUGH,
       name: 'self',
       type: Type.TRIANGULATION22,
-      typeHash: 'cb40d6a582660ec8'
+      type_hash: 'cb40d6a582660ec8'
     },
     {
-      connectionType: ConnectionType.INPUT,
+      connection_type: ConnectionType.INPUT,
       name: 'n_refinements',
       type: Type.UNSIGNED,
-      typeHash: 'b826a7e2a606584c'
+      type_hash: 'b826a7e2a606584c'
     }
   ]
   data.inputs = [ 0, 1 ]
-  data.nodeType = NodeType.VOID_METHOD
+  data.method_name = MethodName.TRIANGULATION2_REFINEGLOBAL
+  data.node_type = NodeType.VOID_METHOD
   data.outputs = [ 0 ]
   data.type = Type.VOID_TRIANGULATION22_UNSIGNED
-  data.typeHash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
-  data.isValid = true
+  data.type_hash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
+  data.is_valid = true
 </script>
  
 <div class="custom-node">
