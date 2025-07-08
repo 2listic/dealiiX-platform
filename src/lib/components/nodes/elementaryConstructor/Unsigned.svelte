@@ -16,6 +16,8 @@
  
   let { id, data }: NodeProps<UnsignedType> = $props()
     
+  data.arguments = []
+  data.inputs = []
   data.node_type = NodeType.ELEMENTARY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
   data.type = Type.UNSIGNED
