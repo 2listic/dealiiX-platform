@@ -1,6 +1,6 @@
 <script module>
   import type { NodeData } from '../../../types/nodeTypes'
-  export type TriangulationType = Node<NodeData, 'triangulation22'>;
+  export type TriangulationType = Node<NodeData, Type.TRIANGULATION22>;
 </script>
  
 <script lang="ts">
@@ -14,11 +14,11 @@
  
   let { data }: NodeProps<TriangulationType> = $props()
     
-  data.nodeType = NodeType.EMPTY_CONTRUCTOR
+  data.node_type = NodeType.EMPTY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
   data.type = Type.TRIANGULATION22
-  data.typeHash = 'c95847e89853e6da'
-  data.isValid = true
+  data.type_hash = 'c95847e89853e6da'
+  data.is_valid = true
 </script>
  
 <div class="custom-node">

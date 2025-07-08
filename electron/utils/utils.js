@@ -2,7 +2,7 @@ export const parseGraph = (nodes, edges) => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
-      xyFlowObj: obj,
+      xy_flow_obj: obj,
     }
     return acc
   }, {})
@@ -10,9 +10,9 @@ export const parseGraph = (nodes, edges) => {
     acc[index+1] = {
       source: obj.source,
       target: obj.target,
-      sourceOutput: obj.sourceHandle.split('-')[1],
-      targetInput: obj.targetHandle.split('-')[1],
-      xyFlowObj: obj
+      source_output: obj.sourceHandle.split('-')[1],
+      target_input: obj.targetHandle.split('-')[1],
+      xy_flow_obj: obj
     }
     return acc
   }, {})
@@ -23,6 +23,6 @@ export const parseGraph = (nodes, edges) => {
     },
     version: 1,
     author: 'name',
-    dateTimeUtc: new Date().toISOString(),
+    date_time_utc: new Date().toISOString(),
   }
 }

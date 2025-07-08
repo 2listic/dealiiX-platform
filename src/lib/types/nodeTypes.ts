@@ -16,10 +16,10 @@ export enum ConnectionType {
 }
 
 type Argument = { 
-  connectionType: ConnectionType,
+  connection_type: ConnectionType,
   name: string,
   type: Type,
-  typeHash: string,
+  type_hash: string,
 }
 
 export enum Inputs {
@@ -36,7 +36,8 @@ export enum MethodName {
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
-  EMPTY_CONTRUCTOR = 'empty_constructor',
+  EMPTY_CONSTRUCTOR = 'empty_constructor',
+  VOID_METHOD = 'void_method',
 }
 
 export enum Outputs {
@@ -49,7 +50,7 @@ export enum Outputs {
 
 export enum Type {
   UNSIGNED = 'unsigned',
-  TRIANGULATION22 = 'dealii::triangulation<2, 2>',
+  TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
   VOID = 'void',
   VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`
 }
@@ -57,11 +58,11 @@ export enum Type {
 export type NodeData = { 
   arguments: Argument[], 
   inputs: Inputs[],
-  methodName: MethodName,
-  nodeType: NodeType,
+  method_name: MethodName,
+  node_type: NodeType,
   outputs: Outputs[]
   type: Type,
-  typeHash: string,
+  type_hash: string,
   value: string,
-  isValid: boolean,
+  is_valid: boolean,
 }

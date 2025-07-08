@@ -16,12 +16,12 @@
  
   let { id, data }: NodeProps<UnsignedType> = $props()
     
-  data.nodeType = NodeType.ELEMENTARY_CONSTRUCTOR
+  data.node_type = NodeType.ELEMENTARY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
   data.type = Type.UNSIGNED
-  data.typeHash = 'b826a7e2a606584c'
+  data.type_hash = 'b826a7e2a606584c'
   data.value = '0'
-  data.isValid = true
+  data.is_valid = true
     
   const { updateNodeData } = useSvelteFlow()
   
@@ -43,7 +43,7 @@
       oninput={(evt) => {
         updateNodeData(id, { 
           value: evt.currentTarget.value,
-          isValid: parseInt(evt.currentTarget.value) <= 65535 && parseInt(evt.currentTarget.value) >= 0
+          is_valid: parseInt(evt.currentTarget.value) <= 65535 && parseInt(evt.currentTarget.value) >= 0
         })}
       }
     />
