@@ -34,25 +34,24 @@
   data.outputs = [ 0 ]
   data.type = Type.VOID_TRIANGULATION22_UNSIGNED
   data.type_hash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
+  // TODO: validate all inputs are connected
   data.is_valid = true
 </script>
  
 <div class="custom-node">
-  <Handle id="input-0" type="target" position={Position.Left} style="top: 50%;" />
+  <Handle id="input-0" type="target" position={Position.Left} style="top: 40%;" />
   <Handle id="input-1" type="target" position={Position.Left} style="top: 70%;" />
-  <Handle id="output-0" type="source" position={Position.Right} />
+  <Handle id="output-0" type="source" position={Position.Right} style="top: 40%;"/>
 
   <div class="label">triangulation&lt;2&gt;::refine_global</div>
 
    <div class="inputs">
-    <div class="input-row">
-      <span class="input-label">Input 0: </span>
-      <span class="input-type">{data.arguments[0].type}</span>
+    <div class="input-column">
+      <div class="input-label">Input 0 / Output 0 </div>
+      <div class="input-type">{data.arguments[0].type}</div>
       <!-- <span class="input-value">{topText || 'not connected'}</span> -->
-    </div>
-    <div class="input-row">
-      <span class="input-label">Input 1: </span>
-      <span class="input-type">{data.arguments[1].type}</span>
+      <div class="input-label">Input 1 </div>
+      <div class="input-type">{data.arguments[1].type}</div>
       <!-- <span class="input-value">{bottomText || 'not connected'}</span> -->
     </div>
   </div>
@@ -68,15 +67,17 @@
 
   .label {
     font-weight: bold;
-    margin-bottom: 10px;
   }
   
-  .input-row {
+  .input-column {
+    display: flex;
+    flex-direction: column;
     margin-bottom: 0.5vh;
   }
 
   .input-label {
     font-weight: bold;
+    margin-top: 1vh;
   }
 
   .input-type {
