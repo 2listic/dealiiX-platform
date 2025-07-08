@@ -1,5 +1,5 @@
 <script module>
-  import type { NodeData } from '../../../types/nodeTypes'
+  import type { NodeData } from '../../types/nodeTypes'
   export type TriangulationType = Node<NodeData, Type.TRIANGULATION22>;
 </script>
  
@@ -10,7 +10,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { NodeType, Outputs, Type } from '../../../types/nodeTypes'
+  import { NodeType, Outputs, Type } from '../../types/nodeTypes'
  
   let { data }: NodeProps<TriangulationType> = $props()
     

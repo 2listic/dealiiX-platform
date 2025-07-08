@@ -10,7 +10,18 @@
         "type_hash": "b826a7e2a606584c",
         "value": "0"
     },
-   "c95847e89853e6da": {
+    "b826a7e2a6063644": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "elementary_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "bool",
+        "type_hash": "b826a7e2a6063644",
+        "value": "false"
+    },
+    "c95847e89853e6da": {
         "arguments": [],
         "inputs": [],
         "node_type": "empty_constructor",

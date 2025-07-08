@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { ConcatNodeData } from '../../../types/nodeTypes'
   export type ConcatNodeType = Node<ConcatNodeData, 'concat'>;
   </script>
@@ -109,4 +109,4 @@
     padding-top: 10px;
     border-top: 1px dashed #999;
   }
-</style>
+</style> -->

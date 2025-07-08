@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { TextNodeData } from '../../../types/nodeTypes'
   export type TextNodeType = Node<TextNodeData, 'text'>;
 </script>
@@ -42,4 +42,4 @@
   .label {
     font-weight: bold;
   }
-</style>
+</style> -->

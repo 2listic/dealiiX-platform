@@ -1,5 +1,5 @@
 <script module>
-  import type { NodeData } from '../../../types/nodeTypes'
+  import type { NodeData } from '../../types/nodeTypes'
   export type TriangulationRefineGlobalType = Node<NodeData, MethodName.TRIANGULATION2_REFINEGLOBAL>;
 </script>
  
@@ -10,7 +10,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { ConnectionType, MethodName, NodeType, Type } from '../../../types/nodeTypes'
+  import { ConnectionType, MethodName, NodeType, Type } from '../../types/nodeTypes'
  
   let { data }: NodeProps<TriangulationRefineGlobalType> = $props()
   

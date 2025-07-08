@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { BoolNodeData } from '../../../types/nodeTypes'
   export type BoolNodeType = Node<BoolNodeData, 'bool'>;
 </script>
@@ -48,4 +48,4 @@
   .label {
     font-weight: bold;
   }
-</style>
+</style> -->

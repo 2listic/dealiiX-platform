@@ -1,12 +1,12 @@
-export enum InOutTypes {
-  STR = 'string',
-  BOOL = 'boolean',
-  INT = 'integer'
-}
+// export enum InOutTypes {
+//   STR = 'string',
+//   BOOL = 'boolean',
+//   INT = 'integer'
+// }
 
-export type TextNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
-export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
-export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type TextNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
 
 export enum ConnectionType {
@@ -50,6 +50,7 @@ export enum Outputs {
 
 export enum Type {
   UNSIGNED = 'unsigned',
+  BOOLEAN = 'bool',
   TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
   VOID = 'void',
   VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`
