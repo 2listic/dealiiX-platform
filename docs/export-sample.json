@@ -1,7 +1,7 @@
 {
     "workflow": {
         "nodes": {
-            "1": {
+            "5": {
                 "arguments": [],
                 "inputs": [],
                 "node_type": "elementary_constructor",
@@ -13,7 +13,7 @@
                 "value": "4",
                 "is_valid": true,
                 "xy_flow_obj": {
-                    "id": "1",
+                    "id": "5",
                     "type": "unsigned",
                     "data": {
                         "arguments": [],
@@ -28,21 +28,17 @@
                         "is_valid": true
                     },
                     "position": {
-                        "x": 364,
-                        "y": 286.390625
+                        "x": 100,
+                        "y": 400
                     },
-                    "origin": [
-                        0.5,
-                        0
-                    ],
                     "measured": {
                         "width": 124,
                         "height": 72
                     },
-                    "selected": true
+                    "selected": false
                 }
             },
-            "2": {
+            "6": {
                 "arguments": [],
                 "inputs": [],
                 "node_type": "empty_constructor",
@@ -53,7 +49,7 @@
                 "type_hash": "c95847e89853e6da",
                 "is_valid": true,
                 "xy_flow_obj": {
-                    "id": "2",
+                    "id": "6",
                     "type": "dealii::Triangulation<2, 2>",
                     "data": {
                         "arguments": [],
@@ -67,21 +63,17 @@
                         "is_valid": true
                     },
                     "position": {
-                        "x": 295.75,
-                        "y": 218.3359375
+                        "x": 100,
+                        "y": 500
                     },
-                    "origin": [
-                        0.5,
-                        0
-                    ],
                     "measured": {
-                        "width": 176,
+                        "width": 231,
                         "height": 48
                     },
                     "selected": false
                 }
             },
-            "3": {
+            "7": {
                 "arguments": [
                     {
                         "connection_type": "passthrough",
@@ -109,7 +101,7 @@
                 "type_hash": "cb40d6a582660ec8Triangulation<2>::refine_global",
                 "is_valid": true,
                 "xy_flow_obj": {
-                    "id": "3",
+                    "id": "7",
                     "type": "Triangulation<2>::refine_global",
                     "data": {
                         "arguments": [
@@ -140,52 +132,123 @@
                         "is_valid": true
                     },
                     "position": {
-                        "x": 615.25,
-                        "y": 173.8359375
+                        "x": 400,
+                        "y": 400
+                    },
+                    "measured": {
+                        "width": 281,
+                        "height": 171
+                    },
+                    "selected": false
+                }
+            },
+            "8": {
+                "arguments": [],
+                "inputs": [],
+                "node_type": "elementary_constructor",
+                "outputs": [
+                    "self"
+                ],
+                "type": "bool",
+                "type_hash": "b826a7e2a6063644",
+                "value": "false",
+                "is_valid": true,
+                "xy_flow_obj": {
+                    "id": "8",
+                    "type": "bool",
+                    "data": {
+                        "arguments": [],
+                        "inputs": [],
+                        "node_type": "elementary_constructor",
+                        "outputs": [
+                            "self"
+                        ],
+                        "type": "bool",
+                        "type_hash": "b826a7e2a6063644",
+                        "value": "false",
+                        "is_valid": true
+                    },
+                    "position": {
+                        "x": 100,
+                        "y": 300
+                    },
+                    "measured": {
+                        "width": 83,
+                        "height": 72
+                    },
+                    "selected": false
+                }
+            },
+            "9": {
+                "arguments": [],
+                "inputs": [],
+                "node_type": "empty_constructor",
+                "outputs": [
+                    "self"
+                ],
+                "type": "dealii::GridOut",
+                "type_hash": "d109334b934b9a76",
+                "is_valid": true,
+                "xy_flow_obj": {
+                    "id": "9",
+                    "type": "dealii::GridOut",
+                    "data": {
+                        "arguments": [],
+                        "inputs": [],
+                        "node_type": "empty_constructor",
+                        "outputs": [
+                            "self"
+                        ],
+                        "type": "dealii::GridOut",
+                        "type_hash": "d109334b934b9a76",
+                        "is_valid": true
+                    },
+                    "position": {
+                        "x": 459.13461538461536,
+                        "y": 247.55398637820517
                     },
                     "origin": [
                         0.5,
                         0
                     ],
                     "measured": {
-                        "width": 281,
-                        "height": 171
+                        "width": 141,
+                        "height": 48
                     },
-                    "selected": false,
-                    "dragging": false
+                    "selected": false
                 }
             }
         },
         "edges": {
             "1": {
-                "source": "2",
-                "target": "3",
-                "source_output": "self",
-                "target_input": "0",
-                "xy_flow_obj": {
-                    "source": "2",
-                    "sourceHandle": "output-self",
-                    "target": "3",
-                    "targetHandle": "input-0",
-                    "id": "xy-edge__2output-self-3input-0"
-                }
-            },
-            "2": {
-                "source": "1",
-                "target": "3",
+                "source": "5",
+                "target": "7",
                 "source_output": "self",
                 "target_input": "1",
                 "xy_flow_obj": {
-                    "source": "1",
+                    "source": "5",
                     "sourceHandle": "output-self",
-                    "target": "3",
+                    "target": "7",
                     "targetHandle": "input-1",
-                    "id": "xy-edge__1output-self-3input-1"
+                    "id": "xy-edge__5output-self-7input-1"
+                }
+            },
+            "2": {
+                "source": "6",
+                "target": "7",
+                "source_output": "self",
+                "target_input": "0",
+                "xy_flow_obj": {
+                    "source": "6",
+                    "sourceHandle": "output-self",
+                    "target": "7",
+                    "targetHandle": "input-0",
+                    "id": "xy-edge__6output-self-7input-0"
                 }
             }
         }
     },
     "version": 1,
     "author": "name",
-    "date_time_utc": "2025-07-08T08:01:16.751Z"
+    "date_time_utc": "2025-07-08T12:43:06.268Z"
 }

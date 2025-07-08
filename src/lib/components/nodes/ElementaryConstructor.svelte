@@ -18,7 +18,6 @@
  
   let { id, data, type }: NodeProps<ElementaryConstructorType> = $props()
   
-  console.log('type', type)
   data.arguments = []
   data.inputs = []
   data.node_type = NodeType.ELEMENTARY_CONSTRUCTOR
@@ -33,7 +32,6 @@
     data.value = '0'
   }
   data.is_valid = true
-  console.log('data2', data)
 
   const { updateNodeData } = useSvelteFlow()
   

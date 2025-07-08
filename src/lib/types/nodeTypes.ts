@@ -52,6 +52,7 @@ export enum Type {
   UNSIGNED = 'unsigned',
   BOOLEAN = 'bool',
   TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
+  GRID_OUT = 'dealii::GridOut',
   VOID = 'void',
   VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`
 }

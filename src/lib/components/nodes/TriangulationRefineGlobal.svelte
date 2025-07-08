@@ -61,7 +61,7 @@
     padding: 15px;
     border-radius: 5px;
     background: #EFEFEF;
-    border: 2px solid #5e9cf1;
+    border: 2px solid orange;
     min-width: 200px;
   }
 

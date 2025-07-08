@@ -1,13 +1,9 @@
 <script module>
-  // import TextNode, { type TextNodeType } from './nodes/to_be_deleted/TextNode.svelte'
-  // import BoolNode, { type BoolNodeType } from './nodes/to_be_deleted/BoolNode.svelte'
-  // import ConcatNode, { type ConcatNodeType } from './nodes/to_be_deleted/ConcatNode.svelte'
   import ElementaryConstructor, { type ElementaryConstructorType } from './nodes/ElementaryConstructor.svelte'
-  import Triangulation, { type TriangulationType } from './nodes/Triangulation.svelte'
+  import EmptyConstructor, { type EmptyConstructorType } from './nodes/EmptyConstructor.svelte'
   import TriangulationRefineGlobal, { type TriangulationRefineGlobalType } from './nodes/TriangulationRefineGlobal.svelte'
  
-  // export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType | ElementaryConstructorType | TriangulationType | TriangulationRefineGlobalType;
-  export type CustomNodes = ElementaryConstructorType | TriangulationType | TriangulationRefineGlobalType
+  export type CustomNodes = ElementaryConstructorType | EmptyConstructorType | TriangulationRefineGlobalType
 </script>
 
 <script lang="ts">
@@ -31,7 +27,7 @@
   import { useDnD } from './DnDProvider.svelte'
   import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
-  import { MethodName, NodeType, Type } from '../types/nodeTypes'
+  import { MethodName, Type } from '../types/nodeTypes'
 
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
@@ -39,12 +35,10 @@
   let idCounter = $derived(getNodes().length)
   
   const nodeTypes: NodeTypes = {
-    // text: TextNode,
-    // bool: BoolNode,
-    // concat: ConcatNode,
-    unsigned: ElementaryConstructor,
-    bool: ElementaryConstructor,
-    [Type.TRIANGULATION22]: Triangulation,
+    [Type.UNSIGNED]: ElementaryConstructor,
+    [Type.BOOLEAN]: ElementaryConstructor,
+    [Type.TRIANGULATION22]: EmptyConstructor,
+    [Type.GRID_OUT]: EmptyConstructor,
     [MethodName.TRIANGULATION2_REFINEGLOBAL]: TriangulationRefineGlobal,
   }
   const edgeTypes: EdgeTypes = {

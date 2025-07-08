@@ -57,5 +57,15 @@
         ],
         "type": "void(dealii::Triangulation<2, 2>::*)(unsigned)",
         "type_hash": "cb40d6a582660ec8Triangulation<2>::refine_global"
+    },
+    "d109334b934b9a76": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "empty_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "dealii::GridOut",
+        "type_hash": "d109334b934b9a76"
     }
 }
