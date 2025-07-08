@@ -1,7 +1,7 @@
 <script module>
-  import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
-  import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
-  import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
+  import TextNode, { type TextNodeType } from './nodes/to_be_deleted/TextNode.svelte'
+  import BoolNode, { type BoolNodeType } from './nodes/to_be_deleted/BoolNode.svelte'
+  import ConcatNode, { type ConcatNodeType } from './nodes/to_be_deleted/ConcatNode.svelte'
   import Unsigned, { type UnsignedType } from './nodes/elementaryConstructor/Unsigned.svelte'
   import Triangulation, { type TriangulationType } from './nodes/emptyConstructor/Triangulation.svelte'
   import TriangulationRefineGlobal, { type TriangulationRefineGlobalType } from './nodes/voidMethod/TriangulationRefineGlobal.svelte'

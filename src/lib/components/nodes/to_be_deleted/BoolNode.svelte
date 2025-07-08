@@ -1,5 +1,5 @@
 <script module>
-  import type { BoolNodeData } from '../../types/nodeTypes'
+  import type { BoolNodeData } from '../../../types/nodeTypes'
   export type BoolNodeType = Node<BoolNodeData, 'bool'>;
 </script>
  
@@ -11,7 +11,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { InOutTypes } from '../../types/nodeTypes'
+  import { InOutTypes } from '../../../types/nodeTypes'
  
   let { id, data }: NodeProps<BoolNodeType> = $props()
   data.inputsTypes = []
