@@ -14,6 +14,8 @@
  
   let { data }: NodeProps<TriangulationType> = $props()
     
+  data.arguments = []
+  data.inputs = []
   data.node_type = NodeType.EMPTY_CONSTRUCTOR
   data.outputs = [ Outputs.SELF ]
   data.type = Type.TRIANGULATION22
