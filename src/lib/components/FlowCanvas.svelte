@@ -1,9 +1,9 @@
 <script module>
   import ElementaryConstructor, { type ElementaryConstructorType } from './nodes/ElementaryConstructor.svelte'
   import EmptyConstructor, { type EmptyConstructorType } from './nodes/EmptyConstructor.svelte'
-  import TriangulationRefineGlobal, { type TriangulationRefineGlobalType } from './nodes/TriangulationRefineGlobal.svelte'
+  import Method, { type MethodType } from './nodes/Method.svelte'
  
-  export type CustomNodes = ElementaryConstructorType | EmptyConstructorType | TriangulationRefineGlobalType
+  export type CustomNodes = ElementaryConstructorType | EmptyConstructorType | MethodType
 </script>
 
 <script lang="ts">
@@ -39,48 +39,61 @@
     [Type.BOOLEAN]: ElementaryConstructor,
     [Type.TRIANGULATION22]: EmptyConstructor,
     [Type.GRID_OUT]: EmptyConstructor,
-    [MethodName.TRIANGULATION2_REFINEGLOBAL]: TriangulationRefineGlobal,
+    [MethodName.TRIANGULATION2_REFINEGLOBAL]: Method,
+    [MethodName.GRIDOUT_WRITEVTK2]: Method,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
 </script>
 
-<div style="height: 20vh; width: 100vw;">
+<div class="flow-container">
   <Sidebar />
+  <div class="flow-wrapper">
+    <SvelteFlow 
+      bind:nodes={getNodes, setNodes}
+      bind:edges={getEdges, setEdges}
+      {nodeTypes}
+      {edgeTypes}
+      fitView
+      isValidConnection={isValidConnection} 
+      ondragover={onDragOver}
+      ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
+    >
+      <Panel position="top-left">
+        <div class="export-button-container">
+          <!-- <button onclick={executeWithPassword}>Execute with password</button>
+          <button onclick={executeWithKey}>Execute with key</button> -->
+          <ExportGraphButton />
+        </div>
+        <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
+          -
+        </div>
+      </Panel>
+      <Panel position="top-right">
+        <div class="custom-panel">
+          number of nodes: {idCounter}
+        </div>
+      </Panel>
+      <Controls />
+      <MiniMap />
+      <Background />
+    </SvelteFlow>
+  </div>
 </div>
-<div style="height: 80vh; width: 100vw;">
-  <SvelteFlow 
-    bind:nodes={getNodes, setNodes}
-    bind:edges={getEdges, setEdges}
-    {nodeTypes}
-    {edgeTypes}
-    fitView
-    isValidConnection={isValidConnection} 
-    ondragover={onDragOver}
-    ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
-  >
-    <Panel position="top-left">
-      <div class="export-button-container">
-        <!-- <button onclick={executeWithPassword}>Execute with password</button>
-        <button onclick={executeWithKey}>Execute with key</button> -->
-        <ExportGraphButton />
-      </div>
-      <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
-        -
-      </div>
-    </Panel>
-    <Panel position="top-right">
-      <div class="custom-panel">
-        number of nodes: {idCounter}
-      </div>
-    </Panel>
-    <Controls />
-    <MiniMap />
-    <Background />
-  </SvelteFlow>
-</div>
+
 <style>
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  .flow-wrapper {
+    flex: 1; /* Takes remaining space after Sidebar */
+    min-height: 0; /* Allows flex item to shrink below content size */
+  }
+  
   .export-button-container {
     display: flex;
     flex-wrap: wrap;

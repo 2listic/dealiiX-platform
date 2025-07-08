@@ -58,6 +58,40 @@
         "type": "void(dealii::Triangulation<2, 2>::*)(unsigned)",
         "type_hash": "cb40d6a582660ec8Triangulation<2>::refine_global"
     },
+    "83fc561e6bc6214fGridOut::write_vtk<2>": {
+        "arguments": [
+            {
+                "connection_type": "input",
+                "name": "grid_out",
+                "type": "dealii::GridOut",
+                "type_hash": "d109334b934b9a76"
+            },
+            {
+                "connection_type": "input",
+                "name": "triangulation",
+                "type": "dealii::Triangulation<2, 2>",
+                "type_hash": "c95847e89853e6da"
+            },
+            {
+                "connection_type": "pass_through",
+                "name": "output_file",
+                "type": "std::ostream",
+                "type_hash": "296106717126417c"
+            }
+        ],
+        "inputs": [
+            0,
+            1,
+            2
+        ],
+        "method_name": "GridOut::write_vtk<2>",
+        "node_type": "void_const_method",
+        "outputs": [
+            2
+        ],
+        "type": "void(dealii::GridOut::*)(dealii::Triangulation<2, 2> const&, std::ostream&) const",
+        "type_hash": "83fc561e6bc6214fGridOut::write_vtk<2>"
+    },
     "d109334b934b9a76": {
         "arguments": [],
         "inputs": [],

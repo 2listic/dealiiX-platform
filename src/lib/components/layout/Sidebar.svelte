@@ -1,6 +1,5 @@
 <script lang="ts">
   import { setImportedData } from '../../states/store.svelte'
-  import { NodeType } from '../../types/nodeTypes'
   import { useDnD } from '../DnDProvider.svelte'
  
   const type = useDnD()
@@ -34,7 +33,7 @@
 	  })
 	}
 
-  const returnNodeType = (node) => node.node_type === NodeType.VOID_METHOD ? node.method_name : node.type
+  const returnNodeType = (node) => node.node_type.includes('method') ? node.method_name : node.type
     
 </script>
 

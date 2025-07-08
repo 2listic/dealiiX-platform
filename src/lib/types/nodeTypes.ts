@@ -31,13 +31,15 @@ export enum Inputs {
 
 export enum MethodName {
   // NULL = null,
-  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global'
+  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
+  GRIDOUT_WRITEVTK2 = 'GridOut::write_vtk<2>'
 }
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
   VOID_METHOD = 'void_method',
+  VOID_CONST_METHOD = 'void_const_method',
 }
 
 export enum Outputs {
@@ -54,7 +56,9 @@ export enum Type {
   TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
   GRID_OUT = 'dealii::GridOut',
   VOID = 'void',
-  VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`
+  STD_OUTSTREAM = 'std::ostream',
+  VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`,
+  VOID_GRIDOUT_TRIANGULATION22CONST_STDOUTSTREAMCONST = `${Type.VOID}(${Type.GRID_OUT}::*)(${Type.TRIANGULATION22} const&, ${Type.STD_OUTSTREAM}&) const`,
 }
 
 export type NodeData = { 

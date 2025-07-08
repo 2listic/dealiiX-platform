@@ -33,13 +33,13 @@ export const initialNodes = [
   // },
   {
     id: '5',
-    type: Type.UNSIGNED,
+    type: Type.TRIANGULATION22,
     data: {},
     position: { x: 100, y: 400 },
   },
   {
     id: '6',
-    type: Type.TRIANGULATION22,
+    type: Type.UNSIGNED,
     data: {},
     position: { x: 100, y: 500 },
   },
