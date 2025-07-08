@@ -6,10 +6,8 @@
 
 <main>
   <SvelteFlowProvider>
-    <div style:width="100vw" style:height="100vh">
-      <DnDProvider>
-        <FlowCanvas />
-      </DnDProvider>
-    </div>
+    <DnDProvider>
+      <FlowCanvas />
+    </DnDProvider>
   </SvelteFlowProvider>
 </main>

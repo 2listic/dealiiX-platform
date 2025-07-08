@@ -46,7 +46,10 @@
   }
 </script>
 
+<div style="height: 20vh; width: 100vw;">
   <Sidebar />
+</div>
+<div style="height: 80vh; width: 100vw;">
   <SvelteFlow 
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}
@@ -76,6 +79,7 @@
     <MiniMap />
     <Background />
   </SvelteFlow>
+</div>
 <style>
   .export-button-container {
     display: flex;
