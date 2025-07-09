@@ -44,4 +44,8 @@
     background: #EFEFEF;
     border: 2px solid yellow;
   }
+
+  .label {
+    font-weight: bold;
+  }
 </style>

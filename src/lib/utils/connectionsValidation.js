@@ -1,9 +1,9 @@
 import { getNodes, getEdges } from '../states/store.svelte'
+import { Outputs } from '../types/nodeTypes'
 
 let connectionCache = new Map()
 
 const isValidConnection = (connection) => {
-  
   // Create a cache key from the connection
   const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available
@@ -16,8 +16,6 @@ const isValidConnection = (connection) => {
   // Get the current nodes and edges
   const nodes = getNodes()
   const edges = getEdges()
-  console.log('nodes', nodes)
-  console.log('edges', edges)
 
   // Check if the target handle is already connected
   const isHandleAlreadyConnected = edges.some(edge => 
@@ -30,14 +28,27 @@ const isValidConnection = (connection) => {
     return false
   }
 
-  // Check if the source type matches the target handle type
-  const targetNode = nodes.find(node => node.id === connection.target)
+  
+  // Check if the source node value is valid
   const sourceNode = nodes.find(node => node.id === connection.source)
-
-  const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
-  const sourceType = sourceNode.data.outputsTypes[handleIndexOutput]
+  if (!sourceNode.data.is_valid) {
+    console.error(`Source node ${connection.source} is not valid`)
+    // connectionCache.set(cacheKey, false)   // Cache the result
+    return false
+  }
+  
+  // Check if the source type matches the target handle type 
+  const targetNode = nodes.find(node => node.id === connection.target)
+  const handleIndexOutput = connection.sourceHandle.split('-')[1]
+  let sourceType
+  if (handleIndexOutput === Outputs.SELF) {
+    sourceType = sourceNode.data.type
+  } else {
+    const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
+    sourceType = sourceNode.data.arguments[handleIndexOutput].type
+  }
   const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const expectedInputType = targetNode.data.inputsTypes[handleIndexInput]
+  const expectedInputType = targetNode.data.arguments[handleIndexInput].type
   
   console.log(`Handle ${connection.targetHandle} expects ${expectedInputType.toString()}, source provides ${sourceType.toString()}`)
   const isValid = expectedInputType === sourceType

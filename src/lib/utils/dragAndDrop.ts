@@ -22,8 +22,10 @@ export const onDrop = (
     x: event.clientX,
     y: event.clientY,
   })
+  const id = getNextNodeId().toString()
+  console.log(id)
   const newNode = {
-    id: getNextNodeId().toString(),
+    id: id,
     type: type.current,
     data: {},
     position,

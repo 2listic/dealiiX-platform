@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MethodName, Type } from '../../types/nodeTypes'
   import { useDnD } from '../DnDProvider.svelte'
  
   const type = useDnD()
@@ -19,17 +20,24 @@
   <div class="nodes-container">
     <div role="option" aria-selected="false" tabindex="0"
       class="node"
-      on:dragstart={(event) => onDragStart(event, 'text')}
+      on:dragstart={(event) => onDragStart(event, Type.UNSIGNED)}
       draggable={true}
     >
-      Text Node
+      Unsigned
     </div>
     <div role="option" aria-selected="false" tabindex="0"
       class="node"
-      on:dragstart={(event) => onDragStart(event, 'bool')}
+      on:dragstart={(event) => onDragStart(event, Type.TRIANGULATION22)}
       draggable={true}
     >
-      Bool Node
+      Triangulation&lt;2, 2&gt;
+    </div>
+    <div role="option" aria-selected="false" tabindex="0"
+      class="node"
+      on:dragstart={(event) => onDragStart(event, MethodName.TRIANGULATION2_REFINEGLOBAL)}
+      draggable={true}
+    >
+      triangulation&lt;2&gt;::refine_global
     </div>
   </div>
 </aside>

@@ -2,8 +2,11 @@
   import TextNode, { type TextNodeType } from './nodes/TextNode.svelte'
   import BoolNode, { type BoolNodeType } from './nodes/BoolNode.svelte'
   import ConcatNode, { type ConcatNodeType } from './nodes/ConcatNode.svelte'
+  import Unsigned, { type UnsignedType } from './nodes/elementaryConstructor/Unsigned.svelte'
+  import Triangulation, { type TriangulationType } from './nodes/emptyConstructor/Triangulation.svelte'
+  import TriangulationRefineGlobal, { type TriangulationRefineGlobalType } from './nodes/voidMethod/TriangulationRefineGlobal.svelte'
  
-  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType;
+  export type CustomNodes = TextNodeType | BoolNodeType | ConcatNodeType | UnsignedType | TriangulationType | TriangulationRefineGlobalType;
 </script>
 
 <script lang="ts">
@@ -27,6 +30,7 @@
   import { useDnD } from './DnDProvider.svelte'
   import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
+  import { MethodName, Type } from '../types/nodeTypes'
 
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
@@ -37,6 +41,9 @@
     text: TextNode,
     bool: BoolNode,
     concat: ConcatNode,
+    [Type.UNSIGNED]: Unsigned,
+    [Type.TRIANGULATION22]: Triangulation,
+    [MethodName.TRIANGULATION2_REFINEGLOBAL]: TriangulationRefineGlobal,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,

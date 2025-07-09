@@ -1,34 +1,54 @@
+import { MethodName, Type } from '../types/nodeTypes'
+
 export const initialNodes = [
+  // {
+  //   id: '1',
+  //   type: 'text',
+  //   data: {
+  //     value: 'whoami',
+  //   },
+  //   position: { x: 0, y: 100 },
+  // },
+  // {
+  //   id: '2',
+  //   type: 'text',
+  //   data: {
+  //     value: 'ls -a',
+  //   },
+  //   position: { x: 100, y: 200 },
+  // },
+  // {
+  //   id: '3',
+  //   type: 'bool',
+  //   data: {
+  //     value: true,
+  //   },
+  //   position: { x: 100, y: 300 },
+  // },
+  // {
+  //   id: '4',
+  //   type: 'concat',
+  //   data: {},
+  //   position: { x: 400, y: 200 },
+  // },
   {
-    id: '1',
-    type: 'text',
-    data: {
-      value: 'whoami',
-    },
-    position: { x: 0, y: 100 },
-  },
-  {
-    id: '2',
-    type: 'text',
-    data: {
-      value: 'ls -a',
-    },
-    position: { x: 100, y: 200 },
-  },
-  {
-    id: '3',
-    type: 'bool',
-    data: {
-      value: true,
-    },
-    position: { x: 100, y: 300 },
-  },
-  {
-    id: '4',
-    type: 'concat',
+    id: '5',
+    type: Type.UNSIGNED,
     data: {},
-    position: { x: 400, y: 200 },
+    position: { x: 100, y: 400 },
   },
+  {
+    id: '6',
+    type: Type.TRIANGULATION22,
+    data: {},
+    position: { x: 100, y: 500 },
+  },
+  {
+    id: '7',
+    type: MethodName.TRIANGULATION2_REFINEGLOBAL,
+    data: {},
+    position: { x: 400, y: 400 },
+  }
 ]
 
 export const initialEdges = [
