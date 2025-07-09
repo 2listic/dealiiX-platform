@@ -36,7 +36,7 @@
 	  })
 	}
 
-  const returnNodeType = (node) => node.node_type.includes('method') ? node.method_name : node.type
+  const returnNodeType = (node) => 'method_name' in node ? node.method_name : node.type
     
 </script>
 

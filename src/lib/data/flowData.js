@@ -55,6 +55,12 @@ export const initialNodes = [
     data: {},
     position: { x: 100, y: 300 },
   },
+  {
+    id: '9',
+    type: MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2,
+    data: {},
+    position: { x: 400, y: 100 },
+  }
 ]
 
 export const initialEdges = [

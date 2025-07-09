@@ -2,7 +2,8 @@
   import type { NodeData } from '../../types/nodeTypes'
   export type Triangulation2RefineGlobalType = Node<NodeData, MethodName.TRIANGULATION2_REFINEGLOBAL>
   export type GridoutWriteWtk2 = Node<NodeData, MethodName.GRIDOUT_WRITEVTK2>
-  export type MethodType = Triangulation2RefineGlobalType | GridoutWriteWtk2
+  export type GridgeneratorGenerateFromNameAndArguments2 = Node<NodeData, MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2>
+  export type MethodType = Triangulation2RefineGlobalType | GridoutWriteWtk2 | GridgeneratorGenerateFromNameAndArguments2
 </script>
  
 <script lang="ts">
@@ -12,101 +13,44 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { ConnectionType, Inputs, MethodName, NodeType, Outputs, Type } from '../../types/nodeTypes'
+  import { ConnectionType, MethodName, NodeType } from '../../types/nodeTypes'
+  import { getImportedNodesByType } from '../../states/store.svelte'
  
-  let { data, type }: NodeProps<Triangulation2RefineGlobalType> = $props()
+  let { data, type }: NodeProps<MethodType> = $props()
   
-  //TODO: dinamically fill data and html based on import json
-  switch (type) {
-  case MethodName.TRIANGULATION2_REFINEGLOBAL:
-    data.arguments = [
-      { 
-        connection_type: ConnectionType.PASSTHROUGH,
-        name: 'self',
-        type: Type.TRIANGULATION22,
-        type_hash: 'cb40d6a582660ec8'
-      },
-      {
-        connection_type: ConnectionType.INPUT,
-        name: 'n_refinements',
-        type: Type.UNSIGNED,
-        type_hash: 'b826a7e2a606584c'
-      }
-    ]
-    data.inputs = [ Inputs.ZERO, Inputs.ONE ]
-    data.method_name = MethodName.TRIANGULATION2_REFINEGLOBAL
-    data.node_type = NodeType.VOID_METHOD
-    data.outputs = [ Outputs.ZERO ]
-    data.type = Type.VOID_TRIANGULATION22_UNSIGNED
-    data.type_hash = `cb40d6a582660ec8${MethodName.TRIANGULATION2_REFINEGLOBAL}`
-    break
-  case MethodName.GRIDOUT_WRITEVTK2:
-    data.arguments = [
-      { 
-        connection_type: ConnectionType.INPUT,
-        name: 'grid_out',
-        type: Type.GRID_OUT,
-        type_hash: 'd109334b934b9a76'
-      },
-      { 
-        connection_type: ConnectionType.INPUT,
-        name: 'triangulation',
-        type: Type.TRIANGULATION22,
-        type_hash: 'c95847e89853e6da'
-      },
-      {
-        connection_type: ConnectionType.PASSTHROUGH,
-        name: 'output_file',
-        type: Type.STD_OUTSTREAM,
-        type_hash: '296106717126417c'
-      },
-    ]
-    data.inputs = [ Inputs.ZERO, Inputs.ONE, Inputs.TWO ]
-    data.method_name = MethodName.GRIDOUT_WRITEVTK2
-    data.node_type = NodeType.VOID_CONST_METHOD
-    data.outputs = [ Outputs.ZERO ]
-    data.type = Type.VOID_GRIDOUT_TRIANGULATION22CONST_STDOUTSTREAMCONST
-    data.type_hash = `83fc561e6bc6214f${MethodName.GRIDOUT_WRITEVTK2}`
+  const importedNodes = getImportedNodesByType(NodeType.METHOD)
+  $inspect('method, importedNodes', importedNodes)
+  if (!importedNodes || importedNodes.length === 0) {
+    data.is_valid = false
+    console.error('No imported nodes found for node_type:', NodeType.METHOD)
+  } else {
+    const filterImportedNode = importedNodes.find((node) => node.method_name === type)  
+    data.arguments = $state.snapshot(filterImportedNode.arguments)
+    data.inputs = $state.snapshot(filterImportedNode.inputs)
+    data.node_type = $state.snapshot(filterImportedNode.node_type)
+    data.outputs = $state.snapshot(filterImportedNode.outputs)
+    data.type = $state.snapshot(filterImportedNode.type)
+    data.type_hash = $state.snapshot(filterImportedNode.type_hash)
+    data.is_valid = true
   }
   // TODO: validate all inputs are connected
-  data.is_valid = true
 </script>
  
 <div class="custom-node">
-  {#if type === MethodName.TRIANGULATION2_REFINEGLOBAL}
-    <Handle id="input-0" type="target" position={Position.Left} style="top: 40%;" />
-    <Handle id="input-1" type="target" position={Position.Left} style="top: 70%;" />
-    <Handle id="output-0" type="source" position={Position.Right} style="top: 40%;"/>
-  {:else if type === MethodName.GRIDOUT_WRITEVTK2}
-    <Handle id="input-0" type="target" position={Position.Left} style="top: 30%;" />
-    <Handle id="input-1" type="target" position={Position.Left} style="top: 55%;" />
-    <Handle id="input-2" type="target" position={Position.Left} style="top: 78%;" />
-    <Handle id="output-0" type="source" position={Position.Right} style="top: 78%;"/>
-  {/if}
-
+  {#each data.inputs as i (i)}
+    <Handle id={`input-${i}`} type="target" position={Position.Left} style="top: {((100 / (data.inputs.length+1)) * (i+1)) +5}%;" />
+  {/each}
+  {#each data.outputs as i (i)}
+    <Handle id={`output-${i}`} type="source" position={Position.Right} />
+  {/each}
 
   <div class="label">{type}</div>
-
-   <div class="inputs">
+  <div style="display: flex; flex-direction: row; gap: 2vh">
     <div class="input-column">
-      {#if type === MethodName.TRIANGULATION2_REFINEGLOBAL}
-        <div class="input-label">Input 0 / Output 0 </div>
-        <div class="input-type">{data.arguments[0].type}</div>
-        <!-- <span class="input-value">{topText || 'not connected'}</span> -->
-        <div class="input-label">Input 1 </div>
-        <div class="input-type">{data.arguments[1].type}</div>
-        <!-- <span class="input-value">{bottomText || 'not connected'}</span> -->
-      {:else if type === MethodName.GRIDOUT_WRITEVTK2}
-        <div class="input-label">Input 0 </div>
-        <div class="input-type">{data.arguments[0].type}</div>
-        <!-- <span class="input-value">{topText || 'not connected'}</span> -->
-        <div class="input-label">Input 1 </div>
-        <div class="input-type">{data.arguments[1].type}</div>
-        <!-- <span class="input-value">{topText || 'not connected'}</span> -->
-        <div class="input-label">Input 2 / Output 0 </div>
-        <div class="input-type">{data.arguments[2].type}</div>
-        <!-- <span class="input-value">{topText || 'not connected'}</span> -->
-      {/if}
+      {#each data.inputs as i (i)}
+        <div class="input-label">Input {i} {data.arguments[i].connection_type === ConnectionType.PASSTHROUGH ? '/ Output' : ''}</div>
+        <div class="input-type">{data.arguments[i].type}</div>
+      {/each}
     </div>
   </div>
 </div>
@@ -136,5 +80,6 @@
 
   .input-type {
     font-family: monospace;
+    font-size: smaller;
   }
 </style>

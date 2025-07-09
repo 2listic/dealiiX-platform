@@ -24,12 +24,12 @@
   } else {
     $inspect('empty_constructor, importedNodes', importedNodes)
     const filterImportedNode = importedNodes.find((node) => node.type === type)  
-    data.arguments = filterImportedNode.arguments
-    data.inputs = filterImportedNode.inputs
-    data.node_type = filterImportedNode.node_type
-    data.outputs = filterImportedNode.outputs
-    data.type = filterImportedNode.type
-    data.type_hash = filterImportedNode.type_hash
+    data.arguments = $state.snapshot(filterImportedNode.arguments)
+    data.inputs = $state.snapshot(filterImportedNode.inputs)
+    data.node_type = $state.snapshot(filterImportedNode.node_type)
+    data.outputs = $state.snapshot(filterImportedNode.outputs)
+    data.type = $state.snapshot(filterImportedNode.type)
+    data.type_hash = $state.snapshot(filterImportedNode.type_hash)
     data.is_valid = true
   }
 </script>

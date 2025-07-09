@@ -1,4 +1,5 @@
 import { initialNodes, initialEdges } from '../data/flowData'
+import { NodeType } from '../types/nodeTypes'
 
 let nodes = $state.raw(initialNodes)
 let edges = $state.raw(initialEdges)
@@ -22,7 +23,7 @@ export const setImportedNodes = (data) => {
 
   // Group nodes by node_type
   const nodesByNodetype = nodes.reduce((acc, node) => {
-    const nodeType = node.node_type.includes('method') || node.node_type.includes('function') ? 'method' : node.node_type
+    const nodeType = 'method_name' in node ? NodeType.METHOD : node.node_type
     if (!acc[nodeType]) {
       acc[nodeType] = []
     }

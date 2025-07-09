@@ -41,6 +41,7 @@
     [Type.GRID_OUT]: EmptyConstructor,
     [MethodName.TRIANGULATION2_REFINEGLOBAL]: Method,
     [MethodName.GRIDOUT_WRITEVTK2]: Method,
+    [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: Method,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
