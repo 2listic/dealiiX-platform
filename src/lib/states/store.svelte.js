@@ -2,7 +2,7 @@ import { initialNodes, initialEdges } from '../data/flowData'
 
 let nodes = $state.raw(initialNodes)
 let edges = $state.raw(initialEdges)
- 
+
 export const getNodes = () => nodes
 export const getEdges = () => edges
 export const setNodes = (newNodes) => nodes = newNodes
@@ -16,8 +16,25 @@ export const getNextNodeId = () => {
 }
 
 let importedData = $state({})
-export const setImportedData = (data) => {
-  importedData = data
-  console.log('Imported data set:', importedData)
+
+export const setImportedNodes = (data) => {
+  const nodes = Object.values(data)
+
+  // Group nodes by node_type
+  const nodesByNodetype = nodes.reduce((acc, node) => {
+    const nodeType = node.node_type.includes('method') || node.node_type.includes('function') ? 'method' : node.node_type
+    if (!acc[nodeType]) {
+      acc[nodeType] = []
+    }
+    acc[nodeType].push(node)
+    return acc
+  }, {})
+  importedData = nodesByNodetype
+  console.log('importedData', $state.snapshot(importedData))
 }
-export const getImportedData = () => importedData
+export const getImportedNodesByType = (svelteNodeType) => {
+  if (!(svelteNodeType in importedData)) {
+    console.error(`Node type '${svelteNodeType}' not found in imported data.`)
+  }
+  return importedData?.[svelteNodeType] || []
+}

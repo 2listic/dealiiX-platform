@@ -72,3 +72,7 @@ export type NodeData = {
   value: string,
   is_valid: boolean,
 }
+
+export type ImportedNodes = {
+  [key: string]: NodeData
+}

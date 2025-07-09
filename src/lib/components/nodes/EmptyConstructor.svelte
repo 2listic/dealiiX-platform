@@ -12,25 +12,26 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { NodeType, Outputs, Type } from '../../types/nodeTypes'
- 
+  import { NodeType, Type } from '../../types/nodeTypes'
+  import { getImportedNodesByType } from '../../states/store.svelte'
+
   let { data, type }: NodeProps<EmptyConstructorType> = $props()
-    
-  data.arguments = []
-  data.inputs = []
-  data.node_type = NodeType.EMPTY_CONSTRUCTOR
-  data.outputs = [ Outputs.SELF ]
-  switch (type) {
-  case Type.TRIANGULATION22:
-    data.type = Type.TRIANGULATION22
-    data.type_hash = 'c95847e89853e6da'
-    break
-  case Type.GRID_OUT:
-    data.type = Type.GRID_OUT
-    data.type_hash = 'd109334b934b9a76'
-    break
+
+  const importedNodes = getImportedNodesByType(NodeType.EMPTY_CONSTRUCTOR)
+  if (!importedNodes || importedNodes.length === 0) {
+    data.is_valid = false
+    console.error('No imported nodes found for node_type:', NodeType.EMPTY_CONSTRUCTOR)
+  } else {
+    $inspect('empty_constructor, importedNodes', importedNodes)
+    const filterImportedNode = importedNodes.find((node) => node.type === type)  
+    data.arguments = filterImportedNode.arguments
+    data.inputs = filterImportedNode.inputs
+    data.node_type = filterImportedNode.node_type
+    data.outputs = filterImportedNode.outputs
+    data.type = filterImportedNode.type
+    data.type_hash = filterImportedNode.type_hash
+    data.is_valid = true
   }
-  data.is_valid = true
 </script>
  
 <div class="custom-node">

@@ -1,7 +1,12 @@
 <script lang="ts">
-  import { setImportedData } from '../../states/store.svelte'
+  import { setImportedNodes } from '../../states/store.svelte'
   import { useDnD } from '../DnDProvider.svelte'
+  import defaultNodes from '../../data/defaultNodes.json'
+  import type { ImportedNodes } from '../../types/nodeTypes'
  
+  let importedNodes: ImportedNodes | {} = $state(defaultNodes)
+  setImportedNodes(defaultNodes)
+
   const type = useDnD()
  
   const onDragStart = (event: DragEvent, nodeType: string) => {
@@ -12,16 +17,14 @@
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  let uploadedJson = $state(Object.create(null))
 	
 	const onFileChange = async (e) => {
 	  const file = e.target.files[0]
 	  if (file == null) {
-	    uploadedJson = null
 	    return
 	  }
-	  uploadedJson = await readJsonFile(file)
-	  setImportedData(uploadedJson)
+	  importedNodes = await readJsonFile(file)
+	  setImportedNodes(importedNodes)
 	}
 
 	const readJsonFile = (file) => {
@@ -43,14 +46,14 @@
     <input type=file onchange={onFileChange} accept=".json"/>
   </div>
   <div class="nodes-container">
-    {#if uploadedJson}
-      {#each Object.keys(uploadedJson) as nodeId (nodeId)}
+    {#if importedNodes}
+      {#each Object.keys(importedNodes) as nodeId (nodeId)}
         <div role="option" aria-selected="false" tabindex="0"
         class="node"
-        ondragstart={(event) => onDragStart(event, returnNodeType(uploadedJson[nodeId]))}
+        ondragstart={(event) => onDragStart(event, returnNodeType(importedNodes[nodeId]))}
         draggable={true}
         >
-          {returnNodeType(uploadedJson[nodeId])}
+          {returnNodeType(importedNodes[nodeId])}
         </div>
       {/each}
     {/if}
