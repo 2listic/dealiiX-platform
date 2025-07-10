@@ -60,8 +60,9 @@ export enum Type {
 
 export type NodeData = { 
   arguments: Argument[], 
+  derived?: string[],
   inputs: Inputs[],
-  method_name: MethodName,
+  method_name?: MethodName,
   node_type: NodeType,
   outputs: Outputs[]
   type: string,

@@ -27,6 +27,7 @@
     const filterImportedNode = importedNodes.find((node) => node.method_name === type)  
     data.arguments = $state.snapshot(filterImportedNode.arguments)
     data.inputs = $state.snapshot(filterImportedNode.inputs)
+    data.method_name = $state.snapshot(filterImportedNode.method_name)
     data.node_type = $state.snapshot(filterImportedNode.node_type)
     data.outputs = $state.snapshot(filterImportedNode.outputs)
     data.type = $state.snapshot(filterImportedNode.type)
