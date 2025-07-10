@@ -1,7 +1,7 @@
 <script module>
   import ElementaryConstructor, { type ElementaryConstructorType } from './nodes/ElementaryConstructor.svelte'
   import EmptyConstructor, { type EmptyConstructorType } from './nodes/EmptyConstructor.svelte'
-  import Method, { type MethodType } from './nodes/Method.svelte'
+  import MethodOrFunc, { type MethodType } from './nodes/MethodOrFunc.svelte'
  
   export type CustomNodes = ElementaryConstructorType | EmptyConstructorType | MethodType
 </script>
@@ -40,9 +40,9 @@
     [Type.STRING]: ElementaryConstructor,
     [Type.TRIANGULATION22]: EmptyConstructor,
     [Type.GRID_OUT]: EmptyConstructor,
-    [MethodName.TRIANGULATION2_REFINEGLOBAL]: Method,
-    [MethodName.GRIDOUT_WRITEVTK2]: Method,
-    [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: Method,
+    [MethodName.TRIANGULATION2_REFINEGLOBAL]: MethodOrFunc,
+    [MethodName.GRIDOUT_WRITEVTK2]: MethodOrFunc,
+    [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: MethodOrFunc,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,

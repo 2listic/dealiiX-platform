@@ -32,17 +32,6 @@
         "type_hash": "38efd301b92110ef",
         "value": ""
     },
-    "296106717126417c": {
-        "arguments": [],
-        "derived": [
-            "9ea8b452edfba41d"
-        ],
-        "inputs": [],
-        "node_type": "abstract",
-        "outputs": [],
-        "type": "std::ostream",
-        "type_hash": "296106717126417c"
-    },
     "c95847e89853e6da": {
         "arguments": [],
         "inputs": [],
@@ -113,26 +102,6 @@
         ],
         "type": "void(dealii::Triangulation<2, 2>::*)(unsigned)",
         "type_hash": "cb40d6a582660ec8Triangulation<2>::refine_global"
-    },
-    "9ea8b452edfba41d": {
-        "arguments": [
-            {
-                "connection_type": "input",
-                "name": "file_name",
-                "type": "std::string",
-                "type_hash": "38efd301b92110ef"
-            }
-        ],
-        "base": "296106717126417c",
-        "inputs": [
-            0
-        ],
-        "node_type": "constructor",
-        "outputs": [
-            "self"
-        ],
-        "type": "std::basic_ofstream<char>",
-        "type_hash": "9ea8b452edfba41d"
     },
     "d109334b934b9a76": {
         "arguments": [],
