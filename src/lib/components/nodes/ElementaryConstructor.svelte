@@ -50,16 +50,18 @@
   <div>
     {#if type === Type.UNSIGNED}
       <input
-        type="number"
-        min="0"
-        max="65535"
+        type="text"
+        class={data.is_valid ? '' : 'invalid'}
         value={data.value}
         oninput={(evt) => {
+          const value = evt.currentTarget.value
+          const numValue = parseInt(value)
+          const isValid = !isNaN(numValue) && numValue >= 0 && numValue <= 65535 && value.trim() !== ''
           updateNodeData(id, { 
-            value: evt.currentTarget.value,
-            is_valid: parseInt(evt.currentTarget.value) <= 65535 && parseInt(evt.currentTarget.value) >= 0
-          })}
-        }
+            value: value,
+            is_valid: isValid
+          })
+        }}
       />
     {:else if type === Type.BOOLEAN}
       <input
@@ -85,7 +87,7 @@
     font-weight: bold;
   }
 
-  input:invalid {
+  input.invalid {
     border: 2px solid red;
   }
 </style>
