@@ -2,7 +2,8 @@
   import type { NodeData } from '../../types/nodeTypes'
   export type UnsignedType = Node<NodeData, Type.UNSIGNED>
   export type BooleanType = Node<NodeData, Type.BOOLEAN>
-  export type ElementaryConstructorType = BooleanType | UnsignedType
+  export type StringType = Node<NodeData, Type.STRING>
+  export type ElementaryConstructorType = BooleanType | UnsignedType | StringType
 </script>
  
 <script lang="ts">
@@ -14,27 +15,26 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { NodeType, Outputs, Type } from '../../types/nodeTypes'
+  import { NodeType, Type } from '../../types/nodeTypes'
+  import { getImportedNodesByType } from '../../states/store.svelte'
  
   let { id, data, type }: NodeProps<ElementaryConstructorType> = $props()
-  
-  data.arguments = []
-  data.inputs = []
-  data.node_type = NodeType.ELEMENTARY_CONSTRUCTOR
-  data.outputs = [ Outputs.SELF ]
-  switch (type) {
-  case Type.BOOLEAN:
-    data.type = Type.BOOLEAN
-    data.type_hash = 'b826a7e2a6063644'
-    data.value = 'false'
-    break
-  case Type.UNSIGNED:
-    data.type = Type.UNSIGNED
-    data.type_hash = 'b826a7e2a606584c'
-    data.value = '0'
-    break
+    
+  const importedNodes = getImportedNodesByType(NodeType.ELEMENTARY_CONSTRUCTOR)
+  if (!importedNodes || importedNodes.length === 0) {
+    data.is_valid = false
+    console.error('No imported nodes found for node_type:', NodeType.ELEMENTARY_CONSTRUCTOR)
+  } else {
+    $inspect('elementary_constructor, importedNodes', importedNodes)
+    const filterImportedNode = importedNodes.find((node) => node.type === type)  
+    data.arguments = $state.snapshot(filterImportedNode.arguments)
+    data.inputs = $state.snapshot(filterImportedNode.inputs)
+    data.node_type = $state.snapshot(filterImportedNode.node_type)
+    data.outputs = $state.snapshot(filterImportedNode.outputs)
+    data.type = $state.snapshot(filterImportedNode.type)
+    data.type_hash = $state.snapshot(filterImportedNode.type_hash)
+    data.is_valid = true
   }
-  data.is_valid = true
 
   const { updateNodeData } = useSvelteFlow()
   
@@ -63,6 +63,12 @@
           })
         }}
       />
+    {:else if type === Type.STRING}
+      <input
+        type="text"
+        value={data.value}
+        oninput={(evt) => { updateNodeData(id, { value: evt.currentTarget.value }) }}
+      />
     {:else if type === Type.BOOLEAN}
       <input
         type="checkbox"
@@ -80,7 +86,7 @@
     padding: 10px;
     border-radius: 5px;
     background: #EFEFEF;
-    border: 2px solid yellow;
+    border: 2px solid yellowgreen;
   }
 
   .label {

@@ -59,7 +59,7 @@
     padding: 15px;
     border-radius: 5px;
     background: #EFEFEF;
-    border: 2px solid orange;
+    border: 2px solid skyblue;
     min-width: 200px;
   }
 

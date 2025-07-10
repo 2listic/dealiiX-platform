@@ -16,8 +16,8 @@ const isValidConnection = (connection) => {
   // Get the current nodes and edges
   const nodes = getNodes()
   const edges = getEdges()
-  // console.log('nodes', nodes)
-  // console.log('edges', edges)
+  console.log('nodes', nodes)
+  console.log('edges', edges)
 
   // Check if the target handle is already connected
   const isHandleAlreadyConnected = edges.some(edge => 

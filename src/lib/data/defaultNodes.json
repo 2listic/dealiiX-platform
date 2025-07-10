@@ -10,16 +10,16 @@
         "type_hash": "b826a7e2a606584c",
         "value": "0"
     },
-    "b826a7e2a6063644": {
+    "38efd301b92110ef": {
         "arguments": [],
         "inputs": [],
         "node_type": "elementary_constructor",
         "outputs": [
             "self"
         ],
-        "type": "bool",
-        "type_hash": "b826a7e2a6063644",
-        "value": "false"
+        "type": "std::string",
+        "type_hash": "38efd301b92110ef",
+        "value": ""
     },
     "c95847e89853e6da": {
         "arguments": [],

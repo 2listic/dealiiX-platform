@@ -53,6 +53,7 @@ export enum Outputs {
 export enum Type {
   UNSIGNED = 'unsigned',
   BOOLEAN = 'bool',
+  STRING = 'std::string',
   TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
   GRID_OUT = 'dealii::GridOut',
 }

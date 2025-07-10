@@ -2,7 +2,7 @@ export const parseGraph = (nodes, edges) => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
-      xy_flow_obj: obj,
+      // xy_flow_obj: obj,
     }
     return acc
   }, {})
@@ -12,7 +12,7 @@ export const parseGraph = (nodes, edges) => {
       target: obj.target,
       source_output: obj.sourceHandle.split('-')[1],
       target_input: obj.targetHandle.split('-')[1],
-      xy_flow_obj: obj
+      // xy_flow_obj: obj
     }
     return acc
   }, {})

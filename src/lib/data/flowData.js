@@ -49,12 +49,12 @@ export const initialNodes = [
     data: {},
     position: { x: 400, y: 400 },
   },
-  {
-    id: '8',
-    type: Type.BOOLEAN,
-    data: {},
-    position: { x: 100, y: 300 },
-  },
+  // {
+  //   id: '8',
+  //   type: Type.BOOLEAN,
+  //   data: {},
+  //   position: { x: 100, y: 300 },
+  // },
   {
     id: '9',
     type: MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2,

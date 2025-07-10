@@ -37,6 +37,7 @@
   const nodeTypes: NodeTypes = {
     [Type.UNSIGNED]: ElementaryConstructor,
     [Type.BOOLEAN]: ElementaryConstructor,
+    [Type.STRING]: ElementaryConstructor,
     [Type.TRIANGULATION22]: EmptyConstructor,
     [Type.GRID_OUT]: EmptyConstructor,
     [MethodName.TRIANGULATION2_REFINEGLOBAL]: Method,
