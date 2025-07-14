@@ -1,5 +1,5 @@
-<script module>
-  import type { TextNodeData } from '../../types/nodeTypes'
+<!-- <script module>
+  import type { TextNodeData } from '../../../types/nodeTypes'
   export type TextNodeType = Node<TextNodeData, 'text'>;
 </script>
  
@@ -11,7 +11,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { InOutTypes } from '../../types/nodeTypes'
+  import { InOutTypes } from '../../../types/nodeTypes'
  
   let { id, data }: NodeProps<TextNodeType> = $props()
   data.inputsTypes = []
@@ -42,4 +42,4 @@
   .label {
     font-weight: bold;
   }
-</style>
+</style> -->

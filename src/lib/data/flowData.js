@@ -1,4 +1,4 @@
-import { MethodName, Type } from '../types/nodeTypes'
+// import { MethodName, Type } from '../types/nodeTypes'
 
 export const initialNodes = [
   // {
@@ -31,24 +31,36 @@ export const initialNodes = [
   //   data: {},
   //   position: { x: 400, y: 200 },
   // },
-  {
-    id: '5',
-    type: Type.UNSIGNED,
-    data: {},
-    position: { x: 100, y: 400 },
-  },
-  {
-    id: '6',
-    type: Type.TRIANGULATION22,
-    data: {},
-    position: { x: 100, y: 500 },
-  },
-  {
-    id: '7',
-    type: MethodName.TRIANGULATION2_REFINEGLOBAL,
-    data: {},
-    position: { x: 400, y: 400 },
-  }
+  // {
+  //   id: '5',
+  //   type: Type.TRIANGULATION22,
+  //   data: {},
+  //   position: { x: 100, y: 400 },
+  // },
+  // {
+  //   id: '6',
+  //   type: Type.UNSIGNED,
+  //   data: {},
+  //   position: { x: 100, y: 500 },
+  // },
+  // {
+  //   id: '7',
+  //   type: MethodName.TRIANGULATION2_REFINEGLOBAL,
+  //   data: {},
+  //   position: { x: 400, y: 400 },
+  // },
+  // {
+  //   id: '8',
+  //   type: Type.BOOLEAN,
+  //   data: {},
+  //   position: { x: 100, y: 300 },
+  // },
+  // {
+  //   id: '9',
+  //   type: MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2,
+  //   data: {},
+  //   position: { x: 400, y: 100 },
+  // }
 ]
 
 export const initialEdges = [

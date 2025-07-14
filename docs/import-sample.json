@@ -1,0 +1,150 @@
+{
+    "b826a7e2a606584c": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "elementary_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "unsigned",
+        "type_hash": "b826a7e2a606584c",
+        "value": "0"
+    },
+    "b826a7e2a6063644": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "elementary_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "bool",
+        "type_hash": "b826a7e2a6063644",
+        "value": "false"
+    },
+    "38efd301b92110ef": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "elementary_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "std::string",
+        "type_hash": "38efd301b92110ef",
+        "value": ""
+    },
+    "c95847e89853e6da": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "empty_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "dealii::Triangulation<2, 2>",
+        "type_hash": "c95847e89853e6da"
+    },
+    "52ebbe41807005b2GridGenerator::generate_from_name_and_arguments<2>": {
+        "arguments": [
+            {
+                "connection_type": "pass_through",
+                "name": "triangulation",
+                "type": "dealii::Triangulation<2, 2>",
+                "type_hash": "c95847e89853e6da"
+            },
+            {
+                "connection_type": "input",
+                "name": "grid_generator_function_name",
+                "type": "std::string",
+                "type_hash": "38efd301b92110ef"
+            },
+            {
+                "connection_type": "input",
+                "name": "grid_generator_function_arguments",
+                "type": "std::string",
+                "type_hash": "38efd301b92110ef"
+            }
+        ],
+        "inputs": [
+            0,
+            1,
+            2
+        ],
+        "method_name": "GridGenerator::generate_from_name_and_arguments<2>",
+        "node_type": "void_function",
+        "outputs": [
+            0
+        ],
+        "type": "void(*)(dealii::Triangulation<2, 2>&, std::string const&, std::string const&)",
+        "type_hash": "52ebbe41807005b2GridGenerator::generate_from_name_and_arguments<2>"
+    },
+    "cb40d6a582660ec8Triangulation<2>::refine_global": {
+        "arguments": [
+            {
+                "connection_type": "pass_through",
+                "name": "triangulation",
+                "type": "dealii::Triangulation<2, 2>",
+                "type_hash": "c95847e89853e6da"
+            },
+            {
+                "connection_type": "input",
+                "name": "n_refinements",
+                "type": "unsigned",
+                "type_hash": "b826a7e2a606584c"
+            }
+        ],
+        "inputs": [
+            0,
+            1
+        ],
+        "method_name": "Triangulation<2>::refine_global",
+        "node_type": "void_method",
+        "outputs": [
+            0
+        ],
+        "type": "void(dealii::Triangulation<2, 2>::*)(unsigned)",
+        "type_hash": "cb40d6a582660ec8Triangulation<2>::refine_global"
+    },
+    "d109334b934b9a76": {
+        "arguments": [],
+        "inputs": [],
+        "node_type": "empty_constructor",
+        "outputs": [
+            "self"
+        ],
+        "type": "dealii::GridOut",
+        "type_hash": "d109334b934b9a76"
+    },
+    "83fc561e6bc6214fGridOut::write_vtk<2>": {
+        "arguments": [
+            {
+                "connection_type": "input",
+                "name": "grid_out",
+                "type": "dealii::GridOut",
+                "type_hash": "d109334b934b9a76"
+            },
+            {
+                "connection_type": "input",
+                "name": "triangulation",
+                "type": "dealii::Triangulation<2, 2>",
+                "type_hash": "c95847e89853e6da"
+            },
+            {
+                "connection_type": "pass_through",
+                "name": "output_file",
+                "type": "std::ostream",
+                "type_hash": "296106717126417c"
+            }
+        ],
+        "inputs": [
+            0,
+            1,
+            2
+        ],
+        "method_name": "GridOut::write_vtk<2>",
+        "node_type": "void_const_method",
+        "outputs": [
+            2
+        ],
+        "type": "void(dealii::GridOut::*)(dealii::Triangulation<2, 2> const&, std::ostream&) const",
+        "type_hash": "83fc561e6bc6214fGridOut::write_vtk<2>"
+    }
+}

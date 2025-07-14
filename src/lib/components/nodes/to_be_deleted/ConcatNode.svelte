@@ -1,5 +1,5 @@
-<script module>
-  import type { ConcatNodeData } from '../../types/nodeTypes'
+<!-- <script module>
+  import type { ConcatNodeData } from '../../../types/nodeTypes'
   export type ConcatNodeType = Node<ConcatNodeData, 'concat'>;
   </script>
  
@@ -12,8 +12,8 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import { concatState } from '../../states/concatState.svelte'
-  import { InOutTypes } from '../../types/nodeTypes'
+  import { concatState } from '../../../states/concatState.svelte'
+  import { InOutTypes } from '../../../types/nodeTypes'
 
   let { id, data }: NodeProps<ConcatNodeType> = $props()
   data.inputsTypes = [InOutTypes.STR, InOutTypes.STR]
@@ -109,4 +109,4 @@
     padding-top: 10px;
     border-top: 1px dashed #999;
   }
-</style>
+</style> -->

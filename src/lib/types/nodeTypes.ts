@@ -1,18 +1,18 @@
-export enum InOutTypes {
-  STR = 'string',
-  BOOL = 'boolean',
-  INT = 'integer'
-}
+// export enum InOutTypes {
+//   STR = 'string',
+//   BOOL = 'boolean',
+//   INT = 'integer'
+// }
 
-export type TextNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
-export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
-export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type TextNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
+// export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
 
 export enum ConnectionType {
   INPUT = 'input',
   OUTPUT = 'output',
-  PASSTHROUGH = 'passthrough',
+  PASSTHROUGH = 'pass_through',
 }
 
 type Argument = { 
@@ -31,13 +31,15 @@ export enum Inputs {
 
 export enum MethodName {
   // NULL = null,
-  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global'
+  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
+  GRIDOUT_WRITEVTK2 = 'GridOut::write_vtk<2>',
+  GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2 = 'GridGenerator::generate_from_name_and_arguments<2>'
 }
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
-  VOID_METHOD = 'void_method',
+  METHOD = 'method',
 }
 
 export enum Outputs {
@@ -50,19 +52,25 @@ export enum Outputs {
 
 export enum Type {
   UNSIGNED = 'unsigned',
+  BOOLEAN = 'bool',
+  STRING = 'std::string',
   TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
-  VOID = 'void',
-  VOID_TRIANGULATION22_UNSIGNED = `${Type.VOID}(${Type.TRIANGULATION22})::*)(${Type.UNSIGNED})`
+  GRID_OUT = 'dealii::GridOut',
 }
 
 export type NodeData = { 
   arguments: Argument[], 
+  derived?: string[],
   inputs: Inputs[],
-  method_name: MethodName,
+  method_name?: MethodName,
   node_type: NodeType,
   outputs: Outputs[]
-  type: Type,
+  type: string,
   type_hash: string,
   value: string,
   is_valid: boolean,
+}
+
+export type ImportedNodes = {
+  [key: string]: NodeData
 }
