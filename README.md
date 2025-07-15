@@ -34,3 +34,4 @@ Only works on macOS systems
 
 ## Prettier Husky test
 this a test for husky
+more tests
