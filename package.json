@@ -29,6 +29,7 @@
     "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
     "prepare": "husky"
   },
   "devDependencies": {

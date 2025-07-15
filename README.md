@@ -31,3 +31,6 @@ Automatic linting check is done on commit with husky.
 
 Only works on macOS systems  
 `npm run make:macos`
+
+## Prettier Husky test
+this a test for husky
