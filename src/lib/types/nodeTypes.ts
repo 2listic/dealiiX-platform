@@ -8,18 +8,17 @@
 // export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
-
 export enum ConnectionType {
   INPUT = 'input',
   OUTPUT = 'output',
   PASSTHROUGH = 'pass_through',
 }
 
-type Argument = { 
-  connection_type: ConnectionType,
-  name: string,
-  type: Type,
-  type_hash: string,
+type Argument = {
+  connection_type: ConnectionType
+  name: string
+  type: Type
+  type_hash: string
 }
 
 export enum Inputs {
@@ -33,7 +32,7 @@ export enum MethodName {
   // NULL = null,
   TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
   GRIDOUT_WRITEVTK2 = 'GridOut::write_vtk<2>',
-  GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2 = 'GridGenerator::generate_from_name_and_arguments<2>'
+  GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2 = 'GridGenerator::generate_from_name_and_arguments<2>',
 }
 
 export enum NodeType {
@@ -43,7 +42,7 @@ export enum NodeType {
 }
 
 export enum Outputs {
-  SELF = "self",
+  SELF = 'self',
   ZERO = 0,
   ONE = 1,
   TWO = 2,
@@ -58,17 +57,17 @@ export enum Type {
   GRID_OUT = 'dealii::GridOut',
 }
 
-export type NodeData = { 
-  arguments: Argument[], 
-  derived?: string[],
-  inputs: Inputs[],
-  method_name?: MethodName,
-  node_type: NodeType,
+export type NodeData = {
+  arguments: Argument[]
+  derived?: string[]
+  inputs: Inputs[]
+  method_name?: MethodName
+  node_type: NodeType
   outputs: Outputs[]
-  type: string,
-  type_hash: string,
-  value: string,
-  is_valid: boolean,
+  type: string
+  type_hash: string
+  value: string
+  is_valid: boolean
 }
 
 export type ImportedNodes = {

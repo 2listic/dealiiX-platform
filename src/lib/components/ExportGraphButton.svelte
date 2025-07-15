@@ -1,7 +1,7 @@
 <script lang="ts">
   import { useNodes, useEdges } from '@xyflow/svelte'
   import { exportGraph } from '../utils/sshMessages'
- 
+
   const currentNodes = useNodes()
   const currentEdges = useEdges()
 
@@ -13,5 +13,5 @@
     }
   }
 </script>
- 
+
 <button onclick={handleUpload}>Export graph</button>

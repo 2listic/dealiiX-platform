@@ -2,8 +2,7 @@
 
 `npm install`
 
-
-# Run 
+# Run
 
 `npm run dev` to build the front-end and run the electron app in development mode
 
@@ -14,8 +13,8 @@
 
 ## Run the electron app
 
-- `npm start` to run the electron app (build front-end before), or 
-- `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).  
+- `npm start` to run the electron app (build front-end before), or
+- `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
 # Linting
 
@@ -32,5 +31,3 @@ Automatic linting check is done on commit with husky.
 
 Only works on macOS systems  
 `npm run make:macos`
-
-
