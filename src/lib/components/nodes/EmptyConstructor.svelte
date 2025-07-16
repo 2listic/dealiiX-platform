@@ -4,14 +4,9 @@
   export type GridOutType = Node<NodeData, Type.GRID_OUT>
   export type EmptyConstructorType = TriangulationType | GridOutType
 </script>
- 
+
 <script lang="ts">
-  import {
-    Handle,
-    Position,
-    type NodeProps,
-    type Node,
-  } from '@xyflow/svelte'
+  import { Handle, Position, type NodeProps, type Node } from '@xyflow/svelte'
   import { NodeType, Type } from '../../types/nodeTypes'
   import { getImportedNodesByType } from '../../states/store.svelte'
 
@@ -20,10 +15,13 @@
   const importedNodes = getImportedNodesByType(NodeType.EMPTY_CONSTRUCTOR)
   if (!importedNodes || importedNodes.length === 0) {
     data.is_valid = false
-    console.error('No imported nodes found for node_type:', NodeType.EMPTY_CONSTRUCTOR)
+    console.error(
+      'No imported nodes found for node_type:',
+      NodeType.EMPTY_CONSTRUCTOR
+    )
   } else {
     $inspect('empty_constructor, importedNodes', importedNodes)
-    const filterImportedNode = importedNodes.find((node) => node.type === type)  
+    const filterImportedNode = importedNodes.find((node) => node.type === type)
     data.arguments = $state.snapshot(filterImportedNode.arguments)
     data.inputs = $state.snapshot(filterImportedNode.inputs)
     data.node_type = $state.snapshot(filterImportedNode.node_type)
@@ -33,17 +31,17 @@
     data.is_valid = true
   }
 </script>
- 
+
 <div class="custom-node">
   <div class="label">{data.type}</div>
   <Handle id="output-self" type="source" position={Position.Right} />
 </div>
- 
+
 <style>
   .custom-node {
     padding: 10px;
     border-radius: 5px;
-    background: #EFEFEF;
+    background: #efefef;
     border: 2px solid gray;
   }
 

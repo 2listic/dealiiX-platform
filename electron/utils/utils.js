@@ -7,7 +7,7 @@ export const parseGraph = (nodes, edges) => {
     return acc
   }, {})
   const edgesGraph = edges.reduce((acc, obj, index) => {
-    acc[index+1] = {
+    acc[index + 1] = {
       source: obj.source,
       target: obj.target,
       source_output: obj.sourceHandle.split('-')[1],
@@ -19,7 +19,7 @@ export const parseGraph = (nodes, edges) => {
   return {
     workflow: {
       nodes: nodesGraph,
-      edges: edgesGraph
+      edges: edgesGraph,
     },
     version: 1,
     author: 'name',

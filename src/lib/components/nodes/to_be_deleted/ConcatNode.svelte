@@ -26,7 +26,9 @@
     return nodeData?.data?.value || ''
   }
 
-  const getConnectedNodeText = (targetHandle: string, allEdges: any[], allNodes: Node[]) => {
+  const getConnectedNodeText = (
+    targetHandle: string, allEdges: any[], allNodes: Node[]
+  ) => {
     // Find edges that connect to this node's specific handle
     const connectedEdge = allEdges.find(edge => 
       edge.target === id && edge.targetHandle === targetHandle
@@ -40,9 +42,15 @@
     return getTextFromNode(sourceNode)
   }
   
-  let topText = $derived(getConnectedNodeText('input-0', edges.current, nodes.current))
-  let bottomText = $derived(getConnectedNodeText('input-1', edges.current, nodes.current))
-  let command = $derived(topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText)
+  let topText = $derived(
+    getConnectedNodeText('input-0', edges.current, nodes.current)
+  )
+  let bottomText = $derived(
+    getConnectedNodeText('input-1', edges.current, nodes.current)
+  )
+  let command = $derived(
+    topText && bottomText ? topText + ' && ' + bottomText : topText + bottomText
+  )
   // Then use an effect to update the state when the derived value changes
   $effect(() => {
     data.value = command

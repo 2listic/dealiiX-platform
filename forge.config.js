@@ -27,9 +27,9 @@ module.exports = {
       name: '@electron-forge/maker-dmg',
       config: {
         background: './assets/coral.jpg',
-        format: 'ULFO'
-      }
-    }
+        format: 'ULFO',
+      },
+    },
   ],
   plugins: [
     {

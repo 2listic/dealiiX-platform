@@ -1,38 +1,49 @@
 # Changelog
+
 See [docs/changelog-template.md](docs/changelog-template.md) for formatting your changelog.
 
 ## [Unreleased]
+
 ### Documentation
+
 - [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
 
 ### Canvas-graph
+
 - [#29](https://github.com/2listic/dealiiX-platform/pull/29) Added new nodes: std string, gridGenerator generate_from_name_and_arguments function, gridOut constructor, write_vtk method and bool. Nodes are rendered now more dinamically with a declarative approach based on the type of the node and the corrsponding information provided in the uploaded JSON file.
 - [#27](https://github.com/2listic/dealiiX-platform/pull/27) Added first new real Deal.II nodes: Unsigned, Triangulation<2,2> and Triangulation<2>::refine_global. Also included validation for new connections, validation for Unsigned internal values, drag&drop functionality and a bug fix on node id generation.
 - [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
 - Initial nodes and edges with string concatenation
 
 ### Canvas-UI
+
 - [#29](https://github.com/2listic/dealiiX-platform/pull/29) A default set of nodes are displayed in the top horizontal bar when the application starts. A new botton allows to upload a JSON file to update the set of nodes available.
-A bug fix is included to fix the behaviour of the incremental arrows in the unsigned node.
+  A bug fix is included to fix the behaviour of the incremental arrows in the unsigned node.
 - [#24](https://github.com/2listic/dealiiX-platform/pull/24) Added a toolbar with drag and drop functionality to add new nodes. Added functionality to generate unique and incremental ids for new nodes.
 - Buttons to run concatenated command via SSH on server
 - [#9](https://github.com/2listic/dealiiX-platform/pull/9) Button to export and upload graph to server
 
 ### Backend
+
 - Electron setup with IPC communication
 
 ### SSH
+
 - SSH command execution via password and private key
 - SSH file writing via private key
 
 ### Project-Structure
+
+- [#34](https://github.com/2listic/dealiiX-platform/pull/34) Add prettier and automatic formatting on commit
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
 - [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
 
 ### Building
+
 - [#12](https://github.com/2listic/dealiiX-platform/pull/12) Add electron-forge
 - [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
 - [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
 
 ### Testing
-- 
+
+-

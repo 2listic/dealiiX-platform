@@ -17,7 +17,7 @@ export const onDrop = (
   if (!type.current) {
     return
   }
-  
+
   const position = screenToFlowPosition({
     x: event.clientX,
     y: event.clientY,
