@@ -42,3 +42,4 @@ jobs:
           path: |
             out/make/*.dmg
             out/make/*.zip
+          retention-days: 1
