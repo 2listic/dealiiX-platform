@@ -19,9 +19,9 @@ module.exports = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          icon: '/electron/assets/coral-orange.png'
-        }
-      }
+          icon: '/electron/assets/coral-orange.png',
+        },
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
