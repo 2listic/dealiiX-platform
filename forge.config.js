@@ -17,7 +17,11 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        options: {
+          icon: '/electron/assets/coral-orange.png'
+        }
+      }
     },
     {
       name: '@electron-forge/maker-rpm',
@@ -26,7 +30,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-dmg',
       config: {
-        background: './assets/coral.jpg',
+        background: '/electron/assets/coral-white.png',
         format: 'ULFO',
       },
     },
