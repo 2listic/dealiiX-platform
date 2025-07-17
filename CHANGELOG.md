@@ -34,6 +34,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#35](https://github.com/2listic/dealiiX-platform/pull/35) Update icon and title of the .deb distributable
 - [#34](https://github.com/2listic/dealiiX-platform/pull/34) Add prettier and automatic formatting on commit
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
 - [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit

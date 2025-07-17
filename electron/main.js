@@ -18,8 +18,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: path.join(__dirname, '/assets/coral-orange.png'),
     webPreferences: {
-      preload: path.join(__dirname, '../electron/preload.js'),
+      preload: path.join(__dirname, '/preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,

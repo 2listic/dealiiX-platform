@@ -2,7 +2,7 @@
 
 `npm install`
 
-# Run
+# Use
 
 `npm run dev` to build the front-end and run the electron app in development mode
 
@@ -16,7 +16,7 @@
 - `npm start` to run the electron app (build front-end before), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
-# Code quality
+# Development
 
 ### Linting
 
@@ -44,3 +44,7 @@ Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husk
 
 Only works on macOS systems  
 `npm run make:macos`
+
+# License
+
+Coral svg free icon by [SVG Repo](https://www.svgrepo.com/svg/170626/coral) with color modifications.
