@@ -1,5 +1,3 @@
-TODO before merge:
-
-This closes #
+Closes #
 
 - [ ] Update CHANGELOG

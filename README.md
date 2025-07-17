@@ -45,6 +45,17 @@ Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husk
 Only works on macOS systems  
 `npm run make:macos`
 
+# CI/CD
+
+### GitHub Actions
+
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory. The workflows are triggered on push to the main branch and on pull requests to the main branch.  
+Retention limit is set for artifacts to 1 day apart from the ones that are tagged with a version number.
+
+### Pull request template
+
+A pull request template is defined at [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
+
 # License
 
 Coral svg free icon by [SVG Repo](https://www.svgrepo.com/svg/170626/coral) with color modifications.
