@@ -44,11 +44,11 @@
 
   const { updateNodeData } = useSvelteFlow()
 
-    // let nodes = useNodes()
-    // $effect(() => {
-    //   console.log(nodes.current)
-    //   console.log(data)
-    // })
+  // let nodes = useNodes()
+  // $effect(() => {
+  //   console.log(nodes.current)
+  //   console.log(data)
+  // })
 </script>
 
 <div class="custom-node">
