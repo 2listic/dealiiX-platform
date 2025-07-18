@@ -40,9 +40,9 @@ Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husk
 
 1. Run the app with `npm start:debug`
 2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
-3. A new window will open, add breakpoints in the Sources tab and start debugging 
+3. A new window will open, add breakpoints in the Sources tab and start debugging
 
-For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code  
+For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code
 
 ### Debugging Svelte
 
