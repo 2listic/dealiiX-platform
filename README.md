@@ -34,6 +34,20 @@ Prettier is used for formatting. Run the following to format the code or use you
 If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
 Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
 
+### Debugging Electron
+
+#### Using Chrome
+
+1. Run the app with `npm start:debug`
+2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
+3. A new window will open, add breakpoints in the Sources tab and start debugging 
+
+For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code  
+
+### Debugging Svelte
+
+Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
+
 # Packaging
 
 ### Linux

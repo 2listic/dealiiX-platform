@@ -22,6 +22,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "electron .",
+    "start:debug": "electron . --inspect=9229",
     "start:forge": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
