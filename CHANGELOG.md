@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#42](https://github.com/2listic/dealiiX-platform/pull/42) Add debugging instructions for Electron and Svelte
 - [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
 
 ### Canvas-graph
