@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#38](https://github.com/2listic/dealiiX-platform/pull/39) Add Git Hub section to the readme file. Update the pull request template.
 - [#42](https://github.com/2listic/dealiiX-platform/pull/42) Add debugging instructions for Electron and Svelte
 - [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
 
@@ -47,6 +48,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#12](https://github.com/2listic/dealiiX-platform/pull/12) Add electron-forge
 - [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
 - [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
+
+### CI/CD
+
+- [#38](https://github.com/2listic/dealiiX-platform/pull/37) Distributables are now created for tagged versions only
 
 ### Testing
 
