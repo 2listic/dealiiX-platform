@@ -50,7 +50,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
-- [#38](https://github.com/2listic/dealiiX-platform/pull/37) Set retention period for artifacts to 1 day except for tagged versions
+- [#38](https://github.com/2listic/dealiiX-platform/pull/37) Distributables are now created for tagged versions only
 
 ### Testing
 
