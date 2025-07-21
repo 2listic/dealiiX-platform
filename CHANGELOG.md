@@ -24,14 +24,15 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - Buttons to run concatenated command via SSH on server
 - [#9](https://github.com/2listic/dealiiX-platform/pull/9) Button to export and upload graph to server
 
-### Backend
+### Electron-Backend
 
 - Electron setup with IPC communication
-
-### SSH
-
 - SSH command execution via password and private key
 - SSH file writing via private key
+
+### Remote-Server
+
+-
 
 ### Project-Structure
 
