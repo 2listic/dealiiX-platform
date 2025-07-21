@@ -35,10 +35,13 @@ jobs:
           npx electron-forge import
           npx electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg
 
-      - name: Upload macOS app as artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload .deb to GitHub Release (only on tag)
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: electron-app-macos
-          path: |
+          files: |
             out/make/*.dmg
             out/make/*.zip
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
