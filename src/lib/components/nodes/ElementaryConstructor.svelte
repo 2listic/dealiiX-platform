@@ -31,7 +31,7 @@
       NodeType.ELEMENTARY_CONSTRUCTOR
     )
   } else {
-    $inspect('elementary_constructor, importedNodes', importedNodes)
+    // $inspect('elementary_constructor, importedNodes', importedNodes)
     const filterImportedNode = importedNodes.find((node) => node.type === type)
     data.arguments = $state.snapshot(filterImportedNode.arguments)
     data.inputs = $state.snapshot(filterImportedNode.inputs)
@@ -44,12 +44,14 @@
 
   const { updateNodeData } = useSvelteFlow()
 
-    // let nodes = useNodes()
-    // $effect(() => {
-    //   console.log(nodes.current)
-    //   console.log(data)
-    // })
+  // let nodes = useNodes()
+  // $effect(() => {
+  //   console.log(nodes.current)
+  //   console.log(data)
+  // })
 </script>
+
+{@debug importedNodes}
 
 <div class="custom-node">
   <div class="label">{data.type}</div>
