@@ -63,8 +63,7 @@ Only works on macOS systems
 
 ### GitHub Actions
 
-The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory. The workflows are triggered on push to the main branch and on pull requests to the main branch.  
-Retention limit is set for artifacts to 1 day apart from the ones that are tagged with a version number.
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory.
 
 ### Pull request template
 
