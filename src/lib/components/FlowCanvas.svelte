@@ -40,6 +40,7 @@
   import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { MethodName, Type } from '../types/nodeTypes'
+  // import { login } from '../utils/login'
 
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
@@ -78,6 +79,7 @@
         <div class="export-button-container">
           <!-- <button onclick={executeWithPassword}>Execute with password</button>
           <button onclick={executeWithKey}>Execute with key</button> -->
+          <!-- <button onclick={login}>Login</button> -->
           <ExportGraphButton />
         </div>
         <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
