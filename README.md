@@ -59,6 +59,16 @@ Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://
 Only works on macOS systems  
 `npm run make:macos`
 
+# CI/CD
+
+### GitHub Actions
+
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory.
+
+### Pull request template
+
+A pull request template is defined at [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
+
 # License
 
 Coral svg free icon by [SVG Repo](https://www.svgrepo.com/svg/170626/coral) with color modifications.
