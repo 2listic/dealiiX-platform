@@ -9,7 +9,7 @@ export const parseGraph = (nodes, edges) => {
     return acc
   }, {})
   const edgesGraph = edges.reduce((acc, obj, index) => {
-    acc[index + 1] = {
+    acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
       source_output: parseInt(obj.sourceHandle.split('-')[1]),

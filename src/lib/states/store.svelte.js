@@ -11,7 +11,7 @@ export const setEdges = (newEdges) => (edges = newEdges)
 
 const maxId = initialNodes.reduce(
   (max, node) => Math.max(max, parseInt(node.id)),
-  0
+  -1
 )
 let lastNodeId = $state(maxId)
 export const getNextNodeId = () => {
