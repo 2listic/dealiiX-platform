@@ -12,12 +12,12 @@
     "arguments": [],
     "inputs": [],
     "node_type": "elementary_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "std::string",
     "type_hash": "38efd301b92110ef",
-    "value": ""
+    "value": "\"\""
   },
-  "52ebbe41807005b2GridGenerator::generate_from_name_and_arguments<2>": {
+  "e33bf3b92310db94GridGenerator::generate_from_name_and_arguments<2>": {
     "arguments": [
       {
         "connection_type": "pass_through",
@@ -42,8 +42,8 @@
     "method_name": "GridGenerator::generate_from_name_and_arguments<2>",
     "node_type": "void_function",
     "outputs": [0],
-    "type": "void(*)(dealii::Triangulation<2, 2>&, std::string const&, std::string const&)",
-    "type_hash": "52ebbe41807005b2GridGenerator::generate_from_name_and_arguments<2>"
+    "type": "std::function<void(dealii::Triangulation<2, 2>&, std::string const&, std::string const&)>",
+    "type_hash": "e33bf3b92310db94GridGenerator::generate_from_name_and_arguments<2>"
   },
   "83fc561e6bc6214fGridOut::write_vtk<2>": {
     "arguments": [
@@ -84,7 +84,7 @@
     ],
     "inputs": [0],
     "node_type": "constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "dealii::DoFHandler<2, 2>",
     "type_hash": "9e94b68ea2e5816f"
   },
@@ -100,7 +100,7 @@
     "base": "296106717126417c",
     "inputs": [0],
     "node_type": "constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "std::basic_ofstream<char>",
     "type_hash": "9ea8b452edfba41d"
   },
@@ -108,16 +108,16 @@
     "arguments": [],
     "inputs": [],
     "node_type": "elementary_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "double",
     "type_hash": "b826a7e2a6061e42",
-    "value": "0"
+    "value": "0.0"
   },
   "b826a7e2a6063644": {
     "arguments": [],
     "inputs": [],
     "node_type": "elementary_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "bool",
     "type_hash": "b826a7e2a6063644",
     "value": "false"
@@ -126,7 +126,7 @@
     "arguments": [],
     "inputs": [],
     "node_type": "elementary_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "unsigned",
     "type_hash": "b826a7e2a606584c",
     "value": "0"
@@ -135,7 +135,7 @@
     "arguments": [],
     "inputs": [],
     "node_type": "elementary_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "int",
     "type_hash": "b826a7e2a60664cf",
     "value": "0"
@@ -144,7 +144,7 @@
     "arguments": [],
     "inputs": [],
     "node_type": "empty_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "dealii::Triangulation<2, 2>",
     "type_hash": "c95847e89853e6da"
   },
@@ -174,7 +174,7 @@
     "arguments": [],
     "inputs": [],
     "node_type": "empty_constructor",
-    "outputs": ["self"],
+    "outputs": [-1],
     "type": "dealii::GridOut",
     "type_hash": "d109334b934b9a76"
   }

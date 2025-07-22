@@ -48,13 +48,13 @@ const isValidConnection = (connection) => {
 
   // Check if the source type matches the target handle type
   const targetNode = nodes.find((node) => node.id === connection.target)
-  const handleIndexOutput = connection.sourceHandle.split('-')[1]
+  const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
+  const sourceIndexOutput = sourceNode.data.outputs[handleIndexOutput]
   let sourceType
-  if (handleIndexOutput === Outputs.SELF) {
+  if (sourceIndexOutput === Outputs.SELF) {
     sourceType = sourceNode.data.type
   } else {
-    const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
-    sourceType = sourceNode.data.arguments[handleIndexOutput].type
+    sourceType = sourceNode.data.arguments[sourceIndexOutput].type
   }
   const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
   const expectedInputType = targetNode.data.arguments[handleIndexInput].type

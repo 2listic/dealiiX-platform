@@ -2,16 +2,18 @@ export const parseGraph = (nodes, edges) => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
+      value:
+        obj.type === 'std::string' ? `"${obj.data.value}"` : obj.data.value,
       // xy_flow_obj: obj,
     }
     return acc
   }, {})
   const edgesGraph = edges.reduce((acc, obj, index) => {
     acc[index + 1] = {
-      source: obj.source,
-      target: obj.target,
-      source_output: obj.sourceHandle.split('-')[1],
-      target_input: obj.targetHandle.split('-')[1],
+      source: parseInt(obj.source),
+      target: parseInt(obj.target),
+      source_output: parseInt(obj.sourceHandle.split('-')[1]),
+      target_input: parseInt(obj.targetHandle.split('-')[1]),
       // xy_flow_obj: obj
     }
     return acc
@@ -22,7 +24,7 @@ export const parseGraph = (nodes, edges) => {
       edges: edgesGraph,
     },
     version: 1,
-    author: 'name',
+    author: 'dealiix-platform',
     date_time_utc: new Date().toISOString(),
   }
 }
