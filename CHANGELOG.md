@@ -35,6 +35,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 -
 
+### Protocol
+
+- [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for statefull nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
+
 ### Project-Structure
 
 - [#41](https://github.com/2listic/dealiiX-platform/pull/41) Add Prettier plugin for Svelte

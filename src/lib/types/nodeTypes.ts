@@ -42,11 +42,7 @@ export enum NodeType {
 }
 
 export enum Outputs {
-  SELF = 'self',
-  ZERO = 0,
-  ONE = 1,
-  TWO = 2,
-  THREE = 3,
+  SELF = -1,
 }
 
 export enum Type {

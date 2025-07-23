@@ -44,24 +44,24 @@
 </script>
 
 <div class="custom-node">
-  {#each data.inputs as i (i)}
+  {#each data.inputs as i, index (i)}
     <Handle
-      id={`input-${i}`}
+      id={`input-${index}`}
       type="target"
       position={Position.Left}
-      style="top: {(100 / (data.inputs.length + 1)) * (i + 1) + 5}%;"
+      style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
     />
   {/each}
-  {#each data.outputs as i (i)}
-    <Handle id={`output-${i}`} type="source" position={Position.Right} />
+  {#each data.outputs as i, index (i)}
+    <Handle id={`output-${index}`} type="source" position={Position.Right} />
   {/each}
 
   <div class="label">{type}</div>
   <div style="display: flex; flex-direction: row; gap: 2vh">
     <div class="input-column">
-      {#each data.inputs as i (i)}
+      {#each data.inputs as i, index (i)}
         <div class="input-label">
-          Input {i}
+          Input {index}
           {data.arguments[i].connection_type === ConnectionType.PASSTHROUGH
             ? '/ Output'
             : ''}

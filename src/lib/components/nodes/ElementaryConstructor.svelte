@@ -94,7 +94,9 @@
       <span>{data.value === 'true' ? 'true' : 'false'}</span>
     {/if}
   </div>
-  <Handle id="output-self" type="source" position={Position.Right} />
+  {#each data.outputs as i, index (i)}
+    <Handle id={`output-${index}`} type="source" position={Position.Right} />
+  {/each}
 </div>
 
 <style>
