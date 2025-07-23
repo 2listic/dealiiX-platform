@@ -15,7 +15,7 @@
     "outputs": [-1],
     "type": "std::string",
     "type_hash": "38efd301b92110ef",
-    "value": "\"\""
+    "value": ""
   },
   "e33bf3b92310db94GridGenerator::generate_from_name_and_arguments<2>": {
     "arguments": [

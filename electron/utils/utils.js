@@ -2,8 +2,6 @@ export const parseGraph = (nodes, edges) => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
-      value:
-        obj.type === 'std::string' ? `"${obj.data.value}"` : obj.data.value,
       // xy_flow_obj: obj,
     }
     return acc

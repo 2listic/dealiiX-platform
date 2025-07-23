@@ -8,7 +8,7 @@
         "outputs": [-1],
         "type": "std::string",
         "type_hash": "38efd301b92110ef",
-        "value": "\"hyper_cube\"",
+        "value": "hyper_cube",
         "is_valid": true
       },
       "2": {
@@ -27,7 +27,7 @@
         "outputs": [-1],
         "type": "std::string",
         "type_hash": "38efd301b92110ef",
-        "value": "\"0: 1: false\"",
+        "value": "0: 1: false",
         "is_valid": true
       },
       "4": {

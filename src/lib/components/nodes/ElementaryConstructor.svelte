@@ -39,15 +39,6 @@
     data.outputs = $state.snapshot(filterImportedNode.outputs)
     data.type = $state.snapshot(filterImportedNode.type)
     data.type_hash = $state.snapshot(filterImportedNode.type_hash)
-    let initialValue = $state.snapshot(filterImportedNode.value)
-    if (
-      data.type === Type.STRING &&
-      initialValue.charAt(0) === '"' &&
-      initialValue.charAt(initialValue.length - 1) === '"'
-    ) {
-      initialValue = initialValue.substr(1, initialValue.length - 2)
-    }
-    data.value = initialValue
     data.is_valid = true
   }
 
