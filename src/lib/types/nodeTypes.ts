@@ -41,6 +41,12 @@ export enum NodeType {
   METHOD = 'method',
 }
 
+export const nodeColors = {
+  [NodeType.ELEMENTARY_CONSTRUCTOR]: 'yellowgreen',
+  [NodeType.METHOD]: 'skyblue',
+  [NodeType.EMPTY_CONSTRUCTOR]: 'gray',
+}
+
 export enum Outputs {
   SELF = -1,
 }
@@ -62,8 +68,8 @@ export type NodeData = {
   outputs: Outputs[]
   type: string
   type_hash: string
-  value: string
-  is_valid: boolean
+  value?: string
+  is_valid?: boolean
 }
 
 export type ImportedNodes = {

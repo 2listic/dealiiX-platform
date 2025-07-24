@@ -1,11 +1,14 @@
 <script lang="ts">
-  import { setImportedNodes } from '../../states/store.svelte'
+  import { getImportedNodes, setImportedNodes } from '../../states/store.svelte'
   import { useDnD } from '../DnDProvider.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
-  import type { ImportedNodes } from '../../types/nodeTypes'
+  import { nodeColors, type NodeData } from '../../types/nodeTypes'
 
-  let importedNodes: ImportedNodes | {} = $state(defaultNodes)
-  setImportedNodes(defaultNodes)
+  if (defaultNodes) {
+    // TODO: add stantilization checks (i.e. empty object) and move into separate function
+    setImportedNodes(defaultNodes)
+  }
+  const availableNodesByType = getImportedNodes()
 
   const type = useDnD()
 
@@ -22,7 +25,7 @@
     if (file == null) {
       return
     }
-    importedNodes = await readJsonFile(file)
+    const importedNodes = await readJsonFile(file) // TODO: add sanitization checks
     setImportedNodes(importedNodes)
   }
 
@@ -35,8 +38,12 @@
     })
   }
 
-  const returnNodeType = (node) =>
-    'method_name' in node ? node.method_name : node.type
+  const returnNodeType = (node) => {
+    return 'method_name' in node ? node.method_name : node.type
+  }
+  const returnNodeColor = (nodeTypeName) => {
+    return nodeColors[nodeTypeName]
+  }
 </script>
 
 <aside>
@@ -47,19 +54,21 @@
     <input type="file" onchange={onFileChange} accept=".json" />
   </div>
   <div class="nodes-container">
-    {#if importedNodes}
-      {#each Object.keys(importedNodes) as nodeId (nodeId)}
-        <div
-          role="option"
-          aria-selected="false"
-          tabindex="0"
-          class="node"
-          ondragstart={(event) =>
-            onDragStart(event, returnNodeType(importedNodes[nodeId]))}
-          draggable={true}
-        >
-          {returnNodeType(importedNodes[nodeId])}
-        </div>
+    {#if availableNodesByType}
+      {#each Object.entries(availableNodesByType) as [nodeTypeName, arrNodesByType] (nodeTypeName)}
+        {#each arrNodesByType as Array<NodeData> as node (node)}
+          <div
+            style="--borderColor: {returnNodeColor(nodeTypeName)}"
+            role="option"
+            aria-selected="false"
+            tabindex="0"
+            class="node"
+            ondragstart={(event) => onDragStart(event, returnNodeType(node))}
+            draggable={true}
+          >
+            {returnNodeType(node)}
+          </div>
+        {/each}
       {/each}
     {/if}
   </div>
@@ -93,8 +102,10 @@
   .node {
     border: 1px solid #111;
     padding: 0.5rem 1rem;
-    font-weight: 700;
+    font-weight: bold;
     border-radius: 5px;
     cursor: grab;
+    border: 2px solid var(--borderColor, gray);
+    /* border-color: var(--borderColor, gray); */
   }
 </style>
