@@ -63,7 +63,9 @@
 </script>
 
 <div class="flow-container">
-  <Sidebar />
+  <div class="sidebar-wrapper">
+    <Sidebar />
+  </div>
   <div class="flow-wrapper">
     <SvelteFlow
       bind:nodes={getNodes, setNodes}
@@ -101,13 +103,17 @@
 <style>
   .flow-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 100vh;
   }
 
+  .sidebar-wrapper {
+    flex: 1; /* Takes 1 part of the remaining space */
+  }
   .flow-wrapper {
-    flex: 1; /* Takes remaining space after Sidebar */
+    flex: 4; /* Takes 4 parts of the remaining space */
     min-height: 0; /* Allows flex item to shrink below content size */
+    height: 100vh;
   }
 
   .export-button-container {

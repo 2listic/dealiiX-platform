@@ -40,7 +40,7 @@
 </script>
 
 <aside>
-  <div class="nodes-container">
+  <div>
     <div class="label">
       Upload an import file to load the nodes to be drag in the canvas below.
     </div>
@@ -67,14 +67,12 @@
 
 <style>
   aside {
-    width: 100%;
+    height: 100vh;
     background: #efefef;
-    padding: 1rem;
     font-size: 12px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
   }
 
   .label {
@@ -86,7 +84,9 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    overflow-y: scroll;
     gap: 1rem;
+    padding: 1rem;
     margin-top: 1rem;
   }
 
