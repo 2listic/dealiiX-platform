@@ -35,7 +35,6 @@
   } from '../states/store.svelte'
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
-  import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { MethodName, Type } from '../types/nodeTypes'
@@ -76,7 +75,6 @@
       <!-- <button onclick={executeWithPassword}>Execute with password</button>
           <button onclick={executeWithKey}>Execute with key</button> -->
       <!-- <button onclick={login}>Login</button> -->
-      <!-- <ExportGraphButton /> -->
     </div>
     <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
   </Panel>
