@@ -1,8 +1,9 @@
 body {
   margin: 0;
+  font-family: sans-serif;
 }
 
-button {
+/* button {
   background-color: white;
   border: 1px solid #ccc;
   padding: 1em;
@@ -21,4 +22,4 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
+} */

@@ -8,7 +8,7 @@
     // TODO: add stantilization checks (i.e. empty object) and move into separate function
     setImportedNodes(defaultNodes)
   }
-  const availableNodesByType = getImportedNodes()
+  const availableNodesByType = $derived(getImportedNodes())
 
   const type = useDnD()
 
@@ -20,24 +20,6 @@
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const onFileChange = async (e) => {
-    const file = e.target.files[0]
-    if (file == null) {
-      return
-    }
-    const importedNodes = await readJsonFile(file) // TODO: add sanitization checks
-    setImportedNodes(importedNodes)
-  }
-
-  const readJsonFile = (file) => {
-    const reader = new FileReader()
-    return new Promise((resolve, reject) => {
-      reader.onload = () => resolve(JSON.parse(reader.result as string))
-      reader.onerror = reject
-      reader.readAsText(file)
-    })
-  }
-
   const returnNodeType = (node) => {
     return 'method_name' in node ? node.method_name : node.type
   }
@@ -47,12 +29,6 @@
 </script>
 
 <aside>
-  <div>
-    <div class="label">
-      Upload an import file to load the nodes to be drag in the canvas below.
-    </div>
-    <input type="file" onchange={onFileChange} accept=".json" />
-  </div>
   <div class="nodes-container">
     {#if availableNodesByType}
       <!-- TODO: move into separate function -->
@@ -79,14 +55,7 @@
   aside {
     height: 100vh;
     background: #efefef;
-    font-size: 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
-
-  .label {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
 
   .nodes-container {
@@ -96,16 +65,21 @@
     justify-content: center;
     overflow-y: auto; /* Vertical scrollbar only when overflowing */
     gap: 1rem;
-    padding: 1rem;
-    margin-top: 1rem;
+    padding: 2rem 1rem;
   }
 
   .node {
     padding: 0.5rem 1rem;
-    font-weight: bold;
     border-radius: 5px;
     cursor: grab;
-    border: 2px solid var(--borderColor, gray);
+    border: 1px solid var(--borderColor, gray);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    /* transition: background-color 0.2s ease; */
+    background-color: white;
+  }
+
+  .node:hover {
     /* background-color: white; */
+    border-color: #646cff;
   }
 </style>
