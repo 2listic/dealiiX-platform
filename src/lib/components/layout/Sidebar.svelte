@@ -55,6 +55,7 @@
   </div>
   <div class="nodes-container">
     {#if availableNodesByType}
+      <!-- TODO: move into separate function -->
       {#each Object.entries(availableNodesByType) as [nodeTypeName, arrNodesByType] (nodeTypeName)}
         {#each arrNodesByType as Array<NodeData> as node (node)}
           <div
@@ -106,6 +107,6 @@
     border-radius: 5px;
     cursor: grab;
     border: 2px solid var(--borderColor, gray);
-    /* border-color: var(--borderColor, gray); */
+    /* background-color: white; */
   }
 </style>
