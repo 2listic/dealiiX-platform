@@ -37,7 +37,6 @@
   import { isValidConnection } from '../utils/connectionsValidation'
   import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
-  import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { MethodName, Type } from '../types/nodeTypes'
   // import { login } from '../utils/login'
@@ -62,60 +61,36 @@
   }
 </script>
 
-<div class="flow-container">
-  <div class="sidebar-wrapper">
-    <Sidebar />
-  </div>
-  <div class="flow-wrapper">
-    <SvelteFlow
-      bind:nodes={getNodes, setNodes}
-      bind:edges={getEdges, setEdges}
-      {nodeTypes}
-      {edgeTypes}
-      fitView
-      {isValidConnection}
-      ondragover={onDragOver}
-      ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
-    >
-      <Panel position="top-left">
-        <div class="export-button-container">
-          <!-- <button onclick={executeWithPassword}>Execute with password</button>
+<SvelteFlow
+  bind:nodes={getNodes, setNodes}
+  bind:edges={getEdges, setEdges}
+  {nodeTypes}
+  {edgeTypes}
+  fitView
+  {isValidConnection}
+  ondragover={onDragOver}
+  ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
+>
+  <Panel position="top-left">
+    <div class="export-button-container">
+      <!-- <button onclick={executeWithPassword}>Execute with password</button>
           <button onclick={executeWithKey}>Execute with key</button> -->
-          <!-- <button onclick={login}>Login</button> -->
-          <ExportGraphButton />
-        </div>
-        <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
-          -
-        </div>
-      </Panel>
-      <Panel position="top-right">
-        <div class="custom-panel">
-          number of nodes: {idCounter}
-        </div>
-      </Panel>
-      <Controls />
-      <MiniMap />
-      <Background />
-    </SvelteFlow>
-  </div>
-</div>
+      <!-- <button onclick={login}>Login</button> -->
+      <ExportGraphButton />
+    </div>
+    <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
+  </Panel>
+  <Panel position="top-right">
+    <div class="custom-panel">
+      number of nodes: {idCounter}
+    </div>
+  </Panel>
+  <Controls />
+  <MiniMap />
+  <Background />
+</SvelteFlow>
 
 <style>
-  .flow-container {
-    display: flex;
-    flex-direction: row;
-    height: 100vh;
-  }
-
-  .sidebar-wrapper {
-    flex: 1; /* Takes 1 part of the remaining space */
-  }
-  .flow-wrapper {
-    flex: 4; /* Takes 4 parts of the remaining space */
-    min-height: 0; /* Allows flex item to shrink below content size */
-    height: 100vh;
-  }
-
   .export-button-container {
     display: flex;
     flex-wrap: wrap;

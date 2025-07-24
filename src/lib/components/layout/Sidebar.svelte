@@ -94,14 +94,13 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    overflow-y: scroll;
+    overflow-y: auto; /* Vertical scrollbar only when overflowing */
     gap: 1rem;
     padding: 1rem;
     margin-top: 1rem;
   }
 
   .node {
-    border: 1px solid #111;
     padding: 0.5rem 1rem;
     font-weight: bold;
     border-radius: 5px;
