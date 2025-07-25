@@ -23,6 +23,7 @@
     Controls,
     Panel,
     useSvelteFlow,
+    type ColorModeClass,
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
@@ -43,7 +44,7 @@
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
 
-  let idCounter = $derived(getNodes().length)
+  // let idCounter = $derived(getNodes().length)
 
   const nodeTypes: NodeTypes = {
     [Type.UNSIGNED]: ElementaryConstructor,
@@ -58,6 +59,24 @@
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
+
+  let colorMode: ColorModeClass = $state('light')
+
+  const onColorModeChange = async (e) => {
+    const newMode = e.target.value
+    // @ts-ignore
+    if (window.electron) {
+      // @ts-ignore
+      const actualTheme = await window.electron.invoke('set-theme', newMode)
+      console.log('Electron theme: ', actualTheme)
+    }
+    if (newMode === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    console.log('Browser theme', newMode)
+  }
 </script>
 
 <SvelteFlow
@@ -69,6 +88,7 @@
   {isValidConnection}
   ondragover={onDragOver}
   ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
+  {colorMode}
 >
   <Panel position="top-left">
     <div class="export-button-container">
@@ -79,9 +99,17 @@
     <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
   </Panel>
   <Panel position="top-right">
-    <div class="custom-panel">
-      number of nodes: {idCounter}
-    </div>
+    <!-- <div class="custom-panel">
+      Number of nodes: {idCounter}
+    </div> -->
+    <select
+      class="custom-panel"
+      bind:value={colorMode}
+      onchange={onColorModeChange}
+    >
+      <option value="light">Light mode</option>
+      <option value="dark">Dark mode</option>
+    </select>
   </Panel>
   <Controls />
   <MiniMap />
@@ -100,8 +128,8 @@
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 10px;
-    margin-top: 1px;
+    padding: 1vh;
+    margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     font-size: 1.5em;
     color: #333;

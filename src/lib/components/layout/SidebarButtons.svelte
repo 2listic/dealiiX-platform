@@ -1,7 +1,5 @@
 <script lang="ts">
   import { setImportedNodes } from '../../states/store.svelte'
-  import exportIcon from '@assets/upload-minimalistic.svg'
-  import importIcon from '@assets/import.svg'
   import { useNodes, useEdges } from '@xyflow/svelte'
   import { exportGraph } from '../../utils/sshMessages'
 
@@ -37,12 +35,29 @@
 
 <aside>
   <div class="button-group">
-    <label
-      for="export-graph"
-      class="file-upload-label"
-      title="Export JSON graph"
-    >
-      <img class="icon" src={exportIcon} alt="Export graph" />
+    <label for="export-graph" class="element-label" title="Export JSON graph">
+      <svg
+        width="3vh"
+        height="3vh"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M3 15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15"
+          stroke="var(--text-color)"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M12 16V3M12 3L16 7.375M12 3L8 7.375"
+          stroke="var(--text-color)"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
     </label>
     <button
       id="export-graph"
@@ -55,10 +70,27 @@
   <div class="button-group">
     <label
       for="file-upload"
-      class="file-upload-label"
+      class="element-label"
       title="Import nodes from JSON file"
     >
-      <img class="icon" src={importIcon} alt="Import nodes" />
+      <svg
+        width="3vh"
+        height="3vh"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M12 14L11.2929 14.7071L12 15.4142L12.7071 14.7071L12 14ZM13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44771 11 5L13 5ZM6.29289 9.70711L11.2929 14.7071L12.7071 13.2929L7.70711 8.29289L6.29289 9.70711ZM12.7071 14.7071L17.7071 9.70711L16.2929 8.29289L11.2929 13.2929L12.7071 14.7071ZM13 14L13 5L11 5L11 14L13 14Z"
+          fill="var(--text-color)"
+          stroke-width="2.5"
+        />
+        <path
+          d="M5 16L5 17C5 18.1046 5.89543 19 7 19L17 19C18.1046 19 19 18.1046 19 17V16"
+          stroke="var(--text-color)"
+          stroke-width="2.5"
+        />
+      </svg>
     </label>
     <input
       id="file-upload"
@@ -74,7 +106,7 @@
 <style>
   aside {
     height: 100vh;
-    background: white;
+    background: var(--primary-color);
     font-size: 12px;
     display: flex;
     flex-direction: column;
@@ -89,32 +121,27 @@
     padding: 1rem;
   }
 
-  .file-upload-label {
+  .element-label {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 50px;
     height: 50px;
-    background-color: white;
+    background-color: var(--background-color-secondary);
     border: 1px solid grey;
     border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px var(--secondary-color);
     cursor: pointer;
     margin: 10px;
-    /* transition: border-color 0.2s ease; */
   }
 
-  .icon {
-    width: 3vh;
-  }
-
-  .file-upload-label:hover {
-    border-color: #646cff;
+  .element-label:hover {
+    border-color: var(--border-color-over);
   }
 
   .button-text {
     font-size: 0.8rem;
-    color: rgb(81, 81, 81);
+    color: var(--text-color);
     text-align: center;
     font-weight: bold;
     line-height: 1.2;

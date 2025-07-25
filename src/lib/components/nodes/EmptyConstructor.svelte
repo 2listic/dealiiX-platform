@@ -7,12 +7,13 @@
 
 <script lang="ts">
   import { Handle, Position, type NodeProps, type Node } from '@xyflow/svelte'
-  import { NodeType, Type } from '../../types/nodeTypes'
+  import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
   import { getImportedNodesByType } from '../../states/store.svelte'
 
   let { data, type }: NodeProps<EmptyConstructorType> = $props()
 
   const importedNodes = getImportedNodesByType(NodeType.EMPTY_CONSTRUCTOR)
+  const color = nodeColors[NodeType.EMPTY_CONSTRUCTOR]
   if (!importedNodes || importedNodes.length === 0) {
     data.is_valid = false
     console.error(
@@ -32,7 +33,7 @@
   }
 </script>
 
-<div class="custom-node">
+<div class="custom-node" style="--border-color: {color}">
   <div class="label">{data.type}</div>
   {#each data.outputs as i, index (i)}
     <Handle id={`output-${index}`} type="source" position={Position.Right} />
@@ -43,8 +44,8 @@
   .custom-node {
     padding: 10px;
     border-radius: 5px;
-    background: #efefef;
-    border: 2px solid gray;
+    background: var(--secondary-color);
+    border: 2px solid var(--border-color);
   }
 
   .label {
