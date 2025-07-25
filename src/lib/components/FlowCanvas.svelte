@@ -23,6 +23,7 @@
     Controls,
     Panel,
     useSvelteFlow,
+    type ColorModeClass,
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
@@ -35,9 +36,7 @@
   } from '../states/store.svelte'
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
-  import ExportGraphButton from './ExportGraphButton.svelte'
   import { useDnD } from './DnDProvider.svelte'
-  import Sidebar from './layout/Sidebar.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { MethodName, Type } from '../types/nodeTypes'
   // import { login } from '../utils/login'
@@ -45,7 +44,7 @@
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
 
-  let idCounter = $derived(getNodes().length)
+  // let idCounter = $derived(getNodes().length)
 
   const nodeTypes: NodeTypes = {
     [Type.UNSIGNED]: ElementaryConstructor,
@@ -60,56 +59,64 @@
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
+
+  let colorMode: ColorModeClass = $state('light')
+
+  const onColorModeChange = async (e) => {
+    const newMode = e.target.value
+    // @ts-ignore
+    if (window.electron) {
+      // @ts-ignore
+      const actualTheme = await window.electron.invoke('set-theme', newMode)
+      console.log('Electron theme: ', actualTheme)
+    }
+    if (newMode === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    console.log('Browser theme', newMode)
+  }
 </script>
 
-<div class="flow-container">
-  <Sidebar />
-  <div class="flow-wrapper">
-    <SvelteFlow
-      bind:nodes={getNodes, setNodes}
-      bind:edges={getEdges, setEdges}
-      {nodeTypes}
-      {edgeTypes}
-      fitView
-      {isValidConnection}
-      ondragover={onDragOver}
-      ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
-    >
-      <Panel position="top-left">
-        <div class="export-button-container">
-          <!-- <button onclick={executeWithPassword}>Execute with password</button>
+<SvelteFlow
+  bind:nodes={getNodes, setNodes}
+  bind:edges={getEdges, setEdges}
+  {nodeTypes}
+  {edgeTypes}
+  fitView
+  {isValidConnection}
+  ondragover={onDragOver}
+  ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
+  {colorMode}
+>
+  <Panel position="top-left">
+    <div class="export-button-container">
+      <!-- <button onclick={executeWithPassword}>Execute with password</button>
           <button onclick={executeWithKey}>Execute with key</button> -->
-          <!-- <button onclick={login}>Login</button> -->
-          <ExportGraphButton />
-        </div>
-        <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">
-          -
-        </div>
-      </Panel>
-      <Panel position="top-right">
-        <div class="custom-panel">
-          number of nodes: {idCounter}
-        </div>
-      </Panel>
-      <Controls />
-      <MiniMap />
-      <Background />
-    </SvelteFlow>
-  </div>
-</div>
+      <!-- <button onclick={login}>Login</button> -->
+    </div>
+    <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
+  </Panel>
+  <Panel position="top-right">
+    <!-- <div class="custom-panel">
+      Number of nodes: {idCounter}
+    </div> -->
+    <select
+      class="custom-panel"
+      bind:value={colorMode}
+      onchange={onColorModeChange}
+    >
+      <option value="light">Light mode</option>
+      <option value="dark">Dark mode</option>
+    </select>
+  </Panel>
+  <Controls />
+  <MiniMap />
+  <Background />
+</SvelteFlow>
 
 <style>
-  .flow-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-  }
-
-  .flow-wrapper {
-    flex: 1; /* Takes remaining space after Sidebar */
-    min-height: 0; /* Allows flex item to shrink below content size */
-  }
-
   .export-button-container {
     display: flex;
     flex-wrap: wrap;
@@ -121,8 +128,8 @@
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 10px;
-    margin-top: 1px;
+    padding: 1vh;
+    margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     font-size: 1.5em;
     color: #333;

@@ -1,6 +1,9 @@
 import { initialNodes, initialEdges } from '../data/flowData'
 import { NodeType } from '../types/nodeTypes'
 
+/**
+ * Svelte internal nodes and edges states
+ */
 let nodes = $state.raw(initialNodes)
 let edges = $state.raw(initialEdges)
 
@@ -9,16 +12,24 @@ export const getEdges = () => edges
 export const setNodes = (newNodes) => (nodes = newNodes)
 export const setEdges = (newEdges) => (edges = newEdges)
 
+/**
+ * Node ID
+ */
 const maxId = initialNodes.reduce(
   (max, node) => Math.max(max, parseInt(node.id)),
   -1
 )
+
 let lastNodeId = $state(maxId)
+
 export const getNextNodeId = () => {
   lastNodeId++
   return lastNodeId
 }
 
+/**
+ * Imported available nodes
+ */
 let importedData = $state({})
 
 export const setImportedNodes = (data) => {
@@ -36,6 +47,9 @@ export const setImportedNodes = (data) => {
   importedData = nodesByNodetype
   console.log('importedData', $state.snapshot(importedData))
 }
+
+export const getImportedNodes = () => importedData
+
 export const getImportedNodesByType = (svelteNodeType) => {
   if (!(svelteNodeType in importedData)) {
     console.error(`Node type '${svelteNodeType}' not found in imported data.`)

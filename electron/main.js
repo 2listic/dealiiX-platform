@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron/main'
+import { app, BrowserWindow, nativeTheme, ipcMain } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -65,4 +65,13 @@ ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
   const jsonGraph = JSON.stringify(graph)
   const remotePath = '/root/graph.json'
   return await connectAndUploadGraph(jsonGraph, remotePath)
+})
+
+ipcMain.handle('set-theme', (event, theme) => {
+  if (theme === 'dark') {
+    nativeTheme.themeSource = 'dark'
+  } else {
+    nativeTheme.themeSource = 'light'
+  }
+  return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 })

@@ -17,12 +17,18 @@
 
 <script lang="ts">
   import { Handle, Position, type NodeProps, type Node } from '@xyflow/svelte'
-  import { ConnectionType, MethodName, NodeType } from '../../types/nodeTypes'
+  import {
+    ConnectionType,
+    MethodName,
+    nodeColors,
+    NodeType,
+  } from '../../types/nodeTypes'
   import { getImportedNodesByType } from '../../states/store.svelte'
 
   let { data, type }: NodeProps<MethodType> = $props()
 
   const importedNodes = getImportedNodesByType(NodeType.METHOD)
+  const color = nodeColors[NodeType.METHOD]
   $inspect('method, importedNodes', importedNodes)
   if (!importedNodes || importedNodes.length === 0) {
     data.is_valid = false
@@ -43,7 +49,7 @@
   // TODO: validate all inputs are connected
 </script>
 
-<div class="custom-node">
+<div class="custom-node" style="--border-color: {color}">
   {#each data.inputs as i, index (i)}
     <Handle
       id={`input-${index}`}
@@ -76,8 +82,8 @@
   .custom-node {
     padding: 15px;
     border-radius: 5px;
-    background: #efefef;
-    border: 2px solid skyblue;
+    background: var(--secondary-color);
+    border: 2px solid var(--border-color);
     min-width: 200px;
   }
 
