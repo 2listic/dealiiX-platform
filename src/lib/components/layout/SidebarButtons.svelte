@@ -130,13 +130,12 @@
     background-color: var(--background-color-secondary);
     border: 1px solid grey;
     border-radius: 10px;
-    box-shadow: 0 1px 2px var(--secondary-color);
     cursor: pointer;
     margin: 10px;
   }
 
   .element-label:hover {
-    border-color: var(--border-color-over);
+    border-color: var(--border-color-hover);
   }
 
   .button-text {
