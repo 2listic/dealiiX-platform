@@ -16,7 +16,6 @@
 
   .svelte-flow {
     --xy-edge-stroke-default: #efefef;
-    /* --xy-handle-border-color: #efefef; */
     --xy-handle-background-color-default: #646cff;
   }
 }
