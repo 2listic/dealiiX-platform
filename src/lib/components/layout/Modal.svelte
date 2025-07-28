@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   /**
    * Open a modal by calling `open` on the modal object returned by `getModal` called with the modal's `id`.
    * You can pass a closing callback function to the `open` function, which will be called when the modal is closed.
@@ -14,14 +14,20 @@
 </script>
 
 <script lang="ts">
+  // import { stopPropagation } from 'svelte/legacy';
   import { onDestroy } from 'svelte'
 
-  let topDiv
-  let visible = false
+  let topDiv = $state<HTMLDivElement>()
+  let visible = $state(false)
   let prevOnTop
   let closeCallback
 
-  export let id = ''
+  interface Props {
+    id?: string
+    children?: import('svelte').Snippet
+  }
+
+  let { id = '', children }: Props = $props()
 
   function keyPress(ev) {
     //only respond if the current modal is the top one
@@ -60,22 +66,30 @@
     delete modals[id]
     window.removeEventListener('keydown', keyPress)
   })
+
+  function stopPropagation(fn) {
+    return function (event) {
+      event.stopPropagation()
+      fn.call(this, event)
+    }
+  }
 </script>
 
-<div
-  id="topModal"
-  class:visible
-  bind:this={topDiv}
-  on:click={() => close(null)}
->
-  <div id="modal" on:click|stopPropagation={() => {}}>
-    <svg id="close" on:click={() => close(null)} viewBox="0 0 12 12">
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div id="topModal" class:visible bind:this={topDiv} onclick={() => close(null)}>
+  <div id="modal" onclick={stopPropagation(() => {})}>
+    <svg
+      id="close"
+      onclick={stopPropagation(() => close(null))}
+      viewBox="0 0 12 12"
+    >
       <circle cx="6" cy="6" r="6" />
       <line x1="3" y1="3" x2="9" y2="9" />
       <line x1="9" y1="3" x2="3" y2="9" />
     </svg>
     <div id="modal-content">
-      <slot></slot>
+      {@render children?.()}
     </div>
   </div>
 </div>
