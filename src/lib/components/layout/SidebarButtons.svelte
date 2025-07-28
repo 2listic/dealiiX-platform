@@ -37,8 +37,8 @@
   <div class="button-group">
     <label for="export-graph" class="element-label" title="Export JSON graph">
       <svg
-        width="3vh"
-        height="3vh"
+        width="25px"
+        height="25px"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -74,8 +74,8 @@
       title="Import nodes from JSON file"
     >
       <svg
-        width="3vh"
-        height="3vh"
+        width="30px"
+        height="30px"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

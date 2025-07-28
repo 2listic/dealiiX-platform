@@ -23,9 +23,9 @@
     nodeColors,
     NodeType,
   } from '../../types/nodeTypes'
-  import { getImportedNodesByType } from '../../states/store.svelte'
+  import { getImportedNodesByType, removeNode } from '../../states/store.svelte'
 
-  let { data, type }: NodeProps<MethodType> = $props()
+  let { id, data, type }: NodeProps<MethodType> = $props()
 
   const importedNodes = getImportedNodesByType(NodeType.METHOD)
   const color = nodeColors[NodeType.METHOD]
@@ -50,6 +50,10 @@
 </script>
 
 <div class="custom-node" style="--border-color: {color}">
+  <div class="node-header">
+    <div class="label">{data.type}</div>
+    <button class="button-remove" onclick={() => removeNode(id)}>X</button>
+  </div>
   {#each data.inputs as i, index (i)}
     <Handle
       id={`input-${index}`}
@@ -87,8 +91,25 @@
     min-width: 200px;
   }
 
+  .node-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1vh;
+  }
+
   .label {
     font-weight: bold;
+  }
+
+  .button-remove {
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    margin: 0 0 1vh 1vh;
+  }
+
+  .button-remove:hover {
+    border: 1px solid var(--border-color-hover);
   }
 
   .input-column {

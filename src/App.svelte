@@ -29,6 +29,7 @@
     display: flex;
     flex-direction: row;
     height: 100vh;
+    width: 100vw;
   }
 
   .sidebar-buttons-wrapper {
