@@ -2,6 +2,7 @@
   import { setImportedNodes } from '../../states/store.svelte'
   import { useNodes, useEdges } from '@xyflow/svelte'
   import { exportGraph } from '../../utils/sshMessages'
+  import { login } from '../../utils/login'
 
   const currentNodes = useNodes()
   const currentEdges = useEdges()
@@ -34,7 +35,34 @@
 </script>
 
 <aside>
-  <div class="button-group">
+  <div class="button-container">
+    <label for="export-graph" class="element-label" title="Login">
+      <svg
+        width="25px"
+        height="25px"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M8 7C9.65685 7 11 5.65685 11 4C11 2.34315 9.65685 1 8 1C6.34315 1 5 2.34315 5 4C5 5.65685 6.34315 7 8 7Z"
+          fill="var(--text-color)"
+        />
+        <path
+          d="M14 12C14 10.3431 12.6569 9 11 9H5C3.34315 9 2 10.3431 2 12V15H14V12Z"
+          fill="var(--text-color)"
+        />
+      </svg>
+    </label>
+    <button
+      id="export-graph"
+      onclick={login}
+      style="display: none"
+      aria-label="Login"
+    ></button>
+    <span class="button-text">Login</span>
+  </div>
+  <div class="button-container">
     <label for="export-graph" class="element-label" title="Export JSON graph">
       <svg
         width="25px"
@@ -67,7 +95,7 @@
     ></button>
     <span class="button-text">Export graph</span>
   </div>
-  <div class="button-group">
+  <div class="button-container">
     <label
       for="file-upload"
       class="element-label"
@@ -107,18 +135,17 @@
   aside {
     height: 100vh;
     background: var(--primary-color);
-    font-size: 12px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
   }
 
-  .button-group {
+  .button-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 1rem;
+    padding: 0.5rem 0.3rem;
   }
 
   .element-label {
@@ -131,7 +158,7 @@
     border: 1px solid grey;
     border-radius: 10px;
     cursor: pointer;
-    margin: 10px;
+    margin: 0.5rem 0.2rem;
   }
 
   .element-label:hover {
