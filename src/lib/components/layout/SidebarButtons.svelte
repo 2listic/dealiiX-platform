@@ -3,6 +3,7 @@
   import { useNodes, useEdges } from '@xyflow/svelte'
   import { exportGraph } from '../../utils/sshMessages'
   import { login } from '../../utils/login'
+  import Modal, { getModal } from './Modal.svelte'
 
   const currentNodes = useNodes()
   const currentEdges = useEdges()
@@ -56,12 +57,18 @@
     </label>
     <button
       id="export-graph"
-      onclick={login}
+      onclick={() => getModal('login-modal').open()}
       style="display: none"
       aria-label="Login"
     ></button>
     <span class="button-text">Login</span>
   </div>
+  <Modal id="login-modal">
+    <h1>Login</h1>
+    <!-- <input type="text" placeholder="Username" />
+    <input type="password" placeholder="Password" /> -->
+    <button onclick={login}>Submit</button>
+  </Modal>
   <div class="button-container">
     <label for="export-graph" class="element-label" title="Export JSON graph">
       <svg
