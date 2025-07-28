@@ -4,6 +4,7 @@
   import { exportGraph } from '../../utils/sshMessages'
   import { login } from '../../utils/login'
   import Modal, { getModal } from './Modal.svelte'
+  import LoginForm from '../LoginForm.svelte'
 
   const currentNodes = useNodes()
   const currentEdges = useEdges()
@@ -64,10 +65,10 @@
     <span class="button-text">Login</span>
   </div>
   <Modal id="login-modal">
-    <h1>Login</h1>
-    <!-- <input type="text" placeholder="Username" />
-    <input type="password" placeholder="Password" /> -->
-    <button onclick={login}>Submit</button>
+    <LoginForm
+      onSubmit={login}
+      onSuccess={() => getModal('login-modal').close()}
+    />
   </Modal>
   <div class="button-container">
     <label for="export-graph" class="element-label" title="Export JSON graph">

@@ -1,5 +1,5 @@
-export const login = async () => {
-  console.log('login')
+export const login = async (data) => {
+  console.log('login data', data)
   try {
     // test GET call
     // const data = await fetch('https://jsonplaceholder.typicode.com/todos/1')
@@ -12,8 +12,8 @@ export const login = async () => {
     // test POST call and login authentication with remote server
     const formData = new URLSearchParams()
     formData.append('grant_type', 'password')
-    formData.append('username', 'admin@example.com')
-    formData.append('password', 'changethis')
+    formData.append('username', data.username)
+    formData.append('password', data.password)
     formData.append('scope', '')
     formData.append('client_id', 'string')
     formData.append('client_secret', 'string')
