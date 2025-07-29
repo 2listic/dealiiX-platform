@@ -3,7 +3,7 @@
 
   let username = $state()
   let password = $state()
-  let errorMessage = $state("")
+  let errorMessage = $state()
   let formElement
 
   const validateAndSubmit = async () => {

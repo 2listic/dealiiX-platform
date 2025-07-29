@@ -111,9 +111,9 @@
   #modal {
     position: relative;
     border-radius: 6px;
-    background: var(--primary-color);
-    /* border: 2px solid #000; */
-    /* filter: drop-shadow(5px 5px 5px #555); */
+    background: var(--background-color-secondary);
+    border: 1px solid var(--primary-color);
+    /* filter: drop-shadow(1px 1px var(--primary-color)); */
     padding: 1em;
     /* min-width: 50vw;
     min-height: 50vh; */
