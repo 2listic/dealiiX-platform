@@ -14,6 +14,7 @@
         await onSubmit(data)
       } catch (error) {
         console.error('Login failed:', error)
+        password = ''
         errorMessage = 'Login was not succesfull. Please try again'
         return
       }
@@ -24,35 +25,51 @@
   }
 </script>
 
-<form bind:this={formElement}>
-  <h2>Login</h2>
-  <div class="inputs-container">
-    <label for="login-username">Username</label>
-    <input
-      id="login-username"
-      type="email"
-      bind:value={username}
-      placeholder="Username"
-      required
-    />
-    <label for="login-password">Password</label>
-    <input
-      id="login-password"
-      type="password"
-      bind:value={password}
-      placeholder="Password"
-      minlength="6"
-      required
-    />
-  </div>
-  <div class="button-container">
-    <button type="button" onclick={validateAndSubmit}>Submit</button>
-  </div>
-  <div class="error-message">{errorMessage}</div>
-</form>
+<div style="padding: 0 1rem">
+  <form bind:this={formElement}>
+    <h2>Login</h2>
+    <div class="inputs-container">
+      <div class="input-container">
+        <label for="login-username">Username</label>
+        <input
+          id="login-username"
+          class="input-field"
+          type="email"
+          bind:value={username}
+          placeholder="Enter your email"
+          required
+        />
+      </div>
+      <div class="input-container">
+        <label for="login-password">Password</label>
+        <input
+          id="login-password"
+          class="input-field"
+          type="password"
+          bind:value={password}
+          placeholder="Password"
+          minlength="6"
+          required
+        />
+      </div>
+    </div>
+    <div class="button-container">
+      <button type="button" class="button-submit" onclick={validateAndSubmit}
+        >Submit</button
+      >
+    </div>
+    <div class="error-message">{errorMessage}</div>
+  </form>
+</div>
 
 <style>
   .inputs-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2vh;
+  }
+
+  .input-container {
     display: flex;
     flex-direction: column;
     gap: 1vh;
@@ -62,16 +79,29 @@
     margin-top: 2vh;
   }
 
-  #login-username:invalid {
-    border-color: red;
+  .input-field {
+    padding: 1vh;
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--secondary-color);
   }
 
-  #login-password:invalid {
+  .input-field:invalid {
     border-color: red;
   }
 
   .error-message {
     /* font-size: 2rem; */
     margin-top: 2vh;
+  }
+
+  .button-submit {
+    cursor: pointer;
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    padding: 1vh;
+    font-size: 1rem;
+    background-color: var(--secondary-color);
   }
 </style>

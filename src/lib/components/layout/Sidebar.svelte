@@ -73,7 +73,6 @@
     border-radius: 5px;
     cursor: grab;
     border: 2px solid var(--borderColor, gray);
-    color: var(--text-color);
     background-color: var(--background-secondary-color);
   }
 

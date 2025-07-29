@@ -115,9 +115,8 @@
     /* border: 2px solid #000; */
     /* filter: drop-shadow(5px 5px 5px #555); */
     padding: 1em;
-    color: var(--text-color);
-    min-width: 50vw;
-    min-height: 50vh;
+    /* min-width: 50vw;
+    min-height: 50vh; */
   }
 
   .visible {
