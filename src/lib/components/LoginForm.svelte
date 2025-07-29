@@ -3,7 +3,7 @@
 
   let username = $state()
   let password = $state()
-  let errorMessage = $state()
+  let errorMessage = $state("")
   let formElement
 
   const validateAndSubmit = async () => {
@@ -92,8 +92,8 @@
   }
 
   .error-message {
-    /* font-size: 2rem; */
     margin-top: 2vh;
+    min-height: 25px;
   }
 
   .button-submit {
