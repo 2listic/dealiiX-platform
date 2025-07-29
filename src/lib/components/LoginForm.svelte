@@ -1,4 +1,6 @@
 <script>
+  import { auth } from '../states/auth.svelte'
+
   let { onSubmit, onSuccess } = $props()
 
   let username = $state()
@@ -8,10 +10,16 @@
 
   const validateAndSubmit = async () => {
     errorMessage = ''
+    if (auth.token != null) {
+      // TODO: remove this check and add a proper refresh token logic + logout
+      // this is just for debugging purposes
+      console.log('already logged in', auth.token)
+    }
     if (formElement.checkValidity()) {
       const data = { username, password }
       try {
-        await onSubmit(data)
+        const response = await onSubmit(data)
+        auth.setToken(response.access_token)
       } catch (error) {
         console.error('Login failed:', error)
         password = ''
@@ -103,5 +111,9 @@
     padding: 1vh;
     font-size: 1rem;
     background-color: var(--secondary-color);
+  }
+
+  .button-submit:hover {
+    border-color: var(--border-color-hover);
   }
 </style>

@@ -5,6 +5,7 @@
   import { login } from '../../utils/login'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
+  import { auth } from '../../states/auth.svelte'
 
   const currentNodes = useNodes()
   const currentEdges = useEdges()
@@ -38,6 +39,11 @@
   const handleSubmit = async (data) => {
     return await login(data)
   }
+
+  // TODO: remove this check. This is just for debugging purposes
+  $effect(() => {
+    console.log('auth.token', auth.token)
+  })
 </script>
 
 <aside>
