@@ -3,12 +3,20 @@
 
   let username = $state()
   let password = $state()
+  let errorMessage = $state()
   let formElement
 
-  const validateAndSubmit = () => {
+  const validateAndSubmit = async () => {
+    errorMessage = ''
     if (formElement.checkValidity()) {
       const data = { username, password }
-      onSubmit(data)
+      try {
+        await onSubmit(data)
+      } catch (error) {
+        console.error('Login failed:', error)
+        errorMessage = 'Login was not succesfull. Please try again'
+        return
+      }
       onSuccess()
     } else {
       formElement.reportValidity()
@@ -40,6 +48,7 @@
   <div class="button-container">
     <button type="button" onclick={validateAndSubmit}>Submit</button>
   </div>
+  <div class="error-message">{errorMessage}</div>
 </form>
 
 <style>
@@ -59,5 +68,10 @@
 
   #login-password:invalid {
     border-color: red;
+  }
+
+  .error-message {
+    /* font-size: 2rem; */
+    margin-top: 2vh;
   }
 </style>

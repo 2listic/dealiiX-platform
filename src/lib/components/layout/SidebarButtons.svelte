@@ -34,6 +34,10 @@
       reader.readAsText(file)
     })
   }
+
+  const handleSubmit = async (data) => {
+    return await login(data)
+  }
 </script>
 
 <aside>
@@ -66,7 +70,7 @@
   </div>
   <Modal id="login-modal">
     <LoginForm
-      onSubmit={login}
+      onSubmit={handleSubmit}
       onSuccess={() => getModal('login-modal').close()}
     />
   </Modal>
