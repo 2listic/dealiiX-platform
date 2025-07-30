@@ -1,6 +1,6 @@
 <script>
-  import { auth } from '../states/auth.svelte'
-  import { login } from '../utils/login'
+  import { auth } from '../stores/auth.svelte'
+  import { login } from '../requests/login'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()

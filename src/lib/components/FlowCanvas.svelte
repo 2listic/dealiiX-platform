@@ -33,7 +33,7 @@
     getEdges,
     setNodes,
     setEdges,
-  } from '../states/store.svelte'
+  } from '../stores/nodes.svelte'
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import { useDnD } from './DnDProvider.svelte'

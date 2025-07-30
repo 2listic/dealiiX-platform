@@ -1,12 +1,6 @@
-export const login = async (data) => {
-  // test GET call
-  // const data = await fetch('https://jsonplaceholder.typicode.com/todos/1')
-  // if (!data.ok) {
-  //   throw new Error('Network response was not ok')
-  // }
-  // const json = await data.json()
-  // console.log('json', json)
+import { apiRequest } from './api'
 
+export const login = async (data) => {
   const formData = new URLSearchParams()
   formData.append('grant_type', 'password')
   formData.append('username', data.username)
@@ -34,5 +28,13 @@ export const login = async (data) => {
 
   const result = await response.json()
   console.log('result', result)
+
+  // TODO remove this test to check if the token is valid via api request
+  const responseTestToken2 = await apiRequest(
+    'http://localhost:8000/api/v1/login/test-token',
+    'POST'
+  )
+  console.log('responseTestToken2', responseTestToken2)
+
   return result
 }

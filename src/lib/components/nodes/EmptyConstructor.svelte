@@ -8,7 +8,7 @@
 <script lang="ts">
   import { Handle, Position, type NodeProps, type Node } from '@xyflow/svelte'
   import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
-  import { getImportedNodesByType, removeNode } from '../../states/store.svelte'
+  import { getImportedNodesByType, removeNode } from '../../stores/nodes.svelte'
 
   let { id, data, type }: NodeProps<EmptyConstructorType> = $props()
 

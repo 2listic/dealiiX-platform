@@ -23,7 +23,7 @@
     nodeColors,
     NodeType,
   } from '../../types/nodeTypes'
-  import { getImportedNodesByType, removeNode } from '../../states/store.svelte'
+  import { getImportedNodesByType, removeNode } from '../../stores/nodes.svelte'
 
   let { id, data, type }: NodeProps<MethodType> = $props()
 

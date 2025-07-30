@@ -1,4 +1,4 @@
-import { getNodes, getEdges } from '../states/store.svelte'
+import { getNodes, getEdges } from '../stores/nodes.svelte'
 import { Outputs } from '../types/nodeTypes'
 
 let connectionCache = new Map()
