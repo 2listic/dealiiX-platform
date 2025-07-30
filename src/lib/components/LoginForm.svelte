@@ -1,7 +1,9 @@
 <script>
   import { auth } from '../states/auth.svelte'
+  import { login } from '../utils/login'
+  import { getModal } from './layout/Modal.svelte'
 
-  let { onSubmit, onSuccess } = $props()
+  let { modalId } = $props()
 
   let username = $state()
   let password = $state()
@@ -18,7 +20,7 @@
     if (formElement.checkValidity()) {
       const data = { username, password }
       try {
-        const response = await onSubmit(data)
+        const response = await login(data)
         auth.setToken(response.access_token)
       } catch (error) {
         console.error('Login failed:', error)
@@ -26,7 +28,7 @@
         errorMessage = 'Login was not succesfull. Please try again'
         return
       }
-      onSuccess()
+      getModal(modalId).close()
     } else {
       formElement.reportValidity()
     }

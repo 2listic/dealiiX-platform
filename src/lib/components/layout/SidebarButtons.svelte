@@ -2,13 +2,13 @@
   import { setImportedNodes } from '../../states/store.svelte'
   import { useNodes, useEdges } from '@xyflow/svelte'
   import { exportGraph } from '../../utils/sshMessages'
-  import { login } from '../../utils/login'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../states/auth.svelte'
 
   const currentNodes = useNodes()
   const currentEdges = useEdges()
+  const loginModalId = 'login-modal'
 
   const handleUpload = async () => {
     try {
@@ -34,10 +34,6 @@
       reader.onerror = reject
       reader.readAsText(file)
     })
-  }
-
-  const handleSubmit = async (data) => {
-    return await login(data)
   }
 
   // TODO: remove this check. This is just for debugging purposes
@@ -68,17 +64,14 @@
     </label>
     <button
       id="export-graph"
-      onclick={() => getModal('login-modal').open()}
+      onclick={() => getModal(loginModalId).open()}
       style="display: none"
       aria-label="Login"
     ></button>
     <span class="button-text">Login</span>
   </div>
-  <Modal id="login-modal">
-    <LoginForm
-      onSubmit={handleSubmit}
-      onSuccess={() => getModal('login-modal').close()}
-    />
+  <Modal id={loginModalId}>
+    <LoginForm modalId={loginModalId} />
   </Modal>
   <div class="button-container">
     <label for="export-graph" class="element-label" title="Export JSON graph">
