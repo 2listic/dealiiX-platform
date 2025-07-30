@@ -20,8 +20,7 @@
     if (formElement.checkValidity()) {
       const data = { username, password }
       try {
-        const response = await login(data)
-        auth.setToken(response.access_token)
+        await login(data)
       } catch (error) {
         console.error('Login failed:', error)
         password = ''

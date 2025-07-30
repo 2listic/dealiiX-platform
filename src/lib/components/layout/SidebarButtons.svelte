@@ -10,8 +10,21 @@
   const currentNodes = useNodes()
   const currentEdges = useEdges()
   const loginModalId = 'login-modal'
+  const logoutModalId = 'logout-modal'
+  const token = $derived(auth.token)
 
-  const handleUpload = async () => {
+  const handleLogin = () => {
+    if (token) {
+      auth.clearToken()
+      getModal(logoutModalId).open()
+      return
+    } else {
+      getModal(loginModalId).open()
+      return
+    }
+  }
+
+  const handleExport = async () => {
     try {
       await exportGraph(currentNodes.current, currentEdges.current)
     } catch (error) {
@@ -65,14 +78,26 @@
     </label>
     <button
       id="login-button"
-      onclick={() => getModal(loginModalId).open()}
+      onclick={handleLogin}
       style="display: none"
       aria-label="Login"
     ></button>
-    <span class="button-text">Login</span>
+    <span class="button-text">
+      {#if token}
+        Logout
+      {:else}
+        Login
+      {/if}
+    </span>
   </div>
   <Modal id={loginModalId}>
     <LoginForm modalId={loginModalId} />
+  </Modal>
+  <Modal id={logoutModalId}>
+    <div style="padding: 0 1vh;">
+      <h2>Logout</h2>
+      <p>Logout was successful</p>
+    </div>
   </Modal>
   <!-- <div class="button-container">
     <label
@@ -159,7 +184,7 @@
     </label>
     <button
       id="export-graph-button"
-      onclick={handleUpload}
+      onclick={handleExport}
       style="display: none"
       aria-label="Export graph"
     ></button>

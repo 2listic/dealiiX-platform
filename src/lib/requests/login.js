@@ -1,3 +1,4 @@
+import { auth } from '../stores/auth.svelte'
 import { apiRequest } from './api'
 
 export const login = async (data) => {
@@ -29,12 +30,14 @@ export const login = async (data) => {
   const result = await response.json()
   console.log('result', result)
 
-  // TODO remove this test to check if the token is valid via api request
-  const responseTestToken2 = await apiRequest(
+  auth.setToken(result.access_token)
+
+  // TODO move this check on valid token to separate function and use it in the sidebar to check if the user is logged in
+  const responseTestToken = await apiRequest(
     'http://localhost:8000/api/v1/login/test-token',
     'POST'
   )
-  console.log('responseTestToken2', responseTestToken2)
+  console.log('responseTestToken', responseTestToken)
 
   return result
 }
