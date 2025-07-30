@@ -12,6 +12,9 @@
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
   const token = $derived(auth.token)
+  const loginText = $derived.by(() => {
+    return token ? 'Logout' : 'Login'
+  })
 
   const handleLogin = () => {
     if (token) {
@@ -58,7 +61,7 @@
 
 <aside>
   <div class="button-container">
-    <label for="login-button" class="element-label" title="Login">
+    <label for="login-button" class="element-label" title={loginText}>
       <svg
         width="25px"
         height="25px"
@@ -83,11 +86,7 @@
       aria-label="Login"
     ></button>
     <span class="button-text">
-      {#if token}
-        Logout
-      {:else}
-        Login
-      {/if}
+      {loginText}
     </span>
   </div>
   <Modal id={loginModalId}>

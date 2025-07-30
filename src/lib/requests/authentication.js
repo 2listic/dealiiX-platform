@@ -28,16 +28,19 @@ export const login = async (data) => {
   }
 
   const result = await response.json()
-  console.log('result', result)
+  // console.log('result', result)
 
   auth.setToken(result.access_token)
 
-  // TODO move this check on valid token to separate function and use it in the sidebar to check if the user is logged in
-  const responseTestToken = await apiRequest(
+  return result
+}
+
+export const testToken = async () => {
+  const result = await apiRequest(
     'http://localhost:8000/api/v1/login/test-token',
     'POST'
   )
-  console.log('responseTestToken', responseTestToken)
+  // console.log('responseTestToken', result)
 
   return result
 }

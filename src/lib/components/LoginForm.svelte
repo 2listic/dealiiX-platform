@@ -1,6 +1,5 @@
 <script>
-  import { auth } from '../stores/auth.svelte'
-  import { login } from '../requests/login'
+  import { login } from '../requests/authentication'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -12,11 +11,6 @@
 
   const validateAndSubmit = async () => {
     errorMessage = ''
-    if (auth.token != null) {
-      // TODO: remove this check and add a proper refresh token logic + logout
-      // this is just for debugging purposes
-      console.log('already logged in', auth.token)
-    }
     if (formElement.checkValidity()) {
       const data = { username, password }
       try {
