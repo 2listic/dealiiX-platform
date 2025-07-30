@@ -1,4 +1,4 @@
-import { concatState } from '../states/concatState.svelte'
+import { concatState } from '../stores/concatState.svelte'
 
 const executeWithPassword = async () => {
   // @ts-ignore

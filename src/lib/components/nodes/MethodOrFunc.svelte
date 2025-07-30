@@ -23,7 +23,7 @@
     nodeColors,
     NodeType,
   } from '../../types/nodeTypes'
-  import { getImportedNodesByType, removeNode } from '../../states/store.svelte'
+  import { getImportedNodesByType, removeNode } from '../../stores/nodes.svelte'
 
   let { id, data, type }: NodeProps<MethodType> = $props()
 
@@ -86,7 +86,7 @@
   .custom-node {
     padding: 15px;
     border-radius: 5px;
-    background: var(--secondary-color);
+    background: var(--primary-color);
     border: 2px solid var(--border-color);
     min-width: 200px;
   }

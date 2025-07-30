@@ -19,7 +19,7 @@
     type Node,
   } from '@xyflow/svelte'
   import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
-  import { getImportedNodesByType, removeNode } from '../../states/store.svelte'
+  import { getImportedNodesByType, removeNode } from '../../stores/nodes.svelte'
 
   let { id, data, type }: NodeProps<ElementaryConstructorType> = $props()
 
@@ -107,7 +107,7 @@
   .custom-node {
     padding: 10px;
     border-radius: 5px;
-    background: var(--secondary-color);
+    background: var(--primary-color);
     border: 2px solid var(--border-color);
   }
 

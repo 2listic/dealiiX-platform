@@ -1,0 +1,150 @@
+<script module lang="ts">
+  /**
+   * Open a modal by calling `open` on the modal object returned by `getModal` called with the modal's `id`.
+   * You can pass a closing callback function to the `open` function, which will be called when the modal is closed.
+   * Original example here: https://svelte.dev/playground/b95ce66b0ef34064a34afc5c0249f313
+   * */
+  let onTop //keeping track of which open modal is on top
+  const modals = {} //all modals get registered here for easy future access
+
+  // 	returns an object for the modal specified by `id`, which contains the API functions (`open` and `close` )
+  export function getModal(id = '') {
+    return modals[id]
+  }
+</script>
+
+<script lang="ts">
+  // import { stopPropagation } from 'svelte/legacy';
+  import { onDestroy } from 'svelte'
+
+  let topDiv = $state<HTMLDivElement>()
+  let visible = $state(false)
+  let prevOnTop
+  let closeCallback
+
+  interface Props {
+    id?: string
+    children?: import('svelte').Snippet
+  }
+
+  let { id = '', children }: Props = $props()
+
+  function keyPress(ev) {
+    //only respond if the current modal is the top one
+    if (ev.key == 'Escape' && onTop == topDiv) close(null) //ESC
+  }
+
+  /**  API **/
+  function open(callback) {
+    closeCallback = callback
+    if (visible) return
+    prevOnTop = onTop
+    onTop = topDiv
+    window.addEventListener('keydown', keyPress)
+
+    //this prevents scrolling of the main window on larger screens
+    document.body.style.overflow = 'hidden'
+
+    visible = true
+    //Move the modal in the DOM to be the last child of <BODY> so that it can be on top of everything
+    document.body.appendChild(topDiv)
+  }
+
+  function close(retVal) {
+    if (!visible) return
+    window.removeEventListener('keydown', keyPress)
+    onTop = prevOnTop
+    if (onTop == null) document.body.style.overflow = ''
+    visible = false
+    if (closeCallback) closeCallback(retVal)
+  }
+
+  //expose the API
+  modals[id] = { open, close }
+
+  onDestroy(() => {
+    delete modals[id]
+    window.removeEventListener('keydown', keyPress)
+  })
+
+  function stopPropagation(fn) {
+    return function (event) {
+      event.stopPropagation()
+      fn.call(this, event)
+    }
+  }
+</script>
+
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div id="topModal" class:visible bind:this={topDiv} onclick={() => close(null)}>
+  <div id="modal" onclick={stopPropagation(() => {})}>
+    <svg
+      id="close"
+      onclick={stopPropagation(() => close(null))}
+      viewBox="0 0 12 12"
+    >
+      <circle cx="6" cy="6" r="6" />
+      <line x1="3" y1="3" x2="9" y2="9" />
+      <line x1="9" y1="3" x2="3" y2="9" />
+    </svg>
+    <div id="modal-content">
+      {@render children?.()}
+    </div>
+  </div>
+</div>
+
+<style>
+  #topModal {
+    visibility: hidden;
+    z-index: 9999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #4448;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal {
+    position: relative;
+    border-radius: 6px;
+    background: var(--background-color-secondary);
+    border: 1px solid var(--primary-color);
+    /* filter: drop-shadow(1px 1px var(--primary-color)); */
+    padding: 1em;
+    /* min-width: 50vw;
+    min-height: 50vh; */
+  }
+
+  .visible {
+    visibility: visible !important;
+  }
+
+  #close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    fill: #f44;
+    transition: transform 0.3s;
+  }
+
+  #close:hover {
+    transform: scale(1.5);
+  }
+
+  #close line {
+    stroke: #fff;
+    stroke-width: 2;
+  }
+  #modal-content {
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    overflow: auto;
+  }
+</style>

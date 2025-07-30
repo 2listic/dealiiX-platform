@@ -1,5 +1,5 @@
 import type { XYPosition } from '@xyflow/svelte'
-import { getNextNodeId, getNodes, setNodes } from '../states/store.svelte'
+import { getNextNodeId, getNodes, setNodes } from '../stores/nodes.svelte'
 
 export const onDragOver = (event: DragEvent) => {
   event.preventDefault()

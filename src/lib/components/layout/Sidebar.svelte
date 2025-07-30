@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getImportedNodes, setImportedNodes } from '../../states/store.svelte'
+  import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
   import { useDnD } from '../DnDProvider.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
   import { nodeColors, type NodeData } from '../../types/nodeTypes'
@@ -73,7 +73,6 @@
     border-radius: 5px;
     cursor: grab;
     border: 2px solid var(--borderColor, gray);
-    color: var(--text-color);
     background-color: var(--background-secondary-color);
   }
 

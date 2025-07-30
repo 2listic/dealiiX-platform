@@ -34,14 +34,15 @@
 
   .sidebar-buttons-wrapper {
     flex: 1; /* Takes 1 part of the remaining space */
-    max-width: 100px;
+    max-width: 80px;
   }
 
   .sidebar-wrapper {
     flex: 2; /* Takes 2 parts of the remaining space */
   }
+
   .flow-wrapper {
-    flex: 12; /* Takes 4 parts of the remaining space */
+    flex: 12; /* Takes 12 parts of the remaining space */
     min-height: 0; /* Allows flex item to shrink below content size */
     height: 100vh;
   }
