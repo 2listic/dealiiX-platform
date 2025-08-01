@@ -2,6 +2,8 @@
   import {
     getEdges,
     getNodes,
+    edgesFromProtocolToFlow,
+    nodesFromProtocolToFlow,
     setEdges,
     setImportedNodes,
     setNodes,
@@ -46,7 +48,7 @@
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
     }
-    // reset nodes and edges before reading the file asyncronously
+    // reset nodes/edges before reading file asyncronously otherwise UI dose not update correctly
     setNodes([])
     setEdges([])
     const importedGraphAsText = await readFileAsText(importGraphFiles[0])
@@ -57,13 +59,15 @@
       console.error('No nodes found in imported graph')
       return
     }
+    const parsedNodes = nodesFromProtocolToFlow(importedNodes)
     const importedEdges = importedGraph?.workflow?.edges
     if (importedEdges == null) {
       console.error('No edges found in imported graph')
       return
     }
-    setNodes(importedNodes)
-    setEdges(importedEdges)
+    const parsedEdges = edgesFromProtocolToFlow(importedEdges)
+    setNodes(parsedNodes)
+    setEdges(parsedEdges)
     console.log('get nodes', getNodes())
     console.log('get edges', getEdges())
   }

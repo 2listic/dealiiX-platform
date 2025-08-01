@@ -26,6 +26,7 @@ const maxId = initialNodes.reduce(
   -1
 )
 
+// TODO: update lastNodeId/maxId when importing a new graph
 let lastNodeId = $state(maxId)
 
 export const getNextNodeId = () => {
@@ -43,6 +44,7 @@ export const setImportedNodes = (data) => {
 
   // Group nodes by node_type
   const nodesByNodetype = nodes.reduce((acc, node) => {
+    // check if node is a method or function because they are handled as a unique type/component
     const nodeType = 'method_name' in node ? NodeType.METHOD : node.node_type
     if (!acc[nodeType]) {
       acc[nodeType] = []
@@ -61,4 +63,41 @@ export const getImportedNodesByType = (svelteNodeType) => {
     console.error(`Node type '${svelteNodeType}' not found in imported data.`)
   }
   return importedData?.[svelteNodeType] || []
+}
+
+export const nodesFromProtocolToFlow = (nodes) => {
+  const arrNodeIds = Object.keys(nodes)
+
+  const arrIdNodes = arrNodeIds.reduce((acc, id, index) => {
+    // check if node is a method or function because they are handled as a unique type/component
+    const type =
+      'method_name' in nodes[id] ? nodes[id].method_name : nodes[id].type
+    const positionX =
+      'position' in nodes[id] ? nodes[id].position.x : index * 100
+    const positionY =
+      'position' in nodes[id] ? nodes[id].position.y : index * 100
+    acc.push({
+      id: id,
+      type: type,
+      position: { x: positionX, y: positionY },
+      data: { ...nodes[id] },
+    })
+    return acc
+  }, [])
+  return arrIdNodes
+}
+
+export const edgesFromProtocolToFlow = (edges) => {
+  const arrEdges = Object.values(edges)
+  const arrParsedEdges = arrEdges.reduce((acc, edge) => {
+    acc.push({
+      id: `xy-edge__${edge.source}output-${edge.source_output}-${edge.target}input-${edge.target_input}`,
+      source: edge.source.toString(),
+      target: edge.target.toString(),
+      sourceHandle: `output-${edge.source_output}`,
+      targetHandle: `input-${edge.target_input}`,
+    })
+    return acc
+  }, [])
+  return arrParsedEdges
 }
