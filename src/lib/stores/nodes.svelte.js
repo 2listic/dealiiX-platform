@@ -19,15 +19,14 @@ export const removeNode = (nodeId) => {
 export const setEdges = (newEdges) => (edges = newEdges)
 
 /**
- * Node ID
+ * Node ID managment
  */
-const maxId = initialNodes.reduce(
-  (max, node) => Math.max(max, parseInt(node.id)),
-  -1
-)
+let lastNodeId = $state()
 
-// TODO: update lastNodeId/maxId when importing a new graph
-let lastNodeId = $state(maxId)
+export const updateLastNodeId = () => {
+  lastNodeId = nodes.reduce((max, node) => Math.max(max, parseInt(node.id)), -1)
+}
+updateLastNodeId() // Initialize lastNodeId
 
 export const getNextNodeId = () => {
   lastNodeId++
@@ -35,7 +34,7 @@ export const getNextNodeId = () => {
 }
 
 /**
- * Imported available nodes
+ * Imported available nodes managment
  */
 let importedData = $state({})
 
@@ -65,6 +64,9 @@ export const getImportedNodesByType = (svelteNodeType) => {
   return importedData?.[svelteNodeType] || []
 }
 
+/**
+ * Functions to parse nodes and edges from protocol into flow internal format
+ */
 export const nodesFromProtocolToFlow = (nodes) => {
   const arrNodeIds = Object.keys(nodes)
 

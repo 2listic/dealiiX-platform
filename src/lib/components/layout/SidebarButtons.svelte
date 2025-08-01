@@ -7,6 +7,7 @@
     setEdges,
     setImportedNodes,
     setNodes,
+    updateLastNodeId,
   } from '../../stores/nodes.svelte'
   import { exportGraph } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
@@ -42,9 +43,6 @@
   }
 
   const loadGraphFromFile = async () => {
-    console.log('get nodes', getNodes())
-    console.log('get edges', getEdges())
-    console.log('reset nodes')
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
     }
@@ -53,23 +51,25 @@
     setEdges([])
     const importedGraphAsText = await readFileAsText(importGraphFiles[0])
     const importedGraph = JSON.parse(importedGraphAsText)
-    console.log('imported graph', importedGraph)
+
     const importedNodes = importedGraph?.workflow?.nodes
     if (importedNodes == null) {
       console.error('No nodes found in imported graph')
       return
     }
-    const parsedNodes = nodesFromProtocolToFlow(importedNodes)
     const importedEdges = importedGraph?.workflow?.edges
     if (importedEdges == null) {
       console.error('No edges found in imported graph')
       return
     }
+
+    const parsedNodes = nodesFromProtocolToFlow(importedNodes)
     const parsedEdges = edgesFromProtocolToFlow(importedEdges)
     setNodes(parsedNodes)
     setEdges(parsedEdges)
-    console.log('get nodes', getNodes())
-    console.log('get edges', getEdges())
+    updateLastNodeId()
+    console.log('imported graph nodes', getNodes())
+    console.log('imported graph edges', getEdges())
   }
 
   const onFileChangeLoadNodes = async (e) => {
