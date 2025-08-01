@@ -1,20 +1,24 @@
 <script lang="ts">
-  import { setImportedNodes } from '../../stores/nodes.svelte'
-  import { useNodes, useEdges } from '@xyflow/svelte'
+  import {
+    getEdges,
+    getNodes,
+    setEdges,
+    setImportedNodes,
+    setNodes,
+  } from '../../stores/nodes.svelte'
   import { exportGraph } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   // import { saveItem, getItem } from '../../requests/items'
 
-  const currentNodes = useNodes()
-  const currentEdges = useEdges()
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
   const token = $derived(auth.token)
   const loginText = $derived.by(() => {
     return token ? 'Logout' : 'Login'
   })
+  let importGraphFiles: FileList | null = $state()
 
   const handleLogin = () => {
     if (token) {
@@ -29,18 +33,49 @@
 
   const handleExport = async () => {
     try {
-      await exportGraph(currentNodes.current, currentEdges.current)
+      await exportGraph(getNodes(), getEdges())
     } catch (error) {
       console.error('Upload failed:', error)
     }
   }
 
-  const onFileChange = async (e) => {
+  const loadGraphFromFile = async () => {
+    console.log('get nodes', getNodes())
+    console.log('get edges', getEdges())
+    console.log('reset nodes')
+    if (importGraphFiles == null || importGraphFiles.length == 0) {
+      return
+    }
+    // reset nodes and edges before reading the file asyncronously
+    setNodes([])
+    setEdges([])
+    const importedGraphAsText = await readFileAsText(importGraphFiles[0])
+    const importedGraph = JSON.parse(importedGraphAsText)
+    console.log('imported graph', importedGraph)
+    const importedNodes = importedGraph?.workflow?.nodes
+    if (importedNodes == null) {
+      console.error('No nodes found in imported graph')
+      return
+    }
+    const importedEdges = importedGraph?.workflow?.edges
+    if (importedEdges == null) {
+      console.error('No edges found in imported graph')
+      return
+    }
+    setNodes(importedNodes)
+    setEdges(importedEdges)
+    console.log('get nodes', getNodes())
+    console.log('get edges', getEdges())
+  }
+
+  const onFileChangeLoadNodes = async (e) => {
+    // TODO: use bind:files instead
     const file = e.target.files[0]
     if (file == null) {
       return
     }
-    const importedNodes = await readJsonFile(file) // TODO: add sanitization checks
+    // TODO: use readFileAsText instead of readJsonFile and add sanitization checks
+    const importedNodes = await readJsonFile(file)
     setImportedNodes(importedNodes)
   }
 
@@ -52,6 +87,14 @@
       reader.readAsText(file)
     })
   }
+
+  const readFileAsText = (file) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsText(file)
+    })
 
   // TODO: remove this check. This is just for debugging purposes
   $effect(() => {
@@ -191,6 +234,41 @@
   </div>
   <div class="button-container">
     <label
+      for="import-graph-input"
+      class="element-label"
+      title="Import grpah from JSON file"
+    >
+      <svg
+        width="30px"
+        height="30px"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M12 14L11.2929 14.7071L12 15.4142L12.7071 14.7071L12 14ZM13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44771 11 5L13 5ZM6.29289 9.70711L11.2929 14.7071L12.7071 13.2929L7.70711 8.29289L6.29289 9.70711ZM12.7071 14.7071L17.7071 9.70711L16.2929 8.29289L11.2929 13.2929L12.7071 14.7071ZM13 14L13 5L11 5L11 14L13 14Z"
+          fill="var(--ternary-color)"
+          stroke-width="2"
+        />
+        <path
+          d="M5 16L5 17C5 18.1046 5.89543 19 7 19L17 19C18.1046 19 19 18.1046 19 17V16"
+          stroke="var(--ternary-color)"
+          stroke-width="2"
+        />
+      </svg>
+    </label>
+    <input
+      id="import-graph-input"
+      type="file"
+      onchange={loadGraphFromFile}
+      accept=".json"
+      bind:files={importGraphFiles}
+      style="display: none"
+    />
+    <span class="button-text">Import Graph</span>
+  </div>
+  <div class="button-container">
+    <label
       for="import-nodes-input"
       class="element-label"
       title="Import nodes from JSON file"
@@ -217,11 +295,11 @@
     <input
       id="import-nodes-input"
       type="file"
-      onchange={onFileChange}
+      onchange={onFileChangeLoadNodes}
       accept=".json"
       style="display: none"
     />
-    <span class="button-text">Import Nodes</span>
+    <span class="button-text">Load Nodes</span>
   </div>
 </aside>
 
