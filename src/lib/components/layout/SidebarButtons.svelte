@@ -22,6 +22,7 @@
     return token ? 'Logout' : 'Login'
   })
   let importGraphFiles: FileList | null = $state()
+  let importNodesFiles: FileList | null = $state()
 
   const handleLogin = () => {
     if (token) {
@@ -72,24 +73,14 @@
     console.log('imported graph edges', getEdges())
   }
 
-  const onFileChangeLoadNodes = async (e) => {
-    // TODO: use bind:files instead
-    const file = e.target.files[0]
-    if (file == null) {
+  const onFileChangeLoadNodes = async () => {
+    if (importNodesFiles == null || importNodesFiles.length == 0) {
       return
     }
-    // TODO: use readFileAsText instead of readJsonFile and add sanitization checks
-    const importedNodes = await readJsonFile(file)
+    const importedNodesAsText = await readFileAsText(importNodesFiles[0])
+    const importedNodes = JSON.parse(importedNodesAsText)
+    // TODO: add sanity checks
     setImportedNodes(importedNodes)
-  }
-
-  const readJsonFile = (file) => {
-    const reader = new FileReader()
-    return new Promise((resolve, reject) => {
-      reader.onload = () => resolve(JSON.parse(reader.result as string))
-      reader.onerror = reject
-      reader.readAsText(file)
-    })
   }
 
   const readFileAsText = (file) =>
@@ -101,9 +92,9 @@
     })
 
   // TODO: remove this check. This is just for debugging purposes
-  $effect(() => {
-    console.log('auth.token', auth.token)
-  })
+  // $effect(() => {
+  //   console.log('auth.token', auth.token)
+  // })
 </script>
 
 <aside>
@@ -301,6 +292,7 @@
       type="file"
       onchange={onFileChangeLoadNodes}
       accept=".json"
+      bind:files={importNodesFiles}
       style="display: none"
     />
     <span class="button-text">Load Nodes</span>
