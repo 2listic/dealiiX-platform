@@ -2,6 +2,7 @@ export const parseGraph = (nodes, edges) => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
+      position: obj.position,
       // xy_flow_obj: obj,
     }
     return acc
