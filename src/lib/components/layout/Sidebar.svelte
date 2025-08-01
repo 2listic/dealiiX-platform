@@ -6,7 +6,7 @@
   import { fade } from 'svelte/transition'
 
   let isMouseOver = $state(false)
-  let leaveTimeout;
+  let leaveTimeout
 
   if (defaultNodes) {
     // TODO: add stantilization checks (i.e. empty object) and move into separate function
@@ -34,8 +34,8 @@
   const handleMouseEnter = () => {
     // Clear any pending leave timeout
     leaveTimeout = setTimeout(() => {
-      isMouseOver = true;
-    }, 1000);
+      isMouseOver = true
+    }, 1000)
   }
 
   const handleMouseLeave = () => {
@@ -59,8 +59,10 @@
             draggable={true}
           >
             {#if isMouseOver}
-              <span transition:fade|global={{duration: 250}}>{returnNodeType(node)}</span>
-            {/if} 
+              <span transition:fade|global={{ duration: 250 }}
+                >{returnNodeType(node)}</span
+              >
+            {/if}
           </div>
         {/each}
       {/each}
@@ -85,7 +87,7 @@
     gap: 1rem;
     padding: 2rem 1rem;
   }
-  
+
   .node {
     padding: 0.5rem 1rem;
     margin: 0 1rem;
