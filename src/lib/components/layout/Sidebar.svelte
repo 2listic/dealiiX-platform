@@ -3,6 +3,10 @@
   import { useDnD } from '../DnDProvider.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
   import { nodeColors, type NodeData } from '../../types/nodeTypes'
+  import { fade } from 'svelte/transition'
+
+  let isMouseOver = $state(false)
+  let leaveTimeout;
 
   if (defaultNodes) {
     // TODO: add stantilization checks (i.e. empty object) and move into separate function
@@ -26,24 +30,37 @@
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
   }
+
+  const handleMouseEnter = () => {
+    // Clear any pending leave timeout
+    leaveTimeout = setTimeout(() => {
+      isMouseOver = true;
+    }, 1000);
+  }
+
+  const handleMouseLeave = () => {
+    clearTimeout(leaveTimeout)
+    isMouseOver = false
+  }
 </script>
 
-<aside>
+<aside onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
   <div class="nodes-container">
     {#if availableNodesByType}
       <!-- TODO: move into separate function -->
       {#each Object.entries(availableNodesByType) as [nodeTypeName, arrNodesByType] (nodeTypeName)}
         {#each arrNodesByType as Array<NodeData> as node (node)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             style="--borderColor: {returnNodeColor(nodeTypeName)}"
-            role="option"
-            aria-selected="false"
-            tabindex="0"
             class="node"
+            class:hovered={isMouseOver}
             ondragstart={(event) => onDragStart(event, returnNodeType(node))}
             draggable={true}
           >
-            {returnNodeType(node)}
+            {#if isMouseOver}
+              <span transition:fade|global={{duration: 250}}>{returnNodeType(node)}</span>
+            {/if} 
           </div>
         {/each}
       {/each}
@@ -64,12 +81,14 @@
     align-items: center;
     justify-content: center;
     overflow-y: auto; /* Vertical scrollbar only when overflowing */
+    overflow-x: hidden;
     gap: 1rem;
     padding: 2rem 1rem;
   }
-
+  
   .node {
     padding: 0.5rem 1rem;
+    margin: 0 1rem;
     border-radius: 5px;
     cursor: grab;
     border: 2px solid var(--borderColor, gray);
