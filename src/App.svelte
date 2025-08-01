@@ -13,6 +13,8 @@
         <div class="sidebar-wrapper">
           <Sidebar />
         </div>
+        <!-- TODO: set min-width and width as parameters here and in .sidebar-wrapper -->
+        <!-- this element takes same space of sidebar with absolute positioning  -->
         <div style="min-width: 50px; width: 3vw;"></div>
         <div class="sidebar-buttons-wrapper">
           <SidebarButtons />

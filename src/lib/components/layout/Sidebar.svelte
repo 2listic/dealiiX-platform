@@ -32,7 +32,6 @@
   }
 
   const handleMouseEnter = () => {
-    // Clear any pending leave timeout
     leaveTimeout = setTimeout(() => {
       isMouseOver = true
     }, 1000)
@@ -54,7 +53,6 @@
           <div
             style="--borderColor: {returnNodeColor(nodeTypeName)}"
             class="node"
-            class:hovered={isMouseOver}
             ondragstart={(event) => onDragStart(event, returnNodeType(node))}
             draggable={true}
           >
