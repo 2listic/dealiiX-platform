@@ -42,7 +42,7 @@
     cursor: pointer;
     min-width: 50px;
     width: 3vw; /* Set a fixed collapsed width */
-    transition: width 0.8s 0.3s ease-in-out;
+    transition: width 0.4s 0.1s ease-in-out;
   }
 
   .sidebar-wrapper:hover {

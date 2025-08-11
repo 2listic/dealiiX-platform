@@ -34,7 +34,7 @@
   const handleMouseEnter = () => {
     leaveTimeout = setTimeout(() => {
       isMouseOver = true
-    }, 1000)
+    }, 400)
   }
 
   const handleMouseLeave = () => {
