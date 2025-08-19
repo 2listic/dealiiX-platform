@@ -74,7 +74,7 @@
     cursor: pointer;
     /* margin-top: 30px; */
     min-width: var(--sidebar-wrapper-min-width);
-    transition: width 0.6s 0.2s ease-in-out;
+    transition: width 0.5s 0.1s ease-in-out;
   }
 
   #sidebar-position-holder {

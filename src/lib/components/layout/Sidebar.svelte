@@ -7,7 +7,6 @@
   import { sideBarState } from '../../stores/sidebar.svelte'
 
   let isMouseOver = $state(false)
-  let leaveTimeout
 
   if (defaultNodes) {
     // TODO: add stantilization checks (i.e. empty object) and move into separate function
@@ -31,20 +30,9 @@
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
   }
-
-  const handleMouseEnter = () => {
-    leaveTimeout = setTimeout(() => {
-      isMouseOver = true
-    }, 600)
-  }
-
-  const handleMouseLeave = () => {
-    clearTimeout(leaveTimeout)
-    isMouseOver = false
-  }
 </script>
 
-<aside onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
+<aside onmouseenter={() => isMouseOver=true} onmouseleave={()=> isMouseOver=false}>
   <div class="nodes-container">
     {#if availableNodesByType}
       <!-- TODO: move into separate function -->
