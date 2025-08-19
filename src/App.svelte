@@ -4,17 +4,43 @@
   import DnDProvider from './lib/components/DnDProvider.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
+  import { sideBarState } from './lib/stores/sidebar.svelte'
+  import { onMount } from 'svelte'
+
+  let isExpanded = $derived(sideBarState.isExpanded)
+  let sidebarWrapperElem
+  let sidebarPositionHolderElem
+  var style = window.getComputedStyle(document.body)
+  const sidebarWrapperWidth = style.getPropertyValue('--sidebar-wrapper-width')
+
+  onMount(() => {
+    sidebarWrapperElem = document.getElementById('sidebar-wrapper')
+    sidebarPositionHolderElem = document.getElementById(
+      'sidebar-position-holder'
+    )
+  })
+  $effect(() => {
+    if (isExpanded && sidebarWrapperElem && sidebarPositionHolderElem) {
+      sidebarWrapperElem.style.position = 'static'
+      sidebarWrapperElem.style.width = '25vw'
+      sidebarPositionHolderElem.style.display = 'none'
+    } else if (sidebarWrapperElem && sidebarPositionHolderElem) {
+      sidebarWrapperElem.style.position = 'absolute'
+      sidebarWrapperElem.style.width = sidebarWrapperWidth
+      sidebarPositionHolderElem.style.display = 'block'
+    }
+  })
 </script>
 
 <main>
   <SvelteFlowProvider>
     <DnDProvider>
-      <div class="app-container">
-        <div class="sidebar-wrapper">
+      <div id="app-container">
+        <div id="sidebar-wrapper">
           <Sidebar />
         </div>
-        <div class="sidebar-position-holder"></div>
-        <div class="sidebar-buttons-wrapper">
+        <div id="sidebar-position-holder"></div>
+        <div id="sidebar-buttons-wrapper">
           <SidebarButtons />
         </div>
         <div class="flow-wrapper">
@@ -31,34 +57,33 @@
     --sidebar-wrapper-width: 3vw;
   }
 
-  .app-container {
+  #app-container {
     height: 100vh;
     width: 100vw;
     display: flex;
     flex-direction: row;
   }
 
-  .sidebar-wrapper {
+  #sidebar-wrapper {
     position: absolute;
     left: 0;
     top: 0;
     z-index: 100;
     cursor: pointer;
     min-width: var(--sidebar-wrapper-min-width);
-    width: var(--sidebar-wrapper-width); /* Set a fixed collapsed width */
     transition: width 0.4s 0.1s ease-in-out;
   }
 
-  .sidebar-position-holder {
+  #sidebar-position-holder {
     min-width: var(--sidebar-wrapper-min-width);
     width: var(--sidebar-wrapper-width);
   }
 
-  .sidebar-wrapper:hover {
-    width: 25vw; /* Set expanded width */
+  #sidebar-wrapper:hover {
+    width: 25vw !important; /* Set important to override the inline style */
   }
 
-  .sidebar-buttons-wrapper {
+  #sidebar-buttons-wrapper {
     flex: 1; /* Takes 1 part of the remaining space */
     max-width: 80px;
   }
