@@ -13,9 +13,7 @@
         <div class="sidebar-wrapper">
           <Sidebar />
         </div>
-        <!-- TODO: set min-width and width as parameters here and in .sidebar-wrapper -->
-        <!-- this element takes same space of sidebar with absolute positioning  -->
-        <div style="min-width: 50px; width: 3vw;"></div>
+        <div class="sidebar-position-holder"></div>
         <div class="sidebar-buttons-wrapper">
           <SidebarButtons />
         </div>
@@ -28,21 +26,32 @@
 </main>
 
 <style>
+  :root {
+    --sidebar-wrapper-min-width: 50px;
+    --sidebar-wrapper-width: 3vw;
+  }
+
   .app-container {
     height: 100vh;
     width: 100vw;
     display: flex;
     flex-direction: row;
   }
+
   .sidebar-wrapper {
     position: absolute;
     left: 0;
     top: 0;
     z-index: 100;
     cursor: pointer;
-    min-width: 50px;
-    width: 3vw; /* Set a fixed collapsed width */
+    min-width: var(--sidebar-wrapper-min-width);
+    width: var(--sidebar-wrapper-width); /* Set a fixed collapsed width */
     transition: width 0.4s 0.1s ease-in-out;
+  }
+
+  .sidebar-position-holder {
+    min-width: var(--sidebar-wrapper-min-width);
+    width: var(--sidebar-wrapper-width);
   }
 
   .sidebar-wrapper:hover {
