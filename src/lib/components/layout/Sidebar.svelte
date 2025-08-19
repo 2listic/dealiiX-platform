@@ -32,7 +32,10 @@
   }
 </script>
 
-<aside onmouseenter={() => isMouseOver=true} onmouseleave={()=> isMouseOver=false}>
+<aside
+  onmouseenter={() => (isMouseOver = true)}
+  onmouseleave={() => (isMouseOver = false)}
+>
   <div class="nodes-container">
     {#if availableNodesByType}
       <!-- TODO: move into separate function -->
