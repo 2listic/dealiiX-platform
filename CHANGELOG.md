@@ -21,6 +21,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-UI
 
+- [#58](https://github.com/2listic/dealiiX-platform/pull/58) Nodes' lateral bar made collapsible on mouse hover and on click on dedicated button.
 - [#57](https://github.com/2listic/dealiiX-platform/pull/57) Added a new login/logout button. Retrieved authenticaton token from remote server is stored for future requests.
 - [#51](https://github.com/2listic/dealiiX-platform/pull/51) Added lateral bars for action buttons (i.e. import, export JSON graph) and for node drag and drop. Added dark mode theme manually selectable from UI.
 - [#29](https://github.com/2listic/dealiiX-platform/pull/29) A default set of nodes are displayed in the top horizontal bar when the application starts. A new botton allows to upload a JSON file to update the set of nodes available.
