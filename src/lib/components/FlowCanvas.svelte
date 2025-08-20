@@ -23,7 +23,6 @@
     Controls,
     Panel,
     useSvelteFlow,
-    type ColorModeClass,
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
@@ -34,11 +33,13 @@
     setNodes,
     setEdges,
   } from '../stores/nodes.svelte'
+  import { colorModeState } from '../stores/colorModeStore.svelte'
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import { useDnD } from './DnDProvider.svelte'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { MethodName, Type } from '../types/nodeTypes'
+  import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
   const type = useDnD()
@@ -58,24 +59,6 @@
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
-
-  let colorMode: ColorModeClass = $state('light')
-
-  const onColorModeChange = async (e) => {
-    const newMode = e.target.value
-    // @ts-ignore
-    if (window.electron) {
-      // @ts-ignore
-      const actualTheme = await window.electron.invoke('set-theme', newMode)
-      console.log('Electron theme: ', actualTheme)
-    }
-    if (newMode === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    console.log('Browser theme', newMode)
-  }
 </script>
 
 <SvelteFlow
@@ -87,7 +70,7 @@
   {isValidConnection}
   ondragover={onDragOver}
   ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
-  {colorMode}
+  colorMode={colorModeState.value}
 >
   <Panel position="top-left">
     <div class="export-button-container">
@@ -100,14 +83,7 @@
     <!-- <div class="custom-panel">
       Number of nodes: {idCounter}
     </div> -->
-    <select
-      class="custom-panel"
-      bind:value={colorMode}
-      onchange={onColorModeChange}
-    >
-      <option value="light">Light mode</option>
-      <option value="dark">Dark mode</option>
-    </select>
+    <ButtonToggleDarkMode />
   </Panel>
   <Controls />
   <MiniMap />
