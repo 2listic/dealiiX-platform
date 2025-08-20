@@ -7,7 +7,7 @@
 <div id="button-sidebar-expansion-wrapper">
   <button
     id="button-sidebar-expansion"
-    title="Toggle between fixed and collapsible menu"
+    title="Switch between fixed and collapsible menu"
     onclick={toggleExpandSidebar}
   >
     {#if sideBarState.isExpanded}

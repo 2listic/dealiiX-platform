@@ -25,9 +25,9 @@
 
 <label class="switch">
   <input bind:checked type="checkbox" onchange={onChangeSwitch} />
-  <span class="slider round"></span>
+  <span class="slider round" title="Switch between light and dark modes"></span>
 </label>
-<div>
+<div style="margin-top: 0.5rem">
   {#if checked}
     Dark mode
   {:else}
@@ -36,23 +36,11 @@
 </div>
 
 <style>
-  .custom-panel {
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 1vh;
-    margin-bottom: 1vh;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    font-size: 1.5em;
-    color: #333;
-    cursor: pointer;
-  }
-
   .switch {
     position: relative;
     display: inline-block;
-    width: 60px;
-    height: 34px;
+    width: 48px;
+    height: 27px;
   }
 
   .switch input {
@@ -76,32 +64,24 @@
   .slider:before {
     position: absolute;
     content: '';
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
+    height: 21px;
+    width: 21px;
+    left: 3px;
+    bottom: 3px;
     background-color: white;
     -webkit-transition: 0.4s;
     transition: 0.4s;
   }
 
-  input:checked + .slider {
-    background-color: #2196f3;
-  }
-
-  input:focus + .slider {
-    box-shadow: 0 0 1px #2196f3;
-  }
-
   input:checked + .slider:before {
-    -webkit-transform: translateX(26px);
-    -ms-transform: translateX(26px);
-    transform: translateX(26px);
+    -webkit-transform: translateX(21px);
+    -ms-transform: translateX(21px);
+    transform: translateX(21px);
   }
 
   /* Rounded sliders */
   .slider.round {
-    border-radius: 34px;
+    border-radius: 27px;
   }
 
   .slider.round:before {
