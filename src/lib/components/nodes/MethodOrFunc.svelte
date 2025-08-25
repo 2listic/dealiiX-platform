@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { NodeData } from '../../types/nodeTypes'
   export type Triangulation2RefineGlobalType = Node<
     NodeData,
@@ -127,4 +127,4 @@
     font-family: monospace;
     font-size: smaller;
   }
-</style>
+</style> -->

@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { NodeData } from '../../types/nodeTypes'
   export type TriangulationType = Node<NodeData, Type.TRIANGULATION22>
   export type GridOutType = Node<NodeData, Type.GRID_OUT>
@@ -71,4 +71,4 @@
   .label {
     font-weight: bold;
   }
-</style>
+</style> -->

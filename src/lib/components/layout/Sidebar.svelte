@@ -14,13 +14,13 @@
   }
   const availableNodesByType = $derived(getImportedNodes())
 
-  const type = useDnD()
+  const draggedNodeData = useDnD()
 
-  const onDragStart = (event: DragEvent, nodeType: string) => {
+  const onDragStart = (event: DragEvent, node: NodeData) => {
     if (!event.dataTransfer) {
       return null
     }
-    type.current = nodeType
+    draggedNodeData.current = node
     event.dataTransfer.effectAllowed = 'move'
   }
 
@@ -45,7 +45,7 @@
           <div
             style="--borderColor: {returnNodeColor(nodeTypeName)}"
             class="node"
-            ondragstart={(event) => onDragStart(event, returnNodeType(node))}
+            ondragstart={(event) => onDragStart(event, node)}
             draggable={true}
           >
             {#if isMouseOver || sideBarState.isExpanded}

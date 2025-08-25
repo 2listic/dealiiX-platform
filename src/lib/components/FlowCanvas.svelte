@@ -1,16 +1,17 @@
 <script module>
-  import ElementaryConstructor, {
-    type ElementaryConstructorType,
-  } from './nodes/ElementaryConstructor.svelte'
-  import EmptyConstructor, {
-    type EmptyConstructorType,
-  } from './nodes/EmptyConstructor.svelte'
-  import MethodOrFunc, { type MethodType } from './nodes/MethodOrFunc.svelte'
+  // import ElementaryConstructor, {
+  //   type ElementaryConstructorType,
+  // } from './nodes/ElementaryConstructor.svelte'
+  // import EmptyConstructor, {
+  //   type EmptyConstructorType,
+  // } from './nodes/EmptyConstructor.svelte'
+  // import MethodOrFunc, { type MethodType } from './nodes/MethodOrFunc.svelte'
+  import UnifiedNode from './nodes/UnifiedNode.svelte'
 
-  export type CustomNodes =
-    | ElementaryConstructorType
-    | EmptyConstructorType
-    | MethodType
+  // export type CustomNodes =
+  //   | ElementaryConstructorType
+  //   | EmptyConstructorType
+  //   | MethodType
 </script>
 
 <script lang="ts">
@@ -37,24 +38,33 @@
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import { useDnD } from './DnDProvider.svelte'
-  import { onDragOver, onDrop } from '../utils/dragAndDrop'
-  import { MethodName, Type } from '../types/nodeTypes'
+  import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
+  import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
-  const type = useDnD()
+  const draggedNodeData = useDnD()
 
   // let idCounter = $derived(getNodes().length)
 
+  // const nodeTypes: NodeTypes = {
+  //   [Type.UNSIGNED]: ElementaryConstructor,
+  //   [Type.BOOLEAN]: ElementaryConstructor,
+  //   [Type.STRING]: ElementaryConstructor,
+  //   [Type.TRIANGULATION22]: EmptyConstructor,
+  //   [Type.GRID_OUT]: EmptyConstructor,
+  //   [MethodName.TRIANGULATION2_REFINEGLOBAL]: MethodOrFunc,
+  //   [MethodName.GRIDOUT_WRITEVTK2]: MethodOrFunc,
+  //   [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: MethodOrFunc,
+  // }
   const nodeTypes: NodeTypes = {
-    [Type.UNSIGNED]: ElementaryConstructor,
-    [Type.BOOLEAN]: ElementaryConstructor,
-    [Type.STRING]: ElementaryConstructor,
-    [Type.TRIANGULATION22]: EmptyConstructor,
-    [Type.GRID_OUT]: EmptyConstructor,
-    [MethodName.TRIANGULATION2_REFINEGLOBAL]: MethodOrFunc,
-    [MethodName.GRIDOUT_WRITEVTK2]: MethodOrFunc,
-    [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: MethodOrFunc,
+    [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
+    [NodeType.EMPTY_CONSTRUCTOR]: UnifiedNode,
+    [NodeType.CONSTRUCTOR]: UnifiedNode,
+    [NodeType.ABSTRACT]: UnifiedNode,
+    [NodeType.VOID_METHOD]: UnifiedNode,
+    [NodeType.VOID_CONST_METHOD]: UnifiedNode,
+    [NodeType.VOID_FUNCTION]: UnifiedNode,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
@@ -69,7 +79,7 @@
   fitView
   {isValidConnection}
   ondragover={onDragOver}
-  ondrop={(event) => onDrop(event, screenToFlowPosition, type)}
+  ondrop={(event) => onDrop(event, screenToFlowPosition, draggedNodeData)}
   colorMode={colorModeState.value}
 >
   <Panel position="top-left">

@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import type { NodeData } from '../../types/nodeTypes'
   export type UnsignedType = Node<NodeData, Type.UNSIGNED>
   export type BooleanType = Node<NodeData, Type.BOOLEAN>
@@ -135,4 +135,4 @@
   input.invalid {
     border: 2px solid red;
   }
-</style>
+</style> -->

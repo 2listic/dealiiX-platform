@@ -28,6 +28,7 @@ export enum Inputs {
   THREE = 3,
 }
 
+// TODO: delete when MethodOrFunc component is deleted
 export enum MethodName {
   // NULL = null,
   TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
@@ -38,19 +39,28 @@ export enum MethodName {
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
-  METHOD = 'method',
+  CONSTRUCTOR = 'constructor',
+  ABSTRACT = 'abstract',
+  VOID_METHOD = 'void_method',
+  VOID_CONST_METHOD = 'void_const_method',
+  VOID_FUNCTION = 'void_function',
 }
 
 export const nodeColors = {
   [NodeType.ELEMENTARY_CONSTRUCTOR]: 'yellowgreen',
-  [NodeType.METHOD]: 'skyblue',
   [NodeType.EMPTY_CONSTRUCTOR]: 'gray',
+  [NodeType.CONSTRUCTOR]: 'gray',
+  [NodeType.ABSTRACT]: 'gray',
+  [NodeType.VOID_METHOD]: 'skyblue',
+  [NodeType.VOID_CONST_METHOD]: 'skyblue',
+  [NodeType.VOID_FUNCTION]: 'skyblue',
 }
 
 export enum Outputs {
   SELF = -1,
 }
 
+// TODO: delete TRIANGULATION22 and GRID_OUT when EmptyConstructor and ElementaryConstructor are deleted
 export enum Type {
   UNSIGNED = 'unsigned',
   BOOLEAN = 'bool',
