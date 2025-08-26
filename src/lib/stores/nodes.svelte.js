@@ -55,7 +55,6 @@ export const setImportedNodes = (data) => {
 
 export const getImportedNodes = () => importedData
 
-// TODO: delete this if not used anymore
 export const getImportedNodesByType = (svelteNodeType) => {
   if (!(svelteNodeType in importedData)) {
     console.error(`Node type '${svelteNodeType}' not found in imported data.`)
