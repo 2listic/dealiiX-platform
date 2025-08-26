@@ -112,7 +112,7 @@
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.INT || Type.DOUBLE}
+    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE}
       <input
         type="text"
         class={data.is_valid ? '' : 'invalid'}
