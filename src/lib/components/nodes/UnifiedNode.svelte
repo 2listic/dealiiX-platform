@@ -38,16 +38,30 @@
   import { removeNode } from '../../stores/nodes.svelte'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
-  console.log('unifiedNode id', id)
-  console.log('unifiedNode data', data)
-  console.log('unifiedNode data.type', data.type)
-  console.log('unifiedNode type', type)
-
-  const color = nodeColors[data.node_type]
-
   data.is_valid = true
 
+  const color = nodeColors[type]
+
   const { updateNodeData } = useSvelteFlow()
+
+  const isValidNum = (value) => {
+    const numValue = Number(value)
+    switch (data.type) {
+      case Type.UNSIGNED:
+        return (
+          !isNaN(numValue) &&
+          Number.isInteger(numValue) &&
+          numValue >= 0 &&
+          value.trim() !== ''
+        )
+      case Type.INT:
+        return (
+          !isNaN(numValue) && Number.isInteger(numValue) && value.trim() !== ''
+        )
+      case Type.DOUBLE:
+        return !isNaN(numValue) && value.trim() !== ''
+    }
+  }
 
   // let nodes = useNodes()
   // $effect(() => {
@@ -98,52 +112,14 @@
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED}
+    {#if data.type === Type.UNSIGNED || data.type === Type.INT || Type.DOUBLE}
       <input
         type="text"
         class={data.is_valid ? '' : 'invalid'}
         value={data.value}
         oninput={(evt) => {
           const value = evt.currentTarget.value
-          const numValue = Number(value)
-          const isValid =
-            !isNaN(numValue) &&
-            Number.isInteger(numValue) &&
-            numValue >= 0 &&
-            value.trim() !== ''
-          updateNodeData(id, {
-            value: value,
-            is_valid: isValid,
-          })
-        }}
-      />
-    {:else if data.type === Type.INT}
-      <input
-        type="text"
-        class={data.is_valid ? '' : 'invalid'}
-        value={data.value}
-        oninput={(evt) => {
-          const value = evt.currentTarget.value
-          const numValue = Number(value)
-          const isValid =
-            !isNaN(numValue) &&
-            Number.isInteger(numValue) &&
-            value.trim() !== ''
-          updateNodeData(id, {
-            value: value,
-            is_valid: isValid,
-          })
-        }}
-      />
-    {:else if data.type === Type.DOUBLE}
-      <input
-        type="text"
-        class={data.is_valid ? '' : 'invalid'}
-        value={data.value}
-        oninput={(evt) => {
-          const value = evt.currentTarget.value
-          const numValue = Number(value)
-          const isValid = !isNaN(numValue) && value.trim() !== ''
+          const isValid = isValidNum(value)
           updateNodeData(id, {
             value: value,
             is_valid: isValid,
