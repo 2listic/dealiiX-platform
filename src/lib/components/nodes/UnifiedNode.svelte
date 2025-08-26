@@ -105,12 +105,45 @@
         value={data.value}
         oninput={(evt) => {
           const value = evt.currentTarget.value
-          const numValue = parseInt(value)
+          const numValue = Number(value)
           const isValid =
             !isNaN(numValue) &&
+            Number.isInteger(numValue) &&
             numValue >= 0 &&
-            numValue <= 65535 &&
             value.trim() !== ''
+          updateNodeData(id, {
+            value: value,
+            is_valid: isValid,
+          })
+        }}
+      />
+    {:else if data.type === Type.INT}
+      <input
+        type="text"
+        class={data.is_valid ? '' : 'invalid'}
+        value={data.value}
+        oninput={(evt) => {
+          const value = evt.currentTarget.value
+          const numValue = Number(value)
+          const isValid =
+            !isNaN(numValue) &&
+            Number.isInteger(numValue) &&
+            value.trim() !== ''
+          updateNodeData(id, {
+            value: value,
+            is_valid: isValid,
+          })
+        }}
+      />
+    {:else if data.type === Type.DOUBLE}
+      <input
+        type="text"
+        class={data.is_valid ? '' : 'invalid'}
+        value={data.value}
+        oninput={(evt) => {
+          const value = evt.currentTarget.value
+          const numValue = Number(value)
+          const isValid = !isNaN(numValue) && value.trim() !== ''
           updateNodeData(id, {
             value: value,
             is_valid: isValid,

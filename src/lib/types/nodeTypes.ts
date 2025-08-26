@@ -28,14 +28,6 @@ export enum Inputs {
   THREE = 3,
 }
 
-// TODO: delete when MethodOrFunc component is deleted
-export enum MethodName {
-  // NULL = null,
-  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
-  GRIDOUT_WRITEVTK2 = 'GridOut::write_vtk<2>',
-  GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2 = 'GridGenerator::generate_from_name_and_arguments<2>',
-}
-
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
@@ -60,20 +52,19 @@ export enum Outputs {
   SELF = -1,
 }
 
-// TODO: delete TRIANGULATION22 and GRID_OUT when EmptyConstructor and ElementaryConstructor are deleted
 export enum Type {
+  INT = 'int',
   UNSIGNED = 'unsigned',
+  DOUBLE = 'double',
   BOOLEAN = 'bool',
   STRING = 'std::string',
-  TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
-  GRID_OUT = 'dealii::GridOut',
 }
 
 export type NodeData = {
   arguments: Argument[]
   derived?: string[]
   inputs: Inputs[]
-  method_name?: MethodName
+  method_name?: string
   node_type: NodeType
   outputs: Outputs[]
   type: string
