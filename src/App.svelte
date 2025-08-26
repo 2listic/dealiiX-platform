@@ -1,7 +1,6 @@
 <script lang="ts">
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
-  import DnDProvider from './lib/components/DnDProvider.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
   import { sideBarState } from './lib/stores/sidebar.svelte'
@@ -35,21 +34,19 @@
 
 <main>
   <SvelteFlowProvider>
-    <DnDProvider>
-      <div id="app-container">
-        <ButtonToggleMenu />
-        <div id="sidebar-wrapper">
-          <Sidebar />
-        </div>
-        <div id="sidebar-position-holder"></div>
-        <div id="sidebar-buttons-wrapper">
-          <SidebarButtons />
-        </div>
-        <div class="flow-wrapper">
-          <FlowCanvas />
-        </div>
+    <div id="app-container">
+      <ButtonToggleMenu />
+      <div id="sidebar-wrapper">
+        <Sidebar />
       </div>
-    </DnDProvider>
+      <div id="sidebar-position-holder"></div>
+      <div id="sidebar-buttons-wrapper">
+        <SidebarButtons />
+      </div>
+      <div class="flow-wrapper">
+        <FlowCanvas />
+      </div>
+    </div>
   </SvelteFlowProvider>
 </main>
 

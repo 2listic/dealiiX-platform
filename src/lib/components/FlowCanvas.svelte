@@ -25,13 +25,12 @@
   import { colorModeState } from '../stores/colorModeStore.svelte'
   // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
-  import { useDnD } from './DnDProvider.svelte'
+  import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
-  const draggedNodeData = useDnD()
 
   const nodeTypes: NodeTypes = {
     [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
@@ -55,7 +54,12 @@
   fitView
   {isValidConnection}
   ondragover={onDragOver}
-  ondrop={(event) => onDrop(event, screenToFlowPosition, draggedNodeData)}
+  ondrop={(event) =>
+    onDrop(
+      event,
+      screenToFlowPosition,
+      $state.snapshot(dndNodeDataState.current)
+    )}
   colorMode={colorModeState.value}
 >
   <Panel position="top-left">

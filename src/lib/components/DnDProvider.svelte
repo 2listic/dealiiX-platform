@@ -1,4 +1,4 @@
-<script module>
+<!-- <script module>
   import { getContext } from 'svelte'
 
   export const useDnD = () => {
@@ -28,4 +28,4 @@
   })
 </script>
 
-{@render children()}
+{@render children()} -->

@@ -13,13 +13,13 @@ export const onDrop = (
   event: DragEvent,
   // eslint-disable-next-line no-unused-vars
   screenToFlowPosition: (XYPosition: XYPosition) => XYPosition,
-  draggedNodeData: { current: NodeData | null }
+  draggedNodeData: NodeData | null
 ) => {
   event.preventDefault()
-  if (!draggedNodeData.current) {
+  if (!draggedNodeData) {
     return
   }
-  const data = $state.snapshot(draggedNodeData.current)
+  const data = draggedNodeData
 
   const position = screenToFlowPosition({
     x: event.clientX,

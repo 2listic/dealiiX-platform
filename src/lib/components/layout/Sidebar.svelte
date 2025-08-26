@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
-  import { useDnD } from '../DnDProvider.svelte'
+  import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
   import { nodeColors, type NodeData } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
@@ -14,13 +14,11 @@
   }
   const availableNodesByType = $derived(getImportedNodes())
 
-  const draggedNodeData = useDnD()
-
   const onDragStart = (event: DragEvent, node: NodeData) => {
     if (!event.dataTransfer) {
       return null
     }
-    draggedNodeData.current = node
+    dndNodeDataState.current = node
     event.dataTransfer.effectAllowed = 'move'
   }
 
