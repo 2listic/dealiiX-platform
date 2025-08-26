@@ -12,19 +12,19 @@
 
   let { children }: { children: Snippet } = $props()
 
-  let dndType = $state(null)
+  let dndNodeData = $state(null)
 
   setContext('dnd', {
     set current(value) {
-      dndType = value
+      dndNodeData = value
     },
     get current() {
-      return dndType
+      return dndNodeData
     },
   })
 
   onDestroy(() => {
-    dndType.set(null)
+    dndNodeData.set(null)
   })
 </script>
 

@@ -43,27 +43,8 @@
   console.log('unifiedNode data.type', data.type)
   console.log('unifiedNode type', type)
 
-  // const importedNodes = getImportedNodesByType(data.node_type)
   const color = nodeColors[data.node_type]
 
-  // TODO: remove this part and consider to add checks when adding new nodes on the canvas or importing them
-  // if (!importedNodes || importedNodes.length === 0) {
-  //   data.is_valid = false
-  //   console.error(
-  //     'No imported nodes found for node_type:',
-  //     data.node_type
-  //   )
-  // } else {
-  //   $inspect('elementary_constructor, importedNodes', importedNodes)
-  //   const filterImportedNode = importedNodes.find((node) => node.type === type)
-  //   data.arguments = $state.snapshot(filterImportedNode.arguments)
-  //   data.inputs = $state.snapshot(filterImportedNode.inputs)
-  //   data.node_type = $state.snapshot(filterImportedNode.node_type)
-  //   data.outputs = $state.snapshot(filterImportedNode.outputs)
-  //   data.type = $state.snapshot(filterImportedNode.type)
-  //   data.type_hash = $state.snapshot(filterImportedNode.type_hash)
-  //   data.is_valid = true
-  // }
   data.is_valid = true
 
   const { updateNodeData } = useSvelteFlow()
@@ -76,14 +57,15 @@
 </script>
 
 <div class="custom-node" style="--border-color: {color}">
+  <!-- Headers -->
   <div class="node-header">
-    {#if 'method_name' in data}
-      <div class="label">{data.method_name}</div>
-    {:else}
-      <div class="label">{data.type}</div>
-    {/if}
+    <div class="label">
+      {'method_name' in data ? data.method_name : data.type}
+    </div>
     <button class="button-remove" onclick={() => removeNode(id)}>X</button>
   </div>
+
+  <!-- Input handlers -->
   {#each data.inputs as i, index (i)}
     <Handle
       id={`input-${index}`}
@@ -92,9 +74,13 @@
       style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
     />
   {/each}
+
+  <!-- Output handlers -->
   {#each data.outputs as i, index (i)}
     <Handle id={`output-${index}`} type="source" position={Position.Right} />
   {/each}
+
+  <!-- Input labels -->
   <div style="display: flex; flex-direction: row; gap: 2vh">
     <div class="input-column">
       {#each data.inputs as i, index (i)}
@@ -108,6 +94,8 @@
       {/each}
     </div>
   </div>
+
+  <!-- Elementary constructors input fields -->
   <div>
     {#if data.type === Type.UNSIGNED}
       <input
@@ -149,9 +137,6 @@
       <span>{data.value === 'true' ? 'true' : 'false'}</span>
     {/if}
   </div>
-  {#each data.outputs as i, index (i)}
-    <Handle id={`output-${index}`} type="source" position={Position.Right} />
-  {/each}
 </div>
 
 <style>

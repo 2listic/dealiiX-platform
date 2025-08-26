@@ -1,17 +1,5 @@
 <script module>
-  // import ElementaryConstructor, {
-  //   type ElementaryConstructorType,
-  // } from './nodes/ElementaryConstructor.svelte'
-  // import EmptyConstructor, {
-  //   type EmptyConstructorType,
-  // } from './nodes/EmptyConstructor.svelte'
-  // import MethodOrFunc, { type MethodType } from './nodes/MethodOrFunc.svelte'
   import UnifiedNode from './nodes/UnifiedNode.svelte'
-
-  // export type CustomNodes =
-  //   | ElementaryConstructorType
-  //   | EmptyConstructorType
-  //   | MethodType
 </script>
 
 <script lang="ts">
@@ -45,18 +33,6 @@
   const { screenToFlowPosition } = useSvelteFlow()
   const draggedNodeData = useDnD()
 
-  // let idCounter = $derived(getNodes().length)
-
-  // const nodeTypes: NodeTypes = {
-  //   [Type.UNSIGNED]: ElementaryConstructor,
-  //   [Type.BOOLEAN]: ElementaryConstructor,
-  //   [Type.STRING]: ElementaryConstructor,
-  //   [Type.TRIANGULATION22]: EmptyConstructor,
-  //   [Type.GRID_OUT]: EmptyConstructor,
-  //   [MethodName.TRIANGULATION2_REFINEGLOBAL]: MethodOrFunc,
-  //   [MethodName.GRIDOUT_WRITEVTK2]: MethodOrFunc,
-  //   [MethodName.GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2]: MethodOrFunc,
-  // }
   const nodeTypes: NodeTypes = {
     [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
     [NodeType.EMPTY_CONSTRUCTOR]: UnifiedNode,
@@ -90,9 +66,6 @@
     <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
   </Panel>
   <Panel position="top-right">
-    <!-- <div class="custom-panel">
-      Number of nodes: {idCounter}
-    </div> -->
     <ButtonToggleDarkMode />
   </Panel>
   <Controls />
