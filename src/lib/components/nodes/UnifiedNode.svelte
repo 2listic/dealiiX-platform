@@ -59,6 +59,7 @@
 <div class="custom-node" style="--border-color: {color}">
   <!-- Headers -->
   <div class="node-header">
+    <div style="font-size: x-small;">ID {id}</div>
     <div class="label">
       {'method_name' in data ? data.method_name : data.type}
     </div>
