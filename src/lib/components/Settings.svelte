@@ -1,4 +1,5 @@
 <script>
+  import { settinigsState, SSH_PATH } from '../stores/settingsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -7,13 +8,13 @@
   let errorMessage = $state()
   let formElement
 
-  const validateAndSubmit = async () => {
+  const validateAndSave = async () => {
     errorMessage = ''
     if (formElement.checkValidity()) {
       // const settingsData = { sshPath }
       // consider to remove try/catch logic if not needed here
       try {
-        // save ssh path to local storage
+        settinigsState.setKey(SSH_PATH, sshPath)
       } catch (error) {
         console.error('Saving failed:', error)
         errorMessage = 'Saving was not succesfull. Please try again'
@@ -27,7 +28,13 @@
 </script>
 
 <div style="padding: 0 1rem">
-  <form bind:this={formElement}>
+  <form
+    bind:this={formElement}
+    onsubmit={(e) => {
+      e.preventDefault()
+      validateAndSave()
+    }}
+  >
     <h2>Settings</h2>
     <div class="inputs-container">
       <div class="input-container">
@@ -43,7 +50,7 @@
       </div>
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={validateAndSubmit}
+      <button type="button" class="button-submit" onclick={validateAndSave}
         >Save</button
       >
     </div>
