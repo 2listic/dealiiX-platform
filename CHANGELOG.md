@@ -12,6 +12,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drang and drop state simplified.
 - [#59](https://github.com/2listic/dealiiX-platform/pull/59) Add button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
 - [#52](https://github.com/2listic/dealiiX-platform/pull/52) Nodes are removable by clicking on a dedicated button
 - [#29](https://github.com/2listic/dealiiX-platform/pull/29) Added new nodes: std string, gridGenerator generate_from_name_and_arguments function, gridOut constructor, write_vtk method and bool. Nodes are rendered now more dinamically with a declarative approach based on the type of the node and the corrsponding information provided in the uploaded JSON file.
@@ -47,6 +48,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Nodes are unified in one unique component.
 - [#41](https://github.com/2listic/dealiiX-platform/pull/41) Add Prettier plugin for Svelte
 - [#35](https://github.com/2listic/dealiiX-platform/pull/35) Update icon and title of the .deb distributable
 - [#34](https://github.com/2listic/dealiiX-platform/pull/34) Add Prettier and automatic formatting on commit
