@@ -1,5 +1,4 @@
 import { initialNodes, initialEdges } from '../data/flowData'
-import { NodeType } from '../types/nodeTypes'
 
 /**
  * Svelte internal nodes and edges states
@@ -43,14 +42,13 @@ export const setImportedNodes = (data) => {
 
   // Group nodes by node_type
   const nodesByNodetype = nodes.reduce((acc, node) => {
-    // check if node is a method or function because they are handled as a unique type/component
-    const nodeType = 'method_name' in node ? NodeType.METHOD : node.node_type
+    const nodeType = node.node_type
     if (!acc[nodeType]) {
       acc[nodeType] = []
     }
     acc[nodeType].push(node)
     return acc
-  }, {})
+  }, Object.create(null))
   importedData = nodesByNodetype
   console.log('importedData', $state.snapshot(importedData))
 }
@@ -71,16 +69,14 @@ export const nodesFromProtocolToFlow = (nodes) => {
   const arrNodeIds = Object.keys(nodes)
 
   const arrIdNodes = arrNodeIds.reduce((acc, id, index) => {
-    // check if node is a method or function because they are handled as a unique type/component
-    const type =
-      'method_name' in nodes[id] ? nodes[id].method_name : nodes[id].type
+    const node_type = nodes[id].node_type
     const positionX =
       'position' in nodes[id] ? nodes[id].position.x : index * 100
     const positionY =
       'position' in nodes[id] ? nodes[id].position.y : index * 100
     acc.push({
       id: id,
-      type: type,
+      type: node_type,
       position: { x: positionX, y: positionY },
       data: { ...nodes[id] },
     })

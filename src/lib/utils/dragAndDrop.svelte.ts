@@ -1,5 +1,6 @@
 import type { XYPosition } from '@xyflow/svelte'
 import { getNextNodeId, getNodes, setNodes } from '../stores/nodes.svelte'
+import type { NodeData } from '../types/nodeTypes'
 
 export const onDragOver = (event: DragEvent) => {
   event.preventDefault()
@@ -10,13 +11,15 @@ export const onDragOver = (event: DragEvent) => {
 
 export const onDrop = (
   event: DragEvent,
+  // eslint-disable-next-line no-unused-vars
   screenToFlowPosition: (XYPosition: XYPosition) => XYPosition,
-  type: { current: string | null }
+  draggedNodeData: NodeData | null
 ) => {
   event.preventDefault()
-  if (!type.current) {
+  if (!draggedNodeData) {
     return
   }
+  const data = draggedNodeData
 
   const position = screenToFlowPosition({
     x: event.clientX,
@@ -26,8 +29,8 @@ export const onDrop = (
   console.log(id)
   const newNode = {
     id: id,
-    type: type.current,
-    data: {},
+    type: data.node_type,
+    data: data,
     position,
     origin: [0.5, 0.0],
   }

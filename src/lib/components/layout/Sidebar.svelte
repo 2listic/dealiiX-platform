@@ -1,8 +1,8 @@
 <script lang="ts">
   import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
-  import { useDnD } from '../DnDProvider.svelte'
+  import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
-  import { nodeColors, type NodeData } from '../../types/nodeTypes'
+  import { nodeColors, NodeType, type NodeData } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
@@ -14,13 +14,11 @@
   }
   const availableNodesByType = $derived(getImportedNodes())
 
-  const type = useDnD()
-
-  const onDragStart = (event: DragEvent, nodeType: string) => {
+  const onDragStart = (event: DragEvent, node: NodeData) => {
     if (!event.dataTransfer) {
       return null
     }
-    type.current = nodeType
+    dndNodeDataState.current = node
     event.dataTransfer.effectAllowed = 'move'
   }
 
@@ -40,21 +38,23 @@
     {#if availableNodesByType}
       <!-- TODO: move into separate function -->
       {#each Object.entries(availableNodesByType) as [nodeTypeName, arrNodesByType] (nodeTypeName)}
-        {#each arrNodesByType as Array<NodeData> as node (node)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            style="--borderColor: {returnNodeColor(nodeTypeName)}"
-            class="node"
-            ondragstart={(event) => onDragStart(event, returnNodeType(node))}
-            draggable={true}
-          >
-            {#if isMouseOver || sideBarState.isExpanded}
-              <span transition:fade|global={{ duration: 250 }}
-                >{returnNodeType(node)}</span
-              >
-            {/if}
-          </div>
-        {/each}
+        {#if nodeTypeName != NodeType.ABSTRACT}
+          {#each arrNodesByType as Array<NodeData> as node (node)}
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              style="--borderColor: {returnNodeColor(nodeTypeName)}"
+              class="node"
+              ondragstart={(event) => onDragStart(event, node)}
+              draggable={true}
+            >
+              {#if isMouseOver || sideBarState.isExpanded}
+                <span transition:fade|global={{ duration: 250 }}
+                  >{returnNodeType(node)}</span
+                >
+              {/if}
+            </div>
+          {/each}
+        {/if}
       {/each}
     {/if}
   </div>

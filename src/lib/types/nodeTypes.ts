@@ -28,23 +28,24 @@ export enum Inputs {
   THREE = 3,
 }
 
-export enum MethodName {
-  // NULL = null,
-  TRIANGULATION2_REFINEGLOBAL = 'Triangulation<2>::refine_global',
-  GRIDOUT_WRITEVTK2 = 'GridOut::write_vtk<2>',
-  GRIDGENERATOR_GENERATEFROMNAMEANDARGUMENTS2 = 'GridGenerator::generate_from_name_and_arguments<2>',
-}
-
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
-  METHOD = 'method',
+  CONSTRUCTOR = 'constructor',
+  ABSTRACT = 'abstract',
+  VOID_METHOD = 'void_method',
+  VOID_CONST_METHOD = 'void_const_method',
+  VOID_FUNCTION = 'void_function',
 }
 
 export const nodeColors = {
   [NodeType.ELEMENTARY_CONSTRUCTOR]: 'yellowgreen',
-  [NodeType.METHOD]: 'skyblue',
   [NodeType.EMPTY_CONSTRUCTOR]: 'gray',
+  [NodeType.CONSTRUCTOR]: 'gray',
+  [NodeType.ABSTRACT]: 'gray',
+  [NodeType.VOID_METHOD]: 'skyblue',
+  [NodeType.VOID_CONST_METHOD]: 'skyblue',
+  [NodeType.VOID_FUNCTION]: 'skyblue',
 }
 
 export enum Outputs {
@@ -52,18 +53,18 @@ export enum Outputs {
 }
 
 export enum Type {
+  INT = 'int',
   UNSIGNED = 'unsigned',
+  DOUBLE = 'double',
   BOOLEAN = 'bool',
   STRING = 'std::string',
-  TRIANGULATION22 = 'dealii::Triangulation<2, 2>',
-  GRID_OUT = 'dealii::GridOut',
 }
 
 export type NodeData = {
   arguments: Argument[]
   derived?: string[]
   inputs: Inputs[]
-  method_name?: MethodName
+  method_name?: string
   node_type: NodeType
   outputs: Outputs[]
   type: string
