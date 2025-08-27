@@ -4,7 +4,7 @@ import os from 'os'
 import path from 'path'
 
 const __userHomeDir = path.resolve(os.homedir())
-const privateKeyPath = path.join(__userHomeDir, '.ssh/id_rsa')
+const privateKeyPath = path.join(__userHomeDir, '.ssh/id_ed25519')
 
 function connectToSSHWithPassword(host, username, password, command) {
   return new Promise((resolve, reject) => {
