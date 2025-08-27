@@ -4,6 +4,8 @@ import os from 'os'
 import path from 'path'
 
 const __userHomeDir = path.resolve(os.homedir())
+// TODO: verify if global variable privateKeyPath is really persistent as it looks. Consider alternative approaches
+// https://www.electronjs.org/docs/latest/faq#my-apps-tray-disappeared-after-a-few-minutes
 let privateKeyPath = path.join(__userHomeDir, '.ssh/id_ed25519') // default location
 
 function updatePrivateKeyPath(newPath) {
