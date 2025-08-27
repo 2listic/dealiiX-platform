@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import {
+  updatePrivateKeyPath,
   connectAndUploadGraph,
   connectToSSHWithKey,
   connectToSSHWithPassword,
@@ -46,6 +47,8 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+ipcMain.handle('set-ssh-path', (event, path) => updatePrivateKeyPath(path))
 
 // Handle SSH command execution with password and Python fake-ssh server
 ipcMain.handle(

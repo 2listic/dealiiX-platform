@@ -4,7 +4,7 @@
 
   let { modalId } = $props()
 
-  let sshPath = $state()
+  let sshPath = $state(settinigsState.getKey(SSH_PATH))
   let errorMessage = $state()
   let formElement
 
@@ -15,6 +15,8 @@
       // consider to remove try/catch logic if not needed here
       try {
         settinigsState.setKey(SSH_PATH, sshPath)
+        // @ts-ignore
+        await window.electron.invoke('set-ssh-path', sshPath)
       } catch (error) {
         console.error('Saving failed:', error)
         errorMessage = 'Saving was not succesfull. Please try again'

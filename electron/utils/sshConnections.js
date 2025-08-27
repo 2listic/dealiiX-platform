@@ -4,7 +4,11 @@ import os from 'os'
 import path from 'path'
 
 const __userHomeDir = path.resolve(os.homedir())
-const privateKeyPath = path.join(__userHomeDir, '.ssh/id_ed25519')
+let privateKeyPath = path.join(__userHomeDir, '.ssh/id_ed25519') // default location
+
+function updatePrivateKeyPath(newPath) {
+  privateKeyPath = newPath
+}
 
 function connectToSSHWithPassword(host, username, password, command) {
   return new Promise((resolve, reject) => {
@@ -125,4 +129,9 @@ function connectAndUploadGraph(jsonGraph, remotePath) {
   })
 }
 
-export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadGraph }
+export {
+  updatePrivateKeyPath,
+  connectToSSHWithPassword,
+  connectToSSHWithKey,
+  connectAndUploadGraph,
+}
