@@ -57,12 +57,12 @@ ipcMain.handle(
 
 // Listen for messages from the renderer process
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
-  const pathToSsh = await getKeyFromLocalStorage('SSH_PATH')
+  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
   return await connectToSSHWithKey(command, pathToSsh)
 })
 
 ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
-  const pathToSsh = await getKeyFromLocalStorage('SSH_PATH')
+  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
   const graph = parseGraph(nodes, edges)
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)

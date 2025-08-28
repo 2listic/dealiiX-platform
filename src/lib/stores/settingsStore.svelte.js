@@ -1,6 +1,6 @@
 let settings = $state(JSON.parse(localStorage.getItem('settings')))
 
-export const SSH_PATH = 'SSH_PATH'
+export const SSH_PATH = 'sshPathKey'
 
 export const settinigsState = {
   getKey(key) {
