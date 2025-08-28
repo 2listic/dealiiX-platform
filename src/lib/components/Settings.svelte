@@ -38,7 +38,7 @@
     <h2>Settings</h2>
     <div class="inputs-container">
       <div class="input-container">
-        <label for="ssh-path">Path to private ssh key</label>
+        <label for="ssh-path">Absolute path to the local private SSH key</label>
         <input
           id="ssh-path"
           class="input-field"
