@@ -22,6 +22,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-UI
 
+- [#71](https://github.com/2listic/dealiiX-platform/pull/71) Added a new button Settings with a text input to store path to private SSH key.
 - [#65](https://github.com/2listic/dealiiX-platform/pull/65) Custom checkbox input for dark/light mode switch instead of dropdown menu.
 - [#58](https://github.com/2listic/dealiiX-platform/pull/58) Nodes' lateral bar made collapsible on mouse hover and on click on dedicated button.
 - [#57](https://github.com/2listic/dealiiX-platform/pull/57) Added a new login/logout button. Retrieved authenticaton token from remote server is stored for future requests.
@@ -54,6 +55,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#34](https://github.com/2listic/dealiiX-platform/pull/34) Add Prettier and automatic formatting on commit
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
 - [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
+
+### SSH
+
+- [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dinamically retrieved from localStorage
 
 ### Building
 

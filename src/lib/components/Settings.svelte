@@ -5,21 +5,11 @@
   let { modalId } = $props()
 
   let sshPath = $state(settinigsState.getKey(SSH_PATH))
-  let errorMessage = $state()
   let formElement
 
   const validateAndSave = async () => {
-    errorMessage = ''
     if (formElement.checkValidity()) {
-      // const settingsData = { sshPath }
-      // consider to remove try/catch logic if not needed here
-      try {
-        settinigsState.setKey(SSH_PATH, sshPath)
-      } catch (error) {
-        console.error('Saving failed:', error)
-        errorMessage = 'Saving was not succesfull. Please try again'
-        return
-      }
+      settinigsState.setKey(SSH_PATH, sshPath)
       getModal(modalId).close()
     } else {
       formElement.reportValidity()
@@ -54,8 +44,6 @@
         >Save</button
       >
     </div>
-    <!-- delete this if not needed plus any related code -->
-    <div class="error-message">{errorMessage}</div>
   </form>
 </div>
 
@@ -87,12 +75,6 @@
   .input-field:invalid {
     border-color: red;
   }
-
-  .error-message {
-    margin-top: 2vh;
-    min-height: 25px;
-  }
-
   .button-submit {
     cursor: pointer;
     border: 1px solid var(--ternary-color);
