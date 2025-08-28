@@ -15,8 +15,6 @@
       // consider to remove try/catch logic if not needed here
       try {
         settinigsState.setKey(SSH_PATH, sshPath)
-        // @ts-ignore
-        await window.electron.invoke('set-ssh-path', sshPath)
       } catch (error) {
         console.error('Saving failed:', error)
         errorMessage = 'Saving was not succesfull. Please try again'

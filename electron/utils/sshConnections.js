@@ -1,16 +1,5 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
-import os from 'os'
-import path from 'path'
-
-const __userHomeDir = path.resolve(os.homedir())
-// TODO: verify if global variable privateKeyPath is really persistent as it looks. Consider alternative approaches
-// https://www.electronjs.org/docs/latest/faq#my-apps-tray-disappeared-after-a-few-minutes
-let privateKeyPath = path.join(__userHomeDir, '.ssh/id_ed25519') // default location
-
-function updatePrivateKeyPath(newPath) {
-  privateKeyPath = newPath
-}
 
 function connectToSSHWithPassword(host, username, password, command) {
   return new Promise((resolve, reject) => {
@@ -51,7 +40,7 @@ function connectToSSHWithPassword(host, username, password, command) {
   })
 }
 
-function connectToSSHWithKey(command) {
+function connectToSSHWithKey(command, pathToSsh) {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -86,7 +75,7 @@ function connectToSSHWithKey(command) {
         host: 'localhost',
         port: 2222,
         username: 'root',
-        privateKey: fs.readFileSync(privateKeyPath),
+        privateKey: fs.readFileSync(pathToSsh),
         debug: console.log,
         // hostVerifier: (keyHash) => {  // consider hashing the private key
         //   return true
@@ -97,7 +86,7 @@ function connectToSSHWithKey(command) {
   })
 }
 
-function connectAndUploadGraph(jsonGraph, remotePath) {
+function connectAndUploadGraph(jsonGraph, remotePath, pathToSsh) {
   return new Promise((resolve, reject) => {
     console.log('connectAndUploadGraph called')
     const conn = new Client()
@@ -125,15 +114,10 @@ function connectAndUploadGraph(jsonGraph, remotePath) {
         host: 'localhost',
         port: 2222,
         username: 'root',
-        privateKey: fs.readFileSync(privateKeyPath),
+        privateKey: fs.readFileSync(pathToSsh),
         debug: console.log,
       })
   })
 }
 
-export {
-  updatePrivateKeyPath,
-  connectToSSHWithPassword,
-  connectToSSHWithKey,
-  connectAndUploadGraph,
-}
+export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadGraph }

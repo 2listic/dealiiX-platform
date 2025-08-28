@@ -3,7 +3,6 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import {
-  updatePrivateKeyPath,
   connectAndUploadGraph,
   connectToSSHWithKey,
   connectToSSHWithPassword,
@@ -48,8 +47,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-ipcMain.handle('set-ssh-path', (event, path) => updatePrivateKeyPath(path))
-
 // Handle SSH command execution with password and Python fake-ssh server
 ipcMain.handle(
   'execute-ssh-command-with-password',
@@ -60,15 +57,17 @@ ipcMain.handle(
 
 // Listen for messages from the renderer process
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
-  return await connectToSSHWithKey(command)
+  const pathToSsh = await getKeyFromLocalStorage('SSH_PATH')
+  return await connectToSSHWithKey(command, pathToSsh)
 })
 
 ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
+  const pathToSsh = await getKeyFromLocalStorage('SSH_PATH')
   const graph = parseGraph(nodes, edges)
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)
   const remotePath = '/root/graph.json'
-  return await connectAndUploadGraph(jsonGraph, remotePath)
+  return await connectAndUploadGraph(jsonGraph, remotePath, pathToSsh)
 })
 
 ipcMain.handle('set-theme', (event, theme) => {
@@ -79,3 +78,11 @@ ipcMain.handle('set-theme', (event, theme) => {
   }
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 })
+
+const getKeyFromLocalStorage = async (key) => {
+  const settingsStr = await mainWindow.webContents.executeJavaScript(
+    `localStorage.getItem('settings')`
+  )
+  const settingsObj = JSON.parse(settingsStr)
+  return settingsObj[key]
+}
