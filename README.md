@@ -50,6 +50,8 @@ Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://
 
 # Packaging
 
+Build the frontend with `npm run build` and then run the following commands to package the app.
+
 ### Linux
 
 `npm run make:deb`
