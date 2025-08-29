@@ -23,9 +23,8 @@
   section {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
+    left: 30%;
+    width: 40%;
     display: flex;
     margin-top: 1rem;
     justify-content: center;

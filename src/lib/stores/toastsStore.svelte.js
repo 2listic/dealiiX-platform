@@ -13,19 +13,19 @@ export const toastState = {
   add(toast) {
     const id = Math.floor(Math.random() * 10000)
 
+    const timeoutDefault = toast.type == 'error' ? 10000 : 5000
     const defaults = {
       id,
       type: 'success',
       dismissible: true,
-      timeout: 5000,
+      timeout: timeoutDefault,
     }
 
     const newToast = { ...defaults, ...toast }
     toasts.push(newToast)
     console.log('toasts', $state.snapshot(toasts))
 
-    // If toast is dismissible and not a error, dismiss it after "timeout" amount of time.
-    if (newToast.timeout && newToast.type != 'error') {
+    if (newToast.timeout) {
       setTimeout(() => this.dismiss(id), newToast.timeout)
     }
   },

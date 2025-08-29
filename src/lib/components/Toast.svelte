@@ -1,21 +1,23 @@
 <script>
   import { fade } from 'svelte/transition'
-  // import SuccessIcon from './SuccessIcon.svelte'
-  // import ErrorIcon from './ErrorIcon.svelte'
-  // import InfoIcon from './InfoIcon.svelte'
-  // import CloseIcon from './CloseIcon.svelte'
+  import CloseIcon from './icons/CloseIcon.svelte'
+  import ErrorIcon from './icons/ErrorIcon.svelte'
+  import InfoIcon from './icons/InfoIcon.svelte'
+  import SuccessIcon from './icons/SuccessIcon.svelte'
 
   let { type = 'error', dismissible = true, dismiss, message } = $props()
 </script>
 
 <article class={type} role="alert" transition:fade>
-  <!-- {#if type === 'success'}
-    <SuccessIcon width="1.1em" />
-  {:else if type === 'error'}
-    <ErrorIcon width="1.1em" />
-  {:else}
-    <InfoIcon width="1.1em" />
-  {/if} -->
+  <div style="width: 2rem">
+    {#if type === 'success'}
+      <SuccessIcon width="2rem" />
+    {:else if type === 'error'}
+      <ErrorIcon width="2rem" />
+    {:else}
+      <InfoIcon width="2rem" />
+    {/if}
+  </div>
 
   <div class="text">
     {message}
@@ -23,8 +25,7 @@
 
   {#if dismissible}
     <button class="close" onclick={() => dismiss()}>
-      <!-- <CloseIcon width="0.8em" /> -->
-      X
+      <CloseIcon width="0.8em" />
     </button>
   {/if}
 </article>
@@ -35,6 +36,7 @@
     padding: 0.75rem 1.5rem;
     border-radius: 0.2rem;
     display: flex;
+    gap: 1rem;
     align-items: center;
     margin: 0 auto 0.5rem auto;
     width: 20rem;
