@@ -1,4 +1,5 @@
 import { concatState } from '../stores/concatState.svelte'
+import { setPanelContent } from './panelContent.js'
 
 const executeWithPassword = async () => {
   // @ts-ignore
@@ -12,8 +13,7 @@ const executeWithPassword = async () => {
     }
   )
   console.log('SSH Command Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  setPanelContent(result)
 }
 
 const executeWithKey = async () => {
@@ -23,19 +23,22 @@ const executeWithKey = async () => {
     command: concatState.command,
   })
   console.log('SSH Connection Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  setPanelContent(result)
 }
 
 const exportGraph = async (nodes, edges) => {
-  // @ts-ignore
-  const result = await window.electron.invoke('export-graph-ssh', {
-    nodes: nodes,
-    edges: edges,
-  })
-  console.log('SSH Connection Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  try {
+    // @ts-ignore
+    const result = await window.electron.invoke('export-graph-ssh', {
+      nodes: nodes,
+      edges: edges,
+    })
+    console.log('SSH Connection Result:', result)
+    setPanelContent(result)
+  } catch (error) {
+    setPanelContent(error)
+    console.error(error)
+  }
 }
 
 export { executeWithPassword, executeWithKey, exportGraph }
