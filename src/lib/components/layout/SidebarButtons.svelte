@@ -14,6 +14,7 @@
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   import Settings from '../Settings.svelte'
+  import { setPanelContent } from '../../utils/panelContent'
   // import { saveItem, getItem } from '../../requests/items'
 
   const loginModalId = 'login-modal'
@@ -57,12 +58,12 @@
 
     const importedNodes = importedGraph?.workflow?.nodes
     if (importedNodes == null) {
-      console.error('No nodes found in imported graph')
+      setPanelContent('No nodes found in imported graph', true)
       return
     }
     const importedEdges = importedGraph?.workflow?.edges
     if (importedEdges == null) {
-      console.error('No edges found in imported graph')
+      setPanelContent('No edges found in imported graph', true)
       return
     }
 
@@ -73,6 +74,7 @@
     updateLastNodeId()
     console.log('imported graph nodes', getNodes())
     console.log('imported graph edges', getEdges())
+    setPanelContent('New graph was loaded')
   }
 
   const onFileChangeLoadNodes = async () => {
@@ -83,6 +85,7 @@
     const importedNodes = JSON.parse(importedNodesAsText)
     // TODO: add sanity checks
     setImportedNodes(importedNodes)
+    setPanelContent('New nodes were loaded')
   }
 
   const readFileAsText = (file) =>

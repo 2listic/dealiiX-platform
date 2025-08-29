@@ -36,8 +36,7 @@ const exportGraph = async (nodes, edges) => {
     console.log('SSH Connection Result:', result)
     setPanelContent(result)
   } catch (error) {
-    setPanelContent(error)
-    console.error(error)
+    setPanelContent(error, true)
   }
 }
 
