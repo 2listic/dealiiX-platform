@@ -1,16 +1,15 @@
 <script>
   import { login } from '../requests/authentication'
+  import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
 
   let username = $state()
   let password = $state()
-  let errorMessage = $state()
   let formElement
 
   const validateAndSubmit = async () => {
-    errorMessage = ''
     if (formElement.checkValidity()) {
       const data = { username, password }
       try {
@@ -18,17 +17,21 @@
       } catch (error) {
         console.error('Login failed:', error)
         password = ''
-        errorMessage = 'Login was not succesfull. Please try again'
+        toastState.add({
+          message: 'Login was not succesfull. Please try again',
+          type: 'error',
+        })
         return
       }
       getModal(modalId).close()
+      toastState.add({ message: 'Logged in' })
     } else {
       formElement.reportValidity()
     }
   }
 </script>
 
-<div style="padding: 0 1rem">
+<div style="padding: 1rem">
   <form bind:this={formElement}>
     <h2>Login</h2>
     <div class="inputs-container">
@@ -61,7 +64,6 @@
         >Submit</button
       >
     </div>
-    <div class="error-message">{errorMessage}</div>
   </form>
 </div>
 
@@ -92,11 +94,6 @@
 
   .input-field:invalid {
     border-color: red;
-  }
-
-  .error-message {
-    margin-top: 2vh;
-    min-height: 25px;
   }
 
   .button-submit {
