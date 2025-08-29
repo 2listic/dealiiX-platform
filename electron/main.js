@@ -57,15 +57,17 @@ ipcMain.handle(
 
 // Listen for messages from the renderer process
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
-  return await connectToSSHWithKey(command)
+  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
+  return await connectToSSHWithKey(command, pathToSsh)
 })
 
 ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
+  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
   const graph = parseGraph(nodes, edges)
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)
   const remotePath = '/root/graph.json'
-  return await connectAndUploadGraph(jsonGraph, remotePath)
+  return await connectAndUploadGraph(jsonGraph, remotePath, pathToSsh)
 })
 
 ipcMain.handle('set-theme', (event, theme) => {
@@ -76,3 +78,11 @@ ipcMain.handle('set-theme', (event, theme) => {
   }
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 })
+
+const getKeyFromLocalStorage = async (key) => {
+  const settingsStr = await mainWindow.webContents.executeJavaScript(
+    `localStorage.getItem('settings')`
+  )
+  const settingsObj = JSON.parse(settingsStr)
+  return settingsObj[key]
+}
