@@ -62,17 +62,19 @@
     )}
   colorMode={colorModeState.value}
 >
-  <Panel position="top-left">
+  <Panel position="bottom-left">
     <div class="export-button-container">
       <!-- <button onclick={executeWithPassword}>Execute with password</button>
           <button onclick={executeWithKey}>Execute with key</button> -->
     </div>
-    <div id="ssh-response" class="custom-panel" style="margin-top: 1vh;">-</div>
+    <div id="custom-panel-logs" class="custom-panel" style="margin-top: 1vh;">
+      -
+    </div>
   </Panel>
   <Panel position="top-right">
     <ButtonToggleDarkMode />
   </Panel>
-  <Controls />
+  <Controls position="bottom-center" orientation="horizontal" />
   <MiniMap />
   <Background />
 </SvelteFlow>
@@ -92,7 +94,8 @@
     padding: 1vh;
     margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    font-size: 1.5em;
-    color: #333;
+    font-size: 1em;
+    color: var(--ternary-color);
+    background-color: var(--primary-color);
   }
 </style>

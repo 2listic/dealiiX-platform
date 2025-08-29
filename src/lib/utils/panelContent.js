@@ -8,7 +8,7 @@ let timeOut
  */
 export const setPanelContent = (content, isError = false) => {
   if (timeOut) clearTimeout(timeOut)
-  const panel = document.getElementById('ssh-response')
+  const panel = document.getElementById('custom-panel-logs')
   panel.textContent = content
   if (isError) console.error(content)
   timeOut = setTimeout(() => {
