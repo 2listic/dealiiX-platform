@@ -14,7 +14,7 @@
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   import Settings from '../Settings.svelte'
-  import { setPanelContent } from '../../utils/panelContent'
+  import { toastState } from '../../stores/toastsStore.svelte'
   // import { saveItem, getItem } from '../../requests/items'
 
   const loginModalId = 'login-modal'
@@ -58,12 +58,18 @@
 
     const importedNodes = importedGraph?.workflow?.nodes
     if (importedNodes == null) {
-      setPanelContent('No nodes found in imported graph', true)
+      toastState.add({
+        message: 'No nodes found in imported graph',
+        type: 'error',
+      })
       return
     }
     const importedEdges = importedGraph?.workflow?.edges
     if (importedEdges == null) {
-      setPanelContent('No edges found in imported graph', true)
+      toastState.add({
+        message: 'No edges found in imported graph',
+        type: 'error',
+      })
       return
     }
 
@@ -74,7 +80,7 @@
     updateLastNodeId()
     console.log('imported graph nodes', getNodes())
     console.log('imported graph edges', getEdges())
-    setPanelContent('New graph was loaded')
+    toastState.add({ message: 'New graph was loaded' })
   }
 
   const onFileChangeLoadNodes = async () => {
@@ -85,7 +91,7 @@
     const importedNodes = JSON.parse(importedNodesAsText)
     // TODO: add sanity checks
     setImportedNodes(importedNodes)
-    setPanelContent('New nodes were loaded')
+    toastState.add({ message: 'New nodes were loaded' })
   }
 
   const readFileAsText = (file) =>

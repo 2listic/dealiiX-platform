@@ -1,4 +1,5 @@
 import { concatState } from '../stores/concatState.svelte'
+import { toastState } from '../stores/toastsStore.svelte'
 import { setPanelContent } from './panelContent.js'
 
 const executeWithPassword = async () => {
@@ -14,6 +15,7 @@ const executeWithPassword = async () => {
   )
   console.log('SSH Command Result:', result)
   setPanelContent(result)
+  toastState.add({ message: 'Command was sent' })
 }
 
 const executeWithKey = async () => {
@@ -24,6 +26,7 @@ const executeWithKey = async () => {
   })
   console.log('SSH Connection Result:', result)
   setPanelContent(result)
+  toastState.add({ message: 'Command was sent' })
 }
 
 const exportGraph = async (nodes, edges) => {
@@ -34,9 +37,12 @@ const exportGraph = async (nodes, edges) => {
       edges: edges,
     })
     console.log('SSH Connection Result:', result)
-    setPanelContent(result)
+    toastState.add({ message: result })
   } catch (error) {
-    setPanelContent(error, true)
+    toastState.add({
+      message: error,
+      type: 'error',
+    })
   }
 }
 
