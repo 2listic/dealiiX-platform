@@ -77,7 +77,9 @@
     <div class="label">
       {'method_name' in data ? data.method_name : data.type}
     </div>
-    <button class="button-remove" onclick={() => removeNode(id)}>X</button>
+    <button class="button-remove" onclick={() => removeNode(id)}>
+      <div style="font-weight: bold;">X</div>
+    </button>
   </div>
 
   <!-- Input handlers -->

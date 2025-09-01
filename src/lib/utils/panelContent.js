@@ -1,0 +1,17 @@
+let timeOut
+
+/**
+ * Sets the content of the Svelte Flow panel and clears it after 5 seconds.
+ * If param isError is set to true, it also logs the error to the console.
+ * @param {string} content the text to put as content
+ * @param {boolean} isError the text is an error message. Default is false
+ */
+export const setPanelContent = (content, isError = false) => {
+  if (timeOut) clearTimeout(timeOut)
+  const panel = document.getElementById('custom-panel-logs')
+  panel.textContent = content
+  if (isError) console.error(content)
+  timeOut = setTimeout(() => {
+    panel.textContent = '-'
+  }, 5000)
+}

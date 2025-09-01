@@ -1,5 +1,6 @@
 <script>
   import { settinigsState, SSH_PATH } from '../stores/settingsStore.svelte'
+  import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -11,6 +12,7 @@
     if (formElement.checkValidity()) {
       settinigsState.setKey(SSH_PATH, sshPath)
       getModal(modalId).close()
+      toastState.add({ message: 'Settings saved' })
     } else {
       formElement.reportValidity()
     }
