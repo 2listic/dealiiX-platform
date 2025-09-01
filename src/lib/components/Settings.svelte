@@ -39,29 +39,26 @@
     <h2>Settings</h2>
     <div class="inputs-container">
       <div class="input-container">
-        <div style="font-weight: bold">Private SSH key</div>
-        <label for="ssh-path-file">Select SSH key</label>
+        <label style="font-weight: bold" for="ssh-path-file">
+          Path to SSH key
+        </label>
+        <div>{sshPath}</div>
         <input
           id="ssh-path-file"
-          class="input-field"
           type="file"
           bind:files={sshFiles}
           onchange={handleOnChangeFile}
           placeholder="SSH path"
         />
       </div>
-      <div class="input-container">
-        <label for="ssh-path-text">Absolute path</label>
-        <input
+      <!-- some other inputs here -->
+      <!-- <input
           id="ssh-path-text"
-          class="input-field"
           type="text"
+          class="input-field"
           bind:value={sshPath}
           placeholder="SSH path"
-          readonly
-          required
-        />
-      </div>
+        /> -->
     </div>
     <div class="button-container">
       <button type="button" class="button-submit" onclick={validateAndClose}
@@ -85,21 +82,27 @@
     padding-top: 1vh;
   }
 
+  #ssh-path-file {
+    cursor: pointer;
+  }
+
+  /* .input-field {
+    cursor: pointer;
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    padding: 1vh;
+    font-size: 1rem;
+    background-color: var(--secondary-color);
+  } */
+
+  /* .input-field:invalid {
+    border-color: red;
+  } */
+
   .button-container {
     margin-top: 3vh;
   }
 
-  .input-field {
-    padding: 1vh;
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    background: var(--secondary-color);
-  }
-
-  .input-field:invalid {
-    border-color: red;
-  }
   .button-submit {
     cursor: pointer;
     border: 1px solid var(--ternary-color);
