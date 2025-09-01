@@ -1,4 +1,6 @@
 import { concatState } from '../stores/concatState.svelte'
+import { toastState } from '../stores/toastsStore.svelte'
+import { setPanelContent } from './panelContent.js'
 
 const executeWithPassword = async () => {
   // @ts-ignore
@@ -12,8 +14,8 @@ const executeWithPassword = async () => {
     }
   )
   console.log('SSH Command Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  setPanelContent(result)
+  toastState.add({ message: 'Command was sent' })
 }
 
 const executeWithKey = async () => {
@@ -23,19 +25,25 @@ const executeWithKey = async () => {
     command: concatState.command,
   })
   console.log('SSH Connection Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  setPanelContent(result)
+  toastState.add({ message: 'Command was sent' })
 }
 
 const exportGraph = async (nodes, edges) => {
-  // @ts-ignore
-  const result = await window.electron.invoke('export-graph-ssh', {
-    nodes: nodes,
-    edges: edges,
-  })
-  console.log('SSH Connection Result:', result)
-  let panel = document.getElementById('ssh-response')
-  panel.textContent = result
+  try {
+    // @ts-ignore
+    const result = await window.electron.invoke('export-graph-ssh', {
+      nodes: nodes,
+      edges: edges,
+    })
+    console.log('SSH Connection Result:', result)
+    toastState.add({ message: result })
+  } catch (error) {
+    toastState.add({
+      message: error,
+      type: 'error',
+    })
+  }
 }
 
 export { executeWithPassword, executeWithKey, exportGraph }

@@ -6,6 +6,7 @@
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
+  import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
 
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem
@@ -33,6 +34,7 @@
 </script>
 
 <main>
+  <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
       <ButtonToggleMenu />
