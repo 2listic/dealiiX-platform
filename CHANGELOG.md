@@ -35,6 +35,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
 - Electron setup with IPC communication
 - SSH command execution via password and private key
 - SSH file writing via private key

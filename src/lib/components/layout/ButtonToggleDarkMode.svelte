@@ -5,21 +5,6 @@
 
   const onChangeSwitch = async () => {
     colorModeState.toggle()
-    // @ts-ignore
-    if (window.electron) {
-      // @ts-ignore
-      const actualTheme = await window.electron.invoke(
-        'set-theme',
-        colorModeState.value
-      )
-      console.log('Electron theme: ', actualTheme)
-    }
-    if (checked === true) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    console.log('Browser theme', colorModeState.value)
   }
 </script>
 
