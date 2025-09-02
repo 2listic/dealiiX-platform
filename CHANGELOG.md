@@ -22,6 +22,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-UI
 
+- [#76](https://github.com/2listic/dealiiX-platform/pull/76) Input text changed to input file to store the path to private SSH key.
 - [#75](https://github.com/2listic/dealiiX-platform/pull/75) Added toaster component to display error/success message to the user. Added also a logic to update Svelte Flow panel with additional messages or logs.
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Added a new button Settings with a text input to store path to private SSH key.
 - [#65](https://github.com/2listic/dealiiX-platform/pull/65) Custom checkbox input for dark/light mode switch instead of dropdown menu.
