@@ -1,49 +1,68 @@
 <script>
-  import { settinigsState, SSH_PATH } from '../stores/settingsStore.svelte'
+  import { settingsState, SSH_PATH } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
 
-  let sshPath = $state(settinigsState.getKey(SSH_PATH))
+  let sshPath = $state(settingsState.getKey(SSH_PATH))
+  let sshFiles = $state()
   let formElement
 
-  const validateAndSave = async () => {
+  const handleOnChangeFile = () => {
+    const file = sshFiles[0]
+    // @ts-ignore
+    sshPath = window.electron.getFilePath(file)
+    settingsState.setKey(SSH_PATH, sshPath)
+    toastState.add({ message: 'SSH key absolute path updated' })
+  }
+
+  const validateAndClose = async () => {
+    // Keep this validation logic for new inputs to be added in the future
     if (formElement.checkValidity()) {
-      settinigsState.setKey(SSH_PATH, sshPath)
       getModal(modalId).close()
-      toastState.add({ message: 'Settings saved' })
+      // toastState.add({ message: 'Settings saved' })
     } else {
       formElement.reportValidity()
     }
   }
 </script>
 
-<div style="padding: 0 1rem">
+<div style="padding: 0 1rem 1rem 1rem">
   <form
     bind:this={formElement}
     onsubmit={(e) => {
       e.preventDefault()
-      validateAndSave()
+      validateAndClose()
     }}
   >
     <h2>Settings</h2>
     <div class="inputs-container">
       <div class="input-container">
-        <label for="ssh-path">Absolute path to the local private SSH key</label>
+        <label style="font-weight: bold" for="ssh-path-file">
+          Path to SSH key
+        </label>
+        <div>{sshPath}</div>
         <input
-          id="ssh-path"
-          class="input-field"
-          type="text"
-          bind:value={sshPath}
+          id="ssh-path-file"
+          type="file"
+          bind:files={sshFiles}
+          onchange={handleOnChangeFile}
           placeholder="SSH path"
-          required
         />
       </div>
+      <!-- some other inputs here -->
+      <!-- <input
+          id="ssh-path-text"
+          type="text"
+          class="input-field"
+          bind:value={sshPath}
+          placeholder="SSH path"
+        /> -->
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={validateAndSave}
-        >Save</button
+      <button type="button" class="button-submit" onclick={validateAndClose}
+        >Close</button
       >
     </div>
   </form>
@@ -52,31 +71,38 @@
 <style>
   .inputs-container {
     display: flex;
-    flex-direction: row;
-    gap: 2vh;
+    flex-direction: column;
+    min-width: 50vh;
   }
 
   .input-container {
     display: flex;
     flex-direction: column;
     gap: 1vh;
+    padding-top: 1vh;
   }
 
-  .button-container {
-    margin-top: 2vh;
+  #ssh-path-file {
+    cursor: pointer;
   }
 
-  .input-field {
-    padding: 1vh;
+  /* .input-field {
+    cursor: pointer;
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
+    padding: 1vh;
     font-size: 1rem;
-    background: var(--secondary-color);
+    background-color: var(--secondary-color);
+  } */
+
+  /* .input-field:invalid {
+    border-color: red;
+  } */
+
+  .button-container {
+    margin-top: 3vh;
   }
 
-  .input-field:invalid {
-    border-color: red;
-  }
   .button-submit {
     cursor: pointer;
     border: 1px solid var(--ternary-color);

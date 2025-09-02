@@ -2,7 +2,7 @@ let settings = $state(JSON.parse(localStorage.getItem('settings')))
 
 export const SSH_PATH = 'sshPathKey'
 
-export const settinigsState = {
+export const settingsState = {
   getKey(key) {
     return settings?.[key] ?? undefined
   },
