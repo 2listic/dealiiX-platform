@@ -52,6 +52,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#77](https://github.com/2listic/dealiiX-platform/pull/77) Dependency versions updated in package-lock.json
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Nodes are unified in one unique component.
 - [#41](https://github.com/2listic/dealiiX-platform/pull/41) Add Prettier plugin for Svelte
 - [#35](https://github.com/2listic/dealiiX-platform/pull/35) Update icon and title of the .deb distributable
