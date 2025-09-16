@@ -2,7 +2,7 @@
 
 `npm install`
 
-# Use
+# Development
 
 `npm run dev` to build the front-end and run the electron app in development mode
 
@@ -16,7 +16,28 @@
 - `npm start` to run the electron app (build front-end before), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
-# Development
+### Build the container to test SSH connections and Slurm jobs
+
+Build the image with specific tag name and passing your SSH public key as a secret
+
+- `cd containers`
+- `docker build -t coral-ssh-slurm --secret id=ssh-key,src=/home/your-username/.ssh/id_ed25519.pub .`
+
+Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
+`docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm bash`
+
+Connect to via SSH client  
+`ssh -p 2222 your-username@localhost`
+
+Or open a shell in the container (restarting the container if needed)
+
+- `docker restart coral-ssh-slurm`
+- `docker exec -it coral-ssh-slurm bash`
+
+Test Slurm with a simple command  
+`srun whoami`  
+or  
+`sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 ### Linting
 
