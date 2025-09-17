@@ -22,7 +22,10 @@ const executeWithKey = async () => {
   console.log('command', concatState.command)
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-with-key', {
-    command: concatState.command,
+    // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
+    // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
+    command:
+      'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out',
   })
   console.log('SSH Connection Result:', result)
   setPanelContent(result)

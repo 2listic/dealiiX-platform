@@ -23,7 +23,7 @@
     setEdges,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
-  // import { executeWithPassword, executeWithKey } from '../utils/sshMessages.js'
+  import { executeWithKey } from '../utils/sshMessages.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
@@ -64,8 +64,8 @@
 >
   <Panel position="bottom-left">
     <div class="export-button-container">
-      <!-- <button onclick={executeWithPassword}>Execute with password</button>
-          <button onclick={executeWithKey}>Execute with key</button> -->
+      <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
+      <button onclick={executeWithKey}>Execute with key</button>
     </div>
     <div id="custom-panel-logs" class="custom-panel" style="margin-top: 1vh;">
       -

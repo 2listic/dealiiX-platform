@@ -1,5 +1,15 @@
 # Installation
 
+### Cloning the repository
+
+When cloning for the first time use `--recursive` flag to get also the Coral submodule  
+`git clone --recursive git@github.com:2listic/coral.git`
+
+Or if you already cloned the repo, use  
+`git submodule update --init --recursive`
+
+### Install all the dependencies
+
 `npm install`
 
 # Development
@@ -16,28 +26,31 @@
 - `npm start` to run the electron app (build front-end before), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
-### Build the container to test SSH connections and Slurm jobs
+### Build the container to test SSH connections and Slurm jobs with Coral
 
-Build the image with specific tag name and passing your SSH public key as a secret
+Build the image from Containers folder with specific tag name and passing your SSH public key as a secret
 
 - `cd containers`
-- `docker build -t coral-ssh-slurm --secret id=ssh-key,src=/home/your-username/.ssh/id_ed25519.pub .`
+- `docker build -f containers/Dockerfile -t coral-ssh-slurm:tag --secret id=ssh-key,src=/home/your-username/.ssh/id_ed25519.pub .`
 
 Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
-`docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm bash`
+`docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm:tag bash`
 
 Connect to via SSH client  
-`ssh -p 2222 your-username@localhost`
+`ssh -p 2222 root@localhost`
 
 Or open a shell in the container (restarting the container if needed)
 
 - `docker restart coral-ssh-slurm`
 - `docker exec -it coral-ssh-slurm bash`
 
-Test Slurm with a simple command  
+Test Slurm from the runninig container  
 `srun whoami`  
 or  
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
+
+Test Slurm and Coral from the running container  
+`sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out`
 
 ### Linting
 

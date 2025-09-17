@@ -24,17 +24,15 @@ RUN --mount=type=secret,id=ssh-key \
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
   echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 
-# # Create Slurm directories
-# RUN mkdir -p /var/log/slurm /var/spool/slurmd.slurmnode1 /var/spool/slurmctld /var/run && \
-#   chmod 755 /var/log/slurm /var/spool/slurmd.slurmnode1 /var/spool/slurmctld
+COPY containers/slurm.conf /etc/slurm/
+COPY containers/cgroup.conf /etc/slurm/
 
-COPY slurm.conf /etc/slurm/
-COPY cgroup.conf /etc/slurm/
-
-COPY docker-entrypoint.sh /etc/slurm/
+COPY containers/docker-entrypoint.sh /etc/slurm/
 RUN chmod +x /etc/slurm/docker-entrypoint.sh
 EXPOSE 22 6817 6818 8000
 
 WORKDIR /
+
+COPY coral /app
 
 ENTRYPOINT ["/etc/slurm/docker-entrypoint.sh"]
