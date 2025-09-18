@@ -28,6 +28,12 @@ Or if you already cloned the repo, use
 
 ### Build the container to test SSH connections and Slurm jobs with Coral
 
+#### Using the dedicated script
+
+`./rebuild-restart-container.sh`
+
+#### Manually
+
 Build the image from Containers folder with specific tag name and passing your SSH public key as a secret
 
 - `cd containers`
@@ -35,6 +41,8 @@ Build the image from Containers folder with specific tag name and passing your S
 
 Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
 `docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm:tag bash`
+
+#### Test the container
 
 Connect to via SSH client  
 `ssh -p 2222 root@localhost`
