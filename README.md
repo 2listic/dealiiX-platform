@@ -28,7 +28,7 @@ Or if you already cloned the repo, use
 
 ### Build the container to test SSH connections and Slurm jobs with Coral
 
-#### Using the dedicated script
+#### Using the dedicated script (changing the SSH key path)
 
 `./rebuild-restart-container.sh`
 
@@ -59,6 +59,14 @@ or
 
 Test Slurm and Coral from the running container  
 `sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out`
+
+Test the state of a specific job id (i.e id 1) with sacct  
+`sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
+`-j` job id  
+`-n` no header  
+`-X` exclude steps (only top-level job)  
+`-p` pipe delimited output  
+`-o <list>` columns to display
 
 ### Linting
 
