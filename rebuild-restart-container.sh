@@ -6,7 +6,7 @@ IMAGE_NAME="coral-ssh-slurm"
 TAG="tag"
 SSH_KEY_PATH="/home/your-username/.ssh/your-public-key"
 CONTAINER_NAME="coral-ssh-slurm"
-HOSTNAME="slurmnode1"
+HOSTNAME="slurm"
 PORT_MAPPING="2222:22"
 
 # Stop and remove the existing container if it exists

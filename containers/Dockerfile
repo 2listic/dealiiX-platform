@@ -3,7 +3,7 @@ FROM dealii/dealii:v9.5.1-jammy
 USER root
 RUN apt update -y && \
     apt install -y \
-    sudo munge slurmd slurm-client slurmctld mariadb-server \
+    sudo munge slurmd slurm-client slurmctld slurmdbd mariadb-server \
     vim less \
     python3 python3-pip python3-venv \
     openssh-server && \
@@ -25,6 +25,8 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
   echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
 
 COPY containers/slurm.conf /etc/slurm/
+COPY containers/slurmdbd.conf /etc/slurm/
+RUN chmod 600 /etc/slurm/slurmdbd.conf
 COPY containers/cgroup.conf /etc/slurm/
 
 COPY containers/docker-entrypoint.sh /etc/slurm/
