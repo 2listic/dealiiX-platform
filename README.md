@@ -14,25 +14,61 @@ Or if you already cloned the repo, use
 
 # Development
 
-`npm run dev` to build the front-end and run the electron app in development mode
+`npm run dev` to build the front-end and run the Electron app in development mode. You'll need to restart to see changes.
 
-### Build the front-end
+### Build or run the front-end only
 
 - `npm run build` to build the front-end
 - `npm run dev:vite` to run only the front-end with hot-reload
 
-### Run the electron app
+### Run the Electron app
 
 - `npm start` to run the electron app (build front-end before), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
-### Build the container to test SSH connections and Slurm jobs with Coral
+## Linting and Formatting
 
-#### Using the dedicated script (changing the SSH key path)
+### Linting
+
+Eslint is used for linting. Run the following to lint  
+`npm run lint` and `npm run lint:fix` to auto-fix.
+
+### Formatting
+
+Prettier is used for formatting. Run the following to format the code or use your IDE  
+`npm run format`
+
+### Automatic linting and formatting on commit
+
+[Husky](https://typicode.github.io/husky/) is used to run linting and formatting at commit time.  
+If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
+Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
+
+## Debugging
+
+### Debugging Electron
+
+#### Using Chrome
+
+1. Run the app with `npm start:debug`
+2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
+3. A new window will open, add breakpoints in the Sources tab and start debugging
+
+For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code
+
+### Debugging Svelte
+
+Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
+
+## Test SSH connections and Slurm jobs with Coral
+
+### Build and run the container using the dedicated script
+
+Adjust the SSH key path, then
 
 `./rebuild-restart-container.sh`
 
-#### Manually
+### Or build and run the container step by step
 
 Build the image from Containers folder with specific tag name and passing your SSH public key as a secret
 
@@ -42,7 +78,7 @@ Build the image from Containers folder with specific tag name and passing your S
 Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
 `docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm:tag bash`
 
-#### Test the container
+### Test the running container
 
 Connect to via SSH client  
 `ssh -p 2222 root@localhost`
@@ -67,36 +103,6 @@ Test the state of a specific job id (i.e id 1) with sacct
 `-X` exclude steps (only top-level job)  
 `-p` pipe delimited output  
 `-o <list>` columns to display
-
-### Linting
-
-Eslint is used for linting. Run the following to lint  
-`npm run lint` and `npm run lint:fix` to auto-fix.
-
-### Formatting
-
-Prettier is used for formatting. Run the following to format the code or use your IDE  
-`npm run format`
-
-### Automatic linting and formatting on commit
-
-[Husky](https://typicode.github.io/husky/) is used to run linting and formatting at commit time.  
-If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
-Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
-
-### Debugging Electron
-
-#### Using Chrome
-
-1. Run the app with `npm start:debug`
-2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
-3. A new window will open, add breakpoints in the Sources tab and start debugging
-
-For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code
-
-### Debugging Svelte
-
-Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
 # Packaging
 
