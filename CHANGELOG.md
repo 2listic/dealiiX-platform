@@ -52,6 +52,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added Coral repo as a sub-dependency
 - [#77](https://github.com/2listic/dealiiX-platform/pull/77) Dependency versions updated in package-lock.json
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Nodes are unified in one unique component.
 - [#41](https://github.com/2listic/dealiiX-platform/pull/41) Add Prettier plugin for Svelte
@@ -60,8 +61,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
 - [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
 
-### SSH
+### SSH communication with the cluster
 
+- [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added container with Coral, Deal.II, Slurm and SSH server. Now a new job is queued with Slurm, when a new JSON graph is exported to the cluster
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dinamically retrieved from localStorage
 
 ### Building
@@ -72,6 +74,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
+- [#78](https://github.com/2listic/dealiiX-platform/pull/78) Fixed issue with imports during packaging
 - [#38](https://github.com/2listic/dealiiX-platform/pull/37) Distributables are now created for tagged versions only
 
 ### Testing
