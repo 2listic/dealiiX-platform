@@ -22,24 +22,29 @@ const executeWithKey = async () => {
   console.log('command', concatState.command)
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-with-key', {
-    // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
-    // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
-    command: 'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json"',
+    command: 'whoami && ls -a',
   })
   console.log('SSH Connection Result:', result)
   setPanelContent(result)
   toastState.add({ message: 'Command was sent' })
 }
 
-const exportGraph = async (nodes, edges) => {
+const exportAndEvalGraph = async (nodes, edges) => {
   try {
     // @ts-ignore
-    const result = await window.electron.invoke('export-graph-ssh', {
+    const resultExport = await window.electron.invoke('export-graph-ssh', {
       nodes: nodes,
       edges: edges,
     })
-    console.log('SSH Connection Result:', result)
-    toastState.add({ message: result })
+    console.log('SSH Connection Result:', resultExport)
+    // @ts-ignore
+    const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
+      // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
+      // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
+      command: 'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json"',
+    })
+    console.log('SSH Connection Result:', resultExecute)
+    toastState.add({ message: resultExecute })
   } catch (error) {
     toastState.add({
       message: error,
@@ -48,4 +53,4 @@ const exportGraph = async (nodes, edges) => {
   }
 }
 
-export { executeWithPassword, executeWithKey, exportGraph }
+export { executeWithPassword, executeWithKey, exportAndEvalGraph }

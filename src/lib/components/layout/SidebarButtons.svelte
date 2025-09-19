@@ -9,7 +9,7 @@
     setNodes,
     updateLastNodeId,
   } from '../../stores/nodes.svelte'
-  import { exportGraph } from '../../utils/sshMessages'
+  import { exportAndEvalGraph } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -44,7 +44,7 @@
 
   const handleExport = async () => {
     try {
-      await exportGraph(getNodes(), getEdges())
+      await exportAndEvalGraph(getNodes(), getEdges())
     } catch (error) {
       console.error('Upload failed:', error)
     }
@@ -204,7 +204,7 @@
       style="display: none"
       aria-label="Export graph"
     ></button>
-    <span class="button-text">Export Graph</span>
+    <span class="button-text">Eval. Graph</span>
   </div>
   <div class="button-container">
     <label

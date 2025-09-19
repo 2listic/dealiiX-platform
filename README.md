@@ -104,6 +104,10 @@ Test the state of a specific job id (i.e id 1) with sacct
 `-p` pipe delimited output  
 `-o <list>` columns to display
 
+### Debugging Slurm
+
+`slurmctld -Dvv` to run the slurm controller in the forground and debug mode
+
 # Packaging
 
 Build the frontend with `npm run build` and then run the following commands to package the app.
