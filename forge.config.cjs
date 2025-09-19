@@ -1,5 +1,5 @@
-import { FusesPlugin } from '@electron-forge/plugin-fuses'
-import { FuseV1Options, FuseVersion } from '@electron/fuses'
+const { FusesPlugin } = require('@electron-forge/plugin-fuses')
+const { FuseV1Options, FuseVersion } = require('@electron/fuses')
 
 module.exports = {
   packagerConfig: {
@@ -19,7 +19,7 @@ module.exports = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          icon: '/electron/assets/coral-orange.png',
+          icon: './electron/assets/coral-orange.png',
         },
       },
     },
@@ -30,7 +30,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-dmg',
       config: {
-        background: '/electron/assets/coral-white.png',
+        background: './electron/assets/coral-white.png',
         format: 'ULFO',
       },
     },
