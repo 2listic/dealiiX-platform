@@ -1,22 +1,32 @@
 # Installation
 
+### Cloning the repository
+
+When cloning for the first time use `--recursive` flag to get also the Coral submodule  
+`git clone --recursive git@github.com:2listic/coral.git`
+
+Or if you already cloned the repo, use  
+`git submodule update --init --recursive`
+
+### Install all the dependencies
+
 `npm install`
 
-# Use
+# Development
 
-`npm run dev` to build the front-end and run the electron app in development mode
+`npm run dev` to build the front-end and run the Electron app in development mode. You'll need to restart to see changes.
 
-### Build the front-end
+### Build or run the front-end only
 
 - `npm run build` to build the front-end
 - `npm run dev:vite` to run only the front-end with hot-reload
 
-### Run the electron app
+### Run the Electron app
 
 - `npm start` to run the electron app (build front-end before), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
-# Development
+## Linting and Formatting
 
 ### Linting
 
@@ -34,6 +44,8 @@ Prettier is used for formatting. Run the following to format the code or use you
 If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
 Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
 
+## Debugging
+
 ### Debugging Electron
 
 #### Using Chrome
@@ -48,6 +60,54 @@ For more options see the [general instructions](https://www.electronjs.org/docs/
 
 Use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
+## Test SSH connections and Slurm jobs with Coral
+
+### Build and run the container using the dedicated script
+
+Adjust the SSH key path, then
+
+`./rebuild-restart-container.sh`
+
+### Or build and run the container step by step
+
+Build the image from Containers folder with specific tag name and passing your SSH public key as a secret
+
+- `cd containers`
+- `docker build -f containers/Dockerfile -t coral-ssh-slurm:tag --secret id=ssh-key,src=/home/your-username/.ssh/id_ed25519.pub .`
+
+Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
+`docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm:tag bash`
+
+### Test the running container
+
+Connect to via SSH client  
+`ssh -p 2222 root@localhost`
+
+Or open a shell in the container (restarting the container if needed)
+
+- `docker restart coral-ssh-slurm`
+- `docker exec -it coral-ssh-slurm bash`
+
+Test Slurm from the runninig container  
+`srun whoami`  
+or  
+`sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
+
+Test Slurm and Coral from the running container  
+`sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out`
+
+Test the state of a specific job id (i.e id 1) with sacct  
+`sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
+`-j` job id  
+`-n` no header  
+`-X` exclude steps (only top-level job)  
+`-p` pipe delimited output  
+`-o <list>` columns to display
+
+### Debugging Slurm
+
+`slurmctld -Dvv` to run the slurm controller in the forground and debug mode
+
 # Packaging
 
 Build the frontend with `npm run build` and then run the following commands to package the app.
@@ -59,7 +119,7 @@ Build the frontend with `npm run build` and then run the following commands to p
 ### MacOS
 
 Only works on macOS systems  
-`npm run make:macos`
+`npm run make:dmg`
 
 # CI/CD
 
