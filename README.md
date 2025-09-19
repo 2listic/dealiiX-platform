@@ -119,7 +119,7 @@ Build the frontend with `npm run build` and then run the following commands to p
 ### MacOS
 
 Only works on macOS systems  
-`npm run make:macos`
+`npm run make:dmg`
 
 # CI/CD
 
