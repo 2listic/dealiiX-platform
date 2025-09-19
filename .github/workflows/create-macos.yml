@@ -32,7 +32,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-forge import
           npx electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg
 
       - name: Upload .dmg and .zip to GitHub Release (only on tag)
