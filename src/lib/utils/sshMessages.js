@@ -48,21 +48,9 @@ const exportAndEvalGraph = async (nodes, edges) => {
     toastState.add({ message: resultExecute })
 
     const jobId = resultExecute.match(/\d+/)[0]
+    if (!jobId) throw new Error('Job ID not found')
     const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
-    const finalResult = await pollInvoke({
-      channel: 'execute-ssh-with-key',
-      arg: {
-        command: sacctCommand,
-      },
-      checkResult: isFinished,
-      postProcess: (result) => result.trim(),
-      interval: 30000, // Check once per 30 seconds
-      timeout: 60_000 * 10, // Give up after 10 minutes
-    })
-    toastState.add({
-      message: `Job id ${jobId}: ${finalResult}`,
-      type: finalResult === 'COMPLETED' ? 'success' : 'error',
-    })
+    await jobPolling(jobId, sacctCommand, 3 * 1000, 60 * 10)
   } catch (error) {
     toastState.add({
       message: error,
@@ -71,43 +59,35 @@ const exportAndEvalGraph = async (nodes, edges) => {
   }
 }
 
-const isFinished = (result) => {
-  // const cleaned = result.replace(/\s+/g, '') // remove all empty or new line characters
-  const cleaned = result.trim()
-  return cleaned && (cleaned === 'COMPLETED' || cleaned === 'FAILED')
-}
-
-/**
- * It repeatedly invokes a specified Electron IPC channel, checking the result
- * against a condition function. It continues polling at regular intervals until
- * either the condition is met or a timeout occurs.
- */
-async function pollInvoke({
-  channel, // IPC channel name you’ll invoke in the main process
-  arg = {}, // Argument to pass to the invoke call
-  checkResult, // Function(result) => true when you’re done
-  postProcess, // Optional function to call to manipulate the final result or for side effects
-  interval = 60_000, // How long (ms) to wait between attempts - default is 1 minute
-  timeout = 60_000 * 60 * 24, // Optional hard limit (ms); set 0 for “no limit” - default is 1 day
-}) {
+const jobPolling = async (jobId, command, interval, timeout) => {
   const start = Date.now()
   while (true) {
     try {
       // @ts-ignore
-      const result = await window.electron.invoke(channel, arg)
+      const result = await window.electron.invoke('execute-ssh-with-key', {
+        command: command,
+      })
       console.log(result)
-      if (checkResult(result)) {
-        return postProcess ? postProcess(result) : result // Success – stop polling
+      const cleaned = result.trim()
+      if (cleaned && (cleaned === 'COMPLETED' || cleaned === 'FAILED')) {
+        toastState.add({
+          message: `Job id ${jobId}: ${cleaned}`,
+          type: cleaned === 'COMPLETED' ? 'success' : 'error',
+        })
+        return
       }
     } catch (e) {
-      throw new Error(`pollInvoke error: ${e}`)
+      throw new Error(`Job ${jobId} polling error: ${e}`)
     }
-    if (timeout && Date.now() - start > timeout) {
-      throw new Error(`Polling timed out after ${timeout} ms`)
+    const now = Date.now()
+    if (timeout && now - start > timeout) {
+      throw new Error(`Job ${jobId} polling timed out after ${timeout} ms`)
     }
     // Wait before the next attempt
-    await new Promise((res) => setTimeout(res, interval))
+    await delay(interval)
   }
 }
+
+const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
 export { executeWithPassword, executeWithKey, exportAndEvalGraph }
