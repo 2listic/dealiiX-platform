@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#82](https://github.com/2listic/dealiiX-platform/pull/82) Add instructions to debug Svelte-renderer code in the Electron-Chromium dev tools
 - [#38](https://github.com/2listic/dealiiX-platform/pull/39) Add Git Hub section to the readme file. Update the pull request template.
 - [#42](https://github.com/2listic/dealiiX-platform/pull/42) Add debugging instructions for Electron and Svelte
 - [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
@@ -63,6 +64,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication with the cluster
 
+- [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added polling to display if submitted Slurm job finishes with failed or completed status
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added container with Coral, Deal.II, Slurm and SSH server. Now a new job is queued with Slurm, when a new JSON graph is exported to the cluster
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dinamically retrieved from localStorage
 

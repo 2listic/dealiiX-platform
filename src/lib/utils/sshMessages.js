@@ -37,6 +37,7 @@ const exportAndEvalGraph = async (nodes, edges) => {
       edges: edges,
     })
     console.log('SSH Connection Result:', resultExport)
+
     // @ts-ignore
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
       // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
@@ -45,6 +46,11 @@ const exportAndEvalGraph = async (nodes, edges) => {
     })
     console.log('SSH Connection Result:', resultExecute)
     toastState.add({ message: resultExecute })
+
+    const jobId = resultExecute.match(/\d+/)[0]
+    if (!jobId) throw new Error('Job ID not found')
+    const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
+    await jobPolling(jobId, sacctCommand, 3 * 1000, 60 * 10)
   } catch (error) {
     toastState.add({
       message: error,
@@ -52,5 +58,36 @@ const exportAndEvalGraph = async (nodes, edges) => {
     })
   }
 }
+
+const jobPolling = async (jobId, command, interval, timeout) => {
+  const start = Date.now()
+  while (true) {
+    try {
+      // @ts-ignore
+      const result = await window.electron.invoke('execute-ssh-with-key', {
+        command: command,
+      })
+      console.log(result)
+      const cleaned = result.trim()
+      if (cleaned && (cleaned === 'COMPLETED' || cleaned === 'FAILED')) {
+        toastState.add({
+          message: `Job id ${jobId}: ${cleaned}`,
+          type: cleaned === 'COMPLETED' ? 'success' : 'error',
+        })
+        return
+      }
+    } catch (e) {
+      throw new Error(`Job ${jobId} polling error: ${e}`)
+    }
+    const now = Date.now()
+    if (timeout && now - start > timeout) {
+      throw new Error(`Job ${jobId} polling timed out after ${timeout} ms`)
+    }
+    // Wait before the next attempt
+    await delay(interval)
+  }
+}
+
+const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
 export { executeWithPassword, executeWithKey, exportAndEvalGraph }
