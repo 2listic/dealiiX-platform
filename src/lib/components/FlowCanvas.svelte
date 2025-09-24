@@ -96,8 +96,6 @@
     padding: 1vh;
     margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    font-size: 1em;
-    color: var(--ternary-color);
     background-color: var(--primary-color);
   }
 </style>

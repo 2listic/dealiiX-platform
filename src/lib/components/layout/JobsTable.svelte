@@ -8,7 +8,14 @@
   }
 </script>
 
-<button onclick={toggleExpand}>+</button>
+<span id="joblist-title">Finished Jobs</span>
+<button id="button-jobslist-expansion" onclick={toggleExpand}>
+  {#if jobsListState.isExpanded}
+    -
+  {:else}
+    +
+  {/if}
+</button>
 <div id="container-table-jobs">
   {#if jobsListState.isExpanded}
     <table>
@@ -32,11 +39,16 @@
       </tbody>
     </table>
   {:else}
-    <div>-</div>
+    <!-- <div>-</div> -->
   {/if}
 </div>
 
 <style>
+  #joblist-title {
+    font-size: 0.8em;
+    margin-right: 0.5vh;
+  }
+
   #container-table-jobs {
     max-height: 50vh;
     overflow-y: auto;
@@ -45,8 +57,17 @@
     padding: 1vh;
     margin-top: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    font-size: 1em;
-    color: var(--ternary-color);
     background-color: var(--primary-color);
+  }
+
+  #button-jobslist-expansion {
+    color: var(--ternary-color);
+    background-color: var(--background-color-secondary);
+    border: 1px solid grey;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  #button-jobslist-expansion:hover {
+    border-color: var(--border-color-hover);
   }
 </style>
