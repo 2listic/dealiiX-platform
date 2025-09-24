@@ -8,3 +8,14 @@ export const jobsState = {
     jobs = value
   },
 }
+
+let isJobListExpanded = $state(false)
+
+export const jobsListState = {
+  get isExpanded() {
+    return isJobListExpanded
+  },
+  toggle() {
+    isJobListExpanded = !isJobListExpanded
+  },
+}

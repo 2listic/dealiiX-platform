@@ -26,10 +26,10 @@
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { isValidConnection } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
-  import { getJobsState } from '../utils/sshMessages'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
+  import ButtonToggleJobs from './layout/ButtonToggleJobs.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -44,12 +44,6 @@
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
-  }
-
-  let expandJobs = $state(false)
-  const toggleExpand = () => {
-    expandJobs = expandJobs === true ? false : true
-    if (expandJobs === true) getJobsState()
   }
 </script>
 
@@ -70,8 +64,8 @@
   colorMode={colorModeState.value}
 >
   <Panel position="top-left">
-    <button onclick={toggleExpand}>Toggle submitted jobs</button>
-    <JobsTable expanded={expandJobs} />
+    <ButtonToggleJobs />
+    <JobsTable />
   </Panel>
   <Panel position="bottom-left">
     <div class="export-button-container">

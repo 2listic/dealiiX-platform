@@ -1,11 +1,9 @@
 <script>
-  import { jobsState } from '../../stores/jobsStore.svelte'
-
-  let { expanded } = $props()
+  import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
 </script>
 
 <div id="container-table-jobs">
-  {#if expanded}
+  {#if jobsListState.isExpanded}
     <table>
       <thead>
         <tr>
