@@ -1,4 +1,5 @@
 import { concatState } from '../stores/concatState.svelte'
+import { jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { setPanelContent } from './panelContent.js'
 
@@ -90,4 +91,21 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
-export { executeWithPassword, executeWithKey, exportAndEvalGraph }
+const getJobsState = async () => {
+  const command = 'sacct -X -P -o JobID,State,Start,End'
+  try {
+    // @ts-ignore
+    const result = await window.electron.invoke('execute-ssh-with-key', {
+      command: command,
+    })
+    const resultArrays = result.split('\n').map((line) => line.split('|'))
+    jobsState.current = resultArrays
+  } catch (error) {
+    toastState.add({
+      message: error,
+      type: 'error',
+    })
+  }
+}
+
+export { executeWithPassword, executeWithKey, exportAndEvalGraph, getJobsState }

@@ -23,11 +23,13 @@
     setEdges,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
-  import { isValidConnection } from '../utils/connectionsValidation'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
+  import { isValidConnection } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
+  import { getJobsState } from '../utils/sshMessages'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
+  import JobsTable from './layout/JobsTable.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -42,6 +44,12 @@
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
+  }
+
+  let expandJobs = $state(false)
+  const toggleExpand = () => {
+    expandJobs = expandJobs === true ? false : true
+    if (expandJobs === true) getJobsState()
   }
 </script>
 
@@ -61,6 +69,10 @@
     )}
   colorMode={colorModeState.value}
 >
+  <Panel position="top-left">
+    <button onclick={toggleExpand}>Toggle submitted jobs</button>
+    <JobsTable expanded={expandJobs} />
+  </Panel>
   <Panel position="bottom-left">
     <div class="export-button-container">
       <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
@@ -87,7 +99,6 @@
   }
 
   .custom-panel {
-    background-color: white;
     border: 1px solid #ccc;
     border-radius: 4px;
     padding: 1vh;
