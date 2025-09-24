@@ -1,7 +1,14 @@
 <script>
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
+  import { getJobsState } from '../../utils/sshMessages'
+
+  const toggleExpand = () => {
+    jobsListState.toggle()
+    if (jobsListState.isExpanded) getJobsState()
+  }
 </script>
 
+<button onclick={toggleExpand}>+</button>
 <div id="container-table-jobs">
   {#if jobsListState.isExpanded}
     <table>
@@ -24,6 +31,8 @@
         {/each}
       </tbody>
     </table>
+  {:else}
+    <div>-</div>
   {/if}
 </div>
 

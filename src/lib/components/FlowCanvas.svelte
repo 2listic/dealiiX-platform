@@ -29,7 +29,6 @@
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
-  import ButtonToggleJobs from './layout/ButtonToggleJobs.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -64,7 +63,6 @@
   colorMode={colorModeState.value}
 >
   <Panel position="top-left">
-    <ButtonToggleJobs />
     <JobsTable />
   </Panel>
   <Panel position="bottom-left">
