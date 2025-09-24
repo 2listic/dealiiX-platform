@@ -27,7 +27,7 @@
         <thead>
           <tr>
             {#each jobsState.current[0] as headCell, i (i)}
-              <td>{headCell}</td>
+              <th>{headCell}</th>
             {/each}
           </tr>
         </thead>
@@ -64,9 +64,13 @@
   }
 
   #table-jobslist {
-    margin: 1vw;
     width: 100%;
     table-layout: auto; /* forces equal column distribution */
+  }
+  th,
+  td {
+    text-align: center;
+    padding: 0.3vh;
   }
 
   #button-jobslist-expansion {
