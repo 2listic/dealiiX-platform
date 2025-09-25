@@ -18,77 +18,84 @@
   }
 </script>
 
-<span id="joblist-title">Finished Jobs</span>
-<button id="button-jobslist-expansion" onclick={toggleExpand}>
-  {#if jobsListState.isExpanded}
-    -
-  {:else}
-    +
-  {/if}
-</button>
-<div id="container-table-jobs">
-  {#if jobsListState.isExpanded}
-    <div transition:slide>
-      <table id="table-jobslist" transition:fade>
-        <thead>
-          <tr>
-            {#each jobsState.current[0] as headCell, i (i)}
-              <th>{headCell}</th>
+<div class="jobs-table-wrapper">
+  <button
+    class="button-jobslist-expansion"
+    onclick={toggleExpand}
+    aria-label="Show or hide submitted jobs"
+    title="Show or hide submitted jobs"
+  >
+    {#if jobsListState.isExpanded}
+      -
+    {:else}
+      +
+    {/if}
+  </button>
+  <div class="container-table-jobs">
+    {#if jobsListState.isExpanded}
+      <div transition:slide>
+        <table class="table-jobslist" transition:fade>
+          <thead>
+            <tr>
+              {#each jobsState.current[0] as headCell, i (i)}
+                <th>{headCell}</th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
+            {#each jobsState.current as line, index (line[0])}
+              {#if index > 0}
+                <tr>
+                  {#each line as bodyCell, i (i)}
+                    <td>{bodyCell}</td>
+                  {/each}
+                </tr>
+              {/if}
             {/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#each jobsState.current as line, index (line[0])}
-            {#if index > 0}
-              <tr>
-                {#each line as bodyCell, i (i)}
-                  <td>{bodyCell}</td>
-                {/each}
-              </tr>
-            {/if}
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {/if}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
-  #joblist-title {
-    font-size: 0.8em;
-    font-weight: bold;
-    margin-right: 0.5vh;
-  }
-
-  #container-table-jobs {
-    width: 40vw;
-    max-height: 50vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  .jobs-table-wrapper {
+    display: flex;
     background-color: var(--primary-color);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
   }
 
-  #table-jobslist {
-    width: 100%;
-    table-layout: auto; /* forces equal column distribution */
-  }
-  th,
-  td {
-    text-align: center;
-    padding: 0.3vh;
-  }
-
-  #button-jobslist-expansion {
+  .button-jobslist-expansion {
     color: var(--ternary-color);
     background-color: var(--background-color-secondary);
-    min-width: 2em;
-    min-height: 2em;
+    width: 2rem;
+    height: 2rem;
     border: 1px solid grey;
     border-radius: 10px;
     cursor: pointer;
   }
-  #button-jobslist-expansion:hover {
+  .button-jobslist-expansion:hover {
     border-color: var(--border-color-hover);
+  }
+
+  .container-table-jobs {
+    max-height: 50vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .table-jobslist {
+    width: 100%;
+    table-layout: auto; /* forces equal column distribution */
+  }
+  table {
+    padding: 0.5vh;
+  }
+  th,
+  td {
+    text-align: center;
+    padding: 0.4vh;
   }
 </style>
