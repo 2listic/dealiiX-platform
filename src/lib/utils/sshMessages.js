@@ -105,11 +105,13 @@ const getJobsState = async () => {
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
+  // const command = `sacct -X -P -S 2025-09-25T16:30:30 -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {
       command: command,
     })
+    if (result.includes('error')) throw new Error(result)
     // Split sacct output string into an array and revert order (new jobs first)
     const resultJobs = result.split('\n').reverse()
     resultJobs.shift() // remove first empty element
