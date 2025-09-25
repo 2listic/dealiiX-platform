@@ -11,6 +11,9 @@ export const jobsState = {
     // check if first job is empty
     return jobs[1].length === 1
   },
+  get oneOrLess() {
+    return jobs.length <= 2
+  },
   set current(value) {
     jobs = value
   },

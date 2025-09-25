@@ -24,13 +24,14 @@
   <button
     class="button-jobslist-expansion"
     onclick={toggleExpand}
+    disabled={jobsState.oneOrLess}
     aria-label="Show or hide submitted jobs"
     title="Show or hide submitted jobs"
   >
     {#if isJobListExpanded}
-      -
+      <span style="font-size: 1.2rem; font-weight: bold;">-</span>
     {:else}
-      +
+      <span style="font-size: 1.2rem; font-weight: bold;">+</span>
     {/if}
   </button>
   <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
@@ -101,18 +102,19 @@
   }
 
   .button-jobslist-expansion {
-    font-size: 1.5 rem;
-    font-weight: bold;
     color: var(--ternary-color);
     background-color: var(--background-color-secondary);
     width: 2rem;
     height: 2rem;
     border: 1px solid grey;
     border-radius: 10px;
+  }
+  .button-jobslist-expansion:not([disabled]):hover {
+    border-color: var(--border-color-hover);
     cursor: pointer;
   }
-  .button-jobslist-expansion:hover {
-    border-color: var(--border-color-hover);
+  .button-jobslist-expansion:disabled {
+    color: gray;
   }
 
   .container-table-jobs {
