@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
+  import { jobsState } from '../../stores/jobsStore.svelte'
   import { JOB_DATE_INDEX, JOB_LIST_DAYS } from '../../utils/sshMessages'
   import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
@@ -12,9 +12,11 @@
     }
   })
 
+  let isJobListExpanded = $state(false)
+
   const toggleExpand = () => {
-    jobsListState.toggle()
-    if (jobsListState.isExpanded) jobsState.update()
+    isJobListExpanded = !isJobListExpanded
+    if (isJobListExpanded) jobsState.update()
   }
 </script>
 
@@ -25,14 +27,14 @@
     aria-label="Show or hide submitted jobs"
     title="Show or hide submitted jobs"
   >
-    {#if jobsListState.isExpanded}
+    {#if isJobListExpanded}
       -
     {:else}
       +
     {/if}
   </button>
-  <div class="container-table-jobs">
-    {#if jobsListState.isExpanded && !jobsState.isEmpty}
+  <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
+    {#if !jobsState.isEmpty}
       <div transition:slide>
         <table transition:fade>
           <thead>
@@ -43,46 +45,35 @@
             </tr>
           </thead>
           <tbody>
-            {#each jobsState.current as line, index (line[0])}
-              {#if index > 0}
-                <tr>
-                  {#each line as bodyCell, i (i)}
-                    <td>
-                      {#if JOB_DATE_INDEX.includes(i)}
-                        {bodyCell.replace('T', ' ')}
-                      {:else}
-                        {bodyCell}
-                      {/if}
-                    </td>
-                  {/each}
-                </tr>
-              {/if}
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {:else if !jobsListState.isExpanded && !jobsState.isEmpty}
-      <div transition:slide>
-        <table transition:fade>
-          <thead>
-            <tr>
-              {#each jobsState.current[0] as headCell, i (i)}
-                <th>{headCell}</th>
+            {#if isJobListExpanded}
+              {#each jobsState.current as line, index (line[0])}
+                {#if index > 0}
+                  <tr>
+                    {#each line as bodyCell, i (i)}
+                      <td>
+                        {#if JOB_DATE_INDEX.includes(i)}
+                          {bodyCell.replace('T', ' ')}
+                        {:else}
+                          {bodyCell}
+                        {/if}
+                      </td>
+                    {/each}
+                  </tr>
+                {/if}
               {/each}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {#each jobsState.current[1] as bodyCell, i (i)}
-                <td>
-                  {#if JOB_DATE_INDEX.includes(i)}
-                    {bodyCell.replace('T', ' ')}
-                  {:else}
-                    {bodyCell}
-                  {/if}
-                </td>
-              {/each}
-            </tr>
+            {:else}
+              <tr>
+                {#each jobsState.current[1] as bodyCell, i (i)}
+                  <td>
+                    {#if JOB_DATE_INDEX.includes(i)}
+                      {bodyCell.replace('T', ' ')}
+                    {:else}
+                      {bodyCell}
+                    {/if}
+                  </td>
+                {/each}
+              </tr>
+            {/if}
           </tbody>
         </table>
       </div>
@@ -91,7 +82,7 @@
         <table transition:fade>
           <tbody>
             <tr>
-              <td>No jobs submitted in the last ${JOB_LIST_DAYS} days</td>
+              <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
             </tr>
           </tbody>
         </table>
@@ -127,11 +118,16 @@
   .container-table-jobs {
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: 10vh;
     min-width: 35vw;
     overflow-y: auto;
     overflow-x: hidden;
+    overflow: hidden;
     scrollbar-width: thin;
+    transition: max-height 0.5s ease-in-out;
+  }
+  .container-table-jobs.expanded {
+    max-height: 90vh;
   }
 
   table {
