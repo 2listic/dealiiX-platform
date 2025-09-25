@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
   import { JOB_DATE_INDEX } from '../../utils/sshMessages'
-  import { fade, slide } from 'svelte/transition'
+  // import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
   onMount(() => {
@@ -32,24 +32,17 @@
     {/if}
   </button>
   <div class="container-table-jobs">
-    <table>
-      <thead>
-        <tr>
-          <th>Submitted Jobs</th>
-        </tr>
-      </thead>
-    </table>
-    {#if jobsListState.isExpanded}
-      <div transition:slide>
-        <table transition:fade>
-          <thead>
-            <tr>
-              {#each jobsState.current[0] as headCell, i (i)}
-                <th>{headCell}</th>
-              {/each}
-            </tr>
-          </thead>
-          <tbody>
+    <div>
+      <table>
+        <thead>
+          <tr>
+            {#each jobsState.current[0] as headCell, i (i)}
+              <th>{headCell}</th>
+            {/each}
+          </tr>
+        </thead>
+        <tbody>
+          {#if jobsListState.isExpanded}
             {#each jobsState.current as line, index (line[0])}
               {#if index > 0}
                 <tr>
@@ -65,10 +58,22 @@
                 </tr>
               {/if}
             {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
+          {:else}
+            <tr>
+              {#each jobsState.current[1] as bodyCell, i (i)}
+                <td>
+                  {#if JOB_DATE_INDEX.includes(i)}
+                    {bodyCell.replace('T', ' ')}
+                  {:else}
+                    {bodyCell}
+                  {/if}
+                </td>
+              {/each}
+            </tr>
+          {/if}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -99,7 +104,7 @@
   .container-table-jobs {
     display: flex;
     flex-direction: column;
-    max-height: 55vh;
+    max-height: 90vh;
     min-width: 35vw;
     overflow-y: auto;
     overflow-x: hidden;
