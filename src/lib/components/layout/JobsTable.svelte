@@ -32,9 +32,16 @@
     {/if}
   </button>
   <div class="container-table-jobs">
+    <table>
+      <thead>
+        <tr>
+          <th>Submitted Jobs Status</th>
+        </tr>
+      </thead>
+    </table>
     {#if jobsListState.isExpanded}
       <div transition:slide>
-        <table class="table-jobslist" transition:fade>
+        <table transition:fade>
           <thead>
             <tr>
               {#each jobsState.current[0] as headCell, i (i)}
@@ -62,12 +69,15 @@
 <style>
   .jobs-table-wrapper {
     display: flex;
+    gap: 0.5rem;
     background-color: var(--primary-color);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 5px;
   }
 
   .button-jobslist-expansion {
+    font-size: 1.5 rem;
+    font-weight: bold;
     color: var(--ternary-color);
     background-color: var(--background-color-secondary);
     width: 2rem;
@@ -81,17 +91,18 @@
   }
 
   .container-table-jobs {
-    max-height: 50vh;
+    display: flex;
+    flex-direction: column;
+    max-height: 55vh;
+    min-width: 35vw;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: thin;
   }
 
-  .table-jobslist {
+  table {
     width: 100%;
     table-layout: auto; /* forces equal column distribution */
-  }
-  table {
-    padding: 0.5vh;
   }
   th,
   td {

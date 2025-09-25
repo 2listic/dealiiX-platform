@@ -92,14 +92,22 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
 const getJobsState = async () => {
-  const command = 'sacct -X -P -o JobID,State,Start,End'
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const startDate = sevenDaysAgo.toISOString().split('T')[0]
+  const command = `sacct -X -P -S ${startDate} -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {
       command: command,
     })
-    const resultArrays = result.split('\n').map((line) => line.split('|'))
-    jobsState.current = resultArrays
+    // Split sacct output string into an array and revert order (new jobs first)
+    const resultJobs = result.split('\n').reverse()
+    // Move the last element (the headers) back to the front
+    const last = resultJobs.pop()
+    resultJobs.unshift(last)
+    // Convert each job row string into a nested array of fields
+    const parsedJobs = resultJobs.map((line) => line.split('|'))
+    jobsState.current = parsedJobs
   } catch (error) {
     toastState.add({
       message: error,
