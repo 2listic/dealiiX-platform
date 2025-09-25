@@ -98,12 +98,13 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
 const JOB_DATE_INDEX = [2, 3]
+const JOB_LIST_DAYS = 30
 
 const getJobsState = async () => {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-  const startDate = sevenDaysAgo.toISOString().split('T')[0]
+  const startDate = new Date(Date.now() - JOB_LIST_DAYS * 24 * 60 * 60 * 1000) // 30 days ago
+  const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
-  const command = `sacct -X -P -S ${startDate} -o JobID,State,Start,End`
+  const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {
@@ -131,5 +132,6 @@ export {
   executeWithKey,
   exportAndEvalGraph,
   JOB_DATE_INDEX,
+  JOB_LIST_DAYS,
   getJobsState,
 }

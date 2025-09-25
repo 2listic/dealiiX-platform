@@ -1,8 +1,8 @@
 <script>
   import { onMount } from 'svelte'
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
-  import { JOB_DATE_INDEX } from '../../utils/sshMessages'
-  // import { fade, slide } from 'svelte/transition'
+  import { JOB_DATE_INDEX, JOB_LIST_DAYS } from '../../utils/sshMessages'
+  import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
   onMount(() => {
@@ -32,17 +32,17 @@
     {/if}
   </button>
   <div class="container-table-jobs">
-    <div>
-      <table>
-        <thead>
-          <tr>
-            {#each jobsState.current[0] as headCell, i (i)}
-              <th>{headCell}</th>
-            {/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#if jobsListState.isExpanded}
+    {#if jobsListState.isExpanded && !jobsState.isEmpty}
+      <div transition:slide>
+        <table transition:fade>
+          <thead>
+            <tr>
+              {#each jobsState.current[0] as headCell, i (i)}
+                <th>{headCell}</th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
             {#each jobsState.current as line, index (line[0])}
               {#if index > 0}
                 <tr>
@@ -58,7 +58,20 @@
                 </tr>
               {/if}
             {/each}
-          {:else}
+          </tbody>
+        </table>
+      </div>
+    {:else if !jobsListState.isExpanded && !jobsState.isEmpty}
+      <div transition:slide>
+        <table transition:fade>
+          <thead>
+            <tr>
+              {#each jobsState.current[0] as headCell, i (i)}
+                <th>{headCell}</th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
             <tr>
               {#each jobsState.current[1] as bodyCell, i (i)}
                 <td>
@@ -70,10 +83,20 @@
                 </td>
               {/each}
             </tr>
-          {/if}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    {:else}
+      <div transition:slide>
+        <table transition:fade>
+          <tbody>
+            <tr>
+              <td>No jobs submitted in the last ${JOB_LIST_DAYS} days</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {/if}
   </div>
 </div>
 
