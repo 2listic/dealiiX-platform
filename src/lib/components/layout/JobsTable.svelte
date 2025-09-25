@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
-  import { getJobsState } from '../../utils/sshMessages'
+  import { getJobsState, JOB_DATE_INDEX } from '../../utils/sshMessages'
   import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
@@ -54,7 +54,13 @@
               {#if index > 0}
                 <tr>
                   {#each line as bodyCell, i (i)}
-                    <td>{bodyCell}</td>
+                    <td>
+                      {#if JOB_DATE_INDEX.includes(i)}
+                        {bodyCell.replace('T', ' ')}
+                      {:else}
+                        {bodyCell}
+                      {/if}
+                    </td>
                   {/each}
                 </tr>
               {/if}

@@ -60,6 +60,9 @@ const exportAndEvalGraph = async (nodes, edges) => {
   }
 }
 
+const COMPLETED = 'COMPLETED'
+const FAILED = 'FAILED'
+
 const jobPolling = async (jobId, command, interval, timeout) => {
   const start = Date.now()
   while (true) {
@@ -70,10 +73,10 @@ const jobPolling = async (jobId, command, interval, timeout) => {
       })
       console.log(result)
       const cleaned = result.trim()
-      if (cleaned && (cleaned === 'COMPLETED' || cleaned === 'FAILED')) {
+      if (cleaned && (cleaned === COMPLETED || cleaned === FAILED)) {
         toastState.add({
           message: `Job id ${jobId}: ${cleaned}`,
-          type: cleaned === 'COMPLETED' ? 'success' : 'error',
+          type: cleaned === COMPLETED ? 'success' : 'error',
         })
         return
       }
@@ -91,9 +94,12 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
+const JOB_DATE_INDEX = [2, 3]
+
 const getJobsState = async () => {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
   const startDate = sevenDaysAgo.toISOString().split('T')[0]
+  // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDate} -o JobID,State,Start,End`
   try {
     // @ts-ignore
@@ -102,6 +108,7 @@ const getJobsState = async () => {
     })
     // Split sacct output string into an array and revert order (new jobs first)
     const resultJobs = result.split('\n').reverse()
+    resultJobs.shift() // remove first empty element
     // Move the last element (the headers) back to the front
     const last = resultJobs.pop()
     resultJobs.unshift(last)
@@ -116,4 +123,10 @@ const getJobsState = async () => {
   }
 }
 
-export { executeWithPassword, executeWithKey, exportAndEvalGraph, getJobsState }
+export {
+  executeWithPassword,
+  executeWithKey,
+  exportAndEvalGraph,
+  JOB_DATE_INDEX,
+  getJobsState,
+}
