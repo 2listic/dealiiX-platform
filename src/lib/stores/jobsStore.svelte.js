@@ -1,3 +1,5 @@
+import { getJobsState } from '../utils/sshMessages'
+
 let jobs = $state([])
 
 export const jobsState = {
@@ -11,6 +13,9 @@ export const jobsState = {
   },
   set current(value) {
     jobs = value
+  },
+  async update() {
+    jobs = await getJobsState()
   },
 }
 

@@ -1,20 +1,20 @@
 <script>
   import { onMount } from 'svelte'
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
-  import { getJobsState, JOB_DATE_INDEX } from '../../utils/sshMessages'
+  import { JOB_DATE_INDEX } from '../../utils/sshMessages'
   import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
   onMount(() => {
     if (settingsState.getKey(SSH_PATH)) {
       // run sacct only if ssh path is set
-      getJobsState()
+      jobsState.update()
     }
   })
 
   const toggleExpand = () => {
     jobsListState.toggle()
-    if (jobsListState.isExpanded) getJobsState()
+    if (jobsListState.isExpanded) jobsState.update()
   }
 </script>
 
@@ -35,7 +35,7 @@
     <table>
       <thead>
         <tr>
-          <th>Submitted Jobs Status</th>
+          <th>Submitted Jobs</th>
         </tr>
       </thead>
     </table>
