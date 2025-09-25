@@ -3,8 +3,14 @@
   import { jobsState, jobsListState } from '../../stores/jobsStore.svelte'
   import { getJobsState } from '../../utils/sshMessages'
   import { fade, slide } from 'svelte/transition'
+  import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
-  onMount(() => getJobsState())
+  onMount(() => {
+    if (settingsState.getKey(SSH_PATH)) {
+      // run sacct only if ssh path is set
+      getJobsState()
+    }
+  })
 
   const toggleExpand = () => {
     jobsListState.toggle()
