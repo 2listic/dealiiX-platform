@@ -122,14 +122,12 @@
     flex-direction: column;
     max-height: 10vh;
     min-width: 35vw;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overflow: hidden;
     scrollbar-width: thin;
     transition: max-height 0.5s ease-in-out;
   }
   .container-table-jobs.expanded {
-    max-height: 90vh;
+    max-height: 40vh;
+    overflow-y: scroll;
   }
 
   table {
