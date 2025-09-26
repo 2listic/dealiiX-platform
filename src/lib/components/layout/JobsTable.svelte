@@ -5,11 +5,14 @@
   import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
+  let isLoaded = $state(false)
+
   onMount(async () => {
     if (settingsState.getKey(SSH_PATH)) {
       // run sacct only if ssh path is set
       await jobsState.update()
     }
+    isLoaded = true
   })
 
   let isJobListExpanded = $state(false)
@@ -21,94 +24,96 @@
 </script>
 
 <div class="jobs-table-wrapper">
-  <button
-    class="button-jobslist-expansion"
-    onclick={toggleExpand}
-    disabled={jobsState.oneOrLess}
-    aria-label="Show or hide submitted jobs"
-    title="Show or hide submitted jobs"
-  >
-    {#if isJobListExpanded}
-      <span style="font-size: 1.2rem; font-weight: bold;">-</span>
-    {:else}
-      <span style="font-size: 1.2rem; font-weight: bold;">+</span>
-    {/if}
-  </button>
-  <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
-    {#if !jobsState.isEmpty}
-      <div transition:slide>
-        <table transition:fade>
-          <colgroup>
-            <col style="width: 15%;" />
-            <col style="width: 25%;" />
-            <col style="width: 30%;" />
-            <col style="width: 30%;" />
-          </colgroup>
-          <thead>
-            <tr>
-              {#each jobsState.current[0] as headCell, i (i)}
-                <th>{headCell}</th>
-              {/each}
-            </tr>
-          </thead>
-          <tbody>
-            {#if isJobListExpanded}
-              {#each jobsState.current as line, index (line[0])}
-                {#if index > 0}
-                  <!-- Key block on change triggers transition in child-->
-                  {#key `${index}-${line[0]}`}
-                    <tr in:fade>
-                      {#each line as bodyCell, i (i)}
-                        <td>
-                          <!-- Key block on change triggers transition in child-->
-                          {#key `${line[0]}-${i}-${bodyCell}`}
-                            <span in:fade>
-                              {#if JOB_DATE_INDEX.includes(i)}
-                                {bodyCell.replace('T', ' ')}
-                              {:else}
-                                {bodyCell}
-                              {/if}
-                            </span>
-                          {/key}
-                        </td>
-                      {/each}
-                    </tr>
-                  {/key}
-                {/if}
-              {/each}
-            {:else}
+  {#if isLoaded}
+    <button
+      class="button-jobslist-expansion"
+      onclick={toggleExpand}
+      disabled={jobsState.oneOrLess}
+      aria-label="Show or hide submitted jobs"
+      title="Show or hide submitted jobs"
+    >
+      {#if isJobListExpanded}
+        <span style="font-size: 1.2rem; font-weight: bold;">-</span>
+      {:else}
+        <span style="font-size: 1.2rem; font-weight: bold;">+</span>
+      {/if}
+    </button>
+    <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
+      {#if !jobsState.isEmpty}
+        <div transition:slide>
+          <table transition:fade>
+            <colgroup>
+              <col style="width: 15%;" />
+              <col style="width: 25%;" />
+              <col style="width: 30%;" />
+              <col style="width: 30%;" />
+            </colgroup>
+            <thead>
               <tr>
-                {#each jobsState.current[1] as bodyCell, i (i)}
-                  <td>
-                    <!-- Key block on change triggers transition in child-->
-                    {#key `${i}-${bodyCell}`}
-                      <span in:fade>
-                        {#if JOB_DATE_INDEX.includes(i)}
-                          {bodyCell.replace('T', ' ')}
-                        {:else}
-                          {bodyCell}
-                        {/if}
-                      </span>
-                    {/key}
-                  </td>
+                {#each jobsState.current[0] as headCell, i (i)}
+                  <th>{headCell}</th>
                 {/each}
               </tr>
-            {/if}
-          </tbody>
-        </table>
-      </div>
-    {:else}
-      <div transition:slide>
-        <table transition:fade>
-          <tbody>
-            <tr>
-              <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </div>
+            </thead>
+            <tbody>
+              {#if isJobListExpanded}
+                {#each jobsState.current as line, index (line[0])}
+                  {#if index > 0}
+                    <!-- Key block on change triggers transition in child-->
+                    {#key `${index}-${line[0]}`}
+                      <tr in:fade>
+                        {#each line as bodyCell, i (i)}
+                          <td>
+                            <!-- Key block on change triggers transition in child-->
+                            {#key `${line[0]}-${i}-${bodyCell}`}
+                              <span in:fade>
+                                {#if JOB_DATE_INDEX.includes(i)}
+                                  {bodyCell.replace('T', ' ')}
+                                {:else}
+                                  {bodyCell}
+                                {/if}
+                              </span>
+                            {/key}
+                          </td>
+                        {/each}
+                      </tr>
+                    {/key}
+                  {/if}
+                {/each}
+              {:else}
+                <tr>
+                  {#each jobsState.current[1] as bodyCell, i (i)}
+                    <td>
+                      <!-- Key block on change triggers transition in child-->
+                      {#key `${i}-${bodyCell}`}
+                        <span in:fade>
+                          {#if JOB_DATE_INDEX.includes(i)}
+                            {bodyCell.replace('T', ' ')}
+                          {:else}
+                            {bodyCell}
+                          {/if}
+                        </span>
+                      {/key}
+                    </td>
+                  {/each}
+                </tr>
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      {:else}
+        <div transition:slide>
+          <table transition:fade>
+            <tbody>
+              <tr>
+                <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
