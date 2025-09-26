@@ -5,18 +5,18 @@
   import { fade, slide } from 'svelte/transition'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
-  onMount(() => {
+  onMount(async () => {
     if (settingsState.getKey(SSH_PATH)) {
       // run sacct only if ssh path is set
-      jobsState.update()
+      await jobsState.update()
     }
   })
 
   let isJobListExpanded = $state(false)
 
-  const toggleExpand = () => {
+  const toggleExpand = async () => {
     isJobListExpanded = !isJobListExpanded
-    if (isJobListExpanded) jobsState.update()
+    if (isJobListExpanded) await jobsState.update()
   }
 </script>
 
@@ -38,6 +38,12 @@
     {#if !jobsState.isEmpty}
       <div transition:slide>
         <table transition:fade>
+          <colgroup>
+            <col style="width: 15%;" />
+            <col style="width: 25%;" />
+            <col style="width: 30%;" />
+            <col style="width: 30%;" />
+          </colgroup>
           <thead>
             <tr>
               {#each jobsState.current[0] as headCell, i (i)}
@@ -49,28 +55,41 @@
             {#if isJobListExpanded}
               {#each jobsState.current as line, index (line[0])}
                 {#if index > 0}
-                  <tr>
-                    {#each line as bodyCell, i (i)}
-                      <td>
-                        {#if JOB_DATE_INDEX.includes(i)}
-                          {bodyCell.replace('T', ' ')}
-                        {:else}
-                          {bodyCell}
-                        {/if}
-                      </td>
-                    {/each}
-                  </tr>
+                  <!-- Key block on change triggers transition in child-->
+                  {#key `${index}-${line[0]}`}
+                    <tr in:fade>
+                      {#each line as bodyCell, i (i)}
+                        <td>
+                          <!-- Key block on change triggers transition in child-->
+                          {#key `${line[0]}-${i}-${bodyCell}`}
+                            <span in:fade>
+                              {#if JOB_DATE_INDEX.includes(i)}
+                                {bodyCell.replace('T', ' ')}
+                              {:else}
+                                {bodyCell}
+                              {/if}
+                            </span>
+                          {/key}
+                        </td>
+                      {/each}
+                    </tr>
+                  {/key}
                 {/if}
               {/each}
             {:else}
               <tr>
                 {#each jobsState.current[1] as bodyCell, i (i)}
                   <td>
-                    {#if JOB_DATE_INDEX.includes(i)}
-                      {bodyCell.replace('T', ' ')}
-                    {:else}
-                      {bodyCell}
-                    {/if}
+                    <!-- Key block on change triggers transition in child-->
+                    {#key `${i}-${bodyCell}`}
+                      <span in:fade>
+                        {#if JOB_DATE_INDEX.includes(i)}
+                          {bodyCell.replace('T', ' ')}
+                        {:else}
+                          {bodyCell}
+                        {/if}
+                      </span>
+                    {/key}
                   </td>
                 {/each}
               </tr>

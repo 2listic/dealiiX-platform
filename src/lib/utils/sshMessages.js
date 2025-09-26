@@ -42,6 +42,7 @@ const exportAndEvalGraph = async (nodes, edges) => {
     // @ts-ignore
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
       // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
+      // command: 'sbatch --wrap="sleep 15" --output=hello.out',
       // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
       command: 'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json"',
     })
@@ -51,8 +52,8 @@ const exportAndEvalGraph = async (nodes, edges) => {
     const jobId = resultExecute.match(/\d+/)[0]
     if (!jobId) throw new Error('Job ID not found')
     const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
-    // poll immediately then every 30 minutes for 1 day
-    await jobPolling(jobId, sacctCommand, 30 * 60 * 1000, 24 * 60 * 60 * 1000)
+    // poll immediately then every 5 secs for 1 day
+    await jobPolling(jobId, sacctCommand, 5 * 1000, 24 * 60 * 60 * 1000)
   } catch (error) {
     toastState.add({
       message: error,
@@ -65,11 +66,11 @@ const COMPLETED = 'COMPLETED'
 const FAILED = 'FAILED'
 
 const jobPolling = async (jobId, command, interval, timeout) => {
-  await delay(10000) // wait 10 secs for job to be submitted then start polling
+  await delay(2000) // wait 2 secs for job to be submitted then start polling
   const start = Date.now()
   while (true) {
     try {
-      jobsState.update()
+      await jobsState.update()
       // @ts-ignore
       const result = await window.electron.invoke('execute-ssh-with-key', {
         command: command,
@@ -105,7 +106,7 @@ const getJobsState = async () => {
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
-  // const command = `sacct -X -P -S 2025-09-25T16:30:30 -o JobID,State,Start,End`
+  // const command = `sacct -X -P -S 2025-09-25T16:54:30 -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {
