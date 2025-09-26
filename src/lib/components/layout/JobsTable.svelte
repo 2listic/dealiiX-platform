@@ -6,6 +6,7 @@
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
 
   let isLoaded = $state(false)
+  let jobsData = $derived(jobsState.current)
 
   onMount(async () => {
     if (settingsState.getKey(SSH_PATH)) {
@@ -43,57 +44,48 @@
         <div transition:slide>
           <table transition:fade>
             <colgroup>
-              <col style="width: 15%;" />
-              <col style="width: 25%;" />
-              <col style="width: 30%;" />
-              <col style="width: 30%;" />
+              <col style="width: 12%;" />
+              <col style="width: 22%;" />
+              <col style="width: 33%;" />
+              <col style="width: 33%;" />
             </colgroup>
             <thead>
               <tr>
-                {#each jobsState.current[0] as headCell, i (i)}
+                {#each jobsData[0] as headCell, i (i)}
                   <th>{headCell}</th>
                 {/each}
               </tr>
             </thead>
             <tbody>
               {#if isJobListExpanded}
-                {#each jobsState.current as line, index (line[0])}
+                {#each jobsData as line, index (line[0])}
                   {#if index > 0}
-                    <!-- Key block on change triggers transition in child-->
-                    {#key `${index}-${line[0]}`}
-                      <tr in:fade>
-                        {#each line as bodyCell, i (i)}
-                          <td>
-                            <!-- Key block on change triggers transition in child-->
-                            {#key `${line[0]}-${i}-${bodyCell}`}
-                              <span in:fade>
-                                {#if JOB_DATE_INDEX.includes(i)}
-                                  {bodyCell.replace('T', ' ')}
-                                {:else}
-                                  {bodyCell}
-                                {/if}
-                              </span>
-                            {/key}
-                          </td>
-                        {/each}
-                      </tr>
-                    {/key}
+                    <tr>
+                      {#each line as bodyCell, i (i)}
+                        <td>
+                          <span>
+                            {#if JOB_DATE_INDEX.includes(i)}
+                              {bodyCell.replace('T', ' ')}
+                            {:else}
+                              {bodyCell}
+                            {/if}
+                          </span>
+                        </td>
+                      {/each}
+                    </tr>
                   {/if}
                 {/each}
               {:else}
                 <tr>
-                  {#each jobsState.current[1] as bodyCell, i (i)}
+                  {#each jobsData[1] as bodyCell, i (i)}
                     <td>
-                      <!-- Key block on change triggers transition in child-->
-                      {#key `${i}-${bodyCell}`}
-                        <span in:fade>
-                          {#if JOB_DATE_INDEX.includes(i)}
-                            {bodyCell.replace('T', ' ')}
-                          {:else}
-                            {bodyCell}
-                          {/if}
-                        </span>
-                      {/key}
+                      <span>
+                        {#if JOB_DATE_INDEX.includes(i)}
+                          {bodyCell.replace('T', ' ')}
+                        {:else}
+                          {bodyCell}
+                        {/if}
+                      </span>
                     </td>
                   {/each}
                 </tr>
@@ -145,7 +137,7 @@
     display: flex;
     flex-direction: column;
     max-height: 10vh;
-    min-width: 35vw;
+    width: 40vw;
     scrollbar-width: thin;
     transition: max-height 0.5s ease-in-out;
   }

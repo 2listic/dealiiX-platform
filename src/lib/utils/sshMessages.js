@@ -42,8 +42,8 @@ const exportAndEvalGraph = async (nodes, edges) => {
     // @ts-ignore
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
       // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
-      // command: 'sbatch --wrap="sleep 15" --output=hello.out',
       // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
+      // command: 'sbatch --wrap="sleep 20" --output=hello.out',
       command: 'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json"',
     })
     console.log('SSH Connection Result:', resultExecute)
@@ -53,7 +53,16 @@ const exportAndEvalGraph = async (nodes, edges) => {
     if (!jobId) throw new Error('Job ID not found')
     const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
     // poll immediately then every 5 secs for 1 day
-    await jobPolling(jobId, sacctCommand, 5 * 1000, 24 * 60 * 60 * 1000)
+    const finalState = await jobPolling(
+      jobId,
+      sacctCommand,
+      10 * 1000,
+      24 * 60 * 60 * 1000
+    )
+    toastState.add({
+      message: `Job id ${jobId}: ${finalState}`,
+      type: finalState === COMPLETED ? 'success' : 'error',
+    })
   } catch (error) {
     toastState.add({
       message: error,
@@ -64,29 +73,33 @@ const exportAndEvalGraph = async (nodes, edges) => {
 
 const COMPLETED = 'COMPLETED'
 const FAILED = 'FAILED'
+const PENDING = 'PENDING'
+const RUNNING = 'RUNNING'
 
 const jobPolling = async (jobId, command, interval, timeout) => {
-  await delay(2000) // wait 2 secs for job to be submitted then start polling
+  await delay(5000) // wait 2 secs for job to be submitted then start polling
+
   const start = Date.now()
   while (true) {
     try {
-      await jobsState.update()
       // @ts-ignore
       const result = await window.electron.invoke('execute-ssh-with-key', {
         command: command,
       })
       console.log(result)
+
       const cleaned = result.trim()
-      if (cleaned && (cleaned === COMPLETED || cleaned === FAILED)) {
-        toastState.add({
-          message: `Job id ${jobId}: ${cleaned}`,
-          type: cleaned === COMPLETED ? 'success' : 'error',
-        })
-        return
+      if ([COMPLETED, FAILED, PENDING, RUNNING].includes(cleaned)) {
+        await jobsState.update()
+
+        if ([COMPLETED, FAILED].includes(cleaned)) {
+          return cleaned
+        }
       }
     } catch (e) {
       throw new Error(`Job ${jobId} polling error: ${e}`)
     }
+
     const now = Date.now()
     if (timeout && now - start > timeout) {
       throw new Error(`Job ${jobId} polling timed out after ${timeout} ms`)
@@ -99,14 +112,14 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
 const JOB_DATE_INDEX = [2, 3]
-const JOB_LIST_DAYS = 30
+const JOB_LIST_DAYS = 1
 
 const getJobsState = async () => {
   const startDate = new Date(Date.now() - JOB_LIST_DAYS * 24 * 60 * 60 * 1000) // 30 days ago
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
-  // const command = `sacct -X -P -S 2025-09-25T16:54:30 -o JobID,State,Start,End`
+  // const command = `sacct -X -P -S 2025-09-26T16:00:00 -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {
