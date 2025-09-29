@@ -140,6 +140,7 @@ const getJobsState = async () => {
       message: error,
       type: 'error',
     })
+    return []
   }
 }
 
