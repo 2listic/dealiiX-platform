@@ -23,11 +23,12 @@
     setEdges,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
-  import { isValidConnection } from '../utils/connectionsValidation'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
+  import { isValidConnection } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
+  import JobsTable from './layout/JobsTable.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -61,6 +62,9 @@
     )}
   colorMode={colorModeState.value}
 >
+  <Panel position="top-left">
+    <JobsTable />
+  </Panel>
   <Panel position="bottom-left">
     <div class="export-button-container">
       <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
@@ -87,14 +91,11 @@
   }
 
   .custom-panel {
-    background-color: white;
     border: 1px solid #ccc;
     border-radius: 4px;
     padding: 1vh;
     margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    font-size: 1em;
-    color: var(--ternary-color);
     background-color: var(--primary-color);
   }
 </style>
