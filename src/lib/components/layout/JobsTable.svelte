@@ -1,12 +1,19 @@
 <script>
   import { onMount } from 'svelte'
-  import { jobsState } from '../../stores/jobsStore.svelte'
-  import { JOB_DATE_INDEX, JOB_LIST_DAYS } from '../../utils/sshMessages'
   import { fade, slide } from 'svelte/transition'
+  import { Tween } from 'svelte/motion'
+  import { cubicOut } from 'svelte/easing'
+  import { jobsState } from '../../stores/jobsStore.svelte'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
+  import { JOB_DATE_INDEX, JOB_LIST_DAYS } from '../../utils/sshMessages'
+  import RefreshIcon from '../icons/RefreshIcon.svelte'
 
   let isLoaded = $state(false)
   let jobsData = $derived(jobsState.current)
+  const rotation = new Tween(0, {
+    duration: 400,
+    easing: cubicOut,
+  })
 
   onMount(async () => {
     if (settingsState.getKey(SSH_PATH)) {
@@ -22,23 +29,43 @@
     isJobListExpanded = !isJobListExpanded
     if (isJobListExpanded) await jobsState.update()
   }
+
+  const updateJobs = async () => {
+    rotation.target -= 360
+    await jobsState.update()
+  }
 </script>
 
 <div class="jobs-table-wrapper">
-  {#if isLoaded}
+  <div class="wrap-joblist-buttons">
+    {#if !jobsState.oneOrLess}
+      <div transition:slide>
+        <button
+          class="button-jobslist"
+          onclick={toggleExpand}
+          disabled={jobsState.oneOrLess}
+          aria-label="Show or hide submitted jobs"
+          title="Show or hide submitted jobs"
+        >
+          {#if isJobListExpanded}
+            <span style="font-size: 1.2rem; font-weight: bold;">-</span>
+          {:else}
+            <span style="font-size: 1.2rem; font-weight: bold;">+</span>
+          {/if}
+        </button>
+      </div>
+    {/if}
     <button
-      class="button-jobslist-expansion"
-      onclick={toggleExpand}
-      disabled={jobsState.oneOrLess}
-      aria-label="Show or hide submitted jobs"
-      title="Show or hide submitted jobs"
+      class="button-jobslist"
+      onclick={updateJobs}
+      disabled={false}
+      aria-label="Refresh state of submitted jobs"
+      title="Refresh state of submitted jobs"
     >
-      {#if isJobListExpanded}
-        <span style="font-size: 1.2rem; font-weight: bold;">-</span>
-      {:else}
-        <span style="font-size: 1.2rem; font-weight: bold;">+</span>
-      {/if}
+      <RefreshIcon width="20px" height="20px" {rotation} />
     </button>
+  </div>
+  {#if isLoaded}
     <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
       {#if !jobsState.isEmpty}
         <div transition:slide>
@@ -117,7 +144,13 @@
     border-radius: 5px;
   }
 
-  .button-jobslist-expansion {
+  .wrap-joblist-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .button-jobslist {
     color: var(--ternary-color);
     background-color: var(--background-color-secondary);
     width: 2rem;
@@ -125,25 +158,26 @@
     border: 1px solid grey;
     border-radius: 10px;
   }
-  .button-jobslist-expansion:not([disabled]):hover {
+  .button-jobslist:not([disabled]):hover {
     border-color: var(--border-color-hover);
     cursor: pointer;
   }
-  .button-jobslist-expansion:disabled {
+  .button-jobslist:disabled {
     color: gray;
   }
 
   .container-table-jobs {
     display: flex;
     flex-direction: column;
-    max-height: 10vh;
+    max-height: 7vh;
+    overflow: hidden;
     width: 40vw;
-    scrollbar-width: thin;
-    transition: max-height 0.5s ease-in-out;
+    transition: all 1s ease-in-out;
   }
   .container-table-jobs.expanded {
     max-height: 40vh;
     overflow-y: scroll;
+    scrollbar-width: thin;
   }
 
   table {
