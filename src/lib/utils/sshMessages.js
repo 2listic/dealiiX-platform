@@ -41,8 +41,6 @@ const exportAndEvalGraph = async (nodes, edges) => {
 
     // @ts-ignore
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-      // command: 'sbatch --wrap="echo Hello from $(hostname)" --output=hello.out',
-      // command: 'sbatch --wrap="cat /root/graph.json" --output=hello.out'
       // command: 'sbatch --wrap="sleep 20" --output=hello.out',
       command: 'sbatch --wrap="/app/build/dealii_backend.g /root/graph.json"',
     })
@@ -76,8 +74,19 @@ const FAILED = 'FAILED'
 const PENDING = 'PENDING'
 const RUNNING = 'RUNNING'
 
+/**
+ * Polls the status of a job by executing an SSH command at regular intervals.
+ *
+ * @async
+ * @param {string} jobId - The ID of the job to poll.
+ * @param {string} command - The SSH command to execute for polling.
+ * @param {number} interval - The interval (in milliseconds) between polling attempts.
+ * @param {number} [timeout] - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
+ * @returns {Promise<string>} - A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
+ * @throws {Error} - Throws an error if there is a polling error or if the job times out.
+ */
 const jobPolling = async (jobId, command, interval, timeout) => {
-  await delay(5000) // wait 2 secs for job to be submitted then start polling
+  await delay(5000) // wait few secs for job to be submitted then start polling
 
   const start = Date.now()
   while (true) {
@@ -114,12 +123,20 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 const JOB_DATE_INDEX = [2, 3]
 const JOB_LIST_DAYS = 1
 
-const getJobsState = async () => {
-  const startDate = new Date(Date.now() - JOB_LIST_DAYS * 24 * 60 * 60 * 1000) // 30 days ago
+/**
+ * Retrieves the state of jobs from the last specified number of days.
+ *
+ * @async
+ * @param {number} numDays - The number of days to look back for job states.
+ * @returns {Promise<Array<Array<string>>>} - A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
+ * @throws {Error} - Throws an error if the SSH command execution fails or if the result contains an error.
+ */
+const getJobsState = async (numDays) => {
+  const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
-  // const command = `sacct -X -P -S 2025-09-26T16:00:00 -o JobID,State,Start,End`
+  // const command = `sacct -X -P -S 2025-09-29T10:10:00 -o JobID,State,Start,End`
   try {
     // @ts-ignore
     const result = await window.electron.invoke('execute-ssh-with-key', {

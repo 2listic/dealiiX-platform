@@ -1,4 +1,4 @@
-import { getJobsState } from '../utils/sshMessages'
+import { getJobsState, JOB_LIST_DAYS } from '../utils/sshMessages'
 
 let jobs = $state([])
 
@@ -18,6 +18,6 @@ export const jobsState = {
     jobs = value
   },
   async update() {
-    jobs = await getJobsState()
+    jobs = await getJobsState(JOB_LIST_DAYS)
   },
 }
