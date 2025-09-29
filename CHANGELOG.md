@@ -23,6 +23,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-UI
 
+- [#80](https://github.com/2listic/dealiiX-platform/pull/80) Added panel with list of submitted jobs with current status and time.
 - [#76](https://github.com/2listic/dealiiX-platform/pull/76) Input text changed to input file to store the path to private SSH key.
 - [#75](https://github.com/2listic/dealiiX-platform/pull/75) Added toaster component to display error/success message to the user. Added also a logic to update Svelte Flow panel with additional messages or logs.
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Added a new button Settings with a text input to store path to private SSH key.
@@ -62,8 +63,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
 - [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
 
-### SSH communication with the cluster
+### SSH communication
 
+- [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
 - [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added polling to display if submitted Slurm job finishes with failed or completed status
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added container with Coral, Deal.II, Slurm and SSH server. Now a new job is queued with Slurm, when a new JSON graph is exported to the cluster
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dinamically retrieved from localStorage
