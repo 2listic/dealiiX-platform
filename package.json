@@ -18,7 +18,8 @@
   },
   "scripts": {
     "dev:vite": "vite",
-    "dev": "npm run build && cross-env NODE_ENV=development electron .",
+    "dev": "npm run build:dev && cross-env NODE_ENV=development electron .",
+    "build:dev": "vite build --config vite.config.dev.js",
     "build": "vite build",
     "preview": "vite preview",
     "start": "electron .",
