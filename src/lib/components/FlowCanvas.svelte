@@ -29,7 +29,6 @@
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
-  import { toastState } from '../stores/toastsStore.svelte'
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -44,31 +43,6 @@
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
-  }
-
-  async function openExternalWindow(url: string) {
-    try {
-      //@ts-ignore
-      const result = await window.electron.invoke('open-external-url', url)
-      if (result.success) {
-        toastState.add({ message: 'New window opened' })
-      } else {
-        toastState.add({
-          message: `Failed to open new window: ${result.error}`,
-          type: 'error',
-        })
-      }
-    } catch (error) {
-      toastState.add({
-        message: `Failed to open new window: ${error}`,
-        type: 'error',
-      })
-    }
-  }
-
-  function handleOpenVisualizer() {
-    // TODO: move url to local storage using settings button as done with ssh-path
-    openExternalWindow('http://localhost:1234/index.html')
   }
 </script>
 
@@ -93,7 +67,6 @@
   </Panel>
   <Panel position="bottom-left">
     <div class="export-button-container">
-      <button onclick={handleOpenVisualizer}>Open Visualizer</button>
       <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
       <!-- <button onclick={executeWithKey}>Execute with key</button> -->
     </div>

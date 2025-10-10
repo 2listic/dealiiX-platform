@@ -19,6 +19,7 @@
   import ImportIcon from '../icons/ImportIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
+  import CubeIcon from '../icons/CubeIcon.svelte'
   // import { saveItem, getItem } from '../../requests/items'
 
   const loginModalId = 'login-modal'
@@ -110,6 +111,32 @@
   // $effect(() => {
   //   console.log('auth.token', auth.token)
   // })
+
+  // TODO: move to util file
+  async function openExternalWindow(url: string) {
+    try {
+      //@ts-ignore
+      const result = await window.electron.invoke('open-external-url', url)
+      if (result.success) {
+        toastState.add({ message: 'New window opened' })
+      } else {
+        toastState.add({
+          message: `Failed to open new window: ${result.error}`,
+          type: 'error',
+        })
+      }
+    } catch (error) {
+      toastState.add({
+        message: `Failed to open new window: ${error}`,
+        type: 'error',
+      })
+    }
+  }
+
+  function handleOpenVisualizer() {
+    // TODO: move url to local storage using settings button as done with ssh-path
+    openExternalWindow('http://localhost:1234/index.html')
+  }
 </script>
 
 <aside>
@@ -208,6 +235,22 @@
   </div>
   <div class="button-container">
     <label
+      for="vtk-visualizer-button"
+      class="element-label"
+      title="Open VTK Visualizer"
+    >
+      <CubeIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="vtk-visualizer-button"
+      onclick={handleOpenVisualizer}
+      style="display: none"
+      aria-label="Open VTK Visualizer"
+    ></button>
+    <span class="button-text">VTK Visualiz.</span>
+  </div>
+  <div class="button-container">
+    <label
       for="import-graph-input"
       class="element-label"
       title="Import grpah from JSON file"
@@ -273,7 +316,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.5rem 0.3rem;
+    padding: 0.3rem 0.3rem;
   }
 
   .element-label {
