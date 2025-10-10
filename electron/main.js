@@ -70,6 +70,29 @@ ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
   return await connectAndUploadGraph(jsonGraph, remotePath, pathToSsh)
 })
 
+ipcMain.handle('open-external-url', async (event, url) => {
+  // Option 1: Open in system default browser (recommended for external URLs)
+  // await shell.openExternal(url)
+  // return { success: true }
+
+  // Option 2: Open in a new Electron window
+  const externalWindow = new BrowserWindow()
+
+  // Validate URL (basic validation)
+  try {
+    const parsedUrl = new URL(url)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new Error('Invalid protocol')
+    }
+
+    await externalWindow.loadURL(url)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to open URL:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 ipcMain.handle('set-theme', (event, theme) => {
   if (theme === 'dark') {
     nativeTheme.themeSource = 'dark'
