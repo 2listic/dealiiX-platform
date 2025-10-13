@@ -12,7 +12,7 @@
   let sshPath = $state(settingsState.getKey(SSH_PATH))
   let sshFiles = $state()
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
-  let formElement
+  let isEditingVisualizer = $state(false) // New state variable to track edit mode
 
   const handleOnChangeFile = () => {
     const file = sshFiles[0]
@@ -22,36 +22,24 @@
     toastState.add({ message: 'SSH key absolute path updated' })
   }
 
-  // TODO: remove global save logic and introduce a per-single-setting save logic
-  const validateAndClose = async () => {
-    // Keep this validation logic for new inputs to be added in the future
-    if (formElement.checkValidity()) {
-      settingsState.setKey(URL_VISUALIZER, urlVisualizer)
-      closeModal()
-      toastState.add({ message: 'Settings saved' })
-    } else {
-      formElement.reportValidity()
-    }
+  const saveVisualizerUrl = () => {
+    settingsState.setKey(URL_VISUALIZER, urlVisualizer)
+    isEditingVisualizer = false
+    toastState.add({ message: 'URL Visualizer saved' })
   }
 
   const closeModal = () => getModal(modalId).close()
 </script>
 
 <div style="padding: 0 1rem 1rem 1rem">
-  <form
-    bind:this={formElement}
-    onsubmit={(e) => {
-      e.preventDefault()
-      validateAndClose()
-    }}
-  >
-    <h2>Settings</h2>
-    <div class="inputs-container">
-      <div class="input-container">
-        <label style="font-weight: bold" for="ssh-path-file">
-          Path to SSH key
-        </label>
-        <div>{sshPath}</div>
+  <h2>Settings</h2>
+  <div class="inputs-container">
+    <div class="input-container">
+      <label style="font-weight: bold" for="ssh-path-file">
+        Path to SSH key
+      </label>
+      <div>{sshPath}</div>
+      <form>
         <input
           id="ssh-path-file"
           type="file"
@@ -59,26 +47,46 @@
           onchange={handleOnChangeFile}
           placeholder="SSH path"
         />
-      </div>
-      <div class="input-container">
-        <label style="font-weight: bold" for="url-vtk-visualizer">
-          URL to VTK visualizer
-        </label>
-        <input
-          id="url-vtk-visualizer"
-          type="text"
-          class="input-field"
-          bind:value={urlVisualizer}
-          placeholder="SSH path"
-        />
-      </div>
+      </form>
+    </div>
+    <div class="input-container">
+      <label style="font-weight: bold" for="url-vtk-visualizer">
+        URL to VTK visualizer
+      </label>
+      {#if isEditingVisualizer}
+        <div class="input-line-save">
+          <!-- <form style="flex: 1"> -->
+          <input
+            id="url-vtk-visualizer"
+            type="text"
+            class="input-field"
+            bind:value={urlVisualizer}
+            placeholder="Visualizer URL"
+          />
+          <!-- </form> -->
+          <button
+            type="button"
+            class="button-submit"
+            onclick={saveVisualizerUrl}>Save</button
+          >
+        </div>
+      {:else}
+        <div class="input-line-save">
+          <div>{urlVisualizer}</div>
+          <button
+            type="button"
+            class="button-submit"
+            onclick={() => (isEditingVisualizer = true)}>Edit</button
+          >
+        </div>
+      {/if}
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={validateAndClose}
-        >Save</button
+      <button type="button" class="button-submit" onclick={closeModal}
+        >Close</button
       >
     </div>
-  </form>
+  </div>
 </div>
 
 <style>
@@ -86,7 +94,7 @@
     display: flex;
     flex-direction: column;
     min-width: 50vh;
-    gap: 1vh;
+    gap: 2vh;
   }
 
   .input-container {
@@ -100,6 +108,14 @@
     cursor: pointer;
   }
 
+  .input-line-save {
+    display: flex;
+    gap: 1vh;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .input-field {
     cursor: pointer;
     border: 1px solid var(--ternary-color);
@@ -107,6 +123,7 @@
     padding: 1vh;
     font-size: 1rem;
     background-color: var(--secondary-color);
+    flex: 1;
   }
 
   .input-field:invalid {
@@ -114,7 +131,7 @@
   }
 
   .button-container {
-    margin-top: 3vh;
+    margin-top: 2vh;
   }
 
   .button-submit {
