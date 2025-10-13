@@ -81,7 +81,7 @@
         </div>
       {:else}
         <div class="input-line-save">
-          <div>{urlVisualizer}</div>
+          <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
           <button
             type="button"
             class="button-submit"
