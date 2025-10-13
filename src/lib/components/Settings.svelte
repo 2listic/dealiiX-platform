@@ -22,6 +22,7 @@
     toastState.add({ message: 'SSH key absolute path updated' })
   }
 
+  // TODO: remove global save logic and introduce a per-single-setting save logic
   const validateAndClose = async () => {
     // Keep this validation logic for new inputs to be added in the future
     if (formElement.checkValidity()) {
@@ -76,9 +77,6 @@
       <button type="button" class="button-submit" onclick={validateAndClose}
         >Save</button
       >
-      <!-- <button type="button" class="button-close" onclick={closeModal}
-        >Close</button
-      > -->
     </div>
   </form>
 </div>
@@ -127,15 +125,6 @@
     font-size: 1rem;
     background-color: var(--secondary-color);
   }
-
-  /* .button-close {
-    cursor: pointer;
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    padding: 1vh;
-    font-size: 1rem;
-    background-color: var(--secondary-color);
-  } */
 
   .button-submit:hover {
     border-color: var(--border-color-hover);

@@ -9,7 +9,7 @@
     setNodes,
     updateLastNodeId,
   } from '../../stores/nodes.svelte'
-  import { exportAndEvalGraph } from '../../utils/sshMessages'
+  import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -116,31 +116,9 @@
   //   console.log('auth.token', auth.token)
   // })
 
-  // TODO: move to util file and/or simplify
-  async function openExternalWindow(url: string) {
-    try {
-      //@ts-ignore
-      const result = await window.electron.invoke('open-external-url', url)
-      if (result.success) {
-        toastState.add({ message: 'New window opened' })
-      } else {
-        toastState.add({
-          message: `Failed to open new window: ${result.error}`,
-          type: 'error',
-        })
-      }
-    } catch (error) {
-      toastState.add({
-        message: `Failed to open new window: ${error}`,
-        type: 'error',
-      })
-    }
-  }
-
   function handleOpenVisualizer() {
-    // TODO: move url to local storage using settings button as done with ssh-path
     const url = settingsState.getKey(URL_VISUALIZER)
-    openExternalWindow(url)
+    openNewWindow(url)
   }
 </script>
 
