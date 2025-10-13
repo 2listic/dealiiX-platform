@@ -11,6 +11,7 @@
 
   let sshPath = $state(settingsState.getKey(SSH_PATH))
   let sshFiles = $state()
+  let isEditingSshPath = $state(false)
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let isEditingVisualizer = $state(false)
 
@@ -20,11 +21,14 @@
     const modal = getModal(modalId)
     if (modal?.isVisible()) {
       isEditingVisualizer = false
+      isEditingSshPath = false
     }
   })
 
   const handleOnChangeFile = () => {
+    isEditingSshPath = false
     const file = sshFiles[0]
+    if (!file) return
     // @ts-ignore
     sshPath = window.electron.getFilePath(file)
     settingsState.setKey(SSH_PATH, sshPath)
@@ -45,10 +49,25 @@
   <div class="inputs-container">
     <div class="input-container">
       <label style="font-weight: bold" for="ssh-path-file">
-        Path to SSH key
+        Path to private SSH key
       </label>
-      <div>{sshPath}</div>
-      <form>
+      <div class="input-line-save">
+        <div>{sshPath}</div>
+        {#if !isEditingSshPath}
+          <button
+            type="button"
+            class="button-submit"
+            onclick={() => (isEditingSshPath = true)}>Edit</button
+          >
+        {:else}
+          <button
+            type="button"
+            class="button-submit"
+            onclick={() => (isEditingSshPath = false)}>Cancel</button
+          >
+        {/if}
+      </div>
+      {#if isEditingSshPath}
         <input
           id="ssh-path-file"
           type="file"
@@ -56,7 +75,7 @@
           onchange={handleOnChangeFile}
           placeholder="SSH path"
         />
-      </form>
+      {/if}
     </div>
     <div class="input-container">
       <label style="font-weight: bold" for="url-vtk-visualizer">
