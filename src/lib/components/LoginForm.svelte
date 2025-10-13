@@ -1,6 +1,7 @@
 <script>
   import { login } from '../requests/authentication'
   import { toastState } from '../stores/toastsStore.svelte'
+  import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -60,8 +61,8 @@
       </div>
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={validateAndSubmit}
-        >Submit</button
+      <Button variant="action" type="button" onclick={validateAndSubmit}
+        >Submit</Button
       >
     </div>
   </form>
@@ -94,18 +95,5 @@
 
   .input-field:invalid {
     border-color: red;
-  }
-
-  .button-submit {
-    cursor: pointer;
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    padding: 1vh;
-    font-size: 1rem;
-    background-color: var(--secondary-color);
-  }
-
-  .button-submit:hover {
-    border-color: var(--border-color-hover);
   }
 </style>

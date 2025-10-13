@@ -5,6 +5,7 @@
     URL_VISUALIZER,
   } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -54,17 +55,9 @@
       <div class="input-line-save">
         <div>{sshPath}</div>
         {#if !isEditingSshPath}
-          <button
-            type="button"
-            class="button-submit"
-            onclick={() => (isEditingSshPath = true)}>Edit</button
-          >
+          <Button onclick={() => (isEditingSshPath = true)}>Edit</Button>
         {:else}
-          <button
-            type="button"
-            class="button-submit"
-            onclick={() => (isEditingSshPath = false)}>Cancel</button
-          >
+          <Button onclick={() => (isEditingSshPath = false)}>Cancel</Button>
         {/if}
       </div>
       {#if isEditingSshPath}
@@ -92,26 +85,17 @@
             placeholder="Visualizer URL"
           />
           <!-- </form> -->
-          <button
-            type="button"
-            class="button-submit"
-            onclick={saveVisualizerUrl}>Save</button
-          >
+          <Button onclick={saveVisualizerUrl}>Save</Button>
         </div>
       {:else}
         <div class="input-line-save">
           <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
-          <button
-            type="button"
-            class="button-submit"
-            onclick={() => (isEditingVisualizer = true)}>Edit</button
-          >
+          <Button onclick={() => (isEditingVisualizer = true)}>Edit</Button>
         </div>
       {/if}
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={closeModal}
-        >Close</button
+      <Button variant="default" type="button" onclick={closeModal}>Close</Button
       >
     </div>
   </div>
@@ -160,18 +144,5 @@
 
   .button-container {
     margin-top: 2vh;
-  }
-
-  .button-submit {
-    cursor: pointer;
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    padding: 1vh;
-    font-size: 1rem;
-    background-color: var(--secondary-color);
-  }
-
-  .button-submit:hover {
-    border-color: var(--border-color-hover);
   }
 </style>
