@@ -20,6 +20,10 @@
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
+  import {
+    settingsState,
+    URL_VISUALIZER,
+  } from '../../stores/settingsStore.svelte'
   // import { saveItem, getItem } from '../../requests/items'
 
   const loginModalId = 'login-modal'
@@ -112,7 +116,7 @@
   //   console.log('auth.token', auth.token)
   // })
 
-  // TODO: move to util file
+  // TODO: move to util file and/or simplify
   async function openExternalWindow(url: string) {
     try {
       //@ts-ignore
@@ -135,7 +139,8 @@
 
   function handleOpenVisualizer() {
     // TODO: move url to local storage using settings button as done with ssh-path
-    openExternalWindow('http://localhost:1234/index.html')
+    const url = settingsState.getKey(URL_VISUALIZER)
+    openExternalWindow(url)
   }
 </script>
 

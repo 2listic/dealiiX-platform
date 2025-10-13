@@ -1,5 +1,9 @@
 <script>
-  import { settingsState, SSH_PATH } from '../stores/settingsStore.svelte'
+  import {
+    settingsState,
+    SSH_PATH,
+    URL_VISUALIZER,
+  } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
 
@@ -7,6 +11,7 @@
 
   let sshPath = $state(settingsState.getKey(SSH_PATH))
   let sshFiles = $state()
+  let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let formElement
 
   const handleOnChangeFile = () => {
@@ -20,12 +25,15 @@
   const validateAndClose = async () => {
     // Keep this validation logic for new inputs to be added in the future
     if (formElement.checkValidity()) {
-      getModal(modalId).close()
-      // toastState.add({ message: 'Settings saved' })
+      settingsState.setKey(URL_VISUALIZER, urlVisualizer)
+      closeModal()
+      toastState.add({ message: 'Settings saved' })
     } else {
       formElement.reportValidity()
     }
   }
+
+  const closeModal = () => getModal(modalId).close()
 </script>
 
 <div style="padding: 0 1rem 1rem 1rem">
@@ -51,19 +59,26 @@
           placeholder="SSH path"
         />
       </div>
-      <!-- some other inputs here -->
-      <!-- <input
-          id="ssh-path-text"
+      <div class="input-container">
+        <label style="font-weight: bold" for="url-vtk-visualizer">
+          URL to VTK visualizer
+        </label>
+        <input
+          id="url-vtk-visualizer"
           type="text"
           class="input-field"
-          bind:value={sshPath}
+          bind:value={urlVisualizer}
           placeholder="SSH path"
-        /> -->
+        />
+      </div>
     </div>
     <div class="button-container">
       <button type="button" class="button-submit" onclick={validateAndClose}
-        >Close</button
+        >Save</button
       >
+      <!-- <button type="button" class="button-close" onclick={closeModal}
+        >Close</button
+      > -->
     </div>
   </form>
 </div>
@@ -73,6 +88,7 @@
     display: flex;
     flex-direction: column;
     min-width: 50vh;
+    gap: 1vh;
   }
 
   .input-container {
@@ -86,18 +102,18 @@
     cursor: pointer;
   }
 
-  /* .input-field {
+  .input-field {
     cursor: pointer;
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     padding: 1vh;
     font-size: 1rem;
     background-color: var(--secondary-color);
-  } */
+  }
 
-  /* .input-field:invalid {
+  .input-field:invalid {
     border-color: red;
-  } */
+  }
 
   .button-container {
     margin-top: 3vh;
@@ -111,6 +127,15 @@
     font-size: 1rem;
     background-color: var(--secondary-color);
   }
+
+  /* .button-close {
+    cursor: pointer;
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    padding: 1vh;
+    font-size: 1rem;
+    background-color: var(--secondary-color);
+  } */
 
   .button-submit:hover {
     border-color: var(--border-color-hover);
