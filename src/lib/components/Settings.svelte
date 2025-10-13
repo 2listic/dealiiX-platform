@@ -12,7 +12,16 @@
   let sshPath = $state(settingsState.getKey(SSH_PATH))
   let sshFiles = $state()
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
-  let isEditingVisualizer = $state(false) // New state variable to track edit mode
+  let isEditingVisualizer = $state(false)
+
+  // Put here all the logic needed to reset the states when modal is re-opened.
+  // Triggers when parent modal changes visibility.
+  $effect(() => {
+    const modal = getModal(modalId)
+    if (modal?.isVisible()) {
+      isEditingVisualizer = false
+    }
+  })
 
   const handleOnChangeFile = () => {
     const file = sshFiles[0]

@@ -59,8 +59,12 @@
     if (closeCallback) closeCallback(retVal)
   }
 
+  function isVisible() {
+    return visible
+  }
+
   //expose the API
-  modals[id] = { open, close }
+  modals[id] = { open, close, isVisible }
 
   onDestroy(() => {
     delete modals[id]
