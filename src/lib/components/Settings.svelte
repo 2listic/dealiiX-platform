@@ -1,48 +1,66 @@
 <script>
-  import { settingsState, SSH_PATH } from '../stores/settingsStore.svelte'
+  import {
+    settingsState,
+    SSH_PATH,
+    URL_VISUALIZER,
+  } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
 
   let sshPath = $state(settingsState.getKey(SSH_PATH))
   let sshFiles = $state()
-  let formElement
+  let isEditingSshPath = $state(false)
+  let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
+  let isEditingVisualizer = $state(false)
+
+  // Put here all the logic needed to reset the states when modal is re-opened.
+  // Triggers when parent modal changes visibility.
+  $effect(() => {
+    const modal = getModal(modalId)
+    if (modal?.isVisible()) {
+      isEditingVisualizer = false
+      isEditingSshPath = false
+    }
+  })
 
   const handleOnChangeFile = () => {
+    isEditingSshPath = false
     const file = sshFiles[0]
+    if (!file) return
     // @ts-ignore
     sshPath = window.electron.getFilePath(file)
     settingsState.setKey(SSH_PATH, sshPath)
     toastState.add({ message: 'SSH key absolute path updated' })
   }
 
-  const validateAndClose = async () => {
-    // Keep this validation logic for new inputs to be added in the future
-    if (formElement.checkValidity()) {
-      getModal(modalId).close()
-      // toastState.add({ message: 'Settings saved' })
-    } else {
-      formElement.reportValidity()
-    }
+  const saveVisualizerUrl = () => {
+    settingsState.setKey(URL_VISUALIZER, urlVisualizer)
+    isEditingVisualizer = false
+    toastState.add({ message: 'URL Visualizer saved' })
   }
+
+  const closeModal = () => getModal(modalId).close()
 </script>
 
 <div style="padding: 0 1rem 1rem 1rem">
-  <form
-    bind:this={formElement}
-    onsubmit={(e) => {
-      e.preventDefault()
-      validateAndClose()
-    }}
-  >
-    <h2>Settings</h2>
-    <div class="inputs-container">
-      <div class="input-container">
-        <label style="font-weight: bold" for="ssh-path-file">
-          Path to SSH key
-        </label>
+  <h2>Settings</h2>
+  <div class="inputs-container">
+    <div class="input-container">
+      <label style="font-weight: bold" for="ssh-path-file">
+        Path to private SSH key
+      </label>
+      <div class="input-line-save">
         <div>{sshPath}</div>
+        {#if !isEditingSshPath}
+          <Button onclick={() => (isEditingSshPath = true)}>Edit</Button>
+        {:else}
+          <Button onclick={() => (isEditingSshPath = false)}>Cancel</Button>
+        {/if}
+      </div>
+      {#if isEditingSshPath}
         <input
           id="ssh-path-file"
           type="file"
@@ -50,22 +68,37 @@
           onchange={handleOnChangeFile}
           placeholder="SSH path"
         />
-      </div>
-      <!-- some other inputs here -->
-      <!-- <input
-          id="ssh-path-text"
-          type="text"
-          class="input-field"
-          bind:value={sshPath}
-          placeholder="SSH path"
-        /> -->
+      {/if}
+    </div>
+    <div class="input-container">
+      <label style="font-weight: bold" for="url-vtk-visualizer">
+        URL to VTK visualizer
+      </label>
+      {#if isEditingVisualizer}
+        <div class="input-line-save">
+          <!-- <form style="flex: 1"> -->
+          <input
+            id="url-vtk-visualizer"
+            type="text"
+            class="input-field"
+            bind:value={urlVisualizer}
+            placeholder="Visualizer URL"
+          />
+          <!-- </form> -->
+          <Button onclick={saveVisualizerUrl}>Save</Button>
+        </div>
+      {:else}
+        <div class="input-line-save">
+          <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
+          <Button onclick={() => (isEditingVisualizer = true)}>Edit</Button>
+        </div>
+      {/if}
     </div>
     <div class="button-container">
-      <button type="button" class="button-submit" onclick={validateAndClose}
-        >Close</button
+      <Button variant="default" type="button" onclick={closeModal}>Close</Button
       >
     </div>
-  </form>
+  </div>
 </div>
 
 <style>
@@ -73,6 +106,7 @@
     display: flex;
     flex-direction: column;
     min-width: 50vh;
+    gap: 2vh;
   }
 
   .input-container {
@@ -86,33 +120,29 @@
     cursor: pointer;
   }
 
-  /* .input-field {
+  .input-line-save {
+    display: flex;
+    gap: 1vh;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .input-field {
     cursor: pointer;
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     padding: 1vh;
     font-size: 1rem;
     background-color: var(--secondary-color);
-  } */
+    flex: 1;
+  }
 
-  /* .input-field:invalid {
+  .input-field:invalid {
     border-color: red;
-  } */
+  }
 
   .button-container {
-    margin-top: 3vh;
-  }
-
-  .button-submit {
-    cursor: pointer;
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    padding: 1vh;
-    font-size: 1rem;
-    background-color: var(--secondary-color);
-  }
-
-  .button-submit:hover {
-    border-color: var(--border-color-hover);
+    margin-top: 2vh;
   }
 </style>

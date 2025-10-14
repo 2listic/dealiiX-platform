@@ -9,7 +9,7 @@
     setNodes,
     updateLastNodeId,
   } from '../../stores/nodes.svelte'
-  import { exportAndEvalGraph } from '../../utils/sshMessages'
+  import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -19,6 +19,11 @@
   import ImportIcon from '../icons/ImportIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
+  import CubeIcon from '../icons/CubeIcon.svelte'
+  import {
+    settingsState,
+    URL_VISUALIZER,
+  } from '../../stores/settingsStore.svelte'
   // import { saveItem, getItem } from '../../requests/items'
 
   const loginModalId = 'login-modal'
@@ -110,6 +115,11 @@
   // $effect(() => {
   //   console.log('auth.token', auth.token)
   // })
+
+  function handleOpenVisualizer() {
+    const url = settingsState.getKey(URL_VISUALIZER)
+    openNewWindow(url)
+  }
 </script>
 
 <aside>
@@ -208,6 +218,22 @@
   </div>
   <div class="button-container">
     <label
+      for="vtk-visualizer-button"
+      class="element-label"
+      title="Open VTK Visualizer"
+    >
+      <CubeIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="vtk-visualizer-button"
+      onclick={handleOpenVisualizer}
+      style="display: none"
+      aria-label="Open VTK Visualizer"
+    ></button>
+    <span class="button-text">VTK Visualiz.</span>
+  </div>
+  <div class="button-container">
+    <label
       for="import-graph-input"
       class="element-label"
       title="Import grpah from JSON file"
@@ -273,7 +299,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.5rem 0.3rem;
+    padding: 0.3rem 0.3rem;
   }
 
   .element-label {

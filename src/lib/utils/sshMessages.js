@@ -161,6 +161,33 @@ const getJobsState = async (numDays) => {
   }
 }
 
+/**
+ * Opens a new browser window with the specified URL.
+ * @async
+ * @param {string} url - The URL to open in the new window
+ * @returns {Promise<void>} Resolves when the operation is complete
+ * @throws Will display error messages via toast notifications if opening fails
+ */
+async function openNewWindow(url) {
+  try {
+    //@ts-ignore
+    const result = await window.electron.invoke('open-external-url', url)
+    if (result.success) {
+      toastState.add({ message: 'New window opened' })
+    } else {
+      toastState.add({
+        message: `Failed to open new window: ${result.error}`,
+        type: 'error',
+      })
+    }
+  } catch (error) {
+    toastState.add({
+      message: `Catched, failed to open new window: ${error}`,
+      type: 'error',
+    })
+  }
+}
+
 export {
   executeWithPassword,
   executeWithKey,
@@ -168,4 +195,5 @@ export {
   JOB_DATE_INDEX,
   JOB_LIST_DAYS,
   getJobsState,
+  openNewWindow,
 }

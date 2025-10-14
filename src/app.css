@@ -6,6 +6,13 @@
   --ternary-color: #383838;
   --border-color-hover: #646cff;
 
+  /* Button variants */
+  --button-action-bg: #646cff;
+  --button-action-hover: #4e56d6;
+
+  --button-delete-bg: #ff4444;
+  --button-delete-hover: #d63838;
+
   color: var(--ternary-color);
 }
 
