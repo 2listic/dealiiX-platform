@@ -1,28 +1,56 @@
 <script module lang="ts">
   /**
-   * Modal component
-   * Props:
-   * id (mandatory)
-   * closeOnBackdropClick (optional, default: true)
-   * children (optional) - the actual hmtl content
-   * Description:
-   * Open a modal by calling `open` on the modal object returned by `getModal` called with the modal's `id`.
-   * You can pass a closing callback function to the `open` function, which will be called when the modal is closed.
+   * @fileoverview Modal component registry and public API helpers (Svelte 5).
+   *
+   * This component registers each modal instance by a unique `id` so it can be
+   * controlled imperatively from elsewhere in your app via `getModal(id)`.
    * Original example here: https://svelte.dev/playground/b95ce66b0ef34064a34afc5c0249f313
-   * */
+   *
+   * Usage example:
+   *   import Modal, { getModal } from '$lib/components/layout/Modal.svelte';
+   *
+   *   // In a component or module where you want to control the modal:
+   *   const modal = getModal('modal-id')
+   *   modal?.open((result) => {
+   *     console.log('Modal closed with:', result)
+   *   })
+   *
+   *   // In your markup:
+   *   // <Modal id="modal-id">
+   *   //   <h2>Modal title</h2>
+   *   //   <!-- ... -->
+   *   // </Modal>
+   */
 
-  //keeping track of which open modal is on top
+  /**
+   * Tracks the DOM element for the modal that is currently on top (last opened).
+   */
   let onTop: HTMLDivElement | null = null
 
-  //all modals get registered here for easy future access
+  /**
+   * Global in-memory registry of modal APIs keyed by modal `id`.
+   */
   const modals: Record<string, ModalAPI> = {}
 
+  /**
+   * Public API exposed for each modal instance.
+   */
   type ModalAPI = {
     open: (callback?: (retVal?: any) => void) => void // eslint-disable-line
     close: (retVal?: any) => void // eslint-disable-line
     isVisible: () => boolean
   }
 
+  /**
+   * Retrieve the imperative API for a modal by `id`.
+   *
+   * @param id Unique id used by the modal instance.
+   * @returns The modal API if the instance is registered, otherwise `undefined`.
+   *
+   * @example
+   * const modalApi = getModal('profile');
+   * modalApi?.open((result) => console.log('closed with', result));
+   */
   export function getModal(id: string): ModalAPI | undefined {
     return modals[id]
   }
@@ -31,27 +59,56 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
 
+  /** Root element of this modal instance (bound via `bind:this`). */
   let topDiv = $state<HTMLDivElement>()
+  /** Internal reactive visibility state for this instance. */
   let visible = $state(false)
+  /** Previous topmost modal root, restored on close. */
   let prevOnTop: HTMLDivElement | null = null
+  /** Callback provided to `open()`; invoked once when the modal closes. */
   let closeCallback: ((retVal: any) => void) | undefined // eslint-disable-line
 
+  /**
+   * Component props.
+   */
   interface Props {
+    /**
+     * Unique identifier used to register this modal in the global registry.
+     */
     id: string
+
+    /**
+     * Optional renderable content snippet for the modal body.
+     * Provide via the `children` prop, or use Svelte 5 snippets/slots as desired.
+     */
     children?: import('svelte').Snippet
+
+    /**
+     * Whether clicking the backdrop closes the modal.
+     * @default true
+     */
     closeOnBackdrop?: boolean
   }
 
+  /** Destructure props with default values. */
   let { id, children, closeOnBackdrop = true }: Props = $props()
 
+  /**
+   * Window keydown handler: closes on Escape if this instance is the topmost modal.
+   * @param ev Keyboard event
+   */
   function keyPress(ev: KeyboardEvent) {
-    //only respond if the current modal is the top one (and pressing ESC)
+    // only respond if the current modal is the top one (and pressing ESC)
     if (ev.key === 'Escape' && onTop === topDiv) {
       close(null)
     }
   }
 
-  /**  API **/
+  /**
+   * Open this modal instance.
+   * @param callback Optional function invoked when the modal closes.
+   * It receives the optional return value passed to `close()`.
+   */
   // eslint-disable-next-line
   function open(callback?: (retVal?: any) => void) {
     if (visible) return
@@ -62,7 +119,7 @@
 
     window.addEventListener('keydown', keyPress)
 
-    //this prevents scrolling of the main window on larger screens
+    // prevent scrolling of the main window on larger screens
     document.body.style.overflow = 'hidden'
 
     visible = true
@@ -73,6 +130,10 @@
     }
   }
 
+  /**
+   * Close this modal instance.
+   * @param retVal Optional value passed to the callback provided to `open()`.
+   */
   function close(retVal?: any) {
     if (!visible) return
 
@@ -85,19 +146,34 @@
     if (closeCallback) closeCallback(retVal)
   }
 
+  /**
+   * Whether this modal instance is currently visible.
+   * @returns true if visible, false otherwise.
+   */
   function isVisible() {
     return visible
   }
 
+  /**
+   * Backdrop click handler: closes the modal when `closeOnBackdrop` is true.
+   */
   function handleBackdropClick() {
     if (closeOnBackdrop) {
       close(null)
     }
   }
 
-  // Expose the API
+  /**
+   * Register this instance in the global registry and expose its API.
+   * This makes it accessible via `getModal(id)`.
+   */
   modals[id] = { open, close, isVisible }
 
+  /**
+   * Cleanup on component destroy:
+   * - Unregister from the registry.
+   * - Detach event listeners.
+   */
   onDestroy(() => {
     delete modals[id]
     window.removeEventListener('keydown', keyPress)
