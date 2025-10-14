@@ -100,7 +100,8 @@
 
 <style>
   #topModal {
-    visibility: hidden;
+    /* visibility: hidden; */
+    display: none;
     z-index: 9998;
     position: fixed;
     top: 0;
@@ -108,7 +109,6 @@
     right: 0;
     bottom: 0;
     background: #4448;
-    display: flex;
     align-items: center;
     justify-content: center;
   }
@@ -124,7 +124,8 @@
   }
 
   .visible {
-    visibility: visible !important;
+    /* visibility: visible !important; */
+    display: flex !important;
   }
 
   #close {
