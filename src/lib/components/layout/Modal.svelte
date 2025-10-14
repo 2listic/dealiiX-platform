@@ -20,19 +20,12 @@
    *   // </Modal>
    */
 
-  /**
-   * Tracks the DOM element for the modal that is currently on top (last opened).
-   */
+  /** Tracks the DOM element for the modal that is currently on top (last opened). */
   let onTop: HTMLDivElement | null = null
 
-  /**
-   * Global in-memory registry of modal APIs keyed by modal `id`.
-   */
+  /** Global in-memory registry of modal APIs keyed by modal `id`. */
   const modals: Record<string, ModalAPI> = {}
 
-  /**
-   * Public API exposed for each modal instance.
-   */
   type ModalAPI = {
     /**
      * Open the modal.
@@ -73,13 +66,8 @@
   /** Previous topmost modal root, restored on close. */
   let prevOnTop: HTMLDivElement | null = null
 
-  /**
-   * Component props.
-   */
   interface Props {
-    /**
-     * Unique identifier used to register this modal in the global registry.
-     */
+    /** Unique identifier used to register this modal in the global registry. */
     id: string
 
     /**
@@ -98,10 +86,6 @@
   /** Destructure props with default values. */
   let { id, children, closeOnBackdrop = true }: Props = $props()
 
-  /**
-   * Window keydown handler: closes on Escape if this instance is the topmost modal.
-   * @param ev Keyboard event
-   */
   function keyPress(ev: KeyboardEvent) {
     // only respond if the current modal is the top one (and pressing ESC)
     if (ev.key === 'Escape' && onTop === topDiv) {
@@ -109,9 +93,6 @@
     }
   }
 
-  /**
-   * Open this modal instance.
-   */
   function open() {
     if (visible) return
     prevOnTop = onTop
@@ -130,9 +111,6 @@
     }
   }
 
-  /**
-   * Close this modal instance.
-   */
   function close() {
     if (!visible) return
 
@@ -144,9 +122,6 @@
     visible = false
   }
 
-  /**
-   * Whether this modal instance is currently visible.
-   */
   function isVisible() {
     return visible
   }
