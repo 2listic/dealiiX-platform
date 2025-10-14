@@ -161,6 +161,13 @@ const getJobsState = async (numDays) => {
   }
 }
 
+/**
+ * Opens a new browser window with the specified URL.
+ * @async
+ * @param {string} url - The URL to open in the new window
+ * @returns {Promise<void>} Resolves when the operation is complete
+ * @throws Will display error messages via toast notifications if opening fails
+ */
 async function openNewWindow(url) {
   try {
     //@ts-ignore
