@@ -11,12 +11,10 @@
    *
    *   // In a component or module where you want to control the modal:
    *   const modal = getModal('modal-id')
-   *   modal?.open((result) => {
-   *     console.log('Modal closed with:', result)
-   *   })
+   *   modal?.open()
    *
    *   // In your markup:
-   *   // <Modal id="modal-id">
+   *   // <Modal id="modal-id" closeOnBackdrop=true>
    *   //   <h2>Modal title</h2>
    *   //   <!-- ... -->
    *   // </Modal>
@@ -36,8 +34,17 @@
    * Public API exposed for each modal instance.
    */
   type ModalAPI = {
-    open: (callback?: (retVal?: any) => void) => void // eslint-disable-line
-    close: (retVal?: any) => void // eslint-disable-line
+    /**
+     * Open the modal.
+     */
+    open: () => void
+    /**
+     * Close the modal.
+     */
+    close: () => void
+    /**
+     * Whether the modal is currently visible.
+     */
     isVisible: () => boolean
   }
 
@@ -48,8 +55,8 @@
    * @returns The modal API if the instance is registered, otherwise `undefined`.
    *
    * @example
-   * const modalApi = getModal('profile');
-   * modalApi?.open((result) => console.log('closed with', result));
+   * const modalApi = getModal('modal-id');
+   * modalApi?.open();
    */
   export function getModal(id: string): ModalAPI | undefined {
     return modals[id]
@@ -65,8 +72,6 @@
   let visible = $state(false)
   /** Previous topmost modal root, restored on close. */
   let prevOnTop: HTMLDivElement | null = null
-  /** Callback provided to `open()`; invoked once when the modal closes. */
-  let closeCallback: ((retVal: any) => void) | undefined // eslint-disable-line
 
   /**
    * Component props.
@@ -100,20 +105,15 @@
   function keyPress(ev: KeyboardEvent) {
     // only respond if the current modal is the top one (and pressing ESC)
     if (ev.key === 'Escape' && onTop === topDiv) {
-      close(null)
+      close()
     }
   }
 
   /**
    * Open this modal instance.
-   * @param callback Optional function invoked when the modal closes.
-   * It receives the optional return value passed to `close()`.
    */
-  // eslint-disable-next-line
-  function open(callback?: (retVal?: any) => void) {
+  function open() {
     if (visible) return
-
-    closeCallback = callback
     prevOnTop = onTop
     onTop = topDiv ?? null
 
@@ -132,9 +132,8 @@
 
   /**
    * Close this modal instance.
-   * @param retVal Optional value passed to the callback provided to `open()`.
    */
-  function close(retVal?: any) {
+  function close() {
     if (!visible) return
 
     window.removeEventListener('keydown', keyPress)
@@ -143,12 +142,10 @@
     if (onTop === null) document.body.style.overflow = ''
 
     visible = false
-    if (closeCallback) closeCallback(retVal)
   }
 
   /**
    * Whether this modal instance is currently visible.
-   * @returns true if visible, false otherwise.
    */
   function isVisible() {
     return visible
@@ -159,7 +156,7 @@
    */
   function handleBackdropClick() {
     if (closeOnBackdrop) {
-      close(null)
+      close()
     }
   }
 
@@ -189,7 +186,7 @@
   onclick={handleBackdropClick}
 >
   <div id="modal" onclick={(e) => e.stopPropagation()}>
-    <svg id="close" onclick={() => close(null)} viewBox="0 0 12 12">
+    <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
       <circle cx="6" cy="6" r="6" />
       <line x1="3" y1="3" x2="9" y2="9" />
       <line x1="9" y1="3" x2="3" y2="9" />
