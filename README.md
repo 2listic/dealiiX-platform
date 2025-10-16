@@ -69,7 +69,7 @@ Adjust the SSH key path in the `containers/Dockerfile`, then build and start in 
 
 `docker compose up -d`
 
-### Build Coral in the running container 
+### Build Coral in the running container
 
 Connect to via SSH client  
 `ssh -p 2222 root@localhost`
@@ -81,7 +81,7 @@ Or open a shell in the container (restarting the container if needed)
 Build the Coral backend in the container  
 `cd /app && mkdir build && cd build && cmake .. && make`
 
-#### Test Slurm in the same container 
+#### Test Slurm in the same container
 
 Test Slurm from the runninig container  
 `srun whoami`  
@@ -105,13 +105,13 @@ Test the state of a specific job id (i.e id 1) with sacct
 
 ### Other usefull Docker commands
 
-Stop the containers  
+Stop the containers
 
-`docker compose stop`  
+`docker compose stop`
 
-Restart 
+Restart
 
-`docker compose restart`  
+`docker compose restart`
 
 # Packaging
 
