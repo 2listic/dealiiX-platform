@@ -28,4 +28,10 @@ echo
 sinfo
 echo
 
-exec "$@"
+# If no command is provided, keep container running
+if [ $# -eq 0 ]; then
+    echo "All services started. Keeping container alive..."
+    tail -f /dev/null
+else
+    exec "$@"
+fi

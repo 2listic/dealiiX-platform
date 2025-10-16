@@ -4,7 +4,7 @@
 DOCKERFILE_PATH="containers/Dockerfile"
 IMAGE_NAME="coral-ssh-slurm"
 TAG="tag"
-SSH_KEY_PATH="/home/your-username/.ssh/your-public-key"
+SSH_KEY_PATH="/home/pablo/.ssh/id_ed25519.pub"
 CONTAINER_NAME="coral-ssh-slurm"
 HOSTNAME="slurm"
 PORT_MAPPING="2222:22"

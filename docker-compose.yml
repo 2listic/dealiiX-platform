@@ -1,0 +1,44 @@
+services:
+  coral-ssh-slurm-compose:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile
+      secrets:
+        - ssh-key
+    image: coral-ssh-slurm:latest
+    container_name: coral-ssh-slurm-compose
+    hostname: slurm
+    ports:
+      - '2222:22'
+      - '6817:6817'
+      - '6818:6818'
+      - '8000:8000'
+    volumes:
+      - ./containers/shared-data:/shared-data
+    networks:
+      - coral-network
+    # restart: unless-stopped
+
+  coral-visualizer-compose:
+    build:
+      context: ./coral-visualizer
+      dockerfile: Dockerfile
+    image: coral-visualizer:latest
+    container_name: coral-visualizer-compose
+    ports:
+      - '8080:80'
+    volumes:
+      - ./containers/shared-data:/deploy/data
+    networks:
+      - coral-network
+    depends_on:
+      - coral-ssh-slurm-compose
+    # restart: unless-stopped
+
+networks:
+  coral-network:
+    driver: bridge
+
+secrets:
+  ssh-key:
+    file: /home/pablo/.ssh/id_ed25519.pub
