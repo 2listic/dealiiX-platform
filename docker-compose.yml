@@ -1,12 +1,12 @@
 services:
-  coral-ssh-slurm-compose:
+  coral-ssh-slurm:
     build:
       context: .
-      dockerfile: containers/Dockerfile
+      dockerfile: Dockerfile.coral
       secrets:
         - ssh-key
     image: coral-ssh-slurm:latest
-    container_name: coral-ssh-slurm-compose
+    container_name: coral-ssh-slurm
     hostname: slurm
     ports:
       - '2222:22'
@@ -19,12 +19,12 @@ services:
       - coral-network
     # restart: unless-stopped
 
-  coral-visualizer-compose:
+  coral-visualizer:
     build:
       context: ./coral-visualizer
       dockerfile: Dockerfile
     image: coral-visualizer:latest
-    container_name: coral-visualizer-compose
+    container_name: coral-visualizer
     ports:
       - '8080:80'
     volumes:
@@ -32,7 +32,7 @@ services:
     networks:
       - coral-network
     depends_on:
-      - coral-ssh-slurm-compose
+      - coral-ssh-slurm
     # restart: unless-stopped
 
 networks:
