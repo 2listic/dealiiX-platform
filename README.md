@@ -65,7 +65,7 @@ For more options see the [general instructions](https://www.electronjs.org/docs/
 
 ### Build and run the containers
 
-Adjust your path to your public SSH key in the `docker-compose.yml` file (it has to match the private SSH key you will select in the front-end app from the Settings area), then build and start in detached mode  
+Adjust your path to your public SSH key in the `docker-compose.yml` file (it has to match the private SSH key you will select in the front-end app from the Settings area), then build and start in detached mode
 
 `docker compose up -d`
 

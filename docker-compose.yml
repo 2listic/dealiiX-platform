@@ -41,4 +41,4 @@ networks:
 
 secrets:
   ssh-key:
-    file: /home/pablo/.ssh/id_ed25519.pub
+    file: /home/your-username/.ssh/your-ssh-public-key
