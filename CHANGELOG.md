@@ -78,6 +78,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
 - [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
 
+### Docker
+
+- [#90](https://github.com/2listic/dealiiX-platform/pull/90) Added docker-compose file to build and run the Coral+SSH+Slurm and the Coral Visualizer containers
+
 ### CI/CD
 
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Fixed issue with imports during packaging
