@@ -61,7 +61,7 @@ For more options see the [general instructions](https://www.electronjs.org/docs/
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-## Set up Docker containers enabling SSH communication to Coral with Slurm jobs + Coral visualizer for .vtk output files
+## Set up Docker containers to test SSH communication to Coral with Slurm jobs + Coral visualizer for .vtk output files
 
 ### Build and run the containers
 
