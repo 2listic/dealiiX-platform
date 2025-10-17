@@ -43,7 +43,7 @@ const exportAndEvalGraph = async (nodes, edges) => {
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
       // command: 'sbatch --wrap="sleep 20" --output=hello.out',
       command:
-        'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g /shared-data/graph.json"',
+        'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g run /shared-data/graph.json"',
     })
     console.log('SSH Connection Result:', resultExecute)
     toastState.add({ message: resultExecute })
