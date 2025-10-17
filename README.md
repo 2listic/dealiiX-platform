@@ -89,7 +89,7 @@ or
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out`
+`sbatch --wrap="/app/build/dealii_backend.g /shared-data/graph.json --output=sbatch.out`
 
 Test the state of a specific job id (i.e id 1) with sacct  
 `sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
