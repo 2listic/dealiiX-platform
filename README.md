@@ -61,33 +61,27 @@ For more options see the [general instructions](https://www.electronjs.org/docs/
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-## Test SSH connections and Slurm jobs with Coral
+## Set up Docker containers to test SSH communication to Coral with Slurm jobs + Coral visualizer for .vtk output files
 
-### Build and run the container using the dedicated script
+### Build and run the containers
 
-Adjust the SSH key path, then
+Adjust your path to your public SSH key in the `docker-compose.yml` file (it has to match the private SSH key you will select in the front-end app from the Settings area), then build and start in detached mode
 
-`./rebuild-restart-container.sh`
+`docker compose up -d`
 
-### Or build and run the container step by step
-
-Build the image from Containers folder with specific tag name and passing your SSH public key as a secret
-
-- `cd containers`
-- `docker build -f containers/Dockerfile -t coral-ssh-slurm:tag --secret id=ssh-key,src=/home/your-username/.ssh/id_ed25519.pub .`
-
-Create and start the container mapping local port 2222 to the container port 22 and setting the hostname to slurmnode1. Finally open a shell in the container  
-`docker run -h slurmnode1 -p 2222:22 -it --name coral-ssh-slurm coral-ssh-slurm:tag bash`
-
-### Test the running container
+### Build Coral in the running container
 
 Connect to via SSH client  
 `ssh -p 2222 root@localhost`
 
 Or open a shell in the container (restarting the container if needed)
 
-- `docker restart coral-ssh-slurm`
-- `docker exec -it coral-ssh-slurm bash`
+`docker exec -it coral-ssh-slurm bash`
+
+Build the Coral backend in the container  
+`cd /app && mkdir build && cd build && cmake .. && make`
+
+#### Test Slurm in the same container
 
 Test Slurm from the runninig container  
 `srun whoami`  
@@ -95,7 +89,7 @@ or
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/dealii_backend.g /root/graph.json" --output=sbatch.out`
+`sbatch --wrap="/app/build/dealii_backend.g /shared-data/graph.json --output=sbatch.out`
 
 Test the state of a specific job id (i.e id 1) with sacct  
 `sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
@@ -108,6 +102,16 @@ Test the state of a specific job id (i.e id 1) with sacct
 ### Debugging Slurm
 
 `slurmctld -Dvv` to run the slurm controller in the forground and debug mode
+
+### Other usefull Docker commands
+
+Stop the containers
+
+`docker compose stop`
+
+Restart
+
+`docker compose restart`
 
 # Packaging
 

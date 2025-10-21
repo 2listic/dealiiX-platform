@@ -66,6 +66,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#91](https://github.com/2listic/dealiiX-platform/pull/91) Updated SSH command to run Coral with new CLI
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) New functionality to open a Electron window pointing to a specific url
 - [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
 - [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added polling to display if submitted Slurm job finishes with failed or completed status
@@ -77,6 +78,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#12](https://github.com/2listic/dealiiX-platform/pull/12) Add electron-forge
 - [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
 - [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
+
+### Docker
+
+- [#90](https://github.com/2listic/dealiiX-platform/pull/90) Added docker-compose file to build and run the Coral+SSH+Slurm and the Coral Visualizer containers
 
 ### CI/CD
 

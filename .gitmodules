@@ -1,3 +1,6 @@
 [submodule "coral"]
 	path = coral
 	url = git@github.com:2listic/coral.git
+[submodule "coral-visualizer"]
+	path = coral-visualizer
+	url = git@github.com:2listic/coral-visualizer.git
