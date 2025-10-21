@@ -84,7 +84,7 @@ Or open a shell in the container (restarting the container if needed)
 Build the Coral backend in the container  
 `cd /app && mkdir build && cd build && cmake .. && make`
 
-#### Test Slurm 
+#### Test Slurm
 
 Test Slurm from the runninig container  
 `srun whoami`  
