@@ -69,6 +69,9 @@ Adjust your path to your public SSH key in the `docker-compose.yml` file (it has
 
 `docker compose up -d`
 
+In the main app window click on the settings button and set the default url for the Visualizer  
+`http://localhost:8080/`
+
 ### Build Coral in the running container
 
 Connect to via SSH client  
@@ -81,7 +84,7 @@ Or open a shell in the container (restarting the container if needed)
 Build the Coral backend in the container  
 `cd /app && mkdir build && cd build && cmake .. && make`
 
-#### Test Slurm in the same container
+#### Test Slurm
 
 Test Slurm from the runninig container  
 `srun whoami`  
@@ -99,7 +102,7 @@ Test the state of a specific job id (i.e id 1) with sacct
 `-p` pipe delimited output  
 `-o <list>` columns to display
 
-### Debugging Slurm
+#### Debugging Slurm
 
 `slurmctld -Dvv` to run the slurm controller in the forground and debug mode
 
