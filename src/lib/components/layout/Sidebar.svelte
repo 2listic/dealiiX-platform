@@ -23,7 +23,8 @@
   }
 
   const returnNodeType = (node) => {
-    return 'method_name' in node ? node.method_name : node.type
+    const nodeType = 'method_name' in node ? node.method_name : node.type
+    return nodeType.replaceAll('_', ' ')
   }
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
