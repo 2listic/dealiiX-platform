@@ -36,13 +36,26 @@
     Type,
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
+  import { clearConnectionCache } from '../../utils/connectionsValidation'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
   data.is_valid = true
+  let isValid = $derived(data.is_valid)
+  let isFirstRun = true
 
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
+
+  $effect(() => {
+    isValid               // Track isValid changes
+    if (isFirstRun) {     // Skip clearing cache on node creation
+      isFirstRun = false
+      return
+    }    
+    clearConnectionCache()
+    console.log(`Node ${id} validity changed to ${isValid}, connectionCache cleared`)
+  })
 
   const isValidNum = (value) => {
     const numValue = Number(value)
