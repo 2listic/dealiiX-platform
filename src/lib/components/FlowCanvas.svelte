@@ -24,7 +24,10 @@
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
-  import { clearConnectionCache, isValidConnection } from '../utils/connectionsValidation'
+  import {
+    clearConnectionCache,
+    isValidConnection,
+  } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
