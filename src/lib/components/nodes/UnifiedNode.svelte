@@ -48,13 +48,17 @@
   const { updateNodeData } = useSvelteFlow()
 
   $effect(() => {
-    isValid               // Track isValid changes
-    if (isFirstRun) {     // Skip clearing cache on node creation
+    // Track isValid changes
+    isValid
+    // Skip clearing cache on node creation
+    if (isFirstRun) {
       isFirstRun = false
       return
-    }    
+    }
     clearConnectionCache()
-    console.log(`Node ${id} validity changed to ${isValid}, connectionCache cleared`)
+    console.log(
+      `Node ${id} validity changed to ${isValid}, connectionCache cleared`
+    )
   })
 
   const isValidNum = (value) => {
