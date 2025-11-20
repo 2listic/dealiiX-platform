@@ -9,12 +9,7 @@ let connectionCache = new Map()
 
 const isValidConnection = (connection) => {
   // Create a cache key from the connection
-  const cacheKey = `
-    ${connection.source}-
-    ${connection.sourceHandle}-
-    ${connection.target}-
-    ${connection.targetHandle}
-  `
+  const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available
   if (connectionCache.has(cacheKey)) {
     console.log('cache hit')
@@ -90,4 +85,6 @@ const abstractNodeType = (nodeHash) => {
   return abstractNode ? abstractNode.type : false
 }
 
-export { isValidConnection }
+const clearConnectionCache = () => connectionCache.clear()
+
+export { isValidConnection, clearConnectionCache }
