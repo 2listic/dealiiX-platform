@@ -41,20 +41,14 @@
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
   data.is_valid = true
   let isValid = $derived(data.is_valid)
-  let isFirstRun = true
 
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
 
   $effect(() => {
-    // Track isValid changes
+    // Clear connection cache when isValid changes
     isValid
-    // Skip clearing cache on node creation
-    if (isFirstRun) {
-      isFirstRun = false
-      return
-    }
     clearConnectionCache()
     console.log(
       `Node ${id} validity changed to ${isValid}, connectionCache cleared`
@@ -134,7 +128,7 @@
     {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE}
       <input
         type="text"
-        class={data.is_valid ? '' : 'invalid'}
+        class={isValid ? '' : 'invalid'}
         value={data.value}
         oninput={(evt) => {
           const value = evt.currentTarget.value
