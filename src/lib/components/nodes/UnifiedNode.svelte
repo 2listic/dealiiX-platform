@@ -50,9 +50,6 @@
     // Clear connection cache when isValid changes
     isValid
     clearConnectionCache()
-    console.log(
-      `Node ${id} validity changed to ${isValid}, connectionCache cleared`
-    )
   })
 
   const isValidNum = (value) => {
