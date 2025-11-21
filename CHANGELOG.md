@@ -13,6 +13,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drang and drop state simplified.
 - [#59](https://github.com/2listic/dealiiX-platform/pull/59) Add button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
 - [#52](https://github.com/2listic/dealiiX-platform/pull/52) Nodes are removable by clicking on a dedicated button
