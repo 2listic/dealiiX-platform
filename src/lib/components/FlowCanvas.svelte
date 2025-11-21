@@ -24,7 +24,10 @@
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
-  import { isValidConnection } from '../utils/connectionsValidation'
+  import {
+    clearConnectionCache,
+    isValidConnection,
+  } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
@@ -44,6 +47,12 @@
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
   }
+
+  const ondelete = ({ edges: deletedEdges }) => {
+    if (deletedEdges && deletedEdges.length > 0) {
+      clearConnectionCache()
+    }
+  }
 </script>
 
 <SvelteFlow
@@ -61,6 +70,7 @@
       $state.snapshot(dndNodeDataState.current)
     )}
   colorMode={colorModeState.value}
+  {ondelete}
 >
   <Panel position="top-left">
     <JobsTable />

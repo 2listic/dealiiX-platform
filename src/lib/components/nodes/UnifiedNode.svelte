@@ -36,13 +36,21 @@
     Type,
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
+  import { clearConnectionCache } from '../../utils/connectionsValidation'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
   data.is_valid = true
+  let isValid = $derived(data.is_valid)
 
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
+
+  $effect(() => {
+    // Clear connection cache when isValid changes
+    isValid
+    clearConnectionCache()
+  })
 
   const isValidNum = (value) => {
     const numValue = Number(value)
@@ -117,7 +125,7 @@
     {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE}
       <input
         type="text"
-        class={data.is_valid ? '' : 'invalid'}
+        class={isValid ? '' : 'invalid'}
         value={data.value}
         oninput={(evt) => {
           const value = evt.currentTarget.value
