@@ -41,9 +41,9 @@
         <input
           id="login-username"
           class="input-field"
-          type="email"
+          type="text"
           bind:value={username}
-          placeholder="Enter your email"
+          placeholder="Enter your Username"
           required
         />
       </div>

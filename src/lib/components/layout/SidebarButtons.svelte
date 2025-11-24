@@ -24,7 +24,7 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
-  // import { saveItem, getItem } from '../../requests/items'
+  import { saveProject, getProjects } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
@@ -146,7 +146,7 @@
       <p>Logout was successful</p>
     </div>
   </Modal>
-  <!-- <div class="button-container">
+  <div class="button-container">
     <label
       for="save-graph-button"
       class="element-label"
@@ -167,7 +167,7 @@
     </label>
     <button
       id="save-graph-button"
-      onclick={saveItem}
+      onclick={saveProject}
       style="display: none"
       aria-label="Save graph"
     ></button>
@@ -194,12 +194,12 @@
     </label>
     <button
       id="update-graph-button"
-      onclick={getItem}
+      onclick={getProjects}
       style="display: none"
       aria-label="Download graph"
     ></button>
     <span class="button-text">Download Graph</span>
-  </div> -->
+  </div>
   <div class="button-container">
     <label
       for="export-graph-button"
