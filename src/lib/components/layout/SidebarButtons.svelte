@@ -24,7 +24,7 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
-  import { saveProject, getProjects } from '../../requests/projects'
+  // import { saveProject, getProjects } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
@@ -146,7 +146,7 @@
       <p>Logout was successful</p>
     </div>
   </Modal>
-  <div class="button-container">
+  <!-- <div class="button-container">
     <label
       for="save-graph-button"
       class="element-label"
@@ -172,15 +172,15 @@
       aria-label="Save graph"
     ></button>
     <span class="button-text">Save Graph</span>
-  </div>
-  <div class="button-container">
+  </div> -->
+  <!-- <div class="button-container">
     <label
       for="update-graph-button"
       class="element-label"
       title="Download graph from the cloud"
     >
       <svg
-        fill="#000000"
+        fill="var(--ternary-color)"
         width="30px"
         height="30px"
         viewBox="0 0 32 32"
@@ -199,7 +199,7 @@
       aria-label="Download graph"
     ></button>
     <span class="button-text">Download Graph</span>
-  </div>
+  </div> -->
   <div class="button-container">
     <label
       for="export-graph-button"
