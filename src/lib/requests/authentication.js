@@ -1,5 +1,8 @@
 import { auth } from '../stores/auth.svelte'
-import { settingsState, URL_REMOTE_SERVER } from '../stores/settingsStore.svelte'
+import {
+  settingsState,
+  URL_REMOTE_SERVER,
+} from '../stores/settingsStore.svelte'
 // import { apiRequest } from './api'
 
 export const login = async (data) => {
