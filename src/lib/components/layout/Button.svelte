@@ -1,23 +1,26 @@
 <script lang="ts">
   type ButtonVariant = 'default' | 'action' | 'delete'
   type ButtonType = 'button' | 'submit' | 'reset'
+  type ButtonSize = 'small' | 'medium' | 'large'
 
   let {
     variant = 'default',
     type = 'button',
+    size = 'medium',
     onclick,
     disabled = false,
     children,
   }: {
     variant?: ButtonVariant
     type?: ButtonType
+    size?: ButtonSize
     onclick?: () => any
     disabled?: boolean
     children?: () => any
   } = $props()
 </script>
 
-<button {type} class="btn btn-{variant}" {onclick} {disabled}>
+<button {type} class="btn btn-{variant} btn-{size}" {onclick} {disabled}>
   {@render children?.()}
 </button>
 
@@ -25,10 +28,24 @@
   .btn {
     cursor: pointer;
     border-radius: 8px;
-    padding: 1vh 1.5vh;
     font-size: 1rem;
     border: 1px solid;
     transition: all 0.2s ease;
+  }
+
+  .btn-small {
+    padding: 0.5vh 1vh;
+    font-size: 0.8rem;
+  }
+
+  .btn-medium {
+    padding: 1vh 1.5vh;
+    font-size: 1rem;
+  }
+
+  .btn-large {
+    padding: 1.5vh 2vh;
+    font-size: 1.2rem;
   }
 
   .btn:disabled {

@@ -14,6 +14,7 @@
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   import Settings from '../Settings.svelte'
+  import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
   import ImportIcon from '../icons/ImportIcon.svelte'
@@ -24,11 +25,12 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
-  import { saveProject, getProjects } from '../../requests/projects'
+  import { saveProject } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
   const settingsModalId = 'settings-modal'
+  const projectsModalId = 'projects-modal'
   const token = $derived(auth.token)
   const loginText = $derived.by(() => {
     return token ? 'Logout' : 'Login'
@@ -116,9 +118,13 @@
   //   console.log('auth.token', auth.token)
   // })
 
-  function handleOpenVisualizer() {
+  const handleOpenVisualizer = () => {
     const url = settingsState.getKey(URL_VISUALIZER)
     openNewWindow(url)
+  }
+
+  const handleDownloadGraph = () => {
+    getModal(projectsModalId).open()
   }
 </script>
 
@@ -146,6 +152,7 @@
       <p>Logout was successful</p>
     </div>
   </Modal>
+
   <div class="button-container">
     <label
       for="save-graph-button"
@@ -194,12 +201,16 @@
     </label>
     <button
       id="update-graph-button"
-      onclick={getProjects}
+      onclick={handleDownloadGraph}
       style="display: none"
       aria-label="Download graph"
     ></button>
     <span class="button-text">Download Graph</span>
   </div>
+  <Modal id={projectsModalId}>
+    <ProjectsList modalId={projectsModalId} />
+  </Modal>
+
   <div class="button-container">
     <label
       for="export-graph-button"
