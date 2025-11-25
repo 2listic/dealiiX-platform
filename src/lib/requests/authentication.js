@@ -1,8 +1,10 @@
 import { auth } from '../stores/auth.svelte'
+import { settingsState, URL_REMOTE_SERVER } from '../stores/settingsStore.svelte'
 // import { apiRequest } from './api'
 
 export const login = async (data) => {
-  const response = await fetch('http://localhost:8008/api/users/login', {
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  const response = await fetch(`${baseUrl}/api/users/login`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',

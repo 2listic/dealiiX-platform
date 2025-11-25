@@ -3,6 +3,7 @@
     settingsState,
     SSH_PATH,
     URL_VISUALIZER,
+    URL_REMOTE_SERVER,
   } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import Button from './layout/Button.svelte'
@@ -15,6 +16,8 @@
   let isEditingSshPath = $state(false)
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let isEditingVisualizer = $state(false)
+  let urlRemoteServer = $state(settingsState.getKey(URL_REMOTE_SERVER)) 
+  let isEditingRemote = $state(false)
 
   // Put here all the logic needed to reset the states when modal is re-opened.
   // Triggers when parent modal changes visibility.
@@ -40,6 +43,14 @@
     settingsState.setKey(URL_VISUALIZER, urlVisualizer)
     isEditingVisualizer = false
     toastState.add({ message: 'URL Visualizer saved' })
+  }
+
+  const saveRemoteUrl = () => {
+    const urlRemoteServerParsed = urlRemoteServer.replace(/\/$/, '');   // remove last '/' if present
+    settingsState.setKey(URL_REMOTE_SERVER, urlRemoteServerParsed)
+    urlRemoteServer = urlRemoteServerParsed
+    isEditingRemote = false
+    toastState.add({ message: 'URL Remote Server saved' })
   }
 
   const closeModal = () => getModal(modalId).close()
@@ -91,6 +102,30 @@
         <div class="input-line-save">
           <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
           <Button onclick={() => (isEditingVisualizer = true)}>Edit</Button>
+        </div>
+      {/if}
+    </div>
+    <div class="input-container">
+      <label style="font-weight: bold" for="url-remote-server">
+        URL to Remote Server
+      </label>
+      {#if isEditingRemote}
+        <div class="input-line-save">
+          <!-- <form style="flex: 1"> -->
+          <input
+            id="url-remote-server"
+            type="text"
+            class="input-field"
+            bind:value={urlRemoteServer}
+            placeholder="Remote Server URL"
+          />
+          <!-- </form> -->
+          <Button onclick={saveRemoteUrl}>Save</Button>
+        </div>
+      {:else}
+        <div class="input-line-save">
+          <div>{urlRemoteServer ? urlRemoteServer : 'No URL set'}</div>
+          <Button onclick={() => (isEditingRemote = true)}>Edit</Button>
         </div>
       {/if}
     </div>

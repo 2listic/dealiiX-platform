@@ -1,9 +1,11 @@
+import { settingsState, URL_REMOTE_SERVER } from '../stores/settingsStore.svelte'
 import { apiRequest } from './api'
 
 // TODO modify this test POST request so that it calls the right api endpoint and stores the JSON graph data in the database
 const saveProject = async () => {
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
   const result = await apiRequest(
-    'http://localhost:8008/api/projects',
+    `${baseUrl}/api/projects`,
     'POST',
     {
       name: 'test',
@@ -16,7 +18,8 @@ const saveProject = async () => {
 }
 
 const getProjects = async () => {
-  const result = await apiRequest(`http://localhost:8008/api/projects/`, 'GET')
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  const result = await apiRequest(`${baseUrl}/api/projects/`, 'GET')
 
   console.log('get projects result', result)
 
