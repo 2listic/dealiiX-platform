@@ -16,7 +16,7 @@
   let isEditingSshPath = $state(false)
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let isEditingVisualizer = $state(false)
-  let urlRemoteServer = $state(settingsState.getKey(URL_REMOTE_SERVER)) 
+  let urlRemoteServer = $state(settingsState.getKey(URL_REMOTE_SERVER))
   let isEditingRemote = $state(false)
 
   // Put here all the logic needed to reset the states when modal is re-opened.
@@ -46,7 +46,7 @@
   }
 
   const saveRemoteUrl = () => {
-    const urlRemoteServerParsed = urlRemoteServer.replace(/\/$/, '');   // remove last '/' if present
+    const urlRemoteServerParsed = urlRemoteServer.replace(/\/$/, '') // remove last '/' if present
     settingsState.setKey(URL_REMOTE_SERVER, urlRemoteServerParsed)
     urlRemoteServer = urlRemoteServerParsed
     isEditingRemote = false
