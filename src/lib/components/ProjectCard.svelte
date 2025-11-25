@@ -66,7 +66,6 @@
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     padding: 1rem;
-    background-color: var(--background-color-secondary);
     margin-bottom: 1rem;
   }
 
@@ -81,13 +80,11 @@
   .card-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: var(--ternary-color);
     font-weight: bold;
   }
 
   .project-id {
     font-size: 0.85rem;
-    color: var(--ternary-color);
   }
 
   .card-body {
@@ -96,7 +93,6 @@
 
   .description {
     margin: 0.75rem 0;
-    color: var(--ternary-color);
     line-height: 1.5;
     font-size: 0.95rem;
   }
@@ -111,11 +107,9 @@
 
   .meta-item {
     font-size: 0.9rem;
-    color: var(--ternary-color);
   }
 
   .meta-item strong {
-    color: var(--ternary-color);
     margin-right: 0.5rem;
   }
 
@@ -128,7 +122,6 @@
   .shared-users strong {
     display: block;
     margin-bottom: 0.5rem;
-    color: var(--ternary-color);
     font-size: 0.9rem;
   }
 

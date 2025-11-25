@@ -75,7 +75,6 @@
   .projects-container {
     padding: 1rem;
     min-width: 60vw;
-    max-height: 80vh;
   }
 
   .header {
@@ -83,15 +82,49 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .loading,
+  .empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem;
+    font-size: 1.1rem;
+    font-style: italic;
   }
 
   .projects-list {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     overflow-y: auto;
     max-height: 60vh;
+    padding-right: 0.5rem;
   }
 
-  /* ... more styles ... */
+  .projects-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .projects-list::-webkit-scrollbar-track {
+    background: var(--primary-color);
+    border-radius: 4px;
+  }
+
+  .projects-list::-webkit-scrollbar-thumb {
+    background: var(--secondary-color);
+    border-radius: 4px;
+    opacity: 0.5;
+  }
+
+  .projects-list::-webkit-scrollbar-thumb:hover {
+    cursor: pointer;
+  }
+
+  .button-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
 </style>
