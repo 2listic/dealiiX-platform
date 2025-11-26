@@ -126,6 +126,10 @@
   const handleDownloadGraph = () => {
     getModal(projectsModalId).open()
   }
+
+  const handleSaveProject = () => {
+    saveProject()
+  }
 </script>
 
 <aside>
@@ -174,7 +178,7 @@
     </label>
     <button
       id="save-graph-button"
-      onclick={saveProject}
+      onclick={handleSaveProject}
       style="display: none"
       aria-label="Save graph"
     ></button>

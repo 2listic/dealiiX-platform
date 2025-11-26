@@ -46,6 +46,10 @@
   function closeModal() {
     getModal(modalId)?.close()
   }
+
+  function handleProjectDeleted(projectId: number) {
+    projects = projects.filter((p) => p.id !== projectId)
+  }
 </script>
 
 <div class="projects-container">
@@ -61,7 +65,7 @@
   {:else}
     <div class="projects-list">
       {#each projects as project (project.id)}
-        <ProjectCard {project} />
+        <ProjectCard {project} onDelete={handleProjectDeleted} />
       {/each}
     </div>
   {/if}

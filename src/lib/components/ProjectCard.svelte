@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { deleteProject } from '../requests/projects'
+  import { toastState } from '../stores/toastsStore.svelte'
   import Button from './layout/Button.svelte'
 
   interface Project {
@@ -20,7 +22,36 @@
     }>
   }
 
-  let { project }: { project: Project } = $props()
+  interface Props {
+    project: Project
+    // eslint-disable-next-line no-unused-vars
+    onDelete: (projectId: number) => void
+  }
+
+  let { project, onDelete }: Props = $props()
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
+      return
+    }
+
+    try {
+      await deleteProject(project.id)
+      toastState.add({
+        message: `Project "${project.name}" deleted successfully`,
+        type: 'success',
+      })
+      if (onDelete) {
+        onDelete(project.id)
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toastState.add({
+        message: 'Failed to delete project',
+        type: 'error',
+      })
+    }
+  }
 </script>
 
 <div class="project-card">
@@ -57,7 +88,7 @@
 
   <div class="card-actions">
     <Button variant="action" size="small">Load</Button>
-    <Button variant="delete" size="small">Delete</Button>
+    <Button variant="delete" size="small" onclick={handleDelete}>Delete</Button>
   </div>
 </div>
 
