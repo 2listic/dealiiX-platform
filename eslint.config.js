@@ -9,7 +9,13 @@ export default defineConfig([
   js.configs.recommended,
   ...svelte.configs.recommended,
   {
-    ignores: ['out/**', 'dist/**', 'coral-remote-server/**', 'coral-visualizer/**', 'coral/**'],
+    ignores: [
+      'out/**',
+      'dist/**',
+      'coral-remote-server/**',
+      'coral-visualizer/**',
+      'coral/**',
+    ],
   },
   {
     languageOptions: {
