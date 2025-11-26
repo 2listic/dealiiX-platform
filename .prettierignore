@@ -10,8 +10,7 @@ node_modules
 # Other
 .github
 
-# Coral
+# Submodules
 coral
-
-# Coral Visualizer
 coral-visualizer
+coral-remote-server
