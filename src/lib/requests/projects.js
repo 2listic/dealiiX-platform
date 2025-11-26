@@ -6,27 +6,21 @@ import { apiRequest } from './api'
 
 /**
  * Save/create a new project with its JSON graph
- * @param {Object} [projectData] - Optional project data to save
- * @param {string} [projectData.name] - Project name (defaults to 'test')
- * @param {string} [projectData.description] - Project description (defaults to 'test')
- * @param {Object} [projectData.data] - JSON graph data to store in the database
- * @returns {Promise<Object>} The created project object with id, name, description, owner_id, created_at, updated_at
+ * @param {Object} projectData - Project graph to save
+ * @param {string} projectData.name - Project name (defaults to 'test')
+ * @param {string} projectData.description - Project description (defaults to 'test')
+ * @param {Object} projectData.graph - JSON graph data to store in the database
+ * @returns {Promise<Object>} The created project object with id, name, description, owner_id, ...
  * @throws {Error} If the save request fails or authentication is invalid
  *
  * @example
  * const newProject = await saveProject({
  *   name: 'My Project',
  *   description: 'A sample project',
- *   data: { nodes: [], edges: [] }
+ *   graph: { nodes: [], edges: [], ... }
  * })
  */
-const saveProject = async (
-  projectData = {
-    name: 'test',
-    description: 'test',
-    data: { nodes: [], edges: [] },
-  }
-) => {
+const saveProject = async (projectData) => {
   try {
     const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
     const result = await apiRequest(

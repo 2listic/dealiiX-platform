@@ -10,6 +10,7 @@
     updateLastNodeId,
   } from '../../stores/nodes.svelte'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
+  import { parseGraph } from '../../utils/graphParser'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -127,8 +128,20 @@
     getModal(projectsModalId).open()
   }
 
-  const handleSaveProject = () => {
-    saveProject()
+  const handleSaveProject = async () => {
+    try {
+      const parsedGraph = parseGraph(getNodes(), getEdges())
+      // TODO: make 'name' and 'description' dynamically set with a modal
+      await saveProject({
+        name: 'My Graph',
+        description: 'Graph created on ' + new Date().toISOString(),
+        graph: parsedGraph,
+      })
+      toastState.add({ message: 'Project saved successfully', type: 'success' })
+    } catch (error) {
+      console.error('Failed to save project:', error)
+      toastState.add({ message: 'Failed to save project', type: 'error' })
+    }
   }
 </script>
 

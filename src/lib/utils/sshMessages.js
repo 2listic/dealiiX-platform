@@ -1,6 +1,7 @@
 import { concatState } from '../stores/concatState.svelte'
 import { jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
+import { parseGraph } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 
 const executeWithPassword = async () => {
@@ -32,10 +33,10 @@ const executeWithKey = async () => {
 
 const exportAndEvalGraph = async (nodes, edges) => {
   try {
+    const parsedGraph = parseGraph(nodes, edges)
     // @ts-ignore
     const resultExport = await window.electron.invoke('export-graph-ssh', {
-      nodes: nodes,
-      edges: edges,
+      graph: parsedGraph
     })
     console.log('SSH Connection Result:', resultExport)
 
