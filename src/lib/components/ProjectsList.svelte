@@ -65,7 +65,11 @@
   {:else}
     <div class="projects-list">
       {#each projects as project (project.id)}
-        <ProjectCard {project} onDelete={handleProjectDeleted} onLoad={closeModal} />
+        <ProjectCard
+          {project}
+          onDelete={handleProjectDeleted}
+          onLoad={closeModal}
+        />
       {/each}
     </div>
   {/if}
