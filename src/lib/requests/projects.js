@@ -11,7 +11,6 @@ import { apiRequest } from './api'
  * @param {string} projectData.description - Project description (defaults to 'test')
  * @param {Object} projectData.graph - JSON graph data to store in the database
  * @returns {Promise<Object>} The created project object with id, name, description, owner_id, ...
- * @throws {Error} If the save request fails or authentication is invalid
  *
  * @example
  * const newProject = await saveProject({
@@ -21,54 +20,27 @@ import { apiRequest } from './api'
  * })
  */
 const saveProject = async (projectData) => {
-  try {
-    const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
-    const result = await apiRequest(
-      `${baseUrl}/api/projects`,
-      'POST',
-      projectData
-    )
-    return result
-  } catch (error) {
-    console.error('Failed to save project:', error)
-    throw error
-  }
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  return apiRequest(`${baseUrl}/api/projects`, 'POST', projectData)
 }
 
 /**
  * Get all projects accessible to the current user
  * @returns {Promise<Array<Object>>} Array of project objects
- * @throws {Error} If the fetch request fails, authentication is invalid, or network error occurs
  */
 const getProjects = async () => {
-  try {
-    const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
-    const result = await apiRequest(`${baseUrl}/api/projects/`, 'GET')
-    return result
-  } catch (error) {
-    console.error('Failed to fetch projects:', error)
-    throw error
-  }
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  return apiRequest(`${baseUrl}/api/projects/`, 'GET')
 }
 
 /**
  * Get a specific project by ID with full graph data
  * @param {number} projectId - The ID of the project to fetch
  * @returns {Promise<Object>} The project object with graph data
- * @throws {Error} If the fetch request fails or user doesn't have access
  */
 const getProject = async (projectId) => {
-  try {
-    const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
-    const result = await apiRequest(
-      `${baseUrl}/api/projects/${projectId}`,
-      'GET'
-    )
-    return result
-  } catch (error) {
-    console.error('Failed to fetch project:', error)
-    throw error
-  }
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'GET')
 }
 
 /**
@@ -78,17 +50,8 @@ const getProject = async (projectId) => {
  * @throws {Error} If the delete request fails
  */
 const deleteProject = async (projectId) => {
-  try {
-    const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
-    const result = await apiRequest(
-      `${baseUrl}/api/projects/${projectId}`,
-      'DELETE'
-    )
-    return result
-  } catch (error) {
-    console.error('Failed to delete project:', error)
-    throw error
-  }
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'DELETE')
 }
 
 export { saveProject, getProjects, getProject, deleteProject }

@@ -33,7 +33,7 @@
       }
     } catch (err) {
       toastState.add({
-        message: 'Failed to load projects',
+        message: err.message || 'Failed to load projects',
         type: 'error',
       })
       console.error('Error loading projects:', err)

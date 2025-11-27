@@ -117,7 +117,10 @@
       toastState.add({ message: 'Project saved successfully', type: 'success' })
     } catch (error) {
       console.error('Failed to save project:', error)
-      toastState.add({ message: 'Failed to save project', type: 'error' })
+      toastState.add({
+        message: error.message || 'Failed to save project',
+        type: 'error',
+      })
     }
   }
 </script>

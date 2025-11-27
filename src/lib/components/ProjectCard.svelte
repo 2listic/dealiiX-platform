@@ -49,7 +49,7 @@
     } catch (error) {
       console.error('Error deleting project:', error)
       toastState.add({
-        message: 'Failed to delete project',
+        message: error.message || 'Failed to delete project',
         type: 'error',
       })
     }
@@ -74,7 +74,10 @@
       })
     } catch (error) {
       console.error('Error loading project:', error)
-      toastState.add({ message: 'Failed to load project', type: 'error' })
+      toastState.add({
+        message: error.message || 'Failed to load project',
+        type: 'error',
+      })
     }
   }
 </script>
