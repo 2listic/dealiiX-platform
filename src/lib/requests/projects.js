@@ -52,6 +52,23 @@ const getProjects = async () => {
 }
 
 /**
+ * Get a specific project by ID with full graph data
+ * @param {number} projectId - The ID of the project to fetch
+ * @returns {Promise<Object>} The project object with graph data
+ * @throws {Error} If the fetch request fails or user doesn't have access
+ */
+const getProject = async (projectId) => {
+  try {
+    const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+    const result = await apiRequest(`${baseUrl}/api/projects/${projectId}`, 'GET')
+    return result
+  } catch (error) {
+    console.error('Failed to fetch project:', error)
+    throw error
+  }
+}
+
+/**
  * Delete a project by ID (owner only)
  * @param {number} projectId - The ID of the project to delete
  * @returns {Promise<any>} The API response
@@ -71,4 +88,4 @@ const deleteProject = async (projectId) => {
   }
 }
 
-export { saveProject, getProjects, deleteProject }
+export { saveProject, getProjects, getProject, deleteProject }

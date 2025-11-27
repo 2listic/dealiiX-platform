@@ -1,6 +1,13 @@
 <script lang="ts">
-  import { deleteProject } from '../requests/projects'
+  import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
+  import {
+    setNodes,
+    setEdges,
+    updateLastNodeId,
+    nodesFromProtocolToFlow,
+    edgesFromProtocolToFlow,
+  } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
 
   interface Project {
@@ -52,6 +59,60 @@
       })
     }
   }
+
+  const handleLoad = async () => {
+    try {
+      const projectData = await getProject(project.id)
+
+      const graphData = projectData.graph
+      if (!graphData) {
+        toastState.add({
+          message: 'No graph data found in this project',
+          type: 'error',
+        })
+        return
+      }
+
+      // Reset nodes/edges before loading (ensures UI updates correctly)
+      setNodes([])
+      setEdges([])
+
+      const importedNodes = graphData?.workflow?.nodes
+      if (importedNodes == null) {
+        toastState.add({
+          message: 'No nodes found in project graph',
+          type: 'error',
+        })
+        return
+      }
+
+      const importedEdges = graphData?.workflow?.edges
+      if (importedEdges == null) {
+        toastState.add({
+          message: 'No edges found in project graph',
+          type: 'error',
+        })
+        return
+      }
+
+      const parsedNodes = nodesFromProtocolToFlow(importedNodes)
+      const parsedEdges = edgesFromProtocolToFlow(importedEdges)
+      setNodes(parsedNodes)
+      setEdges(parsedEdges)
+      updateLastNodeId()
+
+      toastState.add({
+        message: `Project "${project.name}" loaded successfully`,
+        type: 'success',
+      })
+    } catch (error) {
+      console.error('Error loading project:', error)
+      toastState.add({
+        message: 'Failed to load project',
+        type: 'error',
+      })
+    }
+  }
 </script>
 
 <div class="project-card">
@@ -87,7 +148,7 @@
   </div>
 
   <div class="card-actions">
-    <Button variant="action" size="small">Load</Button>
+    <Button variant="action" size="small" onclick={handleLoad}>Load</Button>
     <Button variant="delete" size="small" onclick={handleDelete}>Delete</Button>
   </div>
 </div>
