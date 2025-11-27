@@ -36,7 +36,7 @@ const exportAndEvalGraph = async (nodes, edges) => {
     const parsedGraph = parseGraph(nodes, edges)
     // @ts-ignore
     const resultExport = await window.electron.invoke('export-graph-ssh', {
-      graph: parsedGraph
+      graph: parsedGraph,
     })
     console.log('SSH Connection Result:', resultExport)
 
