@@ -6,9 +6,9 @@
     loadGraph,
   } from '../../stores/nodes.svelte'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
-  import { parseGraph } from '../../utils/graphParser'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
+  import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   import Settings from '../Settings.svelte'
   import ProjectsList from '../ProjectsList.svelte'
@@ -22,12 +22,12 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
-  import { saveProject } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
+  const saveProjectModalId = 'save-project-modal'
   const token = $derived(auth.token)
   const loginText = $derived.by(() => {
     return token ? 'Logout' : 'Login'
@@ -106,22 +106,7 @@
   }
 
   const handleSaveProject = async () => {
-    try {
-      const parsedGraph = parseGraph(getNodes(), getEdges())
-      // TODO: make 'name' and 'description' dynamically set with a modal
-      await saveProject({
-        name: 'My Graph',
-        description: 'Graph created on ' + new Date().toISOString(),
-        graph: parsedGraph,
-      })
-      toastState.add({ message: 'Project saved successfully', type: 'success' })
-    } catch (error) {
-      console.error('Failed to save project:', error)
-      toastState.add({
-        message: error.message || 'Failed to save project',
-        type: 'error',
-      })
-    }
+    getModal(saveProjectModalId)?.open()
   }
 </script>
 
@@ -177,6 +162,10 @@
     ></button>
     <span class="button-text">Save Project</span>
   </div>
+  <Modal id={saveProjectModalId}>
+    <SaveProjectForm modalId={saveProjectModalId} />
+  </Modal>
+
   <div class="button-container">
     <label
       for="load-projects-button"
