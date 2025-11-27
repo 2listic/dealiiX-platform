@@ -124,7 +124,7 @@
     openNewWindow(url)
   }
 
-  const handleDownloadGraph = () => {
+  const handleLoadProjects = () => {
     getModal(projectsModalId).open()
   }
 
@@ -172,9 +172,9 @@
 
   <div class="button-container">
     <label
-      for="save-graph-button"
+      for="save-project-button"
       class="element-label"
-      title="Save graph to the cloud"
+      title="Save project to Remote"
     >
       <svg
         fill="var(--ternary-color)"
@@ -190,18 +190,18 @@
       </svg>
     </label>
     <button
-      id="save-graph-button"
+      id="save-project-button"
       onclick={handleSaveProject}
       style="display: none"
-      aria-label="Save graph"
+      aria-label="Save project"
     ></button>
-    <span class="button-text">Save Graph</span>
+    <span class="button-text">Save Project</span>
   </div>
   <div class="button-container">
     <label
-      for="update-graph-button"
+      for="load-projects-button"
       class="element-label"
-      title="Download graph from the cloud"
+      title="Load a project from Remote"
     >
       <svg
         fill="var(--ternary-color)"
@@ -217,12 +217,12 @@
       </svg>
     </label>
     <button
-      id="update-graph-button"
-      onclick={handleDownloadGraph}
+      id="load-projects-button"
+      onclick={handleLoadProjects}
       style="display: none"
-      aria-label="Download graph"
+      aria-label="Load projects"
     ></button>
-    <span class="button-text">Download Graph</span>
+    <span class="button-text">Load Projects</span>
   </div>
   <Modal id={projectsModalId}>
     <ProjectsList modalId={projectsModalId} />
