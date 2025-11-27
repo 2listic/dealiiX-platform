@@ -1,13 +1,7 @@
 <script lang="ts">
   import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
-  import {
-    setNodes,
-    setEdges,
-    updateLastNodeId,
-    nodesFromProtocolToFlow,
-    edgesFromProtocolToFlow,
-  } from '../stores/nodes.svelte'
+  import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
 
   interface Project {
@@ -33,9 +27,10 @@
     project: Project
     // eslint-disable-next-line no-unused-vars
     onDelete: (projectId: number) => void
+    onLoad: () => void
   }
 
-  let { project, onDelete }: Props = $props()
+  let { project, onDelete, onLoad }: Props = $props()
 
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
@@ -64,42 +59,14 @@
     try {
       const projectData = await getProject(project.id)
 
-      const graphData = projectData.graph
-      if (!graphData) {
-        toastState.add({
-          message: 'No graph data found in this project',
-          type: 'error',
-        })
+      const result = loadGraph(projectData.graph)
+      if (!result.success) {
+        toastState.add({ message: result.error, type: 'error' })
         return
       }
-
-      // Reset nodes/edges before loading (ensures UI updates correctly)
-      setNodes([])
-      setEdges([])
-
-      const importedNodes = graphData?.workflow?.nodes
-      if (importedNodes == null) {
-        toastState.add({
-          message: 'No nodes found in project graph',
-          type: 'error',
-        })
-        return
+      if (onLoad) {
+        onLoad()
       }
-
-      const importedEdges = graphData?.workflow?.edges
-      if (importedEdges == null) {
-        toastState.add({
-          message: 'No edges found in project graph',
-          type: 'error',
-        })
-        return
-      }
-
-      const parsedNodes = nodesFromProtocolToFlow(importedNodes)
-      const parsedEdges = edgesFromProtocolToFlow(importedEdges)
-      setNodes(parsedNodes)
-      setEdges(parsedEdges)
-      updateLastNodeId()
 
       toastState.add({
         message: `Project "${project.name}" loaded successfully`,
@@ -107,10 +74,7 @@
       })
     } catch (error) {
       console.error('Error loading project:', error)
-      toastState.add({
-        message: 'Failed to load project',
-        type: 'error',
-      })
+      toastState.add({ message: 'Failed to load project', type: 'error' })
     }
   }
 </script>

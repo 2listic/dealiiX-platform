@@ -2,12 +2,8 @@
   import {
     getEdges,
     getNodes,
-    edgesFromProtocolToFlow,
-    nodesFromProtocolToFlow,
-    setEdges,
     setImportedNodes,
-    setNodes,
-    updateLastNodeId,
+    loadGraph,
   } from '../../stores/nodes.svelte'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import { parseGraph } from '../../utils/graphParser'
@@ -62,34 +58,15 @@
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
     }
-    // reset nodes/edges before reading file asyncronously otherwise UI dose not update correctly
-    setNodes([])
-    setEdges([])
     const importedGraphAsText = await readFileAsText(importGraphFiles[0])
     const importedGraph = JSON.parse(importedGraphAsText)
 
-    const importedNodes = importedGraph?.workflow?.nodes
-    if (importedNodes == null) {
-      toastState.add({
-        message: 'No nodes found in imported graph',
-        type: 'error',
-      })
-      return
-    }
-    const importedEdges = importedGraph?.workflow?.edges
-    if (importedEdges == null) {
-      toastState.add({
-        message: 'No edges found in imported graph',
-        type: 'error',
-      })
+    const result = loadGraph(importedGraph)
+    if (!result.success) {
+      toastState.add({ message: result.error, type: 'error' })
       return
     }
 
-    const parsedNodes = nodesFromProtocolToFlow(importedNodes)
-    const parsedEdges = edgesFromProtocolToFlow(importedEdges)
-    setNodes(parsedNodes)
-    setEdges(parsedEdges)
-    updateLastNodeId()
     console.log('imported graph nodes', getNodes())
     console.log('imported graph edges', getEdges())
     toastState.add({ message: 'New graph was loaded' })

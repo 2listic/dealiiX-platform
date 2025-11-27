@@ -1,4 +1,9 @@
 import { initialNodes, initialEdges } from '../data/flowData'
+import {
+  nodesFromProtocolToFlow,
+  edgesFromProtocolToFlow,
+  validateGraphData,
+} from '../utils/graphParser'
 
 /**
  * Svelte internal nodes and edges states
@@ -63,39 +68,23 @@ export const getImportedNodesByType = (svelteNodeType) => {
 }
 
 /**
- * Functions to parse nodes and edges from protocol into flow internal format
+ * Load a graph object into the flow editor
+ * @param {Object} graphData - The graph data object containing workflow.nodes and workflow.edges
+ * @returns {{ success: boolean, error?: string }}
  */
-export const nodesFromProtocolToFlow = (nodes) => {
-  const arrNodeIds = Object.keys(nodes)
+export const loadGraph = (graphData) => {
+  const validation = validateGraphData(graphData)
+  if ('error' in validation) {
+    return { success: false, error: validation.error }
+  }
 
-  const arrIdNodes = arrNodeIds.reduce((acc, id, index) => {
-    const node_type = nodes[id].node_type
-    const positionX =
-      'position' in nodes[id] ? nodes[id].position.x : index * 100
-    const positionY =
-      'position' in nodes[id] ? nodes[id].position.y : index * 100
-    acc.push({
-      id: id,
-      type: node_type,
-      position: { x: positionX, y: positionY },
-      data: { ...nodes[id] },
-    })
-    return acc
-  }, [])
-  return arrIdNodes
-}
+  // Reset then load (ensures UI updates correctly)
+  setNodes([])
+  setEdges([])
 
-export const edgesFromProtocolToFlow = (edges) => {
-  const arrEdges = Object.values(edges)
-  const arrParsedEdges = arrEdges.reduce((acc, edge) => {
-    acc.push({
-      id: `xy-edge__${edge.source}output-${edge.source_output}-${edge.target}input-${edge.target_input}`,
-      source: edge.source.toString(),
-      target: edge.target.toString(),
-      sourceHandle: `output-${edge.source_output}`,
-      targetHandle: `input-${edge.target_input}`,
-    })
-    return acc
-  }, [])
-  return arrParsedEdges
+  setNodes(nodesFromProtocolToFlow(validation.nodes))
+  setEdges(edgesFromProtocolToFlow(validation.edges))
+  updateLastNodeId()
+
+  return { success: true }
 }
