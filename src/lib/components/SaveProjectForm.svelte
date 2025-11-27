@@ -24,7 +24,8 @@
       const parsedGraph = parseGraph(getNodes(), getEdges())
       await saveProject({
         name,
-        description: description || 'Graph created on ' + new Date().toISOString(),
+        description:
+          description || 'Graph created on ' + new Date().toISOString(),
         graph: parsedGraph,
       })
       toastState.add({ message: 'Project saved successfully', type: 'success' })
@@ -75,7 +76,12 @@
       <Button variant="default" type="button" onclick={handleCancel}>
         Cancel
       </Button>
-      <Button variant="action" type="button" onclick={validateAndSubmit} disabled={isSaving}>
+      <Button
+        variant="action"
+        type="button"
+        onclick={validateAndSubmit}
+        disabled={isSaving}
+      >
         {isSaving ? 'Saving...' : 'Save'}
       </Button>
     </div>
