@@ -60,7 +60,10 @@ const getProjects = async () => {
 const getProject = async (projectId) => {
   try {
     const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
-    const result = await apiRequest(`${baseUrl}/api/projects/${projectId}`, 'GET')
+    const result = await apiRequest(
+      `${baseUrl}/api/projects/${projectId}`,
+      'GET'
+    )
     return result
   } catch (error) {
     console.error('Failed to fetch project:', error)
