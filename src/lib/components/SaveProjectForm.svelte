@@ -9,7 +9,7 @@
 
   let { modalId } = $props()
 
-  let name = $state('My Graph')
+  let name = $state('')
   let description = $state('')
   let formElement
   let isSaving = $state(false)
@@ -96,7 +96,6 @@
     display: flex;
     flex-direction: column;
     gap: 2vh;
-    min-width: 300px;
   }
 
   .input-container {

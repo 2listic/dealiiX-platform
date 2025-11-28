@@ -81,10 +81,16 @@
      * @default true
      */
     closeOnBackdrop?: boolean
+
+    /**
+     * Modal width size. Default is width adapts to content.
+     * @optional
+     */
+    size?: 'sm' | 'md' | 'lg'
   }
 
   /** Destructure props with default values. */
-  let { id, children, closeOnBackdrop = true }: Props = $props()
+  let { id, children, closeOnBackdrop = true, size }: Props = $props()
 
   function keyPress(ev: KeyboardEvent) {
     // only respond if the current modal is the top one (and pressing ESC)
@@ -160,7 +166,7 @@
   bind:this={topDiv}
   onclick={handleBackdropClick}
 >
-  <div id="modal" onclick={(e) => e.stopPropagation()}>
+  <div id="modal" class={size ?? ''} onclick={(e) => e.stopPropagation()}>
     <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
       <circle cx="6" cy="6" r="6" />
       <line x1="3" y1="3" x2="9" y2="9" />
@@ -199,8 +205,20 @@
     border: 1px solid var(--primary-color);
     /* filter: drop-shadow(1px 1px var(--primary-color)); */
     padding: 1em;
-    /* min-width: 50vw;
-    min-height: 50vh; */
+    min-width: 300px;
+    /*min-height: 50vh; */
+  }
+
+  #modal.sm {
+    width: 30vw;
+  }
+
+  #modal.md {
+    width: 50vw;
+  }
+
+  #modal.lg {
+    width: 80vw;
   }
 
   #close {

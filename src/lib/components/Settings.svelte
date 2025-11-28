@@ -140,7 +140,6 @@
   .inputs-container {
     display: flex;
     flex-direction: column;
-    min-width: 50vh;
     gap: 2vh;
   }
 

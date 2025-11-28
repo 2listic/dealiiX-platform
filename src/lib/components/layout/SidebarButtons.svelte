@@ -162,7 +162,7 @@
     ></button>
     <span class="button-text">Save Project</span>
   </div>
-  <Modal id={saveProjectModalId}>
+  <Modal id={saveProjectModalId} size="sm">
     <SaveProjectForm modalId={saveProjectModalId} />
   </Modal>
 
@@ -277,7 +277,7 @@
     ></button>
     <span class="button-text"> Settings </span>
   </div>
-  <Modal id={settingsModalId}>
+  <Modal id={settingsModalId} size="sm">
     <Settings modalId={settingsModalId} />
   </Modal>
 </aside>
