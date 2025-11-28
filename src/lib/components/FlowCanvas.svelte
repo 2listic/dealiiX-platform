@@ -24,6 +24,7 @@
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
+  import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import {
     clearConnectionCache,
     isValidConnection,
@@ -73,6 +74,14 @@
   {ondelete}
 >
   <Panel position="top-left">
+    <div class="project-info">
+      {#if currentProjectState.id}
+        <span class="project-main">{currentProjectState.name}</span>
+        <span class="project-secondary">ID: {currentProjectState.id}</span>
+      {:else}
+        <span class="project-secondary">Unsaved Project</span>
+      {/if}
+    </div>
     <JobsTable />
   </Panel>
   <Panel position="bottom-left">
@@ -93,6 +102,25 @@
 </SvelteFlow>
 
 <style>
+  .project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    border-radius: 5px;
+    margin-bottom: 1vh;
+  }
+
+  .project-main {
+    font-weight: bold;
+    /* font-size: 1.1rem; */
+  }
+
+  .project-secondary {
+    /* font-size: 0.8rem; */
+    opacity: 0.7;
+  }
   .export-button-container {
     display: flex;
     flex-wrap: wrap;

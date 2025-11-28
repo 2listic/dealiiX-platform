@@ -1,7 +1,8 @@
 <script>
-  import { saveProject } from '../requests/projects' // adjust import path as needed
+  import { saveProject } from '../requests/projects'
   import { getEdges, getNodes } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import { parseGraph } from '../utils/graphParser'
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
@@ -22,12 +23,14 @@
     isSaving = true
     try {
       const parsedGraph = parseGraph(getNodes(), getEdges())
-      await saveProject({
+      const savedProject = await saveProject({
         name,
         description:
           description || 'Graph created on ' + new Date().toISOString(),
         graph: parsedGraph,
       })
+      currentProjectState.set(savedProject)
+
       toastState.add({ message: 'Project saved successfully', type: 'success' })
       getModal(modalId)?.close()
     } catch (error) {
