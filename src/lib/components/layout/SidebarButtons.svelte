@@ -22,6 +22,9 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
+  import { currentProjectState } from '../../stores/currentProjectStore.svelte'
+  import { parseGraph } from '../../utils/graphParser'
+  import { updateProject } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
@@ -106,6 +109,28 @@
   }
 
   const handleSaveProject = async () => {
+    if (currentProjectState.id) {
+      // Update existing project
+      try {
+        const parsedGraph = parseGraph(getNodes(), getEdges())
+        const updatedProject = await updateProject(currentProjectState.id, {
+          graph: parsedGraph,
+        })
+        currentProjectState.set(updatedProject)
+        toastState.add({
+          message: 'Project updated successfully',
+          type: 'success',
+        })
+      } catch (error) {
+        console.error('Failed to update project:', error)
+        toastState.add({
+          message: error.message || 'Failed to update project',
+          type: 'error',
+        })
+      }
+      return
+    }
+    // No existing project - open save modal for new project
     getModal(saveProjectModalId)?.open()
   }
 </script>

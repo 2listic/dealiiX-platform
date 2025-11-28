@@ -3,6 +3,7 @@
   import { toastState } from '../stores/toastsStore.svelte'
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
+  import { currentProjectState } from '../stores/currentProjectStore.svelte'
 
   interface Project {
     id: number
@@ -58,6 +59,7 @@
   const handleLoad = async () => {
     try {
       const projectData = await getProject(project.id)
+      currentProjectState.set(projectData)
 
       const result = loadGraph(projectData.graph)
       if (!result.success) {
