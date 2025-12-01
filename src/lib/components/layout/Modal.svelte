@@ -58,6 +58,7 @@
 
 <script lang="ts">
   import { onDestroy } from 'svelte'
+  import { fade, scale } from 'svelte/transition'
 
   /** Root element of this modal instance (bound via `bind:this`). */
   let topDiv = $state<HTMLDivElement>()
@@ -110,11 +111,6 @@
     document.body.style.overflow = 'hidden'
 
     visible = true
-
-    // Move modal to end of body for proper z-index stacking
-    if (topDiv) {
-      document.body.appendChild(topDiv)
-    }
   }
 
   function close() {
@@ -160,26 +156,31 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-  id="topModal"
-  class:visible
-  bind:this={topDiv}
-  onclick={handleBackdropClick}
->
-  <div id="modal" class={size ?? ''} onclick={(e) => e.stopPropagation()}>
-    <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
-      <circle cx="6" cy="6" r="6" />
-      <line x1="3" y1="3" x2="9" y2="9" />
-      <line x1="9" y1="3" x2="3" y2="9" />
-    </svg>
-    <div id="modal-content">
-      {@render children?.()}
+{#if visible}
+  <div
+    id={id}
+    class="modal-backdrop"
+    class:visible
+    bind:this={topDiv}
+    onclick={handleBackdropClick}
+    transition:fade={{ duration: 150 }}
+  >
+    <div id="modal" class={size ?? ''} transition:scale={{ duration: 200, start: 0.95 }} onclick={(e) => e.stopPropagation()} 
+      >
+      <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
+        <circle cx="6" cy="6" r="6" />
+        <line x1="3" y1="3" x2="9" y2="9" />
+        <line x1="9" y1="3" x2="3" y2="9" />
+      </svg>
+      <div id="modal-content">
+        {@render children?.()}
+      </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style>
-  #topModal {
+  .modal-backdrop {
     /* visibility: hidden; */
     display: none;
     z-index: 9998;
@@ -193,7 +194,7 @@
     justify-content: center;
   }
 
-  #topModal.visible {
+  .modal-backdrop.visible {
     /* visibility: visible !important; */
     display: flex;
   }

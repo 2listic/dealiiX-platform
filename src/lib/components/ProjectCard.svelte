@@ -4,6 +4,7 @@
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
+  import Modal, { getModal } from './layout/Modal.svelte'
 
   interface Project {
     id: number
@@ -33,14 +34,16 @@
 
   let { project, onDelete, onLoad }: Props = $props()
 
-  const handleDelete = async () => {
-    // TODO change this with a modal
-    // if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
-    //   return
-    // }
+  const deleteModalId = `delete-project-${project.id}`
 
+  const handleDelete = async () => {
+    getModal(deleteModalId)?.open()
+  }
+
+  const confirmDelete = async () => {
     try {
       await deleteProject(project.id)
+      getModal(deleteModalId).close()
       toastState.add({
         message: `Project "${project.name}" deleted successfully`,
         type: 'success',
@@ -57,7 +60,12 @@
         message: error.message || 'Failed to delete project',
         type: 'error',
       })
+      getModal(deleteModalId).close()
     }
+  }
+
+  const cancelDelete = () => {
+    getModal(deleteModalId).close()
   }
 
   const handleLoad = async () => {
@@ -125,6 +133,16 @@
     <Button variant="delete" size="small" onclick={handleDelete}>Delete</Button>
   </div>
 </div>
+<!-- Delete Confirmation Modal -->
+<Modal id={deleteModalId} closeOnBackdrop={true} size="sm">
+  <div class="delete-confirmation">
+    <p>Are you sure you want to delete project "{project.name}"?</p>
+    <div class="confirmation-actions">
+      <Button size="small" onclick={cancelDelete}>Cancel</Button>
+      <Button variant="delete" size="small" onclick={confirmDelete}>Delete</Button>
+    </div>
+  </div>
+</Modal>
 
 <style>
   .project-card {
@@ -181,7 +199,6 @@
   .shared-users {
     margin-top: 1rem;
     padding-top: 0.75rem;
-    opacity: 0.5;
   }
 
   .shared-users strong {
@@ -198,7 +215,6 @@
 
   .shared-users li {
     font-size: 0.85rem;
-    color: var(--ternary-color);
     margin-bottom: 0.25rem;
   }
 
@@ -208,5 +224,21 @@
     justify-content: flex-end;
     padding-top: 0.75rem;
     border-top: 1px solid var(--ternary-color);
+  }
+
+  .delete-confirmation {
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .delete-confirmation p {
+    margin: 0.5rem 0;
+  }
+
+  .confirmation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
   }
 </style>
