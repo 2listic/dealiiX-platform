@@ -12,7 +12,6 @@
   let name = $state('')
   let description = $state('')
   let formElement
-  let isSaving = $state(false)
 
   const validateAndSubmit = async () => {
     if (!formElement.checkValidity()) {
@@ -20,7 +19,6 @@
       return
     }
 
-    isSaving = true
     try {
       const parsedGraph = parseGraph(getNodes(), getEdges())
       const savedProject = await saveProject({
@@ -32,6 +30,8 @@
       currentProjectState.set(savedProject)
 
       toastState.add({ message: 'Project saved successfully', type: 'success' })
+      name = ''
+      description = ''
       getModal(modalId)?.close()
     } catch (error) {
       console.error('Failed to save project:', error)
@@ -39,8 +39,6 @@
         message: error.message || 'Failed to save project',
         type: 'error',
       })
-    } finally {
-      isSaving = false
     }
   }
 
@@ -83,9 +81,8 @@
         variant="action"
         type="button"
         onclick={validateAndSubmit}
-        disabled={isSaving}
       >
-        {isSaving ? 'Saving...' : 'Save'}
+        Save
       </Button>
     </div>
   </form>

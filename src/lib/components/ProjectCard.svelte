@@ -34,9 +34,10 @@
   let { project, onDelete, onLoad }: Props = $props()
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
-      return
-    }
+    // TODO change this with a modal
+    // if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
+    //   return
+    // }
 
     try {
       await deleteProject(project.id)
@@ -44,6 +45,9 @@
         message: `Project "${project.name}" deleted successfully`,
         type: 'success',
       })
+      if (currentProjectState.id === project.id) {
+        currentProjectState.clear()
+      }
       if (onDelete) {
         onDelete(project.id)
       }
