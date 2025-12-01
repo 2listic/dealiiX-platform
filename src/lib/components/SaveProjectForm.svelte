@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { saveProject } from '../requests/projects'
   import { getEdges, getNodes } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
@@ -7,7 +7,10 @@
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 
-  let { modalId } = $props()
+  let { modalId, onCreate }: { 
+    modalId: string
+    onCreate?: () => void 
+  } = $props()
 
   let name = $state('')
   let description = $state('')
@@ -33,6 +36,10 @@
       name = ''
       description = ''
       getModal(modalId)?.close()
+
+      if (onCreate) {
+        onCreate()
+      }
     } catch (error) {
       console.error('Failed to save project:', error)
       toastState.add({

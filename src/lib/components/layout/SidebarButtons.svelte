@@ -185,7 +185,7 @@
       style="display: none"
       aria-label="Save project"
     ></button>
-    <span class="button-text">Save Project</span>
+    <span class="button-text">Save</span>
   </div>
   <Modal id={saveProjectModalId} size="sm">
     <SaveProjectForm modalId={saveProjectModalId} />
@@ -216,7 +216,7 @@
       style="display: none"
       aria-label="Load projects"
     ></button>
-    <span class="button-text">Load Projects</span>
+    <span class="button-text">Projects</span>
   </div>
   <Modal id={projectsModalId}>
     <ProjectsList modalId={projectsModalId} />

@@ -2,10 +2,13 @@
   import { getProjects } from '../requests/projects'
   import ProjectCard from './ProjectCard.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
-  import { getModal } from './layout/Modal.svelte'
+  import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
+  import SaveProjectForm from './SaveProjectForm.svelte'
 
   let { modalId }: { modalId: string } = $props()
+
+  const newProjectModalId = 'new-project-modal'
 
   let projects = $state([])
   let isLoading = $state(false)
@@ -47,15 +50,23 @@
     getModal(modalId)?.close()
   }
 
+  function handleNewProject() {
+    getModal(newProjectModalId).open()
+  }
+
   function handleProjectDeleted(projectId: number) {
     projects = projects.filter((p) => p.id !== projectId)
+  }
+
+  function handleProjectCreated() {
+    loadProjects()
   }
 </script>
 
 <div class="projects-container">
   <div class="header">
     <h2>Projects</h2>
-    <Button onclick={loadProjects} variant="action">Refresh</Button>
+    <Button onclick={handleNewProject} variant="action">New Project</Button>
   </div>
 
   {#if isLoading}
@@ -75,9 +86,17 @@
   {/if}
 
   <div class="button-container">
+    <Button onclick={loadProjects} variant="action">Refresh</Button>
     <Button onclick={closeModal}>Close</Button>
   </div>
 </div>
+
+<Modal id={newProjectModalId} size="sm">
+  <SaveProjectForm 
+    modalId={newProjectModalId} 
+    onCreate={handleProjectCreated} 
+  />
+</Modal>
 
 <style>
   .projects-container {
@@ -132,6 +151,8 @@
   }
 
   .button-container {
+    display: flex;
+    justify-content: space-between;
     margin-top: 1rem;
     padding-top: 1rem;
   }

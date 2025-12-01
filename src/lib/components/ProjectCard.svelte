@@ -148,6 +148,8 @@
 
 <style>
   .project-card {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     padding: 1rem;
@@ -221,6 +223,7 @@
   }
 
   .card-actions {
+    margin-top: auto;
     display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
