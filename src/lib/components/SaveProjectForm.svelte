@@ -7,9 +7,12 @@
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 
-  let { modalId, onCreate }: { 
+  let {
+    modalId,
+    onCreate,
+  }: {
     modalId: string
-    onCreate?: () => void 
+    onCreate?: () => void
   } = $props()
 
   let name = $state('')

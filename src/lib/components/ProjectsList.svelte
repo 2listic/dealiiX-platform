@@ -92,9 +92,9 @@
 </div>
 
 <Modal id={newProjectModalId} size="sm">
-  <SaveProjectForm 
-    modalId={newProjectModalId} 
-    onCreate={handleProjectCreated} 
+  <SaveProjectForm
+    modalId={newProjectModalId}
+    onCreate={handleProjectCreated}
   />
 </Modal>
 
