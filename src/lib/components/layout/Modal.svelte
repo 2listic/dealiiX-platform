@@ -158,15 +158,19 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 {#if visible}
   <div
-    id={id}
+    {id}
     class="modal-backdrop"
     class:visible
     bind:this={topDiv}
     onclick={handleBackdropClick}
     transition:fade={{ duration: 150 }}
   >
-    <div id="modal" class={size ?? ''} transition:scale={{ duration: 200, start: 0.95 }} onclick={(e) => e.stopPropagation()} 
-      >
+    <div
+      id="modal"
+      class={size ?? ''}
+      transition:scale={{ duration: 200, start: 0.95 }}
+      onclick={(e) => e.stopPropagation()}
+    >
       <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
         <circle cx="6" cy="6" r="6" />
         <line x1="3" y1="3" x2="9" y2="9" />

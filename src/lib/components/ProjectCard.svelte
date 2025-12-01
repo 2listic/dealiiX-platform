@@ -139,7 +139,9 @@
     <p>Are you sure you want to delete project "{project.name}"?</p>
     <div class="confirmation-actions">
       <Button size="small" onclick={cancelDelete}>Cancel</Button>
-      <Button variant="delete" size="small" onclick={confirmDelete}>Delete</Button>
+      <Button variant="delete" size="small" onclick={confirmDelete}
+        >Delete</Button
+      >
     </div>
   </div>
 </Modal>

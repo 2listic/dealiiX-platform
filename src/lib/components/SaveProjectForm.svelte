@@ -77,11 +77,7 @@
       <Button variant="default" type="button" onclick={handleCancel}>
         Cancel
       </Button>
-      <Button
-        variant="action"
-        type="button"
-        onclick={validateAndSubmit}
-      >
+      <Button variant="action" type="button" onclick={validateAndSubmit}>
         Save
       </Button>
     </div>
