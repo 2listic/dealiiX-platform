@@ -22,8 +22,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
 - Initial nodes and edges with string concatenation
 
-### Canvas-UI
+### UI/UX
 
+- [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Modals have now thre different sizes to choose. Other fixes and improvements on the modal window component.
+- [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Added buttons and modal windows for CRUD functionality to remote server on graph Projects. 
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) Added new button component. Modal component now exposes its own visibility state. Simplification and documentation made for the Modal component.
 - [#80](https://github.com/2listic/dealiiX-platform/pull/80) Added panel with list of submitted jobs with current status and time.
 - [#76](https://github.com/2listic/dealiiX-platform/pull/76) Input text changed to input file to store the path to private SSH key.
@@ -48,7 +50,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Remote-Server
 
--
+- [#101](https://github.com/2listic/dealiiX-platform/pull/101) Added logic to make HTTP requests to the new Remote Server, specifically authorization functionality and CRUD operations to the Projects endpoints.
 
 ### Protocol
 
