@@ -4,3 +4,6 @@
 [submodule "coral-visualizer"]
 	path = coral-visualizer
 	url = git@github.com:2listic/coral-visualizer.git
+[submodule "coral-remote-server"]
+	path = coral-remote-server
+	url = git@github.com:2listic/coral-remote-server.git

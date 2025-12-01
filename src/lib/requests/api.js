@@ -1,5 +1,15 @@
 import { auth } from '../stores/auth.svelte'
 
+// Custom error class to carry API error details
+export class ApiError extends Error {
+  constructor(message, status, data = null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
 export async function apiRequest(
   url,
   method = 'GET',
@@ -24,11 +34,18 @@ export async function apiRequest(
     body: body ? JSON.stringify(body) : null,
   })
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
+  let data
+  try {
+    data = await response.json()
+  } catch {
+    data = null
   }
 
-  const data = await response.json()
+  if (!response.ok) {
+    // Extract error message from backend response or use fallback
+    const errorMessage = data?.error || `HTTP error! status: ${response.status}`
+    throw new ApiError(errorMessage, response.status, data)
+  }
 
   return data
 }

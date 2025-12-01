@@ -7,7 +7,6 @@ import {
   connectToSSHWithKey,
   connectToSSHWithPassword,
 } from './utils/sshConnections.js'
-import { parseGraph } from './utils/utils.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -61,9 +60,8 @@ ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   return await connectToSSHWithKey(command, pathToSsh)
 })
 
-ipcMain.handle('export-graph-ssh', async (event, { nodes, edges }) => {
+ipcMain.handle('export-graph-ssh', async (event, { graph }) => {
   const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
-  const graph = parseGraph(nodes, edges)
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)
   const remotePath = '/shared-data/graph.json'

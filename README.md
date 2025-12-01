@@ -70,7 +70,7 @@ Adjust your path to your public SSH key in the `docker-compose.yml` file (it has
 `docker compose up -d`
 
 In the main app window click on the settings button and set the default url for the Visualizer  
-`http://localhost:8080/`
+`http://localhost:8008/`
 
 ### Build Coral in the running container
 

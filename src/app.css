@@ -37,3 +37,11 @@ body {
   font-family: sans-serif;
   font-size: 1rem;
 }
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}

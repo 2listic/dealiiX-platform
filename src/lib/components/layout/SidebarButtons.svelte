@@ -2,18 +2,16 @@
   import {
     getEdges,
     getNodes,
-    edgesFromProtocolToFlow,
-    nodesFromProtocolToFlow,
-    setEdges,
     setImportedNodes,
-    setNodes,
-    updateLastNodeId,
+    loadGraph,
   } from '../../stores/nodes.svelte'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
+  import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
   import Settings from '../Settings.svelte'
+  import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
   import ImportIcon from '../icons/ImportIcon.svelte'
@@ -24,11 +22,15 @@
     settingsState,
     URL_VISUALIZER,
   } from '../../stores/settingsStore.svelte'
-  // import { saveItem, getItem } from '../../requests/items'
+  import { currentProjectState } from '../../stores/currentProjectStore.svelte'
+  import { parseGraph } from '../../utils/graphParser'
+  import { updateProject } from '../../requests/projects'
 
   const loginModalId = 'login-modal'
   const logoutModalId = 'logout-modal'
   const settingsModalId = 'settings-modal'
+  const projectsModalId = 'projects-modal'
+  const saveProjectModalId = 'save-project-modal'
   const token = $derived(auth.token)
   const loginText = $derived.by(() => {
     return token ? 'Logout' : 'Login'
@@ -59,34 +61,15 @@
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
     }
-    // reset nodes/edges before reading file asyncronously otherwise UI dose not update correctly
-    setNodes([])
-    setEdges([])
     const importedGraphAsText = await readFileAsText(importGraphFiles[0])
     const importedGraph = JSON.parse(importedGraphAsText)
 
-    const importedNodes = importedGraph?.workflow?.nodes
-    if (importedNodes == null) {
-      toastState.add({
-        message: 'No nodes found in imported graph',
-        type: 'error',
-      })
-      return
-    }
-    const importedEdges = importedGraph?.workflow?.edges
-    if (importedEdges == null) {
-      toastState.add({
-        message: 'No edges found in imported graph',
-        type: 'error',
-      })
+    const result = loadGraph(importedGraph)
+    if (!result.success) {
+      toastState.add({ message: result.error, type: 'error' })
       return
     }
 
-    const parsedNodes = nodesFromProtocolToFlow(importedNodes)
-    const parsedEdges = edgesFromProtocolToFlow(importedEdges)
-    setNodes(parsedNodes)
-    setEdges(parsedEdges)
-    updateLastNodeId()
     console.log('imported graph nodes', getNodes())
     console.log('imported graph edges', getEdges())
     toastState.add({ message: 'New graph was loaded' })
@@ -116,9 +99,39 @@
   //   console.log('auth.token', auth.token)
   // })
 
-  function handleOpenVisualizer() {
+  const handleOpenVisualizer = () => {
     const url = settingsState.getKey(URL_VISUALIZER)
     openNewWindow(url)
+  }
+
+  const handleLoadProjects = () => {
+    getModal(projectsModalId).open()
+  }
+
+  const handleSaveProject = async () => {
+    if (currentProjectState.id) {
+      // Update existing project
+      try {
+        const parsedGraph = parseGraph(getNodes(), getEdges())
+        const updatedProject = await updateProject(currentProjectState.id, {
+          graph: parsedGraph,
+        })
+        currentProjectState.set(updatedProject)
+        toastState.add({
+          message: 'Project updated successfully',
+          type: 'success',
+        })
+      } catch (error) {
+        console.error('Failed to update project:', error)
+        toastState.add({
+          message: error.message || 'Failed to update project',
+          type: 'error',
+        })
+      }
+      return
+    }
+    // No existing project - open save modal for new project
+    getModal(saveProjectModalId)?.open()
   }
 </script>
 
@@ -146,11 +159,12 @@
       <p>Logout was successful</p>
     </div>
   </Modal>
-  <!-- <div class="button-container">
+
+  <div class="button-container">
     <label
-      for="save-graph-button"
+      for="save-project-button"
       class="element-label"
-      title="Save graph to the cloud"
+      title="Save project to Remote"
     >
       <svg
         fill="var(--ternary-color)"
@@ -166,21 +180,25 @@
       </svg>
     </label>
     <button
-      id="save-graph-button"
-      onclick={saveItem}
+      id="save-project-button"
+      onclick={handleSaveProject}
       style="display: none"
-      aria-label="Save graph"
+      aria-label="Save project"
     ></button>
-    <span class="button-text">Save Graph</span>
+    <span class="button-text">Save</span>
   </div>
+  <Modal id={saveProjectModalId} size="sm">
+    <SaveProjectForm modalId={saveProjectModalId} />
+  </Modal>
+
   <div class="button-container">
     <label
-      for="update-graph-button"
+      for="load-projects-button"
       class="element-label"
-      title="Download graph from the cloud"
+      title="Load a project from Remote"
     >
       <svg
-        fill="#000000"
+        fill="var(--ternary-color)"
         width="30px"
         height="30px"
         viewBox="0 0 32 32"
@@ -193,13 +211,17 @@
       </svg>
     </label>
     <button
-      id="update-graph-button"
-      onclick={getItem}
+      id="load-projects-button"
+      onclick={handleLoadProjects}
       style="display: none"
-      aria-label="Download graph"
+      aria-label="Load projects"
     ></button>
-    <span class="button-text">Download Graph</span>
-  </div> -->
+    <span class="button-text">Projects</span>
+  </div>
+  <Modal id={projectsModalId}>
+    <ProjectsList modalId={projectsModalId} />
+  </Modal>
+
   <div class="button-container">
     <label
       for="export-graph-button"
@@ -280,7 +302,7 @@
     ></button>
     <span class="button-text"> Settings </span>
   </div>
-  <Modal id={settingsModalId}>
+  <Modal id={settingsModalId} size="sm">
     <Settings modalId={settingsModalId} />
   </Modal>
 </aside>
