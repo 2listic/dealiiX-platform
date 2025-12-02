@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { deleteProject, getProject } from '../requests/projects'
+  import {
+    deleteProject,
+    getProject,
+    searchUsers,
+    shareProject,
+  } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
@@ -25,16 +30,29 @@
     }>
   }
 
+  interface User {
+    id: number
+    username: string
+    email: string
+  }
+
   interface Props {
     project: Project
     // eslint-disable-next-line no-unused-vars
     onDelete: (projectId: number) => void
     onLoad: () => void
+    onShare: () => void
   }
 
-  let { project, onDelete, onLoad }: Props = $props()
+  let { project, onDelete, onLoad, onShare }: Props = $props()
+
+  let availableUsers = $state<User[]>([])
+  let selectedUserId = $state<number | null>(null)
+  let selectedPermission = $state<string>('read')
+  let loadingUsers = $state(false)
 
   const deleteModalId = `delete-project-${project.id}`
+  const shareModalId = `share-project-${project.id}`
 
   const handleDelete = async () => {
     getModal(deleteModalId)?.open()
@@ -94,6 +112,75 @@
       })
     }
   }
+
+  const handleShareClick = async () => {
+    getModal(shareModalId)?.open()
+    await fetchUsers()
+  }
+
+  const fetchUsers = async () => {
+    loadingUsers = true
+    try {
+      const response = await searchUsers()
+      availableUsers = response.users || []
+
+      // Filter out users who already have access
+      const sharedUserIds = new Set(
+        project.shared_users?.map((u) => u.user_id) || []
+      )
+      availableUsers = availableUsers.filter(
+        (user) => !sharedUserIds.has(user.id)
+      )
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toastState.add({
+        message: error.message || 'Failed to fetch users',
+        type: 'error',
+      })
+    } finally {
+      loadingUsers = false
+    }
+  }
+
+  const handleShareProject = async () => {
+    if (!selectedUserId) {
+      toastState.add({
+        message: 'Please select a user to share with',
+        type: 'error',
+      })
+      return
+    }
+
+    try {
+      await shareProject(project.id, selectedUserId, selectedPermission)
+
+      getModal(shareModalId)?.close()
+
+      toastState.add({
+        message: 'Project shared successfully',
+        type: 'success',
+      })
+
+      selectedUserId = null
+      selectedPermission = 'read'
+
+      if (onShare) {
+        onShare()
+      }
+    } catch (error) {
+      console.error('Error sharing project:', error)
+      toastState.add({
+        message: error.message || 'Failed to share project',
+        type: 'error',
+      })
+    }
+  }
+
+  const cancelShare = () => {
+    getModal(shareModalId)?.close()
+    selectedUserId = null
+    selectedPermission = 'read'
+  }
 </script>
 
 <div class="project-card">
@@ -129,10 +216,16 @@
   </div>
 
   <div class="card-actions">
-    <Button variant="action" size="small" onclick={handleLoad}>Load</Button>
     <Button variant="delete" size="small" onclick={handleDelete}>Delete</Button>
+    <div style="display: flex; gap: 0.75rem;">
+      <Button variant="default" size="small" onclick={handleShareClick}
+        >Share</Button
+      >
+      <Button variant="action" size="small" onclick={handleLoad}>Load</Button>
+    </div>
   </div>
 </div>
+
 <!-- Delete Confirmation Modal -->
 <Modal id={deleteModalId} closeOnBackdrop={true} size="sm">
   <div class="delete-confirmation">
@@ -143,6 +236,57 @@
         >Delete</Button
       >
     </div>
+  </div>
+</Modal>
+
+<!-- Share Project Modal -->
+<Modal id={shareModalId} closeOnBackdrop={true} size="sm">
+  <div class="share-modal">
+    <h3>Share Project: {project.name}</h3>
+
+    {#if loadingUsers}
+      <p>Loading users...</p>
+    {:else if availableUsers.length === 0}
+      <p class="no-users">No users available to share with</p>
+    {:else}
+      <div class="form-group">
+        <label for="user-select">Select User:</label>
+        <select
+          id="user-select"
+          class="modal-select"
+          bind:value={selectedUserId}
+        >
+          <option value={null}>-- Select a user --</option>
+          {#each availableUsers as user (user.id)}
+            <option value={user.id}>{user.username} ({user.email})</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="permission-select">Permission Level:</label>
+        <select
+          id="permission-select"
+          class="modal-select"
+          bind:value={selectedPermission}
+        >
+          <option value="read">Read</option>
+          <option value="write">Write</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <Button size="small" onclick={cancelShare}>Cancel</Button>
+        <Button
+          variant="action"
+          size="small"
+          onclick={handleShareProject}
+          disabled={!selectedUserId}
+        >
+          Share Project
+        </Button>
+      </div>
+    {/if}
   </div>
 </Modal>
 
@@ -226,11 +370,13 @@
     margin-top: auto;
     display: flex;
     gap: 0.75rem;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding-top: 0.75rem;
     border-top: 1px solid var(--ternary-color);
   }
 
+  /* Modal Styles */
+  /* Delete Confirmation Modal */
   .delete-confirmation {
     text-align: center;
     padding: 1rem;
@@ -241,6 +387,49 @@
   }
 
   .confirmation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Share Modal */
+  .share-modal h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .no-users {
+    margin: 1rem 0;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .modal-select {
+    padding: 0.5rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .modal-select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+  }
+
+  .confirmation-actions,
+  .modal-actions {
     display: flex;
     justify-content: center;
     gap: 1rem;

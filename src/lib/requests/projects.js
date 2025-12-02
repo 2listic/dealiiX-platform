@@ -72,4 +72,42 @@ const deleteProject = async (projectId) => {
   return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'DELETE')
 }
 
-export { saveProject, updateProject, getProjects, getProject, deleteProject }
+/**
+ * Search for users to share projects with
+ * @param {string} [query] - Optional search query. If not provided, returns all users
+ * @returns {Promise<Object>} Object with 'query' and 'users' array of user objects with id, username, email
+ * @throws {Error} If the request fails
+ */
+const searchUsers = async (query = '') => {
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  const url = query
+    ? `${baseUrl}/api/users/search?q=${encodeURIComponent(query)}`
+    : `${baseUrl}/api/users/search`
+  return apiRequest(url, 'GET')
+}
+
+/**
+ * Share a project with another user
+ * @param {number} projectId - The ID of the project to share
+ * @param {number} userId - The ID of the user to share with
+ * @param {string} permissionLevel - Permission level: "read" or "write"
+ * @returns {Promise<Object>} Response with success message and user details
+ * @throws {Error} If the request fails
+ */
+const shareProject = async (projectId, userId, permissionLevel) => {
+  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+  return apiRequest(`${baseUrl}/api/projects/${projectId}/share`, 'POST', {
+    user_id: userId,
+    permission_level: permissionLevel,
+  })
+}
+
+export {
+  saveProject,
+  updateProject,
+  getProjects,
+  getProject,
+  deleteProject,
+  searchUsers,
+  shareProject,
+}
