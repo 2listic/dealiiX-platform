@@ -61,6 +61,10 @@
   function handleProjectCreated() {
     loadProjects()
   }
+
+  function handleProjectShared() {
+    loadProjects()
+  }
 </script>
 
 <div class="projects-container">
@@ -80,6 +84,7 @@
           {project}
           onDelete={handleProjectDeleted}
           onLoad={closeModal}
+          onShare={handleProjectShared}
         />
       {/each}
     </div>

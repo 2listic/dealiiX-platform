@@ -1,15 +1,12 @@
 <script lang="ts">
-  import {
-    deleteProject,
-    getProject,
-    searchUsers,
-    shareProject,
-  } from '../requests/projects'
+  import { getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
-  import Modal, { getModal } from './layout/Modal.svelte'
+  import { getModal } from './layout/Modal.svelte'
+  import DeleteProjectModal from './DeleteProjectModal.svelte'
+  import ShareProjectModal from './ShareProjectModal.svelte'
 
   interface Project {
     id: number
@@ -30,12 +27,6 @@
     }>
   }
 
-  interface User {
-    id: number
-    username: string
-    email: string
-  }
-
   interface Props {
     project: Project
     // eslint-disable-next-line no-unused-vars
@@ -46,10 +37,7 @@
 
   let { project, onDelete, onLoad, onShare }: Props = $props()
 
-  let availableUsers = $state<User[]>([])
-  let selectedUserId = $state<number | null>(null)
-  let selectedPermission = $state<string>('read')
-  let loadingUsers = $state(false)
+  let shareModalRef: ShareProjectModal
 
   const deleteModalId = `delete-project-${project.id}`
   const shareModalId = `share-project-${project.id}`
@@ -58,32 +46,8 @@
     getModal(deleteModalId)?.open()
   }
 
-  const confirmDelete = async () => {
-    try {
-      await deleteProject(project.id)
-      getModal(deleteModalId).close()
-      toastState.add({
-        message: `Project "${project.name}" deleted successfully`,
-        type: 'success',
-      })
-      if (currentProjectState.id === project.id) {
-        currentProjectState.clear()
-      }
-      if (onDelete) {
-        onDelete(project.id)
-      }
-    } catch (error) {
-      console.error('Error deleting project:', error)
-      toastState.add({
-        message: error.message || 'Failed to delete project',
-        type: 'error',
-      })
-      getModal(deleteModalId).close()
-    }
-  }
-
-  const cancelDelete = () => {
-    getModal(deleteModalId).close()
+  const handleDeleteConfirm = () => {
+    onDelete(project.id)
   }
 
   const handleLoad = async () => {
@@ -114,72 +78,13 @@
   }
 
   const handleShareClick = async () => {
-    getModal(shareModalId)?.open()
-    await fetchUsers()
+    shareModalRef?.open()
   }
 
-  const fetchUsers = async () => {
-    loadingUsers = true
-    try {
-      const response = await searchUsers()
-      availableUsers = response.users || []
+  const getSharedUsers = () => project.shared_users?.map((u) => u.user_id) || []
 
-      // Filter out users who already have access
-      const sharedUserIds = new Set(
-        project.shared_users?.map((u) => u.user_id) || []
-      )
-      availableUsers = availableUsers.filter(
-        (user) => !sharedUserIds.has(user.id)
-      )
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      toastState.add({
-        message: error.message || 'Failed to fetch users',
-        type: 'error',
-      })
-    } finally {
-      loadingUsers = false
-    }
-  }
-
-  const handleShareProject = async () => {
-    if (!selectedUserId) {
-      toastState.add({
-        message: 'Please select a user to share with',
-        type: 'error',
-      })
-      return
-    }
-
-    try {
-      await shareProject(project.id, selectedUserId, selectedPermission)
-
-      getModal(shareModalId)?.close()
-
-      toastState.add({
-        message: 'Project shared successfully',
-        type: 'success',
-      })
-
-      selectedUserId = null
-      selectedPermission = 'read'
-
-      if (onShare) {
-        onShare()
-      }
-    } catch (error) {
-      console.error('Error sharing project:', error)
-      toastState.add({
-        message: error.message || 'Failed to share project',
-        type: 'error',
-      })
-    }
-  }
-
-  const cancelShare = () => {
-    getModal(shareModalId)?.close()
-    selectedUserId = null
-    selectedPermission = 'read'
+  const handleShareSuccess = () => {
+    onShare()
   }
 </script>
 
@@ -226,69 +131,21 @@
   </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<Modal id={deleteModalId} closeOnBackdrop={true} size="sm">
-  <div class="delete-confirmation">
-    <p>Are you sure you want to delete project "{project.name}"?</p>
-    <div class="confirmation-actions">
-      <Button size="small" onclick={cancelDelete}>Cancel</Button>
-      <Button variant="delete" size="small" onclick={confirmDelete}
-        >Delete</Button
-      >
-    </div>
-  </div>
-</Modal>
+<DeleteProjectModal
+  projectId={project.id}
+  projectName={project.name}
+  modalId={deleteModalId}
+  onConfirm={handleDeleteConfirm}
+/>
 
-<!-- Share Project Modal -->
-<Modal id={shareModalId} closeOnBackdrop={true} size="sm">
-  <div class="share-modal">
-    <h3>Share Project: {project.name}</h3>
-
-    {#if loadingUsers}
-      <p>Loading users...</p>
-    {:else if availableUsers.length === 0}
-      <p class="no-users">No users available to share with</p>
-    {:else}
-      <div class="form-group">
-        <label for="user-select">Select User:</label>
-        <select
-          id="user-select"
-          class="modal-select"
-          bind:value={selectedUserId}
-        >
-          <option value={null}>-- Select a user --</option>
-          {#each availableUsers as user (user.id)}
-            <option value={user.id}>{user.username} ({user.email})</option>
-          {/each}
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="permission-select">Permission Level:</label>
-        <select
-          id="permission-select"
-          class="modal-select"
-          bind:value={selectedPermission}
-        >
-          <option value="read">Read</option>
-          <option value="write">Write</option>
-        </select>
-      </div>
-
-      <div class="modal-actions">
-        <Button size="small" onclick={cancelShare}>Cancel</Button>
-        <Button
-          variant="action"
-          size="small"
-          onclick={handleShareProject}
-          disabled={!selectedUserId}
-        >
-          Share Project
-        </Button>
-      </div>
-    {/if}
-  </div>
-</Modal>
+<ShareProjectModal
+  bind:this={shareModalRef}
+  projectId={project.id}
+  projectName={project.name}
+  modalId={shareModalId}
+  getAlreadySharedUserIds={getSharedUsers}
+  onShare={handleShareSuccess}
+/>
 
 <style>
   .project-card {
@@ -373,66 +230,5 @@
     justify-content: space-between;
     padding-top: 0.75rem;
     border-top: 1px solid var(--ternary-color);
-  }
-
-  /* Modal Styles */
-  /* Delete Confirmation Modal */
-  .delete-confirmation {
-    text-align: center;
-    padding: 1rem;
-  }
-
-  .delete-confirmation p {
-    margin: 0.5rem 0;
-  }
-
-  .confirmation-actions {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-
-  /* Share Modal */
-  .share-modal h3 {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .no-users {
-    margin: 1rem 0;
-  }
-
-  .form-group {
-    margin-bottom: 1.5rem;
-    text-align: left;
-  }
-
-  .form-group label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-  }
-
-  .modal-select {
-    padding: 0.5rem;
-    border: 1px solid var(--ternary-color);
-    border-radius: 4px;
-    font-size: 0.9rem;
-    cursor: pointer;
-  }
-
-  .modal-select:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 1px;
-  }
-
-  .confirmation-actions,
-  .modal-actions {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
   }
 </style>
