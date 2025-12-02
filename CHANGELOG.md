@@ -24,6 +24,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#103](https:/github.com/2listic/dealiiX-platform/pull/103) Added button and modal to share a project with other users.
 - [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Modals have now thre different sizes to choose. Other fixes and improvements on the modal window component.
 - [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Added buttons and modal windows for CRUD functionality to remote server on graph Projects.
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) Added new button component. Modal component now exposes its own visibility state. Simplification and documentation made for the Modal component.
@@ -50,6 +51,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Remote-Server
 
+- [#103](https://github.com/2listic/dealiiX-platform/pull/103) Added HTTP requests for sharing projects with other users giving read or write permissions.
 - [#101](https://github.com/2listic/dealiiX-platform/pull/101) Added logic to make HTTP requests to the new Remote Server, specifically authorization functionality and CRUD operations to the Projects endpoints.
 
 ### Protocol
