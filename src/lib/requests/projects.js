@@ -31,7 +31,7 @@ const saveProject = async (projectData) => {
  * @param {Object} projectData - Project data to update
  * @param {string} [projectData.name] - Updated project name (optional)
  * @param {string} [projectData.description] - Updated project description (optional)
- * @param {Object} projectData.graph - Updated JSON graph data
+ * @param {Object} [projectData.graph] - Updated JSON graph data
  * @returns {Promise<Object>} The updated project object
  * @throws {Error} If the update request fails
  */

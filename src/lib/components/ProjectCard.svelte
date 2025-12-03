@@ -4,9 +4,10 @@
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
-  import { getModal } from './layout/Modal.svelte'
+  import Modal, { getModal } from './layout/Modal.svelte'
   import DeleteProjectModal from './DeleteProjectModal.svelte'
   import ShareProjectModal from './ShareProjectModal.svelte'
+  import EditProjectForm from './EditProjectForm.svelte'
 
   interface Project {
     id: number
@@ -33,14 +34,16 @@
     onDelete: (projectId: number) => void
     onLoad: () => void
     onShare: () => void
+    onEdit: () => void
   }
 
-  let { project, onDelete, onLoad, onShare }: Props = $props()
+  let { project, onDelete, onLoad, onShare, onEdit }: Props = $props()
 
   let shareModalRef: ShareProjectModal
 
   const deleteModalId = `delete-project-${project.id}`
   const shareModalId = `share-project-${project.id}`
+  const updateProjectModal = `update-project-${project.id}`
 
   const handleDelete = async () => {
     getModal(deleteModalId)?.open()
@@ -77,15 +80,15 @@
     }
   }
 
-  const handleShareClick = async () => {
-    shareModalRef?.open()
-  }
+  const handleShareClick = async () => shareModalRef?.open()
 
   const getSharedUsers = () => project.shared_users?.map((u) => u.user_id) || []
 
-  const handleShareSuccess = () => {
-    onShare()
-  }
+  const handleShareSuccess = () => onShare()
+
+  const handleEdit = async () => getModal(updateProjectModal)?.open()
+
+  const handleEditSuccess = () => onEdit()
 </script>
 
 <div class="project-card">
@@ -126,6 +129,7 @@
       <Button variant="default" size="small" onclick={handleShareClick}
         >Share</Button
       >
+      <Button variant="default" size="small" onclick={handleEdit}>Edit</Button>
       <Button variant="action" size="small" onclick={handleLoad}>Load</Button>
     </div>
   </div>
@@ -146,6 +150,18 @@
   getAlreadySharedUserIds={getSharedUsers}
   onShare={handleShareSuccess}
 />
+
+<Modal id={updateProjectModal} size="sm">
+  <EditProjectForm
+    modalId={updateProjectModal}
+    project={{
+      id: project.id,
+      name: project.name,
+      description: project.description,
+    }}
+    onUpdate={handleEditSuccess}
+  />
+</Modal>
 
 <style>
   .project-card {
