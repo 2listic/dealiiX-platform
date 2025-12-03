@@ -14,19 +14,20 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Canvas-graph
 
 - [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
-- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drang and drop state simplified.
+- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
 - [#59](https://github.com/2listic/dealiiX-platform/pull/59) Add button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
 - [#52](https://github.com/2listic/dealiiX-platform/pull/52) Nodes are removable by clicking on a dedicated button
-- [#29](https://github.com/2listic/dealiiX-platform/pull/29) Added new nodes: std string, gridGenerator generate_from_name_and_arguments function, gridOut constructor, write_vtk method and bool. Nodes are rendered now more dinamically with a declarative approach based on the type of the node and the corrsponding information provided in the uploaded JSON file.
-- [#27](https://github.com/2listic/dealiiX-platform/pull/27) Added first new real Deal.II nodes: Unsigned, Triangulation<2,2> and Triangulation<2>::refine_global. Also included validation for new connections, validation for Unsigned internal values, drag&drop functionality and a bug fix on node id generation.
+- [#29](https://github.com/2listic/dealiiX-platform/pull/29) Added new nodes: std string, gridGenerator generate_from_name_and_arguments function, gridOut constructor, write_vtk method and bool. Nodes are rendered now more dynamically with a declarative approach based on the type of the node and the corresponding information provided in the uploaded JSON file.
+- [#27](https://github.com/2listic/dealiiX-platform/pull/27) Added first new real Deal.II nodes: Unsigned, Triangulation<2,2> and Triangulation<2>::refine_global. Also included validation for new connections, validation for Unsigned internal values, drag&drop functionality and includes a bug fix on node id generation.
 - [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
 - Initial nodes and edges with string concatenation
 
 ### UI/UX
 
-- [#103](https:/github.com/2listic/dealiiX-platform/pull/103) Added button and modal to share a project with other users.
-- [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Modals have now thre different sizes to choose. Other fixes and improvements on the modal window component.
-- [#101](https:/github.com/2listic/dealiiX-platform/pull/101) Added buttons and modal windows for CRUD functionality to remote server on graph Projects.
+- [#111](https://github.com/2listic/dealiiX-platform/pull/111) Added edit functionality for project name and description.
+- [#103](https://github.com/2listic/dealiiX-platform/pull/103) Added button and modal to share a project with other users.
+- [#101](https://github.com/2listic/dealiiX-platform/pull/101) Modals have now three different sizes to choose. Other fixes and improvements on the modal window component.
+- [#101](https://github.com/2listic/dealiiX-platform/pull/101) Added buttons and modal windows for CRUD functionality to remote server on graph Projects.
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) Added new button component. Modal component now exposes its own visibility state. Simplification and documentation made for the Modal component.
 - [#80](https://github.com/2listic/dealiiX-platform/pull/80) Added panel with list of submitted jobs with current status and time.
 - [#76](https://github.com/2listic/dealiiX-platform/pull/76) Input text changed to input file to store the path to private SSH key.
@@ -34,9 +35,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Added a new button Settings with a text input to store path to private SSH key.
 - [#65](https://github.com/2listic/dealiiX-platform/pull/65) Custom checkbox input for dark/light mode switch instead of dropdown menu.
 - [#58](https://github.com/2listic/dealiiX-platform/pull/58) Nodes' lateral bar made collapsible on mouse hover and on click on dedicated button.
-- [#57](https://github.com/2listic/dealiiX-platform/pull/57) Added a new login/logout button. Retrieved authenticaton token from remote server is stored for future requests.
+- [#57](https://github.com/2listic/dealiiX-platform/pull/57) Added a new login/logout button. Retrieved authentication token from remote server is stored for future requests.
 - [#51](https://github.com/2listic/dealiiX-platform/pull/51) Added lateral bars for action buttons (i.e. import, export JSON graph) and for node drag and drop. Added dark mode theme manually selectable from UI.
-- [#29](https://github.com/2listic/dealiiX-platform/pull/29) A default set of nodes are displayed in the top horizontal bar when the application starts. A new botton allows to upload a JSON file to update the set of nodes available.
+- [#29](https://github.com/2listic/dealiiX-platform/pull/29) A default set of nodes are displayed in the top horizontal bar when the application starts. A new button allows to upload a JSON file to update the set of nodes available.
   A bug fix is included to fix the behaviour of the incremental arrows in the unsigned node.
 - [#24](https://github.com/2listic/dealiiX-platform/pull/24) Added a toolbar with drag and drop functionality to add new nodes. Added functionality to generate unique and incremental ids for new nodes.
 - Buttons to run concatenated command via SSH on server
@@ -56,7 +57,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
-- [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for statefull nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
+- [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for stateful nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
 
 ### Project-Structure
 
@@ -76,7 +77,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
 - [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added polling to display if submitted Slurm job finishes with failed or completed status
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added container with Coral, Deal.II, Slurm and SSH server. Now a new job is queued with Slurm, when a new JSON graph is exported to the cluster
-- [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dinamically retrieved from localStorage
+- [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dynamically retrieved from localStorage
 
 ### Building
 
@@ -86,7 +87,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
-- [#95](https://github.com/2listic/dealiiX-platform/pull/95) Update Coral Visulizer submodule to show carotid vtk file + fix add Coral submodule
+- [#95](https://github.com/2listic/dealiiX-platform/pull/95) Update Coral Visualizer submodule to show carotid vtk file + fix add Coral submodule
 
 ### Docker
 
