@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { getProject } from '../requests/projects'
+  import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
   import { loadGraph } from '../stores/nodes.svelte'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import { getModal } from './layout/Modal.svelte'
-  import DeleteProjectModal from './DeleteProjectModal.svelte'
   import ShareProjectModal from './ShareProjectModal.svelte'
+  import ConfirmationModal from './layout/ConfirmationModal.svelte'
 
   interface Project {
     id: number
@@ -46,8 +46,26 @@
     getModal(deleteModalId)?.open()
   }
 
-  const handleDeleteConfirm = () => {
-    onDelete(project.id)
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteProject(project.id)
+      getModal(deleteModalId).close()
+      toastState.add({
+        message: `Project "${project.name}" deleted successfully`,
+        type: 'success',
+      })
+      if (currentProjectState.id === project.id) {
+        currentProjectState.clear()
+      }
+      onDelete(project.id)
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toastState.add({
+        message: error.message || 'Failed to delete project',
+        type: 'error',
+      })
+      getModal(deleteModalId).close()
+    }
   }
 
   const handleLoad = async () => {
@@ -131,10 +149,11 @@
   </div>
 </div>
 
-<DeleteProjectModal
-  projectId={project.id}
-  projectName={project.name}
+<ConfirmationModal
   modalId={deleteModalId}
+  message={`Are you sure you want to delete project "${project.name}"?`}
+  confirmText="Delete"
+  confirmVariant="delete"
   onConfirm={handleDeleteConfirm}
 />
 

@@ -25,9 +25,10 @@
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { parseGraph } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
+  import ConfirmationModal from './ConfirmationModal.svelte'
 
   const loginModalId = 'login-modal'
-  const logoutModalId = 'logout-modal'
+  const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
@@ -38,15 +39,17 @@
   let importGraphFiles: FileList | null = $state()
   let importNodesFiles: FileList | null = $state()
 
-  const handleLogin = () => {
+  const handleLoginLogout = () => {
     if (token) {
-      auth.clearToken()
-      getModal(logoutModalId).open()
-      return
+      getModal(logoutConfirmModalId).open()
     } else {
       getModal(loginModalId).open()
-      return
     }
+  }
+
+  const handleOncofirmLogout = () => {
+    auth.clearToken()
+    toastState.add({ message: 'Logged out', type: 'success' })
   }
 
   const handleExport = async () => {
@@ -142,7 +145,7 @@
     </label>
     <button
       id="login-button"
-      onclick={handleLogin}
+      onclick={handleLoginLogout}
       style="display: none"
       aria-label="Login"
     ></button>
@@ -150,15 +153,18 @@
       {loginText}
     </span>
   </div>
+
   <Modal id={loginModalId}>
     <LoginForm modalId={loginModalId} />
   </Modal>
-  <Modal id={logoutModalId}>
-    <div style="padding: 0 1vh;">
-      <h2>Logout</h2>
-      <p>Logout was successful</p>
-    </div>
-  </Modal>
+
+  <ConfirmationModal
+    modalId={logoutConfirmModalId}
+    message="Are you sure you want to logout?"
+    confirmText="Logout"
+    confirmVariant="action"
+    onConfirm={handleOncofirmLogout}
+  />
 
   <div class="button-container">
     <label
