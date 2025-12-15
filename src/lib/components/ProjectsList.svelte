@@ -58,13 +58,11 @@
     projects = projects.filter((p) => p.id !== projectId)
   }
 
-  function handleProjectCreated() {
-    loadProjects()
-  }
+  const handleProjectCreated = () => loadProjects()
 
-  function handleProjectShared() {
-    loadProjects()
-  }
+  const handleProjectShared = () => loadProjects()
+
+  const handleProjectUpdated = () => loadProjects()
 </script>
 
 <div class="projects-container">
@@ -85,6 +83,7 @@
           onDelete={handleProjectDeleted}
           onLoad={closeModal}
           onShare={handleProjectShared}
+          onEdit={handleProjectUpdated}
         />
       {/each}
     </div>
