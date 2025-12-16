@@ -42,14 +42,16 @@ jobs:
         run: |
           npx electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg
       
-      - name: Upload macOS artefacts with 1 day retention (always)
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-packages
-          path: |
-            out/make/**/*.zip
-            out/make/**/*.dmg
-          retention-days: 1
+      # Distributables are already uploaded as GitHub realeses on tags in the following step 
+      # Consider to delete this step if not needed for debugging
+      # - name: Upload macOS artifacts with 1 day retention (always)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: macos-packages
+      #     path: |
+      #       out/make/**/*.zip
+      #       out/make/**/*.dmg
+      #     retention-days: 1
 
       - name: Upload .dmg and .zip to GitHub Release (only on tag)
         uses: softprops/action-gh-release@v2
