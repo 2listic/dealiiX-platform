@@ -1,3 +1,3 @@
-Closes #
+It closes #
 
 - [ ] Update CHANGELOG
