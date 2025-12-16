@@ -24,6 +24,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#114](https://github.com/2listic/dealiiX-platform/pull/114) Added reusable confirmation modal to user logout and project deletion.
 - [#111](https://github.com/2listic/dealiiX-platform/pull/111) Added edit functionality for project name and description.
 - [#103](https://github.com/2listic/dealiiX-platform/pull/103) Added button and modal to share a project with other users.
 - [#101](https://github.com/2listic/dealiiX-platform/pull/101) Modals have now three different sizes to choose. Other fixes and improvements on the modal window component.
