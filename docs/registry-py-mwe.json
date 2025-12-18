@@ -2,54 +2,42 @@
   "0": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "int"
   },
   "1": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "float"
   },
   "2": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "str"
   },
   "3": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "bool"
   },
   "4": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "any"
   },
   "5": {
     "value": null,
     "inputs": [],
-    "outputs": [
-      -1
-    ],
+    "outputs": [-1],
     "node_type": "primitive",
     "type": "none"
   },
@@ -68,13 +56,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0,
-      1
-    ],
-    "outputs": [
-      2
-    ],
+    "inputs": [0, 1],
+    "outputs": [2],
     "node_type": "function",
     "method_name": "add"
   },
@@ -93,13 +76,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0,
-      1
-    ],
-    "outputs": [
-      2
-    ],
+    "inputs": [0, 1],
+    "outputs": [2],
     "node_type": "function",
     "method_name": "multiply"
   },
@@ -110,9 +88,7 @@
         "type": "any"
       }
     ],
-    "inputs": [
-      0
-    ],
+    "inputs": [0],
     "outputs": [],
     "node_type": "function",
     "method_name": "print_result"
@@ -124,12 +100,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0
-    ],
-    "outputs": [
-      -1
-    ],
+    "inputs": [0],
+    "outputs": [-1],
     "node_type": "constructor",
     "type": "Calculator"
   },
@@ -140,12 +112,8 @@
         "type": "str"
       }
     ],
-    "inputs": [
-      0
-    ],
-    "outputs": [
-      -1
-    ],
+    "inputs": [0],
+    "outputs": [-1],
     "node_type": "constructor",
     "type": "StringProcessor"
   },
@@ -164,13 +132,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0,
-      1
-    ],
-    "outputs": [
-      2
-    ],
+    "inputs": [0, 1],
+    "outputs": [2],
     "node_type": "method",
     "method_name": "Calculator.add_to_value",
     "type": "Calculator.add_to_value"
@@ -186,12 +149,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0
-    ],
-    "outputs": [
-      1
-    ],
+    "inputs": [0],
+    "outputs": [1],
     "node_type": "method",
     "method_name": "Calculator.get_value",
     "type": "Calculator.get_value"
@@ -211,13 +170,8 @@
         "type": "float"
       }
     ],
-    "inputs": [
-      0,
-      1
-    ],
-    "outputs": [
-      2
-    ],
+    "inputs": [0, 1],
+    "outputs": [2],
     "node_type": "method",
     "method_name": "Calculator.multiply_value",
     "type": "Calculator.multiply_value"
@@ -237,13 +191,8 @@
         "type": "str"
       }
     ],
-    "inputs": [
-      0,
-      1
-    ],
-    "outputs": [
-      2
-    ],
+    "inputs": [0, 1],
+    "outputs": [2],
     "node_type": "method",
     "method_name": "StringProcessor.concatenate",
     "type": "StringProcessor.concatenate"
@@ -267,14 +216,8 @@
         "type": "str"
       }
     ],
-    "inputs": [
-      0,
-      1,
-      2
-    ],
-    "outputs": [
-      3
-    ],
+    "inputs": [0, 1, 2],
+    "outputs": [3],
     "node_type": "method",
     "method_name": "StringProcessor.repeat",
     "type": "StringProcessor.repeat"

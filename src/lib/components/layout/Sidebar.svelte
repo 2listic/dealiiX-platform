@@ -23,14 +23,7 @@
   }
 
   const returnNodeName = (node: NodeData): string => {
-    let nodeName 
-    if ('method_name' in node) {
-      nodeName = 'class_name' in node ? `${node.class_name}.${node.method_name}` : node.method_name
-    } else if ('class_name' in node) {
-      nodeName = node.class_name
-    } else {
-      nodeName = node.type
-    }
+    let nodeName = 'method_name' in node ? node.method_name : node.type
     return nodeName.replaceAll('_', ' ')
   }
 
