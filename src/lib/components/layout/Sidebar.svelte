@@ -22,10 +22,18 @@
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const returnNodeType = (node) => {
-    const nodeType = 'method_name' in node ? node.method_name : node.type
-    return nodeType.replaceAll('_', ' ')
+  const returnNodeName = (node: NodeData): string => {
+    let nodeName 
+    if ('method_name' in node) {
+      nodeName = 'class_name' in node ? `${node.class_name}.${node.method_name}` : node.method_name
+    } else if ('class_name' in node) {
+      nodeName = node.class_name
+    } else {
+      nodeName = node.type
+    }
+    return nodeName.replaceAll('_', ' ')
   }
+
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
   }
@@ -50,7 +58,7 @@
             >
               {#if isMouseOver || sideBarState.isExpanded}
                 <span transition:fade|global={{ duration: 250 }}
-                  >{returnNodeType(node)}</span
+                  >{returnNodeName(node)}</span
                 >
               {/if}
             </div>

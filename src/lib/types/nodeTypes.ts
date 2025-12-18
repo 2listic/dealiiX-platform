@@ -38,6 +38,12 @@ export enum NodeType {
   VOID_FUNCTION = 'void_function',
 }
 
+export enum NodeTypePyBackend {
+  PRIMITIVE = 'primitive',
+  FUNCTION = 'function',
+  METHOD = "method",
+}
+
 export const nodeColors = {
   [NodeType.ELEMENTARY_CONSTRUCTOR]: 'yellowgreen',
   [NodeType.EMPTY_CONSTRUCTOR]: 'gray',
@@ -46,6 +52,9 @@ export const nodeColors = {
   [NodeType.VOID_METHOD]: 'skyblue',
   [NodeType.VOID_CONST_METHOD]: 'skyblue',
   [NodeType.VOID_FUNCTION]: 'skyblue',
+  [NodeTypePyBackend.PRIMITIVE]: 'yellowgreen',
+  [NodeTypePyBackend.FUNCTION]: 'skyblue',
+  [NodeTypePyBackend.METHOD]: 'skyblue',
 }
 
 export enum Outputs {
@@ -56,8 +65,10 @@ export enum Type {
   INT = 'int',
   UNSIGNED = 'unsigned',
   DOUBLE = 'double',
+  FLOAT = 'float',
   BOOLEAN = 'bool',
   STRING = 'std::string',
+  ANY = 'any',
 }
 
 export type NodeData = {

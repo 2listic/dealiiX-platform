@@ -52,6 +52,18 @@
     clearConnectionCache()
   })
 
+  const returnNodeName = (node: NodeData): string => {
+    let nodeName 
+    if ('method_name' in node) {
+      nodeName = 'class_name' in node ? `${node.class_name}.${node.method_name}` : node.method_name
+    } else if ('class_name' in node) {
+      nodeName = node.class_name
+    } else {
+      nodeName = node.type
+    }
+    return nodeName.replaceAll('_', ' ')
+  }
+
   const isValidNum = (value) => {
     const numValue = Number(value)
     switch (data.type) {
@@ -66,7 +78,7 @@
         return (
           !isNaN(numValue) && Number.isInteger(numValue) && value.trim() !== ''
         )
-      case Type.DOUBLE:
+      case Type.DOUBLE, Type.FLOAT:
         return !isNaN(numValue) && value.trim() !== ''
     }
   }
@@ -83,7 +95,7 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="label">
-      {'method_name' in data ? data.method_name : data.type}
+      {returnNodeName(data)}
     </div>
     <button class="button-remove" onclick={() => removeNode(id)}>
       <div style="font-weight: bold;">X</div>
@@ -122,7 +134,7 @@
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE}
+    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
       <input
         type="text"
         class={isValid ? '' : 'invalid'}
