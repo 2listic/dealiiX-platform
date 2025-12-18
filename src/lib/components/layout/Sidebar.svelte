@@ -2,7 +2,12 @@
   import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
-  import { nodeColors, NodeType, type NodeData } from '../../types/nodeTypes'
+  import {
+    nodeColors,
+    NodeType,
+    returnNodeName,
+    type NodeData,
+  } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
@@ -20,11 +25,6 @@
     }
     dndNodeDataState.current = node
     event.dataTransfer.effectAllowed = 'move'
-  }
-
-  const returnNodeName = (node: NodeData): string => {
-    let nodeName = 'method_name' in node ? node.method_name : node.type
-    return nodeName.replaceAll('_', ' ')
   }
 
   const returnNodeColor = (nodeTypeName) => {

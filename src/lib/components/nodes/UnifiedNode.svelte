@@ -33,6 +33,7 @@
     ConnectionType,
     nodeColors,
     NodeType,
+    returnNodeName,
     Type,
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
@@ -51,11 +52,6 @@
     isValid
     clearConnectionCache()
   })
-
-  const returnNodeName = (node: NodeData): string => {
-    let nodeName = 'method_name' in node ? node.method_name : node.type
-    return nodeName.replaceAll('_', ' ')
-  }
 
   const isValidNum = (value) => {
     const numValue = Number(value)

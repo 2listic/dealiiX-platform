@@ -41,7 +41,7 @@ export enum NodeType {
 export enum NodeTypePyBackend {
   PRIMITIVE = 'primitive',
   FUNCTION = 'function',
-  METHOD = "method",
+  METHOD = 'method',
 }
 
 export const nodeColors = {
@@ -86,4 +86,9 @@ export type NodeData = {
 
 export type ImportedNodes = {
   [key: string]: NodeData
+}
+
+export const returnNodeName = (node: NodeData): string => {
+  let nodeName = 'method_name' in node ? node.method_name : node.type
+  return nodeName.replaceAll('_', ' ')
 }
