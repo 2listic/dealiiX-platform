@@ -103,7 +103,12 @@
 
   <!-- Output handlers -->
   {#each data.outputs as i, index (i)}
-    <Handle id={`output-${index}`} type="source" position={Position.Right} />
+    <Handle
+      id={`output-${index}`}
+      type="source"
+      position={Position.Right}
+      style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+    />
   {/each}
 
   <!-- Input labels -->
@@ -137,7 +142,7 @@
           })
         }}
       />
-    {:else if data.type === Type.STRING}
+    {:else if data.type === Type.STRING || data.type === Type.STR}
       <input
         type="text"
         value={data.value}

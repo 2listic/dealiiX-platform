@@ -68,6 +68,7 @@ export enum Type {
   FLOAT = 'float',
   BOOLEAN = 'bool',
   STRING = 'std::string',
+  STR = 'str',
   ANY = 'any',
 }
 
