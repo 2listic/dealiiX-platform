@@ -30,7 +30,6 @@
     type Node,
   } from '@xyflow/svelte'
   import {
-    ConnectionType,
     nodeColors,
     NodeType,
     returnNodeName,
@@ -112,16 +111,25 @@
   {/each}
 
   <!-- Input labels -->
-  <div style="display: flex; flex-direction: row; gap: 2vh">
+  <div style="display: flex; flex-direction: row; gap: 4vh">
     <div class="input-column">
-      {#each data.inputs as i, index (i)}
-        <div class="input-label">
-          Input {index}
-          {data.arguments[i].connection_type === ConnectionType.PASSTHROUGH
-            ? '/ Output'
-            : ''}
-        </div>
-        <div class="input-type">{data.arguments[i].type}</div>
+      {#each data.inputs as i (i)}
+        {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
+          <div class="input-label">
+            {data.arguments[i].name}
+          </div>
+          <div class="input-type">{data.arguments[i].type}</div>
+        {/if}
+      {/each}
+    </div>
+    <div class="output-column">
+      {#each data.outputs as i (i)}
+        {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
+          <div class="input-label">
+            {data.arguments[i].name}
+          </div>
+          <div class="input-type">{data.arguments[i].type}</div>
+        {/if}
       {/each}
     </div>
   </div>
@@ -202,7 +210,18 @@
   .input-column {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    justify-content: space-evenly;
     margin-bottom: 0.5vh;
+  }
+
+  .output-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: end;
+    justify-content: space-evenly;
+    margin-bottom: 2vh;
   }
 
   .input-label {
