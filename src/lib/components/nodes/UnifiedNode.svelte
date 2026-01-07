@@ -30,9 +30,9 @@
     type Node,
   } from '@xyflow/svelte'
   import {
-    ConnectionType,
     nodeColors,
     NodeType,
+    returnNodeName,
     Type,
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
@@ -66,7 +66,7 @@
         return (
           !isNaN(numValue) && Number.isInteger(numValue) && value.trim() !== ''
         )
-      case Type.DOUBLE:
+      case (Type.DOUBLE, Type.FLOAT):
         return !isNaN(numValue) && value.trim() !== ''
     }
   }
@@ -83,7 +83,7 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="label">
-      {'method_name' in data ? data.method_name : data.type}
+      {returnNodeName(data)}
     </div>
     <button class="button-remove" onclick={() => removeNode(id)}>
       <div style="font-weight: bold;">X</div>
@@ -102,27 +102,41 @@
 
   <!-- Output handlers -->
   {#each data.outputs as i, index (i)}
-    <Handle id={`output-${index}`} type="source" position={Position.Right} />
+    <Handle
+      id={`output-${index}`}
+      type="source"
+      position={Position.Right}
+      style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+    />
   {/each}
 
   <!-- Input labels -->
-  <div style="display: flex; flex-direction: row; gap: 2vh">
+  <div style="display: flex; flex-direction: row; gap: 4vh">
     <div class="input-column">
-      {#each data.inputs as i, index (i)}
-        <div class="input-label">
-          Input {index}
-          {data.arguments[i].connection_type === ConnectionType.PASSTHROUGH
-            ? '/ Output'
-            : ''}
-        </div>
-        <div class="input-type">{data.arguments[i].type}</div>
+      {#each data.inputs as i (i)}
+        {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
+          <div class="input-label">
+            {data.arguments[i].name}
+          </div>
+          <div class="input-type">{data.arguments[i].type}</div>
+        {/if}
+      {/each}
+    </div>
+    <div class="output-column">
+      {#each data.outputs as i (i)}
+        {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
+          <div class="input-label">
+            {data.arguments[i].name}
+          </div>
+          <div class="input-type">{data.arguments[i].type}</div>
+        {/if}
       {/each}
     </div>
   </div>
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE}
+    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
       <input
         type="text"
         class={isValid ? '' : 'invalid'}
@@ -136,7 +150,7 @@
           })
         }}
       />
-    {:else if data.type === Type.STRING}
+    {:else if data.type === Type.STRING || data.type === Type.STR}
       <input
         type="text"
         value={data.value}
@@ -196,7 +210,18 @@
   .input-column {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    justify-content: space-evenly;
     margin-bottom: 0.5vh;
+  }
+
+  .output-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: end;
+    justify-content: space-evenly;
+    margin-bottom: 2vh;
   }
 
   .input-label {

@@ -24,6 +24,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#116](https://github.com/2listic/dealiiX-platform/pull/116) Input argument names are now displayed for clarity, along with the output types. Handlers are now larger and easier to interact with.
 - [#114](https://github.com/2listic/dealiiX-platform/pull/114) Added reusable confirmation modal to user logout and project deletion.
 - [#111](https://github.com/2listic/dealiiX-platform/pull/111) Added edit functionality for project name and description.
 - [#103](https://github.com/2listic/dealiiX-platform/pull/103) Added button and modal to share a project with other users.
@@ -58,6 +59,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#116](https://github.com/2listic/dealiiX-platform/pull/116) Added support for the “output” connection type and for multiple outputs returned from a single node. Added support for node types float, str and for the generic any type. Added support for the Python backend through the new enum values primitive, function, and method.  
 - [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for stateful nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
 
 ### Project-Structure

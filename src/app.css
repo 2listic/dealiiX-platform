@@ -5,6 +5,7 @@
   --background-color-secondary: linear-gradient(#f2f2f2, white);
   --ternary-color: #383838;
   --border-color-hover: #646cff;
+  --handle-color: #383838;
 
   /* Button variants */
   --button-action-bg: #646cff;
@@ -23,13 +24,25 @@
   --ternary-color: #ececec;
   --text-color-backup: #c9c9c9;
   --border-color-hover: #646cff;
+  --handle-color: #646cff;
 
   color: var(--ternary-color);
 }
 
+/* Handle styling */
+.svelte-flow__handle {
+  width: 1vh;
+  height: 1vh;
+}
+
+.svelte-flow__handle:hover {
+  width: 1.5vh;
+  height: 1.5vh;
+}
+
 :root.dark .svelte-flow {
   --xy-edge-stroke: #efefef;
-  --xy-handle-background-color: #646cff;
+  --xy-handle-background-color: var(--handle-color);
 }
 
 body {

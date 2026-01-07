@@ -2,7 +2,12 @@
   import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import defaultNodes from '../../data/defaultNodes.json'
-  import { nodeColors, NodeType, type NodeData } from '../../types/nodeTypes'
+  import {
+    nodeColors,
+    NodeType,
+    returnNodeName,
+    type NodeData,
+  } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
@@ -22,10 +27,6 @@
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const returnNodeType = (node) => {
-    const nodeType = 'method_name' in node ? node.method_name : node.type
-    return nodeType.replaceAll('_', ' ')
-  }
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
   }
@@ -50,7 +51,7 @@
             >
               {#if isMouseOver || sideBarState.isExpanded}
                 <span transition:fade|global={{ duration: 250 }}
-                  >{returnNodeType(node)}</span
+                  >{returnNodeName(node)}</span
                 >
               {/if}
             </div>

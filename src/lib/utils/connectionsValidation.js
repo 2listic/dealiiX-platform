@@ -3,7 +3,7 @@ import {
   getEdges,
   getImportedNodesByType,
 } from '../stores/nodes.svelte'
-import { NodeType, Outputs } from '../types/nodeTypes'
+import { NodeType, Outputs, Type } from '../types/nodeTypes'
 
 let connectionCache = new Map()
 
@@ -45,8 +45,17 @@ const isValidConnection = (connection) => {
     return false
   }
 
-  // Check if the source type matches the target handle type
+  // If the expected input type is 'any', allow any connection
   const targetNode = nodes.find((node) => node.id === connection.target)
+  const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
+  const expectedInputType = targetNode.data.arguments[handleIndexInput].type
+  if (expectedInputType === Type.ANY) {
+    console.log(`Handle ${connection.targetHandle} accepts any type`)
+    connectionCache.set(cacheKey, true)
+    return true
+  }
+
+  // Check if the source type matches the target handle type
   const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
   const sourceIndexOutput = sourceNode.data.outputs[handleIndexOutput]
   let sourceType
@@ -59,8 +68,6 @@ const isValidConnection = (connection) => {
   } else {
     sourceType = sourceNode.data.arguments[sourceIndexOutput].type
   }
-  const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const expectedInputType = targetNode.data.arguments[handleIndexInput].type
 
   console.log(
     `Handle ${

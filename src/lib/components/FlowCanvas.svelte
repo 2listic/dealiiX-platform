@@ -30,7 +30,7 @@
     isValidConnection,
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
-  import { NodeType } from '../types/nodeTypes'
+  import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
 
@@ -44,6 +44,9 @@
     [NodeType.VOID_METHOD]: UnifiedNode,
     [NodeType.VOID_CONST_METHOD]: UnifiedNode,
     [NodeType.VOID_FUNCTION]: UnifiedNode,
+    [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
+    [NodeTypePyBackend.FUNCTION]: UnifiedNode,
+    [NodeTypePyBackend.METHOD]: UnifiedNode,
   }
   const edgeTypes: EdgeTypes = {
     'custom-edge': CustomEdge,
