@@ -55,6 +55,7 @@
   const isValidNum = (value) => {
     const numValue = Number(value)
     switch (data.type) {
+      case Type.UNSIGNED_INT:
       case Type.UNSIGNED:
         return (
           !isNaN(numValue) &&
@@ -136,7 +137,7 @@
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
+    {#if data.type === Type.UNSIGNED || data.type === Type.UNSIGNED_INT || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
       <input
         type="text"
         class={isValid ? '' : 'invalid'}
