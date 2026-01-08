@@ -38,33 +38,33 @@ export const getNextNodeId = () => {
 }
 
 /**
- * Imported available nodes managment
+ * Application registry containing all the available nodes
  */
-let importedData = $state({})
+let registry = $state({})
 
-export const setImportedNodes = (data) => {
-  const nodes = Object.values(data)
-
-  // Group nodes by node_type
-  const nodesByNodetype = nodes.reduce((acc, node) => {
-    const nodeType = node.node_type
-    if (!acc[nodeType]) {
-      acc[nodeType] = []
-    }
-    acc[nodeType].push(node)
-    return acc
-  }, Object.create(null))
-  importedData = nodesByNodetype
-  console.log('importedData', $state.snapshot(importedData))
+/**
+ * Set the application registry for the available nodes
+ */
+export const setRegistry = (data) => {
+  // TODO: add sanitation checks (i.e. empty object)
+  registry = data
+  console.log('Imported registry', $state.snapshot(registry))
 }
 
-export const getImportedNodes = () => importedData
+/**
+ * Get all the available nodes from the registry
+ */
+export const getAvailableNodes = () => {
+  const nodes = Object.values(registry)
+  return nodes
+}
 
-export const getImportedNodesByType = (svelteNodeType) => {
-  if (!(svelteNodeType in importedData)) {
-    console.error(`Node type '${svelteNodeType}' not found in imported data.`)
+export const getNodeData = (type) => {
+  if (!(type in registry)) {
+    console.error(`Node type '${type}' not found in imported data.`)
+    throw new Error(`Node type '${type}' not found in imported data.`)
   }
-  return importedData?.[svelteNodeType] || []
+  return $state.snapshot(registry[type])
 }
 
 /**

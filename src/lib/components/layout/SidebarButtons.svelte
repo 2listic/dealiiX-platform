@@ -2,7 +2,7 @@
   import {
     getEdges,
     getNodes,
-    setImportedNodes,
+    setRegistry,
     loadGraph,
   } from '../../stores/nodes.svelte'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
@@ -84,8 +84,7 @@
     }
     const importedNodesAsText = await readFileAsText(importNodesFiles[0])
     const importedNodes = JSON.parse(importedNodesAsText)
-    // TODO: add sanity checks
-    setImportedNodes(importedNodes)
+    setRegistry(importedNodes)
     toastState.add({ message: 'New nodes were loaded' })
   }
 

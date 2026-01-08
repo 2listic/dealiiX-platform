@@ -1,3 +1,5 @@
+import { getNodeData } from '../stores/nodes.svelte'
+
 /**
  * Convert nodes from protocol format to flow editor format
  */
@@ -5,14 +7,16 @@ export const nodesFromProtocolToFlow = (nodes) => {
   const arrNodeIds = Object.keys(nodes)
   return arrNodeIds.map((id, index) => {
     const node = nodes[id]
+    const nodeData = getNodeData(node.type)
+    const concatData = { ...nodeData, ...node } // concat data from registry and network
     return {
       id: id,
-      type: node.node_type,
+      type: nodeData.node_type,
       position: {
         x: node.position?.x ?? index * 100,
         y: node.position?.y ?? index * 100,
       },
-      data: { ...node },
+      data: concatData,
     }
   })
 }
@@ -79,6 +83,15 @@ export const validateGraphData = (graphData) => {
   const nodes = graphData?.workflow?.nodes
   if (nodes == null) {
     return { error: 'No nodes found in graph' }
+  }
+
+  // check if all nodes are present in the registry
+  for (const node of Object.values(nodes)) {
+    try {
+      getNodeData(node.type)
+    } catch (error) {
+      return { error: `Error: ${error.message}` }
+    }
   }
 
   const edges = graphData?.workflow?.edges
