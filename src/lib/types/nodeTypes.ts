@@ -91,6 +91,7 @@ export type ImportedNodes = {
 }
 
 export const returnNodeName = (node: NodeData): string => {
+  // Check if method_name is present for retrocompatibility
   let nodeName = 'method_name' in node ? node.method_name : node.type
   return nodeName.replaceAll('_', ' ')
 }
