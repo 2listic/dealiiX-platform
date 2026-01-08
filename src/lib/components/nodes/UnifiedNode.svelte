@@ -116,20 +116,24 @@
     <div class="input-column">
       {#each data.inputs as i (i)}
         {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
-          <div class="input-label">
-            {data.arguments[i].name}
+          <div>
+            <div class="input-label">
+              {data.arguments[i].name}
+            </div>
+            <div class="input-type">{data.arguments[i].type}</div>
           </div>
-          <div class="input-type">{data.arguments[i].type}</div>
         {/if}
       {/each}
     </div>
     <div class="output-column">
       {#each data.outputs as i (i)}
         {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
-          <div class="input-label">
-            {data.arguments[i].name}
+          <div>
+            <div class="output-label">
+              {data.arguments[i].name}
+            </div>
+            <div class="output-type">{data.arguments[i].type}</div>
           </div>
-          <div class="input-type">{data.arguments[i].type}</div>
         {/if}
       {/each}
     </div>
@@ -233,5 +237,17 @@
   .input-type {
     font-family: monospace;
     font-size: smaller;
+  }
+
+  .output-label {
+    font-weight: bold;
+    margin-top: 1vh;
+    text-align: right;
+  }
+
+  .output-type {
+    font-family: monospace;
+    font-size: smaller;
+    text-align: right;
   }
 </style>
