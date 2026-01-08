@@ -18,7 +18,6 @@ type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
-  type_hash: string
 }
 
 export enum Inputs {
@@ -81,7 +80,6 @@ export type NodeData = {
   node_type: NodeType
   outputs: Outputs[]
   type: string
-  type_hash: string
   value?: string
   is_valid?: boolean
 }
