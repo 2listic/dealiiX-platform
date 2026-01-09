@@ -1,10 +1,5 @@
 import { getNodeData } from '../stores/nodes.svelte'
-import type {
-  Network,
-  NetworkEdge,
-  NetworkNodes,
-  NetworkEdges,
-} from '../types/nodeTypes'
+import type { Network, NetworkEdge, NetworkNodes } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
 
 /**
@@ -86,36 +81,27 @@ export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
 }
 
 /**
- * Validate and extract workflow data from a graph object
+ * Validate workflow data from a graph object
  * @param {Network} graphData - The graph data object to validate
- * @returns {{ nodes: NetworkNodes, edges: NetworkEdges } | { error: string }}
- *          Valid workflow data or error message
+ * @throws {Error} If graph data is invalid or missing required fields
  */
-export const validateGraphData = (
-  graphData: Network
-): { nodes: NetworkNodes; edges: NetworkEdges } | { error: string } => {
+export const validateGraphData = (graphData: Network): void => {
   if (!graphData) {
-    return { error: 'No graph data provided' }
+    throw new Error('No graph data provided')
   }
 
   const nodes = graphData?.workflow?.nodes
   if (nodes == null) {
-    return { error: 'No nodes found in graph' }
+    throw new Error('No nodes found in graph')
   }
 
-  // check if all nodes are present in the registry
+  // check if all nodes are present in the registry (getNodeData throws if not found)
   for (const node of Object.values(nodes)) {
-    try {
-      getNodeData(node.type)
-    } catch (error) {
-      return { error: `Error: ${error.message}` }
-    }
+    getNodeData(node.type)
   }
 
   const edges = graphData?.workflow?.edges
   if (edges == null) {
-    return { error: 'No edges found in graph' }
+    throw new Error('No edges found in graph')
   }
-
-  return { nodes, edges }
 }

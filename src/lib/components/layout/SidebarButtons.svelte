@@ -64,18 +64,20 @@
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
     }
-    const importedGraphAsText = await readFileAsText(importGraphFiles[0])
-    const importedGraph = JSON.parse(importedGraphAsText)
-
-    const result = loadGraph(importedGraph)
-    if (!result.success) {
-      toastState.add({ message: result.error, type: 'error' })
-      return
+    try {
+      const importedGraphAsText = await readFileAsText(importGraphFiles[0])
+      const importedGraph = JSON.parse(importedGraphAsText)
+      loadGraph(importedGraph)
+      console.log('imported graph nodes', getNodes())
+      console.log('imported graph edges', getEdges())
+      toastState.add({ message: 'New graph was loaded' })
+    } catch (error) {
+      console.error('Failed to load graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to load graph',
+        type: 'error',
+      })
     }
-
-    console.log('imported graph nodes', getNodes())
-    console.log('imported graph edges', getEdges())
-    toastState.add({ message: 'New graph was loaded' })
   }
 
   const onFileChangeLoadNodes = async () => {

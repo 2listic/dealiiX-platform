@@ -124,15 +124,10 @@ export const getNodeData = (type: string): NodeData => {
  * Load a graph object into the flow editor. Validates the graph data, then converts protocol
  * format to flow format and updates both nodes and edges in the editor
  * @param {Network} graphData - The graph data object containing workflow.nodes and workflow.edges
- * @returns {{ success: boolean, error?: string }} Result object indicating success or failure with error message
+ * @throws {Error} If graph data is invalid or missing required fields
  */
-export const loadGraph = (
-  graphData: Network
-): { success: boolean; error?: string } => {
-  const validation = validateGraphData(graphData)
-  if ('error' in validation) {
-    return { success: false, error: validation.error }
-  }
+export const loadGraph = (graphData: Network): void => {
+  validateGraphData(graphData)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
@@ -143,6 +138,4 @@ export const loadGraph = (
   const xyFlowEdges = edgesFromProtocolToFlow(graphData.workflow.edges)
   setEdges(xyFlowEdges)
   updateLastNodeId()
-
-  return { success: true }
 }

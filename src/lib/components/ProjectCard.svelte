@@ -75,16 +75,10 @@
     try {
       const projectData = await getProject(project.id)
       currentProjectState.set(projectData)
-
-      const result = loadGraph(projectData.graph)
-      if (!result.success) {
-        toastState.add({ message: result.error, type: 'error' })
-        return
-      }
+      loadGraph(projectData.graph)
       if (onLoad) {
         onLoad()
       }
-
       toastState.add({
         message: `Project "${project.name}" loaded successfully`,
         type: 'success',
