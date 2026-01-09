@@ -75,6 +75,7 @@ export enum Type {
 export type NodeData = {
   arguments: Argument[]
   derived?: string[]
+  base?: string
   inputs: Inputs[]
   method_name?: string
   node_type: NodeType
@@ -84,8 +85,50 @@ export type NodeData = {
   is_valid?: boolean
 }
 
-export type ImportedNodes = {
+/**
+ * Registry protocol JSON structure. Used for loading available nodes and holding
+ * their definitions
+ */
+export type RegisteredNodes = {
   [key: string]: NodeData
+}
+
+export type NetworkEdge = {
+  source: number
+  source_output: number
+  target: number
+  target_input: number
+}
+
+export type NetworkEdges = {
+  [id: string]: NetworkEdge
+}
+
+export type NetworkNode = {
+  name?: string
+  type: string
+  base?: string
+  value?: string
+  position?: { x: number; y: number }
+}
+
+export type NetworkNodes = {
+  [id: string]: NetworkNode
+}
+
+/**
+ * Network protocol JSON structure with graph structure and current values
+ * for stafull nodes. It is used for evaluating/saving/loading CORAL
+ * computational graphs together with the registry JSON protocol.
+ */
+export type Network = {
+  author: string
+  date_time_utc: string
+  version: number
+  workflow: {
+    edges: NetworkEdges
+    nodes: NetworkNodes
+  }
 }
 
 export const returnNodeName = (node: NodeData): string => {

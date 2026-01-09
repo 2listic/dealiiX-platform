@@ -1,9 +1,19 @@
 import { getNodeData } from '../stores/nodes.svelte'
+import type {
+  Network,
+  NetworkEdge,
+  NetworkNodes,
+  NetworkEdges,
+} from '../types/nodeTypes'
+import type { Node, Edge } from '@xyflow/svelte'
 
 /**
- * Convert nodes from protocol format to flow editor format
+ * Takes nodes from the CORAL network JSON and transforms them into
+ * xyflow-compatible node objects with positions and merged data
+ * @param {NetworkNodes} nodes - Dictionary of nodes from network protocol
+ * @returns {Node[]} Array of nodes formatted for the flow editor
  */
-export const nodesFromProtocolToFlow = (nodes) => {
+export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
   const arrNodeIds = Object.keys(nodes)
   return arrNodeIds.map((id, index) => {
     const node = nodes[id]
@@ -22,9 +32,14 @@ export const nodesFromProtocolToFlow = (nodes) => {
 }
 
 /**
- * Convert edges from protocol format to flow editor format
+ * Transforms CORAL network edges into xyflow-compatible edge objects
+ * with proper source/target handles for node connection points
+ * @param {Object.<string, NetworkEdge>} edges - Dictionary of edges keyed by edge ID
+ * @returns {Edge[]} Array of edges formatted for the flow editor
  */
-export const edgesFromProtocolToFlow = (edges) => {
+export const edgesFromProtocolToFlow = (edges: {
+  [id: string]: NetworkEdge
+}): Edge[] => {
   return Object.values(edges).map((edge) => ({
     id: `xy-edge__${edge.source}output-${edge.source_output}-${edge.target}input-${edge.target_input}`,
     source: edge.source.toString(),
@@ -35,12 +50,12 @@ export const edgesFromProtocolToFlow = (edges) => {
 }
 
 /**
- * Parse nodes and edges into the graph protocol format
- * @param {Array} nodes - Array of node objects from the flow editor
- * @param {Array} edges - Array of edge objects from the flow editor
- * @returns {Object} Parsed graph in protocol format
+ * Parse nodes and edges into the CORAL network JSON format
+ * @param {Node[]} nodes - Array of node objects from the flow editor
+ * @param {Edge[]} edges - Array of edge objects from the flow editor
+ * @returns {Network} Complete network object in CORAL protocol format
  */
-export const parseGraph = (nodes, edges) => {
+export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
     acc[obj.id] = {
       ...obj.data,
@@ -72,10 +87,13 @@ export const parseGraph = (nodes, edges) => {
 
 /**
  * Validate and extract workflow data from a graph object
- * @param {Object} graphData - The graph data object
- * @returns {{ nodes: Object, edges: Object } | { error: string }}
+ * @param {Network} graphData - The graph data object to validate
+ * @returns {{ nodes: NetworkNodes, edges: NetworkEdges } | { error: string }}
+ *          Valid workflow data or error message
  */
-export const validateGraphData = (graphData) => {
+export const validateGraphData = (
+  graphData: Network
+): { nodes: NetworkNodes; edges: NetworkEdges } | { error: string } => {
   if (!graphData) {
     return { error: 'No graph data provided' }
   }
