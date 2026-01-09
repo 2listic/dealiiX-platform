@@ -7,12 +7,12 @@
     NodeType,
     returnNodeName,
     type NodeData,
-    type ImportedNodes,
+    type RegisteredNodes,
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
-  const defaultNodes = defaultNodesJson as ImportedNodes
+  const defaultNodes = defaultNodesJson as RegisteredNodes
 
   let isMouseOver = $state(false)
 
