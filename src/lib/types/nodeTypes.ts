@@ -135,7 +135,7 @@ export type Network = {
 /**
  * Returns the name property -or method_name or type if not present- formatted with
  * spaces instead of underscores.
- * TODO: simplify and remove retrocompatibility for method_name
+ * TODO: simplify and remove backward compatibility for method_name
  * @param node
  * @returns
  */
