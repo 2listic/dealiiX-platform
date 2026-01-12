@@ -29,11 +29,7 @@
     type Node,
   } from '@xyflow/svelte'
   import { getModal } from '../layout/Modal.svelte'
-  import {
-    nodeColors,
-    NodeType,
-    Type,
-  } from '../../types/nodeTypes'
+  import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
