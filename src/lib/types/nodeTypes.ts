@@ -77,6 +77,7 @@ export type NodeData = {
   derived?: string[]
   base?: string
   inputs: Inputs[]
+  name?: string
   method_name?: string
   node_type: NodeType
   outputs: Outputs[]
@@ -131,8 +132,19 @@ export type Network = {
   }
 }
 
+/**
+ * Checks if name is present in node data otherwise type and returns it
+ * formatted with no underscores.
+// TODO: simplify and remove retrocompatibility ternary check if method_name is present
+ * @param node 
+ * @returns 
+ */
 export const returnNodeName = (node: NodeData): string => {
-  // Check if method_name is present for retrocompatibility
-  let nodeName = 'method_name' in node ? node.method_name : node.type
+  let nodeName =
+    'name' in node
+      ? node.name
+      : 'method_name' in node
+        ? node.method_name
+        : node.type
   return nodeName.replaceAll('_', ' ')
 }

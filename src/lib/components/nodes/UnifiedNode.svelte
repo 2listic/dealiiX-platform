@@ -29,6 +29,7 @@
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
+  import { getModal } from '../layout/Modal.svelte'
   import {
     nodeColors,
     NodeType,
@@ -37,6 +38,9 @@
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
+  import EditIcon from '../icons/EditIcon.svelte'
+  import TrashIcon from '../icons/TrashIcon.svelte'
+  import EditNodeNameModal from './EditNodeNameModal.svelte'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
   data.is_valid = true
@@ -45,6 +49,12 @@
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
+
+  const editNodeModalId = `edit-node-${id}`
+
+  const handleSaveName = (newName: string) => {
+    updateNodeData(id, { name: newName })
+  }
 
   $effect(() => {
     // Clear connection cache when isValid changes
@@ -86,9 +96,17 @@
     <div class="label">
       {returnNodeName(data)}
     </div>
-    <button class="button-remove" onclick={() => removeNode(id)}>
-      <div style="font-weight: bold;">X</div>
-    </button>
+    <div class="node-buttons">
+      <button
+        class="node-button"
+        onclick={() => getModal(editNodeModalId)?.open()}
+      >
+        <EditIcon width="20px" height="20px" />
+      </button>
+      <button class="node-button" onclick={() => removeNode(id)}>
+        <TrashIcon width="20px" height="20px" />
+      </button>
+    </div>
   </div>
 
   <!-- Input handlers -->
@@ -111,33 +129,35 @@
     />
   {/each}
 
-  <!-- Input labels -->
-  <div style="display: flex; flex-direction: row; gap: 4vh">
-    <div class="input-column">
-      {#each data.inputs as i (i)}
-        {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
-          <div>
-            <div class="input-label">
-              {data.arguments[i].name}
+  <!-- Input / output labels -->
+  {#if data.arguments.length > 0}
+    <div style="display: flex; flex-direction: row; gap: 4vh">
+      <div class="input-column">
+        {#each data.inputs as i (i)}
+          {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
+            <div>
+              <div class="input-label">
+                {data.arguments[i].name}
+              </div>
+              <div class="input-type">{data.arguments[i].type}</div>
             </div>
-            <div class="input-type">{data.arguments[i].type}</div>
-          </div>
-        {/if}
-      {/each}
-    </div>
-    <div class="output-column">
-      {#each data.outputs as i (i)}
-        {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
-          <div>
-            <div class="output-label">
-              {data.arguments[i].name}
+          {/if}
+        {/each}
+      </div>
+      <div class="output-column">
+        {#each data.outputs as i (i)}
+          {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
+            <div>
+              <div class="output-label">
+                {data.arguments[i].name}
+              </div>
+              <div class="output-type">{data.arguments[i].type}</div>
             </div>
-            <div class="output-type">{data.arguments[i].type}</div>
-          </div>
-        {/if}
-      {/each}
+          {/if}
+        {/each}
+      </div>
     </div>
-  </div>
+  {/if}
 
   <!-- Elementary constructors input fields -->
   <div>
@@ -178,6 +198,12 @@
   </div>
 </div>
 
+<EditNodeNameModal
+  modalId={editNodeModalId}
+  currentName={data.name ?? data.type}
+  onSave={handleSaveName}
+/>
+
 <style>
   .custom-node {
     padding: 15px;
@@ -188,6 +214,7 @@
   }
 
   .node-header {
+    margin-bottom: 1vh;
     display: flex;
     justify-content: space-between;
     gap: 1vw;
@@ -197,14 +224,21 @@
     font-weight: bold;
   }
 
-  .button-remove {
+  .node-buttons {
+    display: flex;
+    gap: 0.3vw;
+  }
+
+  .node-button {
     cursor: pointer;
     border: 1px solid var(--border-color);
     border-radius: 3px;
-    margin: 0 0 1vh 1vh;
+    padding: 1px;
+    display: flex;
+    align-items: center;
   }
 
-  .button-remove:hover {
+  .node-button:hover {
     border: 1px solid var(--border-color-hover);
   }
 
