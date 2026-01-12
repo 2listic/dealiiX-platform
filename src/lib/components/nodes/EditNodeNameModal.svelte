@@ -21,6 +21,8 @@
   }
 
   const handleCancel = () => {
+    // reset the name to the original value and close
+    editedName = currentName
     getModal(modalId)?.close()
   }
 </script>
