@@ -46,10 +46,6 @@
 
   const editNodeModalId = `edit-node-${id}`
 
-  const handleSaveName = (newName: string) => {
-    updateNodeData(id, { name: newName })
-  }
-
   $effect(() => {
     // Clear connection cache when isValid changes
     isValid
@@ -199,8 +195,8 @@
 
 <EditNodeNameModal
   modalId={editNodeModalId}
+  nodeId={id}
   currentName={data.name ?? data.type}
-  onSave={handleSaveName}
 />
 
 <style>

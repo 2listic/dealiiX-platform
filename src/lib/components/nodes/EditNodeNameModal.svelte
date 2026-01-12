@@ -1,20 +1,22 @@
 <script lang="ts">
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
+  import { useSvelteFlow } from '@xyflow/svelte'
 
   interface Props {
     modalId: string
+    nodeId: string
     currentName: string
-    // eslint-disable-next-line no-unused-vars
-    onSave: (newName: string) => void
   }
 
-  let { modalId, currentName, onSave }: Props = $props()
+  let { modalId, nodeId, currentName }: Props = $props()
 
   let editedName = $derived(currentName)
 
+  const { updateNodeData } = useSvelteFlow()
+
   const handleSave = () => {
-    onSave(editedName)
+    updateNodeData(nodeId, { name: editedName })
     getModal(modalId)?.close()
   }
 
