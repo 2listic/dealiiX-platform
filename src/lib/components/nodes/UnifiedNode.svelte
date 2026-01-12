@@ -25,7 +25,6 @@
     Handle,
     Position,
     useSvelteFlow,
-    // useNodes,
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
@@ -33,7 +32,6 @@
   import {
     nodeColors,
     NodeType,
-    returnNodeName,
     Type,
   } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
@@ -93,8 +91,13 @@
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
-    <div class="label">
-      {returnNodeName(data)}
+    <div class="node-labels">
+      {#if !data.name}
+        <div class="node-name">{data.type}</div>
+      {:else}
+        <div class="node-name">{data.name}</div>
+        <div class="node-type">{data.type}</div>
+      {/if}
     </div>
     <div class="node-buttons">
       <button
@@ -220,8 +223,20 @@
     gap: 1vw;
   }
 
-  .label {
+  .node-labels {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .node-name {
     font-weight: bold;
+    text-align: center;
+  }
+
+  .node-type {
+    font-family: monospace;
+    font-size: smaller;
+    text-align: center;
   }
 
   .node-buttons {
@@ -236,6 +251,7 @@
     padding: 1px;
     display: flex;
     align-items: center;
+    align-self: flex-start;
   }
 
   .node-button:hover {

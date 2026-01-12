@@ -133,11 +133,11 @@ export type Network = {
 }
 
 /**
- * Checks if name is present in node data otherwise type and returns it
- * formatted with no underscores.
-// TODO: simplify and remove retrocompatibility ternary check if method_name is present
- * @param node 
- * @returns 
+ * Returns the name property -or method_name or type if not present- formatted with
+ * spaces instead of underscores.
+ * TODO: simplify and remove retrocompatibility for method_name
+ * @param node
+ * @returns
  */
 export const returnNodeName = (node: NodeData): string => {
   let nodeName =
