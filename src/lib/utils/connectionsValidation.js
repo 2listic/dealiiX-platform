@@ -1,9 +1,5 @@
-import {
-  getNodes,
-  getEdges,
-  getImportedNodesByType,
-} from '../stores/nodes.svelte'
-import { NodeType, Outputs, Type } from '../types/nodeTypes'
+import { getNodes, getEdges } from '../stores/nodes.svelte'
+import { Outputs, Type } from '../types/nodeTypes'
 
 let connectionCache = new Map()
 
@@ -61,10 +57,8 @@ const isValidConnection = (connection) => {
   let sourceType
   if (sourceIndexOutput === Outputs.SELF) {
     // Check if node is derived by an abstract class to pick the right output type
-    const baseNodeHash = sourceNode.data?.base ?? false
-    sourceType = baseNodeHash
-      ? abstractNodeType(baseNodeHash)
-      : sourceNode.data.type
+    const baseClassType = sourceNode.data?.base ?? false
+    sourceType = baseClassType ? baseClassType : sourceNode.data.type
   } else {
     sourceType = sourceNode.data.arguments[sourceIndexOutput].type
   }
@@ -78,18 +72,6 @@ const isValidConnection = (connection) => {
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid) // Cache the result
   return isValid
-}
-
-/**
- * It returns the abstract node's type by its hash. It returns false if not found
- * @param {string} nodeHash the hash of the abstract node to be searched for
- */
-const abstractNodeType = (nodeHash) => {
-  const abstractNodes = getImportedNodesByType(NodeType.ABSTRACT)
-  const abstractNode = abstractNodes.find(
-    (abstrNode) => abstrNode.type_hash === nodeHash
-  )
-  return abstractNode ? abstractNode.type : false
 }
 
 const clearConnectionCache = () => connectionCache.clear()

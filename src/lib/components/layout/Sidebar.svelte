@@ -1,23 +1,25 @@
 <script lang="ts">
-  import { getImportedNodes, setImportedNodes } from '../../stores/nodes.svelte'
+  import { getAvailableNodes, setRegistry } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
-  import defaultNodes from '../../data/defaultNodes.json'
+  import defaultNodesJson from '../../data/defaultNodes.json'
   import {
     nodeColors,
     NodeType,
     returnNodeName,
     type NodeData,
+    type RegisteredNodes,
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
+  const defaultNodes = defaultNodesJson as RegisteredNodes
+
   let isMouseOver = $state(false)
 
   if (defaultNodes) {
-    // TODO: add stantilization checks (i.e. empty object) and move into separate function
-    setImportedNodes(defaultNodes)
+    setRegistry(defaultNodes)
   }
-  const availableNodesByType = $derived(getImportedNodes())
+  const availableNodes = $derived(getAvailableNodes())
 
   const onDragStart = (event: DragEvent, node: NodeData) => {
     if (!event.dataTransfer) {
@@ -37,25 +39,22 @@
   onmouseleave={() => (isMouseOver = false)}
 >
   <div class="nodes-container">
-    {#if availableNodesByType}
-      <!-- TODO: move into separate function -->
-      {#each Object.entries(availableNodesByType) as [nodeTypeName, arrNodesByType] (nodeTypeName)}
-        {#if nodeTypeName != NodeType.ABSTRACT}
-          {#each arrNodesByType as Array<NodeData> as node (node)}
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              style="--borderColor: {returnNodeColor(nodeTypeName)}"
-              class="node"
-              ondragstart={(event) => onDragStart(event, node)}
-              draggable={true}
-            >
-              {#if isMouseOver || sideBarState.isExpanded}
-                <span transition:fade|global={{ duration: 250 }}
-                  >{returnNodeName(node)}</span
-                >
-              {/if}
-            </div>
-          {/each}
+    {#if availableNodes}
+      {#each availableNodes as Array<NodeData> as node (node)}
+        {#if node.node_type != NodeType.ABSTRACT}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style="--borderColor: {returnNodeColor(node.node_type)}"
+            class="node"
+            ondragstart={(event) => onDragStart(event, node)}
+            draggable={true}
+          >
+            {#if isMouseOver || sideBarState.isExpanded}
+              <span transition:fade|global={{ duration: 250 }}>
+                {returnNodeName(node)}
+              </span>
+            {/if}
+          </div>
         {/if}
       {/each}
     {/if}

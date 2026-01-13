@@ -44,8 +44,8 @@
     [NodeType.VOID_METHOD]: UnifiedNode,
     [NodeType.VOID_CONST_METHOD]: UnifiedNode,
     [NodeType.VOID_FUNCTION]: UnifiedNode,
+    [NodeType.FUNCTION]: UnifiedNode,
     [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
-    [NodeTypePyBackend.FUNCTION]: UnifiedNode,
     [NodeTypePyBackend.METHOD]: UnifiedNode,
   }
   const edgeTypes: EdgeTypes = {

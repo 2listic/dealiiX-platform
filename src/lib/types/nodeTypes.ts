@@ -18,7 +18,6 @@ type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
-  type_hash: string
 }
 
 export enum Inputs {
@@ -36,11 +35,11 @@ export enum NodeType {
   VOID_METHOD = 'void_method',
   VOID_CONST_METHOD = 'void_const_method',
   VOID_FUNCTION = 'void_function',
+  FUNCTION = 'function',
 }
 
 export enum NodeTypePyBackend {
   PRIMITIVE = 'primitive',
-  FUNCTION = 'function',
   METHOD = 'method',
 }
 
@@ -52,8 +51,8 @@ export const nodeColors = {
   [NodeType.VOID_METHOD]: 'skyblue',
   [NodeType.VOID_CONST_METHOD]: 'skyblue',
   [NodeType.VOID_FUNCTION]: 'skyblue',
+  [NodeType.FUNCTION]: 'skyblue',
   [NodeTypePyBackend.PRIMITIVE]: 'yellowgreen',
-  [NodeTypePyBackend.FUNCTION]: 'skyblue',
   [NodeTypePyBackend.METHOD]: 'skyblue',
 }
 
@@ -64,6 +63,7 @@ export enum Outputs {
 export enum Type {
   INT = 'int',
   UNSIGNED = 'unsigned',
+  UNSIGNED_INT = 'unsigned int',
   DOUBLE = 'double',
   FLOAT = 'float',
   BOOLEAN = 'bool',
@@ -75,21 +75,76 @@ export enum Type {
 export type NodeData = {
   arguments: Argument[]
   derived?: string[]
+  base?: string
   inputs: Inputs[]
+  name?: string
   method_name?: string
   node_type: NodeType
   outputs: Outputs[]
   type: string
-  type_hash: string
   value?: string
   is_valid?: boolean
 }
 
-export type ImportedNodes = {
+/**
+ * Registry protocol JSON structure. Used for loading available nodes and holding
+ * their definitions
+ */
+export type RegisteredNodes = {
   [key: string]: NodeData
 }
 
+export type NetworkEdge = {
+  source: number
+  source_output: number
+  target: number
+  target_input: number
+}
+
+export type NetworkEdges = {
+  [id: string]: NetworkEdge
+}
+
+export type NetworkNode = {
+  name?: string
+  type: string
+  base?: string
+  value?: string
+  position?: { x: number; y: number }
+}
+
+export type NetworkNodes = {
+  [id: string]: NetworkNode
+}
+
+/**
+ * Network protocol JSON structure with graph structure and current values
+ * for stafull nodes. It is used for evaluating/saving/loading CORAL
+ * computational graphs together with the registry JSON protocol.
+ */
+export type Network = {
+  author: string
+  date_time_utc: string
+  version: number
+  workflow: {
+    edges: NetworkEdges
+    nodes: NetworkNodes
+  }
+}
+
+/**
+ * Returns the name property -or method_name or type if not present- formatted with
+ * spaces instead of underscores.
+ * TODO: simplify and remove backward compatibility for method_name
+ * @param node
+ * @returns
+ */
 export const returnNodeName = (node: NodeData): string => {
-  let nodeName = 'method_name' in node ? node.method_name : node.type
+  let nodeName =
+    'name' in node
+      ? node.name
+      : 'method_name' in node
+        ? node.method_name
+        : node.type
   return nodeName.replaceAll('_', ' ')
 }

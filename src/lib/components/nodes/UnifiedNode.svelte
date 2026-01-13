@@ -25,18 +25,16 @@
     Handle,
     Position,
     useSvelteFlow,
-    // useNodes,
     type NodeProps,
     type Node,
   } from '@xyflow/svelte'
-  import {
-    nodeColors,
-    NodeType,
-    returnNodeName,
-    Type,
-  } from '../../types/nodeTypes'
+  import { getModal } from '../layout/Modal.svelte'
+  import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
+  import EditIcon from '../icons/EditIcon.svelte'
+  import TrashIcon from '../icons/TrashIcon.svelte'
+  import EditNodeNameModal from './EditNodeNameModal.svelte'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
   data.is_valid = true
@@ -45,6 +43,8 @@
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
+
+  const editNodeModalId = `edit-node-${id}`
 
   $effect(() => {
     // Clear connection cache when isValid changes
@@ -55,6 +55,7 @@
   const isValidNum = (value) => {
     const numValue = Number(value)
     switch (data.type) {
+      case Type.UNSIGNED_INT:
       case Type.UNSIGNED:
         return (
           !isNaN(numValue) &&
@@ -82,12 +83,25 @@
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
-    <div class="label">
-      {returnNodeName(data)}
+    <div class="node-labels">
+      {#if !data.name}
+        <div class="node-name">{data.type}</div>
+      {:else}
+        <div class="node-name">{data.name}</div>
+        <div class="node-type">{data.type}</div>
+      {/if}
     </div>
-    <button class="button-remove" onclick={() => removeNode(id)}>
-      <div style="font-weight: bold;">X</div>
-    </button>
+    <div class="node-buttons">
+      <button
+        class="node-button"
+        onclick={() => getModal(editNodeModalId)?.open()}
+      >
+        <EditIcon width="20px" height="20px" />
+      </button>
+      <button class="node-button" onclick={() => removeNode(id)}>
+        <TrashIcon width="20px" height="20px" />
+      </button>
+    </div>
   </div>
 
   <!-- Input handlers -->
@@ -110,33 +124,39 @@
     />
   {/each}
 
-  <!-- Input labels -->
-  <div style="display: flex; flex-direction: row; gap: 4vh">
-    <div class="input-column">
-      {#each data.inputs as i (i)}
-        {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
-          <div class="input-label">
-            {data.arguments[i].name}
-          </div>
-          <div class="input-type">{data.arguments[i].type}</div>
-        {/if}
-      {/each}
+  <!-- Input / output labels -->
+  {#if data.arguments.length > 0}
+    <div style="display: flex; flex-direction: row; gap: 4vh">
+      <div class="input-column">
+        {#each data.inputs as i (i)}
+          {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
+            <div>
+              <div class="input-label">
+                {data.arguments[i].name}
+              </div>
+              <div class="input-type">{data.arguments[i].type}</div>
+            </div>
+          {/if}
+        {/each}
+      </div>
+      <div class="output-column">
+        {#each data.outputs as i (i)}
+          {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
+            <div>
+              <div class="output-label">
+                {data.arguments[i].name}
+              </div>
+              <div class="output-type">{data.arguments[i].type}</div>
+            </div>
+          {/if}
+        {/each}
+      </div>
     </div>
-    <div class="output-column">
-      {#each data.outputs as i (i)}
-        {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
-          <div class="input-label">
-            {data.arguments[i].name}
-          </div>
-          <div class="input-type">{data.arguments[i].type}</div>
-        {/if}
-      {/each}
-    </div>
-  </div>
+  {/if}
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
+    {#if data.type === Type.UNSIGNED || data.type === Type.UNSIGNED_INT || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
       <input
         type="text"
         class={isValid ? '' : 'invalid'}
@@ -173,6 +193,12 @@
   </div>
 </div>
 
+<EditNodeNameModal
+  modalId={editNodeModalId}
+  nodeId={id}
+  currentName={data.name ?? data.type}
+/>
+
 <style>
   .custom-node {
     padding: 15px;
@@ -183,23 +209,44 @@
   }
 
   .node-header {
+    margin-bottom: 1vh;
     display: flex;
     justify-content: space-between;
     gap: 1vw;
   }
 
-  .label {
-    font-weight: bold;
+  .node-labels {
+    display: flex;
+    flex-direction: column;
   }
 
-  .button-remove {
+  .node-name {
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .node-type {
+    font-family: monospace;
+    font-size: smaller;
+    text-align: center;
+  }
+
+  .node-buttons {
+    display: flex;
+    gap: 0.3vw;
+  }
+
+  .node-button {
     cursor: pointer;
     border: 1px solid var(--border-color);
     border-radius: 3px;
-    margin: 0 0 1vh 1vh;
+    padding: 1px;
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
   }
 
-  .button-remove:hover {
+  .node-button:hover {
     border: 1px solid var(--border-color-hover);
   }
 
@@ -232,5 +279,17 @@
   .input-type {
     font-family: monospace;
     font-size: smaller;
+  }
+
+  .output-label {
+    font-weight: bold;
+    margin-top: 1vh;
+    text-align: right;
+  }
+
+  .output-type {
+    font-family: monospace;
+    font-size: smaller;
+    text-align: right;
   }
 </style>
