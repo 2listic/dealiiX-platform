@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#122](https://github.com/2listic/dealiiX-platform/pull/82) Update registry and network exaples to the new protocol indtroduced by PR #120
 - [#82](https://github.com/2listic/dealiiX-platform/pull/82) Add instructions to debug Svelte-renderer code in the Electron-Chromium dev tools
 - [#38](https://github.com/2listic/dealiiX-platform/pull/39) Add Git Hub section to the readme file. Update the pull request template.
 - [#42](https://github.com/2listic/dealiiX-platform/pull/42) Add debugging instructions for Electron and Svelte
