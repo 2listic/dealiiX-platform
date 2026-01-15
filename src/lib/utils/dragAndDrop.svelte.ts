@@ -32,7 +32,7 @@ export const onDrop = (
     type: data.node_type,
     data: data,
     position,
-    origin: [0.5, 0.0],
+    origin: [0.5, 0.0] as [number, number],
   }
 
   setNodes([...getNodes(), newNode])

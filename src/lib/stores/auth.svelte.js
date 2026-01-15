@@ -4,6 +4,7 @@
  *  */
 
 let token = $state(localStorage.getItem('access_token'))
+let username = $state(localStorage.getItem('username'))
 
 export const auth = {
   get token() {
@@ -11,12 +12,21 @@ export const auth = {
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get
     return token
   },
+  get username() {
+    return username
+  },
   setToken(newToken) {
     token = newToken
     localStorage.setItem('access_token', newToken)
   },
+  setUsername(newUsername) {
+    username = newUsername
+    localStorage.setItem('username', newUsername)
+  },
   clearToken() {
     token = null
+    username = null
     localStorage.removeItem('access_token')
+    localStorage.removeItem('username')
   },
 }
