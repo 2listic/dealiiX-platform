@@ -103,6 +103,30 @@ export const getAvailableNodes = (): NodeData[] => {
 }
 
 /**
+ * Store containing all the registered network nodes
+ */
+let networkNodes = $state<RegisteredNodes>({})
+
+/**
+ * Set the application store for the available network nodes
+ * @param {RegisteredNodes} data - Dictionary of node data to register
+ */
+export const setNetworkNodes = (data: RegisteredNodes) => {
+  networkNodes = data
+  console.log('Imported network nodes', $state.snapshot(registry))
+}
+
+/**
+ * Get all the stored network nodes
+ * @remarks Returns reactive state - changes will trigger UI updates
+ * @returns {NodeData[]}
+ */
+export const getStoredNetworkNodes = (): NodeData[] => {
+  const nodes = Object.values(networkNodes)
+  return nodes
+}
+
+/**
  * Get node data from the registry by type
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
  * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given type

@@ -36,6 +36,7 @@ export enum NodeType {
   VOID_CONST_METHOD = 'void_const_method',
   VOID_FUNCTION = 'void_function',
   FUNCTION = 'function',
+  NETWORK = 'network',
 }
 
 export enum NodeTypePyBackend {
@@ -52,6 +53,7 @@ export const nodeColors = {
   [NodeType.VOID_CONST_METHOD]: 'skyblue',
   [NodeType.VOID_FUNCTION]: 'skyblue',
   [NodeType.FUNCTION]: 'skyblue',
+  [NodeType.NETWORK]: 'darkorchid',
   [NodeTypePyBackend.PRIMITIVE]: 'yellowgreen',
   [NodeTypePyBackend.METHOD]: 'skyblue',
 }
