@@ -27,12 +27,14 @@
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
+  import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
+  const createNetworkNodeModalId = 'create-network-node-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -142,6 +144,10 @@
     }
     // No existing project - open save modal for new project
     getModal(saveProjectModalId)?.open()
+  }
+
+  const handleCreateNetworkNode = () => {
+    getModal(createNetworkNodeModalId)?.open()
   }
 
   const handleGraphDownload = () => {
@@ -333,6 +339,25 @@
     />
     <span class="button-text">Load Nodes</span>
   </div>
+
+  <div class="button-container">
+    <label
+      for="create-networknode"
+      class="element-label"
+      title="Create a new network node from current graph"
+    >
+      <UploadIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="create-networknode"
+      onclick={handleCreateNetworkNode}
+      style="display: none"
+      aria-label="Create a new network node from current graph"
+    ></button>
+    <span class="button-text">New Network Node</span>
+  </div>
+
+  <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />
 
   <div class="button-container">
     <label

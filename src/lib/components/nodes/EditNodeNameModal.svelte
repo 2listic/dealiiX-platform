@@ -12,6 +12,7 @@
   let { modalId, nodeId, currentName }: Props = $props()
 
   let editedName = $derived(currentName)
+  let inputId = `edit-node-name-input-${nodeId}`
 
   const { updateNodeData } = useSvelteFlow()
 
@@ -29,14 +30,16 @@
 
 <Modal id={modalId} size="lg">
   <div class="edit-node-form">
-    <h3>Edit Node Name</h3>
+    <h2>Edit Node {nodeId}</h2>
+    <label for={inputId}>Network node name</label>
     <input
+      id={inputId}
       type="text"
       bind:value={editedName}
       placeholder="Enter node name"
-      class="name-input"
+      class="input-field"
     />
-    <div class="form-actions">
+    <div class="button-container">
       <Button variant="default" onclick={handleCancel}>Cancel</Button>
       <Button variant="action" onclick={handleSave}>Save</Button>
     </div>
@@ -50,24 +53,18 @@
     gap: 1rem;
   }
 
-  .edit-node-form h3 {
-    margin: 0;
-    font-size: 1.25rem;
-  }
-
-  .name-input {
-    padding: 0.5rem;
-    font-size: 1rem;
+  .input-field {
+    padding: 1vh;
     border: 1px solid var(--ternary-color);
-    border-radius: 4px;
-    background: var(--background-color-secondary);
-    color: var(--text-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--secondary-color);
   }
 
-  .form-actions {
+  .button-container {
+    margin-top: 2vh;
     display: flex;
-    gap: 0.75rem;
+    gap: 1vh;
     justify-content: flex-end;
-    margin-top: 0.5rem;
   }
 </style>

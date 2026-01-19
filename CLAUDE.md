@@ -52,8 +52,26 @@ Defined in `src/lib/types/nodeTypes.ts`. Node types from CORAL:
 - `CONSTRUCTOR` / `EMPTY_CONSTRUCTOR` - Class constructors
 - `ABSTRACT` - Abstract base classes
 - `VOID_METHOD` / `VOID_CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations
+- `NETWORK` - Encapsulated computational graphs (see Network Nodes below)
 
 Connection validation (`src/lib/utils/connectionsValidation.js`) enforces type compatibility between node outputs and inputs.
+
+#### Network Nodes
+
+Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational graphs as reusable components:
+
+- **Free Inputs/Outputs**: Only unconnected inputs/outputs become the network node's external interface
+- **Arguments, inputs, outputs**: Those fields are optional for network nodes. In the case they are present they must follow the rules below.
+- **Arguments Array**: The order of the contained objects must follow the order of the ids of the internal nodes starting from the free outputs and then the free inputs if both are present in the same node.
+- **Index Mapping**: As for other nodes, each node's `inputs[i]` contains an index into its `arguments` array
+  - Example: `inputs: [0, 2, 5]` means arguments at indices 0, 2, and 5 are inputs
+  - Edges reference these via handles: `targetHandle: "input-1"` connects to `arguments[inputs[1]]`
+  - This indexing system is critical - the handle ID's numeric suffix is used as an array index
+- **Pass-through Arguments**: An argument with `connection_type: 'pass_through'` stays the same only if both input and output are free for the same internal node. On the contrary if one of internal `pass_trough` is connected, then at the netwrok node level the argument will be marked with a `connection_type: 'input'` or `output`.
+- **Value Field**: Contains the entire graph serialized as an escaped JSON string using `parseGraph()`
+- **Creating Network Nodes**: Use `createNewNetworkNode(name)` from `nodes.svelte.ts` to create a network node from the current graph
+  - The function automatically identifies free inputs/outputs by checking which connections have no edges
+  - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)`
 
 ## Common Commands
 
