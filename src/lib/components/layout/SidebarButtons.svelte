@@ -59,7 +59,7 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  const handleExport = async () => {
+  const handleExecution = async () => {
     try {
       await exportAndEvalGraph(getNodes(), getEdges())
     } catch (error) {
@@ -273,17 +273,17 @@
 
   <div class="button-container">
     <label
-      for="export-graph-button"
+      for="execute-graph-button"
       class="element-label"
-      title="Export JSON graph"
+      title="Execute graph"
     >
       <ExecuteIcon width="30px" height="30px" />
     </label>
     <button
-      id="export-graph-button"
-      onclick={handleExport}
+      id="execute-graph-button"
+      onclick={handleExecution}
       style="display: none"
-      aria-label="Export graph"
+      aria-label="Execute graph"
     ></button>
     <span class="button-text">Eval. Graph</span>
   </div>
@@ -354,7 +354,7 @@
       style="display: none"
       aria-label="Create a new network node from current graph"
     ></button>
-    <span class="button-text">New Network Node</span>
+    <span class="button-text">Create Sub-Graph</span>
   </div>
 
   <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />

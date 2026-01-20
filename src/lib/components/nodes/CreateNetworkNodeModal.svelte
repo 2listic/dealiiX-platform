@@ -1,11 +1,9 @@
 <script lang="ts">
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
-  import {
-    createNewNetworkNode,
-    addNetworkNode,
-  } from '../../stores/nodes.svelte'
+  import { addNetworkNode } from '../../stores/nodes.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
+  import { createNewNetworkNode } from '../../utils/networkNode'
 
   interface Props {
     modalId: string
