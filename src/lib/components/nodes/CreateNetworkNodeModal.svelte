@@ -23,12 +23,12 @@
     }
 
     try {
-      const newNetworkNode = createNewNetworkNode(networkNodeName.trim())
-      const key = `${networkNodeName.trim()}_${Date.now()}`
-      addNetworkNode(key, newNetworkNode)
+      const name = networkNodeName.trim()
+      const newNetworkNode = createNewNetworkNode(name)
+      addNetworkNode(name, newNetworkNode)
 
       toastState.add({
-        message: `Network node "${networkNodeName.trim()}" created successfully`,
+        message: `Network node "${name}" created successfully`,
         type: 'success',
       })
 
