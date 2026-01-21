@@ -25,5 +25,6 @@ export const login = async (data) => {
 
   const result = await response.json()
   auth.setToken(result.token)
+  auth.setUsername(data.username)
   return result
 }

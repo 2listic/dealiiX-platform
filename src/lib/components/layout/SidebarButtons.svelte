@@ -33,8 +33,12 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const token = $derived(auth.token)
+  const username = $derived(auth.username)
   const loginText = $derived.by(() => {
-    return token ? 'Logout' : 'Login'
+    return token ? username : 'Login'
+  })
+  const loginTitle = $derived.by(() => {
+    return token ? 'logout' : 'Login'
   })
   let importGraphFiles: FileList | null = $state()
   let importNodesFiles: FileList | null = $state()
@@ -141,7 +145,7 @@
 
 <aside>
   <div class="button-container">
-    <label for="login-button" class="element-label" title={loginText}>
+    <label for="login-button" class="element-label" title={loginTitle}>
       <LoginIcon width="30px" height="30px" />
     </label>
     <button
