@@ -1,5 +1,9 @@
 import { initialNodes, initialEdges } from '../data/flowData'
-import type { RegisteredNodes, Network, NodeData } from '../types/nodeTypes'
+import {
+  type RegisteredNodes,
+  type Network,
+  type NodeData,
+} from '../types/nodeTypes'
 import {
   nodesFromProtocolToFlow,
   edgesFromProtocolToFlow,
@@ -103,6 +107,24 @@ export const getAvailableNodes = (): NodeData[] => {
 }
 
 /**
+ * Get node data from the registry by type
+ * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
+ * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given type
+ * @throws {Error} If the node type is not found in the registry
+ */
+export const getNodeData = (type: string): NodeData => {
+  if (!(type in registry)) {
+    console.error(
+      `Node type '${type}' was not found in the list of available nodes.`
+    )
+    throw new Error(
+      `Node type '${type}' was not found in the list of available nodes.`
+    )
+  }
+  return $state.snapshot(registry[type])
+}
+
+/**
  * Store containing all the registered network nodes
  */
 let networkNodes = $state<RegisteredNodes>({})
@@ -137,21 +159,17 @@ export const getStoredNetworkNodes = (): NodeData[] => {
 }
 
 /**
- * Get node data from the registry by type
- * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
- * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given type
- * @throws {Error} If the node type is not found in the registry
+ * Get network node data from the networkNodes store by name
+ * @param {string} name - The network node name identifier (unique key for the network node)
+ * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given network node
+ * @throws {Error} If the network node name is not found in the networkNodes store
  */
-export const getNodeData = (type: string): NodeData => {
-  if (!(type in registry)) {
-    console.error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
-    throw new Error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
+export const getNetworkNodeData = (name: string): NodeData => {
+  if (!(name in networkNodes)) {
+    console.error(`Sub-graph node '${name}' not found in networkNodes store`)
+    throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
   }
-  return $state.snapshot(registry[type])
+  return $state.snapshot(networkNodes[name])
 }
 
 /**

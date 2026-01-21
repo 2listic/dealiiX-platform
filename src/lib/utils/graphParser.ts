@@ -1,5 +1,10 @@
-import { getNodeData } from '../stores/nodes.svelte'
-import type { Network, NetworkEdge, NetworkNodes } from '../types/nodeTypes'
+import { getNetworkNodeData, getNodeData } from '../stores/nodes.svelte'
+import {
+  NodeType,
+  type Network,
+  type NetworkEdge,
+  type NetworkNodes,
+} from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
 
 /**
@@ -9,10 +14,14 @@ import type { Node, Edge } from '@xyflow/svelte'
  * @returns {Node[]} Array of nodes formatted for the flow editor
  */
 export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
+  console.log('nodesFromProtocolToFlow', nodes)
   const arrNodeIds = Object.keys(nodes)
   return arrNodeIds.map((id, index) => {
     const node = nodes[id]
-    const nodeData = getNodeData(node.type)
+    const nodeData =
+      node.type === 'coral::Network'
+        ? getNetworkNodeData(node.name)
+        : getNodeData(node.type)
     const concatData = { ...nodeData, ...node } // concat data from registry and network
     return {
       id: id,
@@ -97,7 +106,11 @@ export const validateGraphData = (graphData: Network): void => {
 
   // check if all nodes are present in the registry (getNodeData throws if not found)
   for (const node of Object.values(nodes)) {
-    getNodeData(node.type)
+    // getNodeData(node.type)
+    const nodeData =
+      node.type === 'coral::Network'
+        ? getNetworkNodeData(node.name)
+        : getNodeData(node.type)
   }
 
   const edges = graphData?.workflow?.edges
