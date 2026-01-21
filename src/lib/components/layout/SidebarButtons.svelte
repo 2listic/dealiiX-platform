@@ -72,6 +72,7 @@
       const importedGraphAsText = await readFileAsText(importGraphFiles[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       loadGraph(importedGraph)
+      currentProjectState.clear()
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())
       toastState.add({ message: 'New graph was loaded' })
