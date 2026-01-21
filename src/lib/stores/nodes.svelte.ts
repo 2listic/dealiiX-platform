@@ -113,15 +113,20 @@ export const getAvailableNodes = (): NodeData[] => {
  * @throws {Error} If the node type is not found in the registry
  */
 export const getNodeData = (type: string): NodeData => {
-  if (!(type in registry)) {
-    console.error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
-    throw new Error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
+  if (!isNodeInRegistry(type)) {
+    console.error(`Node type '${type}' was not found in the available nodes.`)
+    throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
   return $state.snapshot(registry[type])
+}
+
+/**
+ * Returns if node is present in the registry of the available nodes
+ * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
+ * @returns {boolean} True if present, false if not
+ */
+export const isNodeInRegistry = (type: string): boolean => {
+  return type in registry
 }
 
 /**
@@ -165,11 +170,20 @@ export const getStoredNetworkNodes = (): NodeData[] => {
  * @throws {Error} If the network node name is not found in the networkNodes store
  */
 export const getNetworkNodeData = (name: string): NodeData => {
-  if (!(name in networkNodes)) {
+  if (!isNodeInNetworkNodes(name)) {
     console.error(`Sub-graph node '${name}' not found in networkNodes store`)
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
   }
   return $state.snapshot(networkNodes[name])
+}
+
+/**
+ * Returns if network node exists in the networkNodes store
+ * @param {string} name - The network node name identifier (unique key for the network node)
+ * @returns {boolean} True if exists, false if not
+ */
+export const isNodeInNetworkNodes = (name: string): boolean => {
+  return name in networkNodes
 }
 
 /**

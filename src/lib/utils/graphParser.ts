@@ -1,4 +1,9 @@
-import { getNetworkNodeData, getNodeData } from '../stores/nodes.svelte'
+import {
+  getNetworkNodeData,
+  getNodeData,
+  isNodeInNetworkNodes,
+  isNodeInRegistry,
+} from '../stores/nodes.svelte'
 import {
   NodeType,
   type Network,
@@ -102,15 +107,6 @@ export const validateGraphData = (graphData: Network): void => {
   const nodes = graphData?.workflow?.nodes
   if (nodes == null) {
     throw new Error('No nodes found in graph')
-  }
-
-  // check if all nodes are present in the registry (getNodeData throws if not found)
-  for (const node of Object.values(nodes)) {
-    // getNodeData(node.type)
-    const nodeData =
-      node.type === 'coral::Network'
-        ? getNetworkNodeData(node.name)
-        : getNodeData(node.type)
   }
 
   const edges = graphData?.workflow?.edges
