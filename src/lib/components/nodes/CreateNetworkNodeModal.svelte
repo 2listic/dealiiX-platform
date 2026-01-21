@@ -1,7 +1,11 @@
 <script lang="ts">
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
-  import { addNetworkNode } from '../../stores/nodes.svelte'
+  import ConfirmationModal from '../layout/ConfirmationModal.svelte'
+  import {
+    addNetworkNode,
+    isNodeInNetworkNodes,
+  } from '../../stores/nodes.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import { createNewNetworkNode } from '../../utils/networkNode'
 
@@ -12,18 +16,10 @@
   let { modalId }: Props = $props()
 
   let networkNodeName = $state('')
+  const confirmModalId = 'confirm-override-network-node'
 
-  const handleCreate = () => {
-    if (!networkNodeName.trim()) {
-      toastState.add({
-        message: 'Please enter a name for the network node',
-        type: 'error',
-      })
-      return
-    }
-
+  const createNetworkNode = (name: string) => {
     try {
-      const name = networkNodeName.trim()
       const newNetworkNode = createNewNetworkNode(name)
       addNetworkNode(name, newNetworkNode)
 
@@ -42,6 +38,28 @@
         type: 'error',
       })
     }
+  }
+
+  const handleCreate = () => {
+    const name = networkNodeName.trim()
+    if (!name) {
+      toastState.add({
+        message: 'Please enter a name for the network node',
+        type: 'error',
+      })
+      return
+    }
+
+    // Check if network node with same name already exists
+    if (isNodeInNetworkNodes(name)) {
+      getModal(confirmModalId)?.open()
+      return
+    }
+    createNetworkNode(name)
+  }
+
+  const handleConfirmOverride = () => {
+    createNetworkNode(networkNodeName)
   }
 
   const handleCancel = () => {
@@ -67,6 +85,16 @@
     </div>
   </div>
 </Modal>
+
+<ConfirmationModal
+  modalId={confirmModalId}
+  title="Network Node with the name '{networkNodeName.trim()}' Already Exists"
+  message="Do you want to override it?"
+  confirmText="Override"
+  cancelText="Cancel"
+  confirmVariant="action"
+  onConfirm={handleConfirmOverride}
+/>
 
 <style>
   .create-network-node-form {
