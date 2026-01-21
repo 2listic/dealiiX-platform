@@ -26,6 +26,7 @@
   import { parseGraph } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
+  import ExecuteIcon from '../icons/ExecuteIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -142,6 +143,36 @@
     // No existing project - open save modal for new project
     getModal(saveProjectModalId)?.open()
   }
+
+  const handleGraphDownload = () => {
+    try {
+      // Parse current graph to Network JSON format
+      const graphData = parseGraph(getNodes(), getEdges())
+      const jsonString = JSON.stringify(graphData, null, 2)
+
+      // Create blob with JSON data + filename
+      const blob = new Blob([jsonString], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const filename = `${currentProjectState.name}.json`
+
+      // Create temporary anchor and trigger download
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+
+      // Cleanup
+      document.body.removeChild(anchor)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to download graph',
+        type: 'error',
+      })
+    }
+  }
 </script>
 
 <aside>
@@ -240,7 +271,7 @@
       class="element-label"
       title="Export JSON graph"
     >
-      <UploadIcon width="30px" height="30px" />
+      <ExecuteIcon width="30px" height="30px" />
     </label>
     <button
       id="export-graph-button"
@@ -272,7 +303,7 @@
       class="element-label"
       title="Import grpah from JSON file"
     >
-      <ImportIcon width="30px" height="30px" />
+      <UploadIcon width="30px" height="30px" />
     </label>
     <input
       id="import-graph-input"
@@ -290,7 +321,7 @@
       class="element-label"
       title="Import nodes from JSON file"
     >
-      <ImportIcon width="30px" height="30px" />
+      <UploadIcon width="30px" height="30px" />
     </label>
     <input
       id="import-nodes-input"
@@ -302,6 +333,24 @@
     />
     <span class="button-text">Load Nodes</span>
   </div>
+
+  <div class="button-container">
+    <label
+      for="download-graph-locally"
+      class="element-label"
+      title="Import nodes from JSON file"
+    >
+      <ImportIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="download-graph-locally"
+      onclick={handleGraphDownload}
+      style="display: none"
+      aria-label="Download graph locally"
+    ></button>
+    <span class="button-text">Download Graph</span>
+  </div>
+
   <div class="button-container">
     <label for="settings-button" class="element-label" title="Settings">
       <SettingsIcon width="30px" height="30px" />
