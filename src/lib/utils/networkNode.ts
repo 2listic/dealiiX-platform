@@ -4,6 +4,7 @@ import {
   NodeType,
   type Type,
   type NodeData,
+  TypeField,
 } from '../types/nodeTypes'
 import { parseGraph } from './graphParser'
 
@@ -180,7 +181,7 @@ export const createNewNetworkNode = (name: string): NodeData => {
 
   // Step 6: Construct the final NodeData object
   return {
-    type: 'coral::Network',
+    type: TypeField.CORAL_NETWORK,
     node_type: NodeType.NETWORK,
     name: name,
     arguments: argumentsArray,

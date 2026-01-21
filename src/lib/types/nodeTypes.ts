@@ -39,6 +39,10 @@ export enum NodeType {
   NETWORK = 'network',
 }
 
+export enum TypeField {
+  CORAL_NETWORK = 'coral::Network',
+}
+
 export enum NodeTypePyBackend {
   PRIMITIVE = 'primitive',
   METHOD = 'method',

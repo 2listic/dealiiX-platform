@@ -6,6 +6,8 @@ import {
 } from '../stores/nodes.svelte'
 import {
   NodeType,
+  Outputs,
+  TypeField,
   type Network,
   type NetworkEdge,
   type NetworkNodes,
@@ -24,7 +26,7 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
   return arrNodeIds.map((id, index) => {
     const node = nodes[id]
     const nodeData =
-      node.type === 'coral::Network'
+      node.type === TypeField.CORAL_NETWORK
         ? getNetworkNodeData(node.name)
         : getNodeData(node.type)
     const concatData = { ...nodeData, ...node } // concat data from registry and network
@@ -113,4 +115,63 @@ export const validateGraphData = (graphData: Network): void => {
   if (edges == null) {
     throw new Error('No edges found in graph')
   }
+
+  // Validate edge type compatibility
+  Object.entries(edges).forEach(([edgeId, edge]) => {
+    // Get source and target node from workflow
+    const sourceNode = nodes[edge.source]
+    if (!sourceNode) {
+      throw new Error(`Edge ${edgeId}: Source node ${edge.source} not found`)
+    }
+    const targetNode = nodes[edge.target]
+    if (!targetNode) {
+      throw new Error(`Edge ${edgeId}: Target node ${edge.target} not found`)
+    }
+
+    // Get source and target node definition (from registry or networkNodes)
+    const sourceNodeData =
+      sourceNode.type === TypeField.CORAL_NETWORK
+        ? getNetworkNodeData(sourceNode.name!)
+        : getNodeData(sourceNode.type)
+    const targetNodeData =
+      targetNode.type === TypeField.CORAL_NETWORK
+        ? getNetworkNodeData(targetNode.name!)
+        : getNodeData(targetNode.type)
+
+    // Determine source output type
+    let sourceOutputType: string
+    let sourceOutputName: string
+
+    // Check if the output is SELF (e.g., constructor or method returning this)
+    if (sourceNodeData.outputs?.[edge.source_output] === Outputs.SELF) {
+      // For SELF outputs, use the base type if defined, otherwise use the node's type
+      sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
+      sourceOutputName = 'self'
+    } else {
+      // Regular output - get from arguments array
+      const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]
+      if (!sourceOutputArg) {
+        throw new Error(
+          `Edge ${edgeId}: Source node ${edge.source} has no argument at index ${edge.source_output}`
+        )
+      }
+      sourceOutputType = sourceOutputArg.type
+      sourceOutputName = sourceOutputArg.name
+    }
+
+    // Determine target input type from arguments array
+    const targetInputArg = targetNodeData.arguments?.[edge.target_input]
+    if (!targetInputArg) {
+      throw new Error(
+        `Edge ${edgeId}: Target node ${edge.target} has no argument at index ${edge.target_input}`
+      )
+    }
+
+    // Check if types match
+    if (sourceOutputType !== targetInputArg.type) {
+      throw new Error(
+        `Edge ${edgeId}: Type mismatch - source output type '${sourceOutputType}' (${sourceOutputName}) does not match target input type '${targetInputArg.type}' (${targetInputArg.name})`
+      )
+    }
+  })
 }
