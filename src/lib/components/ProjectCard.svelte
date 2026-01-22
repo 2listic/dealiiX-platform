@@ -87,7 +87,18 @@
         })
       }
 
-      loadGraph(projectData.graph.workflow.nodes, validEdges)
+      const registeredNetworkNodes = loadGraph(
+        projectData.graph.workflow.nodes,
+        validEdges
+      )
+      if (registeredNetworkNodes.length > 0) {
+        registeredNetworkNodes.forEach((nodeName) => {
+          toastState.add({
+            message: `Sub-graph node ${nodeName} was registered`,
+            type: 'success',
+          })
+        })
+      }
       currentProjectState.set(projectData)
       if (onLoad) {
         onLoad()

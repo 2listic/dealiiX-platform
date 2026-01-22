@@ -23,9 +23,13 @@ import type { Node, Edge } from '@xyflow/svelte'
  * and updates both nodes and edges in the editor
  * @param {NetworkNodes} nodes - The nodes to load
  * @param {NetworkEdges} edges - The edges to load
+ * @returns {string[]} Network node names that were registered or updated
  */
-export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
-  addNetworkNodesFromGraph(nodes)
+export const loadGraph = (
+  nodes: NetworkNodes,
+  edges: NetworkEdges
+): string[] => {
+  const networkNodes = addNetworkNodesFromGraph(nodes)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
@@ -36,6 +40,8 @@ export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
   const xyFlowEdges = edgesFromProtocolToFlow(edges)
   setEdges(xyFlowEdges)
   updateLastNodeId()
+
+  return networkNodes
 }
 
 /**
@@ -43,19 +49,21 @@ export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
  * Each network node is added or updated only if it has the required fields.
  * TODO: generate network node arguments, inputs and ouptuts if not already present
  * @param {NetworkNodes} nodes - The nodes to check and register
+ * @returns {string[]} Network node names that were registered or updated
  */
-const addNetworkNodesFromGraph = (nodes: NetworkNodes): void => {
+const addNetworkNodesFromGraph = (nodes: NetworkNodes): string[] => {
+  const networkNodes: string[] = []
   Object.values(nodes).forEach((node) => {
     if (node.type === TypeField.CORAL_NETWORK) {
-      // if (!isNodeInNetworkNodes(node.name)) {
-      // Type narrowing: check if node has the required NodeData fields
-      if (hasNodeDataFields(node)) {
+      // Register only if not already done and use type narrowing to check for the required NodeData fields
+      if (!networkNodes.includes(node.name) && hasNodeDataFields(node)) {
         addNetworkNode(node.name, node)
+        networkNodes.push(node.name)
       }
       // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
-      // }
     }
   })
+  return networkNodes
 }
 
 /**

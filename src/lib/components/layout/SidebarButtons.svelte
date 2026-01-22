@@ -83,7 +83,18 @@
         })
       }
 
-      loadGraph(importedGraph.workflow.nodes, validEdges)
+      const registeredNetworkNodes = loadGraph(
+        importedGraph.workflow.nodes,
+        validEdges
+      )
+      if (registeredNetworkNodes.length > 0) {
+        registeredNetworkNodes.forEach((nodeName) => {
+          toastState.add({
+            message: `Sub-graph node ${nodeName} was registered`,
+            type: 'success',
+          })
+        })
+      }
       currentProjectState.clear()
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())
