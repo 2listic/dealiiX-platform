@@ -2,6 +2,7 @@
   import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
   import { loadGraph } from '../stores/nodes.svelte'
+  import { validateGraphData } from '../utils/graphParser'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
@@ -71,11 +72,24 @@
     }
   }
 
+  /**
+   * Loads a remote graph into the local editor removing the edges that have type mismatches
+   */
   const handleLoad = async () => {
     try {
       const projectData = await getProject(project.id)
+      const [validEdges, invalidEdges] = validateGraphData(projectData.graph)
+      if (invalidEdges.length > 0) {
+        invalidEdges.forEach((invalidEdge) => {
+          toastState.add({
+            message: invalidEdge.error,
+            type: 'error',
+          })
+        })
+      }
+
+      loadGraph(projectData.graph.workflow.nodes, validEdges)
       currentProjectState.set(projectData)
-      loadGraph(projectData.graph)
       if (onLoad) {
         onLoad()
       }

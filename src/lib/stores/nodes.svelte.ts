@@ -1,13 +1,13 @@
 import { initialNodes, initialEdges } from '../data/flowData'
 import {
   type RegisteredNodes,
-  type Network,
   type NodeData,
+  type NetworkNodes,
+  type NetworkEdges,
 } from '../types/nodeTypes'
 import {
   nodesFromProtocolToFlow,
   edgesFromProtocolToFlow,
-  validateGraphData,
 } from '../utils/graphParser'
 import type { Node, Edge } from '@xyflow/svelte'
 
@@ -187,21 +187,19 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
 }
 
 /**
- * Load a graph object into the flow editor. Validates the graph data, then converts protocol
- * format to flow format and updates both nodes and edges in the editor
- * @param {Network} graphData - The graph data object containing workflow.nodes and workflow.edges
- * @throws {Error} If graph data is invalid or missing required fields
+ * Load a graph into the flow editor. Converts protocol format to flow format
+ * and updates both nodes and edges in the editor
+ * @param {NetworkNodes} nodes - The nodes to load
+ * @param {NetworkEdges} edges - The edges to load
  */
-export const loadGraph = (graphData: Network): void => {
-  validateGraphData(graphData)
-
+export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
   // Reset then load (ensures UI updates correctly)
   setNodes([])
   setEdges([])
 
-  const xyflowNodes = nodesFromProtocolToFlow(graphData.workflow.nodes)
+  const xyflowNodes = nodesFromProtocolToFlow(nodes)
   setNodes(xyflowNodes)
-  const xyFlowEdges = edgesFromProtocolToFlow(graphData.workflow.edges)
+  const xyFlowEdges = edgesFromProtocolToFlow(edges)
   setEdges(xyFlowEdges)
   updateLastNodeId()
 }

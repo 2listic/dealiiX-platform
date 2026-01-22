@@ -5,6 +5,7 @@
     setRegistry,
     loadGraph,
   } from '../../stores/nodes.svelte'
+  import { validateGraphData } from '../../utils/graphParser'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
@@ -67,6 +68,9 @@
     }
   }
 
+  /**
+   * Loads a graph from a file removing the edges that have type mismatches
+   */
   const loadGraphFromFile = async () => {
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
@@ -74,7 +78,17 @@
     try {
       const importedGraphAsText = await readFileAsText(importGraphFiles[0])
       const importedGraph = JSON.parse(importedGraphAsText)
-      loadGraph(importedGraph)
+      const [validEdges, invalidEdges] = validateGraphData(importedGraph)
+      if (invalidEdges.length > 0) {
+        invalidEdges.forEach((invalidEdge) => {
+          toastState.add({
+            message: invalidEdge.error,
+            type: 'error',
+          })
+        })
+      }
+
+      loadGraph(importedGraph.workflow.nodes, validEdges)
       currentProjectState.clear()
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())

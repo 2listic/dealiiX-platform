@@ -100,8 +100,14 @@ export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
  * Validate workflow data from a graph object
  * @param {Network} graphData - The graph data object to validate
  * @throws {Error} If graph data is invalid or missing required fields
+ * @returns {Array} Tuple containing [validEdges, invalidEdges]
  */
-export const validateGraphData = (graphData: Network): void => {
+export const validateGraphData = (
+  graphData: Network
+): [
+  { [id: string]: NetworkEdge },
+  Array<{ edgeId: string; edge: NetworkEdge; error: string }>,
+] => {
   if (!graphData) {
     throw new Error('No graph data provided')
   }
@@ -115,6 +121,13 @@ export const validateGraphData = (graphData: Network): void => {
   if (edges == null) {
     throw new Error('No edges found in graph')
   }
+
+  const validEdges: { [id: string]: NetworkEdge } = {}
+  const invalidEdges: Array<{
+    edgeId: string
+    edge: NetworkEdge
+    error: string
+  }> = []
 
   // Validate edge type compatibility
   Object.entries(edges).forEach(([edgeId, edge]) => {
@@ -140,13 +153,11 @@ export const validateGraphData = (graphData: Network): void => {
 
     // Determine source output type
     let sourceOutputType: string
-    let sourceOutputName: string
 
     // Check if the output is SELF (e.g., constructor or method returning this)
     if (sourceNodeData.outputs?.[edge.source_output] === Outputs.SELF) {
       // For SELF outputs, use the base type if defined, otherwise use the node's type
       sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
-      sourceOutputName = 'self'
     } else {
       // Regular output - get from arguments array
       const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]
@@ -156,7 +167,6 @@ export const validateGraphData = (graphData: Network): void => {
         )
       }
       sourceOutputType = sourceOutputArg.type
-      sourceOutputName = sourceOutputArg.name
     }
 
     // Determine target input type from arguments array
@@ -169,9 +179,17 @@ export const validateGraphData = (graphData: Network): void => {
 
     // Check if types match
     if (sourceOutputType !== targetInputArg.type) {
-      throw new Error(
-        `Edge ${edgeId}: Type mismatch - source output type '${sourceOutputType}' (${sourceOutputName}) does not match target input type '${targetInputArg.type}' (${targetInputArg.name})`
-      )
+      const errorMessage = `Edge id: ${edgeId} - Type mismatch - source output type '${sourceOutputType}' does not match target input '${targetInputArg.type}'`
+      console.warn(errorMessage)
+      invalidEdges.push({
+        edgeId,
+        edge,
+        error: errorMessage,
+      })
+    } else {
+      validEdges[edgeId] = edge
     }
   })
+
+  return [validEdges, invalidEdges]
 }
