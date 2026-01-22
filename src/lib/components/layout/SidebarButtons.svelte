@@ -1,11 +1,6 @@
 <script lang="ts">
-  import {
-    getEdges,
-    getNodes,
-    setRegistry,
-    loadGraph,
-  } from '../../stores/nodes.svelte'
-  import { validateGraphData } from '../../utils/graphParser'
+  import { getEdges, getNodes, setRegistry } from '../../stores/nodes.svelte'
+  import { loadGraph, validateGraphData } from '../../utils/graphParser'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'

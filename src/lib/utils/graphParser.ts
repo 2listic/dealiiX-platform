@@ -1,12 +1,62 @@
-import { getNetworkNodeData, getNodeData } from '../stores/nodes.svelte'
 import {
+  addNetworkNode,
+  getNetworkNodeData,
+  getNodeData,
+  setEdges,
+  setNodes,
+  updateLastNodeId,
+} from '../stores/nodes.svelte'
+import {
+  hasNodeDataFields,
   Outputs,
   TypeField,
   type Network,
   type NetworkEdge,
+  type NetworkEdges,
   type NetworkNodes,
 } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
+
+// ==================== From Coral protocol to Svelte xyflow =========================
+/**
+ * Load a graph into the flow editor. Converts protocol format to flow format
+ * and updates both nodes and edges in the editor
+ * @param {NetworkNodes} nodes - The nodes to load
+ * @param {NetworkEdges} edges - The edges to load
+ */
+export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
+  addNetworkNodesFromGraph(nodes)
+
+  // Reset then load (ensures UI updates correctly)
+  setNodes([])
+  setEdges([])
+
+  const xyflowNodes = nodesFromProtocolToFlow(nodes)
+  setNodes(xyflowNodes)
+  const xyFlowEdges = edgesFromProtocolToFlow(edges)
+  setEdges(xyFlowEdges)
+  updateLastNodeId()
+}
+
+/**
+ * Register or update network nodes from a graph in protocol format into the internal store.
+ * Each network node is added or updated only if it has the required fields.
+ * TODO: generate network node arguments, inputs and ouptuts if not already present
+ * @param {NetworkNodes} nodes - The nodes to check and register
+ */
+const addNetworkNodesFromGraph = (nodes: NetworkNodes): void => {
+  Object.values(nodes).forEach((node) => {
+    if (node.type === TypeField.CORAL_NETWORK) {
+      // if (!isNodeInNetworkNodes(node.name)) {
+      // Type narrowing: check if node has the required NodeData fields
+      if (hasNodeDataFields(node)) {
+        addNetworkNode(node.name, node)
+      }
+      // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
+      // }
+    }
+  })
+}
 
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
@@ -53,42 +103,6 @@ export const edgesFromProtocolToFlow = (edges: {
     sourceHandle: `output-${edge.source_output}`,
     targetHandle: `input-${edge.target_input}`,
   }))
-}
-
-/**
- * Parse nodes and edges into the CORAL network JSON format
- * @param {Node[]} nodes - Array of node objects from the flow editor
- * @param {Edge[]} edges - Array of edge objects from the flow editor
- * @returns {Network} Complete network object in CORAL protocol format
- */
-export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
-  const nodesGraph = nodes.reduce((acc, obj) => {
-    acc[obj.id] = {
-      ...obj.data,
-      position: obj.position,
-    }
-    return acc
-  }, {})
-
-  const edgesGraph = edges.reduce((acc, obj, index) => {
-    acc[index] = {
-      source: parseInt(obj.source),
-      target: parseInt(obj.target),
-      source_output: parseInt(obj.sourceHandle.split('-')[1]),
-      target_input: parseInt(obj.targetHandle.split('-')[1]),
-    }
-    return acc
-  }, {})
-
-  return {
-    workflow: {
-      nodes: nodesGraph,
-      edges: edgesGraph,
-    },
-    version: 1,
-    author: 'dealiix-platform',
-    date_time_utc: new Date().toISOString(),
-  }
 }
 
 /**
@@ -189,4 +203,41 @@ export const validateGraphData = (
   })
 
   return [validEdges, invalidEdges]
+}
+
+// =================== From Svelte xyflow to CORAL Protocol ======================
+/**
+ * Parse nodes and edges into the CORAL network JSON format
+ * @param {Node[]} nodes - Array of node objects from the flow editor
+ * @param {Edge[]} edges - Array of edge objects from the flow editor
+ * @returns {Network} Complete network object in CORAL protocol format
+ */
+export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
+  const nodesGraph = nodes.reduce((acc, obj) => {
+    acc[obj.id] = {
+      ...obj.data,
+      position: obj.position,
+    }
+    return acc
+  }, {})
+
+  const edgesGraph = edges.reduce((acc, obj, index) => {
+    acc[index] = {
+      source: parseInt(obj.source),
+      target: parseInt(obj.target),
+      source_output: parseInt(obj.sourceHandle.split('-')[1]),
+      target_input: parseInt(obj.targetHandle.split('-')[1]),
+    }
+    return acc
+  }, {})
+
+  return {
+    workflow: {
+      nodes: nodesGraph,
+      edges: edgesGraph,
+    },
+    version: 1,
+    author: 'dealiix-platform',
+    date_time_utc: new Date().toISOString(),
+  }
 }
