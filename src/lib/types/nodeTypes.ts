@@ -119,8 +119,16 @@ export type NetworkNode = {
   position?: { x: number; y: number }
 }
 
+export interface NetworkNodeTypeNetworkNode extends NetworkNode {
+  type: TypeField.CORAL_NETWORK
+  node_type: NodeType.NETWORK
+  arguments?: Argument[]
+  inputs?: Inputs[]
+  outputs?: Outputs[]
+}
+
 export type NetworkNodes = {
-  [id: string]: NetworkNode
+  [id: string]: NetworkNode | NetworkNodeTypeNetworkNode
 }
 
 /**
@@ -136,6 +144,26 @@ export type Network = {
     edges: NetworkEdges
     nodes: NetworkNodes
   }
+}
+
+/**
+ * Type guard to check if a network node has all required NodeData fields
+ * @param node - The node to check
+ * @returns True if the node has arguments, inputs, outputs, and node_type defined
+ */
+export const hasNodeDataFields = (
+  node: NetworkNodes[string]
+): node is NodeData => {
+  return (
+    'arguments' in node &&
+    node.arguments !== undefined &&
+    'inputs' in node &&
+    node.inputs !== undefined &&
+    'outputs' in node &&
+    node.outputs !== undefined &&
+    'node_type' in node &&
+    node.node_type !== undefined
+  )
 }
 
 /**

@@ -4,6 +4,8 @@ import {
   type NodeData,
   type NetworkNodes,
   type NetworkEdges,
+  TypeField,
+  hasNodeDataFields,
 } from '../types/nodeTypes'
 import {
   nodesFromProtocolToFlow,
@@ -11,6 +13,7 @@ import {
 } from '../utils/graphParser'
 import type { Node, Edge } from '@xyflow/svelte'
 
+// ============= Nodes and edges states (on the canvas) ================
 /**
  * Svelte internal nodes and edges states
  */
@@ -82,6 +85,7 @@ export const getNextNodeId = (): number => {
   return lastNodeId
 }
 
+// ================= Registered nodes (sidebar) ========================
 /**
  * Application registry containing all the available nodes
  */
@@ -129,6 +133,7 @@ export const isNodeInRegistry = (type: string): boolean => {
   return type in registry
 }
 
+// ============ Registered network nodes section (sidebar) ======================
 /**
  * Store containing all the registered network nodes
  */
@@ -186,6 +191,27 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
   return name in networkNodes
 }
 
+// ================ Load graph with protocol format ========================
+/**
+ * Register or update network nodes from a graph in protocol format into the internal store.
+ * Each network node is added or updated only if it has the required fields.
+ * TODO: generate network node arguments, inputs and ouptuts if not already present
+ * @param {NetworkNodes} nodes - The nodes to check and register
+ */
+const addNetworkNodesFromGraph = (nodes: NetworkNodes): void => {
+  Object.values(nodes).forEach((node) => {
+    if (node.type === TypeField.CORAL_NETWORK) {
+      // if (!isNodeInNetworkNodes(node.name)) {
+      // Type narrowing: check if node has the required NodeData fields
+      if (hasNodeDataFields(node)) {
+        addNetworkNode(node.name, node)
+      }
+      // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
+      // }
+    }
+  })
+}
+
 /**
  * Load a graph into the flow editor. Converts protocol format to flow format
  * and updates both nodes and edges in the editor
@@ -193,6 +219,8 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
  * @param {NetworkEdges} edges - The edges to load
  */
 export const loadGraph = (nodes: NetworkNodes, edges: NetworkEdges): void => {
+  addNetworkNodesFromGraph(nodes)
+
   // Reset then load (ensures UI updates correctly)
   setNodes([])
   setEdges([])

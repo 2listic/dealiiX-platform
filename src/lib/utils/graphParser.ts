@@ -1,11 +1,5 @@
+import { getNetworkNodeData, getNodeData } from '../stores/nodes.svelte'
 import {
-  getNetworkNodeData,
-  getNodeData,
-  isNodeInNetworkNodes,
-  isNodeInRegistry,
-} from '../stores/nodes.svelte'
-import {
-  NodeType,
   Outputs,
   TypeField,
   type Network,
@@ -23,7 +17,7 @@ import type { Node, Edge } from '@xyflow/svelte'
 export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
   console.log('nodesFromProtocolToFlow', nodes)
   const arrNodeIds = Object.keys(nodes)
-  return arrNodeIds.map((id, index) => {
+  const xyFlowNodes = arrNodeIds.map((id, index) => {
     const node = nodes[id]
     const nodeData =
       node.type === TypeField.CORAL_NETWORK
@@ -40,6 +34,7 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
       data: concatData,
     }
   })
+  return xyFlowNodes
 }
 
 /**
@@ -97,7 +92,8 @@ export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
 }
 
 /**
- * Validate workflow data from a graph object
+ * Validates workflow data from a graph object and returns valid and invalid edges,
+ * where invalid edges are those that connect incompatible output to input types
  * @param {Network} graphData - The graph data object to validate
  * @throws {Error} If graph data is invalid or missing required fields
  * @returns {Array} Tuple containing [validEdges, invalidEdges]
@@ -108,6 +104,7 @@ export const validateGraphData = (
   { [id: string]: NetworkEdge },
   Array<{ edgeId: string; edge: NetworkEdge; error: string }>,
 ] => {
+  // Validate not defined mandatory graph data
   if (!graphData) {
     throw new Error('No graph data provided')
   }
@@ -122,6 +119,7 @@ export const validateGraphData = (
     throw new Error('No edges found in graph')
   }
 
+  // Validate edge type compatibility
   const validEdges: { [id: string]: NetworkEdge } = {}
   const invalidEdges: Array<{
     edgeId: string
@@ -129,7 +127,6 @@ export const validateGraphData = (
     error: string
   }> = []
 
-  // Validate edge type compatibility
   Object.entries(edges).forEach(([edgeId, edge]) => {
     // Get source and target node from workflow
     const sourceNode = nodes[edge.source]
