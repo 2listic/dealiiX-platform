@@ -20,12 +20,9 @@ type Argument = {
   type: Type
 }
 
-export enum Inputs {
-  ZERO = 0,
-  ONE = 1,
-  TWO = 2,
-  THREE = 3,
-}
+export type InputIndex = number
+export const SELF = -1 as const
+export type OutputIndex = typeof SELF | number
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
@@ -62,10 +59,6 @@ export const nodeColors = {
   [NodeTypePyBackend.METHOD]: 'skyblue',
 }
 
-export enum Outputs {
-  SELF = -1,
-}
-
 export enum Type {
   INT = 'int',
   UNSIGNED = 'unsigned',
@@ -82,11 +75,11 @@ export type NodeData = {
   arguments: Argument[]
   derived?: string[]
   base?: string
-  inputs: Inputs[]
+  inputs: InputIndex[]
   name?: string
   method_name?: string
   node_type: NodeType
-  outputs: Outputs[]
+  outputs: OutputIndex[]
   type: string
   value?: string
   is_valid?: boolean
@@ -119,16 +112,16 @@ export type NetworkNode = {
   position?: { x: number; y: number }
 }
 
-export interface NetworkNodeTypeNetworkNode extends NetworkNode {
+export interface NetworkNodeOfTypeNetwork extends NetworkNode {
   type: TypeField.CORAL_NETWORK
   node_type: NodeType.NETWORK
   arguments?: Argument[]
-  inputs?: Inputs[]
-  outputs?: Outputs[]
+  inputs?: InputIndex[]
+  outputs?: OutputIndex[]
 }
 
 export type NetworkNodes = {
-  [id: string]: NetworkNode | NetworkNodeTypeNetworkNode
+  [id: string]: NetworkNode | NetworkNodeOfTypeNetwork
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 } from '../stores/nodes.svelte'
 import {
   hasNodeDataFields,
-  Outputs,
+  SELF,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -174,7 +174,7 @@ export const validateGraphData = (
     let sourceOutputType: string
 
     // Check if the output is SELF (e.g., constructor or method returning this)
-    if (sourceNodeData.outputs?.[edge.source_output] === Outputs.SELF) {
+    if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
       // For SELF outputs, use the base type if defined, otherwise use the node's type
       sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
     } else {
