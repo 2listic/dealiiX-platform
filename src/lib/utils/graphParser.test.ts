@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Network, NodeData, RegisteredNodes } from '../types/nodeTypes'
-import graphValidConnections from '../../../test_files/graph-valid-connections.json'
+import graphValidConnections from '../../../test_files/network-mwe.json'
 import defaultRegistry from '../data/defaultNodes.json'
+import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
-// Mock registry data populated per-test
+// Mock registries data populated per-test
 let mockRegistry = defaultRegistry as RegisteredNodes
+let mockNetworkNodes = defaultNetworkNodes as RegisteredNodes
 
 vi.mock('../stores/nodes.svelte', () => ({
   getNodeData: vi.fn((type: string): NodeData => {
@@ -13,10 +15,15 @@ vi.mock('../stores/nodes.svelte', () => ({
         `Node type '${type}' was not found in the available nodes.`
       )
     }
-    return { ...mockRegistry[type] }
+    return { ...mockRegistry[type] } // Return a copy
   }),
   getNetworkNodeData: vi.fn((name: string): NodeData => {
-    throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
+    if (!(name in mockNetworkNodes)) {
+      throw new Error(
+        `Sub-graph node '${name}' not found in networkNodes store`
+      )
+    }
+    return { ...mockNetworkNodes[name] } // Return a copy
   }),
   addNetworkNode: vi.fn(),
   setEdges: vi.fn(),
@@ -27,11 +34,25 @@ vi.mock('../stores/nodes.svelte', () => ({
 import { validateGraphData } from './graphParser'
 
 describe('validateGraphData', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  // beforeEach(() => {
+  //   vi.clearAllMocks()
+  // })
+  let graph
+
+  describe('valid graphs', () => {
+    beforeEach(() => {
+      graph = structuredClone(graphValidConnections) as Network
+    })
+    it('accepts a well defined MWE graph (no network nodes)', () => {
+      const [validEdges, invalidEdges] = validateGraphData(
+        graphValidConnections as unknown as Network
+      )
+      expect(Object.keys(validEdges)).toHaveLength(9)
+      expect(invalidEdges).toHaveLength(0)
+    })
   })
 
-  describe('input validation', () => {
+  describe('graph structure validation', () => {
     it('throws when no graph data is provided', () => {
       expect(() => validateGraphData(null as unknown as Network)).toThrow(
         'No graph data provided'
@@ -54,49 +75,59 @@ describe('validateGraphData', () => {
   })
 
   describe('type mismatch detection', () => {
-    let graph: Network
-
     beforeEach(() => {
       graph = structuredClone(graphValidConnections) as Network
     })
 
-    it('returns empty validEdges and invalidEdges with edgeId "0" for type mismatch', () => {
-      graph.workflow.edges['0'].target_input = 0
+    it('returns one invalid edge for type mismatch', () => {
+      // Modify target input of first edge to trigger invalid edge
+      graph.workflow.edges['0'].target_input = 1
+
       const [validEdges, invalidEdges] = validateGraphData(
         graph as unknown as Network
       )
 
-      expect(Object.keys(validEdges)).toHaveLength(0)
+      expect(Object.keys(validEdges)).toHaveLength(8)
       expect(invalidEdges).toHaveLength(1)
       expect(invalidEdges[0].edgeId).toBe('0')
       expect(invalidEdges[0].edge).toEqual({
-        source: 5,
-        target: 4,
+        source: 0,
+        target: 3,
         source_output: 0,
-        target_input: 0,
+        target_input: 1,
       })
       expect(invalidEdges[0].error).toContain('std::string')
       expect(invalidEdges[0].error).toContain('dealii::Triangulation<2, 2>')
     })
-    it('returns empty validEdges and invalidEdges with edgeId "0" for type mismatch', () => {
-      graph.workflow.nodes['5'].type = 'dealii::Triangulation<2, 2>'
+
+    it('returns one invalidEdge for type mismatch', () => {
+      // Modify type of second node to trigger invalid edge
+      graph.workflow.nodes['1'].type = 'dealii::Triangulation<2, 2>'
+
       const [validEdges, invalidEdges] = validateGraphData(
         graph as unknown as Network
       )
 
-      expect(Object.keys(validEdges)).toHaveLength(0)
+      expect(Object.keys(validEdges)).toHaveLength(8)
       expect(invalidEdges).toHaveLength(1)
-      expect(invalidEdges[0].edgeId).toBe('0')
+      expect(invalidEdges[0].edgeId).toBe('1')
     })
   })
 
-  describe('valid connections', () => {
-    it('accepts edges where source output type matches target input type', () => {
-      const [validEdges, invalidEdges] = validateGraphData(
-        graphValidConnections as unknown as Network
+  describe('nodes not found in the registries', () => {
+    beforeEach(() => {
+      graph = structuredClone(graphValidConnections) as Network
+    })
+
+    it('throws error when node type is not found', () => {
+      // Modify type of second node to trigger node not in the registry
+      const invalidType = 'wrong_type'
+      graph.workflow.nodes['1'].type = invalidType
+      graph.workflow.nodes['3'].arguments[1].type = invalidType
+
+      expect(() => validateGraphData(graph as unknown as Network)).toThrow(
+        `Node type '${invalidType}' was not found in the available nodes.`
       )
-      expect(Object.keys(validEdges)).toHaveLength(1)
-      expect(invalidEdges).toHaveLength(0)
     })
   })
 })
