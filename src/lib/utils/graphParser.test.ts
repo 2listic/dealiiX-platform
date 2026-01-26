@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Network, NodeData, RegisteredNodes } from '../types/nodeTypes'
-import graphValidConnections from '../../../test_files/network-mwe.json'
+import validGraph from '../../../test_files/network-mwe.json'
+import validGraphNewtorkNode from '../../../test_files/network-mwe-network-node.json'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
@@ -38,16 +39,27 @@ describe('validateGraphData', () => {
   //   vi.clearAllMocks()
   // })
   let graph
+  let graphNetworkNode
 
   describe('valid graphs', () => {
     beforeEach(() => {
-      graph = structuredClone(graphValidConnections) as Network
+      graph = structuredClone(validGraph) as Network
+      graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
     })
+
     it('accepts a well defined MWE graph (no network nodes)', () => {
       const [validEdges, invalidEdges] = validateGraphData(
-        graphValidConnections as unknown as Network
+        validGraph as unknown as Network
       )
       expect(Object.keys(validEdges)).toHaveLength(9)
+      expect(invalidEdges).toHaveLength(0)
+    })
+
+    it('accepts a well defined MWE graph which includes a network node', () => {
+      const [validEdges, invalidEdges] = validateGraphData(
+        validGraphNewtorkNode as unknown as Network
+      )
+      expect(Object.keys(validEdges)).toHaveLength(4)
       expect(invalidEdges).toHaveLength(0)
     })
   })
@@ -58,13 +70,11 @@ describe('validateGraphData', () => {
         'No graph data provided'
       )
     })
-
     it('throws when nodes are missing', () => {
       expect(() =>
         validateGraphData({ workflow: { edges: {} } } as unknown as Network)
       ).toThrow('No nodes found in graph')
     })
-
     it('throws when edges are missing', () => {
       expect(() =>
         validateGraphData({
@@ -76,13 +86,12 @@ describe('validateGraphData', () => {
 
   describe('type mismatch detection', () => {
     beforeEach(() => {
-      graph = structuredClone(graphValidConnections) as Network
+      graph = structuredClone(validGraph) as Network
     })
 
     it('returns one invalid edge for type mismatch', () => {
       // Modify target input of first edge to trigger invalid edge
       graph.workflow.edges['0'].target_input = 1
-
       const [validEdges, invalidEdges] = validateGraphData(
         graph as unknown as Network
       )
@@ -103,7 +112,6 @@ describe('validateGraphData', () => {
     it('returns one invalidEdge for type mismatch', () => {
       // Modify type of second node to trigger invalid edge
       graph.workflow.nodes['1'].type = 'dealii::Triangulation<2, 2>'
-
       const [validEdges, invalidEdges] = validateGraphData(
         graph as unknown as Network
       )
@@ -116,17 +124,30 @@ describe('validateGraphData', () => {
 
   describe('nodes not found in the registries', () => {
     beforeEach(() => {
-      graph = structuredClone(graphValidConnections) as Network
+      graph = structuredClone(validGraph) as Network
+      graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
     })
 
     it('throws error when node type is not found', () => {
       // Modify type of second node to trigger node not in the registry
-      const invalidType = 'wrong_type'
+      const invalidType = 'type_not_registered'
       graph.workflow.nodes['1'].type = invalidType
       graph.workflow.nodes['3'].arguments[1].type = invalidType
 
       expect(() => validateGraphData(graph as unknown as Network)).toThrow(
         `Node type '${invalidType}' was not found in the available nodes.`
+      )
+    })
+
+    it('throws error when networ knode name is not found', () => {
+      // Modify name of the network node to trigger node not found in the store
+      const invalidName = 'name_not_in_store'
+      graphNetworkNode.workflow.nodes['12'].name = invalidName
+
+      expect(() =>
+        validateGraphData(graphNetworkNode as unknown as Network)
+      ).toThrow(
+        `Sub-graph node '${invalidName}' not found in networkNodes store`
       )
     })
   })
