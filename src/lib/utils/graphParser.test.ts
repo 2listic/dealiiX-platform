@@ -41,29 +41,6 @@ describe('validateGraphData', () => {
   let graph
   let graphNetworkNode
 
-  describe('valid graphs', () => {
-    beforeEach(() => {
-      graph = structuredClone(validGraph) as Network
-      graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
-    })
-
-    it('accepts a well defined MWE graph (no network nodes)', () => {
-      const [validEdges, invalidEdges] = validateGraphData(
-        validGraph as unknown as Network
-      )
-      expect(Object.keys(validEdges)).toHaveLength(9)
-      expect(invalidEdges).toHaveLength(0)
-    })
-
-    it('accepts a well defined MWE graph which includes a network node', () => {
-      const [validEdges, invalidEdges] = validateGraphData(
-        validGraphNewtorkNode as unknown as Network
-      )
-      expect(Object.keys(validEdges)).toHaveLength(4)
-      expect(invalidEdges).toHaveLength(0)
-    })
-  })
-
   describe('graph structure validation', () => {
     it('throws when no graph data is provided', () => {
       expect(() => validateGraphData(null as unknown as Network)).toThrow(
@@ -84,9 +61,28 @@ describe('validateGraphData', () => {
     })
   })
 
-  describe('type mismatch detection', () => {
+  describe('standard graphs with no network nodes', () => {
     beforeEach(() => {
       graph = structuredClone(validGraph) as Network
+    })
+
+    it('accepts a well defined MWE graph (no network nodes)', () => {
+      const [validEdges, invalidEdges] = validateGraphData(
+        validGraph as unknown as Network
+      )
+      expect(Object.keys(validEdges)).toHaveLength(9)
+      expect(invalidEdges).toHaveLength(0)
+    })
+
+    it('throws error when node type is not found', () => {
+      // Modify type of second node to trigger node not in the registry
+      const invalidType = 'type_not_registered'
+      graph.workflow.nodes['1'].type = invalidType
+      graph.workflow.nodes['3'].arguments[1].type = invalidType
+
+      expect(() => validateGraphData(graph as unknown as Network)).toThrow(
+        `Node type '${invalidType}' was not found in the available nodes.`
+      )
     })
 
     it('returns one invalid edge for type mismatch', () => {
@@ -109,7 +105,7 @@ describe('validateGraphData', () => {
       expect(invalidEdges[0].error).toContain('dealii::Triangulation<2, 2>')
     })
 
-    it('returns one invalidEdge for type mismatch', () => {
+    it('returns one invalid edge for type mismatch', () => {
       // Modify type of second node to trigger invalid edge
       graph.workflow.nodes['1'].type = 'dealii::Triangulation<2, 2>'
       const [validEdges, invalidEdges] = validateGraphData(
@@ -122,25 +118,21 @@ describe('validateGraphData', () => {
     })
   })
 
-  describe('nodes not found in the registries', () => {
+  describe('graphs with network nodes', () => {
     beforeEach(() => {
-      graph = structuredClone(validGraph) as Network
       graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
     })
 
-    it('throws error when node type is not found', () => {
-      // Modify type of second node to trigger node not in the registry
-      const invalidType = 'type_not_registered'
-      graph.workflow.nodes['1'].type = invalidType
-      graph.workflow.nodes['3'].arguments[1].type = invalidType
-
-      expect(() => validateGraphData(graph as unknown as Network)).toThrow(
-        `Node type '${invalidType}' was not found in the available nodes.`
+    it('accepts a well defined MWE graph which includes a network node', () => {
+      const [validEdges, invalidEdges] = validateGraphData(
+        validGraphNewtorkNode as unknown as Network
       )
+      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(invalidEdges).toHaveLength(0)
     })
 
-    it('throws error when networ knode name is not found', () => {
-      // Modify name of the network node to trigger node not found in the store
+    it('throws error when network node name is not found', () => {
+      // Modify name of the network node to trigger network node not found in the store
       const invalidName = 'name_not_in_store'
       graphNetworkNode.workflow.nodes['12'].name = invalidName
 
