@@ -30,8 +30,6 @@
     "make:deb": "electron-forge make --targets=@electron-forge/maker-deb",
     "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",

@@ -44,6 +44,11 @@ Prettier is used for formatting. Run the following to format the code or use you
 If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
 Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
 
+## Testing
+
+Run unit tests
+`npm run test`
+
 ## Debugging
 
 ### Debugging Electron
