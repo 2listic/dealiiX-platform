@@ -5,11 +5,22 @@
   import { cubicOut } from 'svelte/easing'
   import { jobsState } from '../../stores/jobsStore.svelte'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
-  import { JOB_DATE_INDEX, JOB_LIST_DAYS } from '../../utils/sshMessages'
+  import {
+    COMPLETED,
+    FAILED,
+    getOutFileContent,
+    JOB_DATE_INDEX,
+    JOB_LIST_DAYS,
+  } from '../../utils/sshMessages'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
+  import Button from './Button.svelte'
+  import { toastState } from '../../stores/toastsStore.svelte'
+  import TextModal from './TextModal.svelte'
+  import { getModal } from './Modal.svelte'
 
   let isLoaded = $state(false)
   let jobsData = $derived(jobsState.current)
+  $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
     easing: cubicOut,
@@ -24,7 +35,6 @@
   })
 
   let isJobListExpanded = $state(false)
-
   const toggleExpand = async () => {
     isJobListExpanded = !isJobListExpanded
     if (isJobListExpanded) await jobsState.update()
@@ -33,6 +43,23 @@
   const updateJobs = async () => {
     rotation.target -= 360
     await jobsState.update()
+  }
+
+  let outLogText = $state('')
+  let currentJobId = $state('')
+  const outLogModalId = 'out-log-modal'
+
+  const handleLogClick = async (jobId) => {
+    try {
+      currentJobId = jobId
+      outLogText = await getOutFileContent(jobId)
+      getModal(outLogModalId)?.open()
+    } catch (error) {
+      toastState.add({
+        message: error,
+        type: 'error',
+      })
+    }
   }
 </script>
 
@@ -81,6 +108,7 @@
                 {#each jobsData[0] as headCell, i (i)}
                   <th>{headCell}</th>
                 {/each}
+                <th>Logs</th>
               </tr>
             </thead>
             <tbody>
@@ -99,6 +127,15 @@
                           </span>
                         </td>
                       {/each}
+                      <td>
+                        {#if [COMPLETED, FAILED].includes(line[1])}
+                          <Button
+                            size="xsmall"
+                            onclick={() => handleLogClick(line[0])}
+                            >{line[0]}.out</Button
+                          >
+                        {/if}
+                      </td>
                     </tr>
                   {/if}
                 {/each}
@@ -115,6 +152,15 @@
                       </span>
                     </td>
                   {/each}
+                  <td>
+                    {#if [COMPLETED, FAILED].includes(jobsData[1][1])}
+                      <Button
+                        size="xsmall"
+                        onclick={() => handleLogClick(jobsData[1][0])}
+                        >{jobsData[1][0]}.out</Button
+                      >
+                    {/if}
+                  </td>
                 </tr>
               {/if}
             </tbody>
@@ -134,6 +180,18 @@
     </div>
   {/if}
 </div>
+
+<TextModal
+  modalId={outLogModalId}
+  message={outLogText}
+  title={`${currentJobId}.out file`}
+  size="lg"
+  buttonText="Close"
+  onClose={() => {
+    outLogText = ''
+    currentJobId = ''
+  }}
+/>
 
 <style>
   .jobs-table-wrapper {

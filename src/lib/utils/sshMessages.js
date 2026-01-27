@@ -84,8 +84,8 @@ const RUNNING = 'RUNNING'
  * @param {string} command - The SSH command to execute for polling.
  * @param {number} interval - The interval (in milliseconds) between polling attempts.
  * @param {number} [timeout] - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
- * @returns {Promise<string>} - A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
- * @throws {Error} - Throws an error if there is a polling error or if the job times out.
+ * @returns {Promise<string>} A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
+ * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
 const jobPolling = async (jobId, command, interval, timeout) => {
   await delay(5000) // wait few secs for job to be submitted then start polling
@@ -130,8 +130,8 @@ const JOB_LIST_DAYS = 1
  *
  * @async
  * @param {number} numDays - The number of days to look back for job states.
- * @returns {Promise<Array<Array<string>>>} - A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
- * @throws {Error} - Throws an error if the SSH command execution fails or if the result contains an error.
+ * @returns {Promise<Array<Array<string>>>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
+ * @throws {Error} Throws an error if the SSH command execution fails or if the result contains an error.
  */
 const getJobsState = async (numDays) => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
@@ -161,6 +161,20 @@ const getJobsState = async (numDays) => {
     })
     return []
   }
+}
+
+/**
+ * Retrieves the content of the .out file for a specific job ID.
+ * @async
+ * @param {string | number} jobId - The ID of the Slurm job
+ * @returns {Promise<string>} A promise that resolves to the content of the file
+ */
+const getOutFileContent = async (jobId) => {
+  const command = `cat /shared-data/slurm-${jobId}.out`
+  // @ts-ignore
+  return await window.electron.invoke('execute-ssh-with-key', {
+    command: command,
+  })
 }
 
 /**
@@ -194,8 +208,11 @@ export {
   executeWithPassword,
   executeWithKey,
   exportAndEvalGraph,
+  COMPLETED,
+  FAILED,
   JOB_DATE_INDEX,
   JOB_LIST_DAYS,
   getJobsState,
+  getOutFileContent,
   openNewWindow,
 }

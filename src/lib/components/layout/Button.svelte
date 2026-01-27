@@ -1,7 +1,7 @@
 <script lang="ts">
   type ButtonVariant = 'default' | 'action' | 'delete'
   type ButtonType = 'button' | 'submit' | 'reset'
-  type ButtonSize = 'small' | 'medium' | 'large'
+  type ButtonSize = 'xsmall' | 'small' | 'medium' | 'large'
 
   let {
     variant = 'default',
@@ -31,6 +31,11 @@
     font-size: 1rem;
     border: 1px solid;
     transition: all 0.2s ease;
+  }
+
+  .btn-xsmall {
+    padding: 0.2vh 0.5vh;
+    font-size: 0.8rem;
   }
 
   .btn-small {
