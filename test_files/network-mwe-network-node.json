@@ -5,9 +5,7 @@
         "arguments": [],
         "inputs": [],
         "node_type": "elementary_constructor",
-        "outputs": [
-          -1
-        ],
+        "outputs": [-1],
         "type": "std::string",
         "value": "hyper_cube",
         "is_valid": true,
@@ -20,9 +18,7 @@
         "arguments": [],
         "inputs": [],
         "node_type": "elementary_constructor",
-        "outputs": [
-          -1
-        ],
+        "outputs": [-1],
         "type": "std::string",
         "value": "0: 1: false",
         "is_valid": true,
@@ -35,9 +31,7 @@
         "arguments": [],
         "inputs": [],
         "node_type": "elementary_constructor",
-        "outputs": [
-          -1
-        ],
+        "outputs": [-1],
         "type": "unsigned int",
         "value": "2",
         "is_valid": true,
@@ -50,9 +44,7 @@
         "arguments": [],
         "inputs": [],
         "node_type": "elementary_constructor",
-        "outputs": [
-          -1
-        ],
+        "outputs": [-1],
         "type": "std::string",
         "value": "grid-1.vtk",
         "is_valid": true,
@@ -89,15 +81,8 @@
             "type": "std::ostream"
           }
         ],
-        "inputs": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "outputs": [
-          4
-        ],
+        "inputs": [0, 1, 2, 3],
+        "outputs": [4],
         "name": "Step 1 Dealii tutorial",
         "node_type": "network",
         "type": "coral::Network",

@@ -195,6 +195,12 @@ npm run lint:fix     # ESLint with auto-fix
 npm run format       # Prettier format
 ```
 
+### Unit Tests
+
+```bash
+npm run test         # Run unit tests
+```
+
 ### Docker (SSH + Slurm testing)
 
 ```bash
