@@ -106,9 +106,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
-- [#78](https://github.com/2listic/dealiiX-platform/pull/78) Fixed issue with imports during packaging
-- [#38](https://github.com/2listic/dealiiX-platform/pull/37) Distributables are now created for tagged versions only
+- [#135](https://github.com/2listic/dealiiX-platform/pull/135) Added unit testing step in the GitHub Actions workflows.
+- [#78](https://github.com/2listic/dealiiX-platform/pull/78) Fixed issue with imports during packaging.
+- [#38](https://github.com/2listic/dealiiX-platform/pull/37) Distributables are now created for tagged versions only.
 
 ### Testing
 
--
+- [#135](https://github.com/2listic/dealiiX-platform/pull/135) Added support for unit test with Vitest. Added unit tests for the function validateGraphData responsible for validating a graph before importing it into the editor.
