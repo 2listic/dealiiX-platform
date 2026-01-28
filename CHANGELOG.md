@@ -14,6 +14,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added button to create a network node from the current graph. Added support for new network nodes during the loading and the exporting of a graph. Added feature to validate all the connection types of every input-output linked by an edge in a graph.
 - [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
 - [#59](https://github.com/2listic/dealiiX-platform/pull/59) Add button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
@@ -25,6 +26,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added section in the sidebar to display and drag the network nodes in the canvas.
 - [#118](https://github.com/2listic/dealiiX-platform/pull/120) Added button to download the current graph locally.
 - [#113](https://github.com/2listic/dealiiX-platform/pull/120) Display logged-in user's username
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Added functionality for editing the displayed node's name.
@@ -63,6 +65,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Removed "type_hash" from registry JSON and replaced with "type". Simplified nework JSON removing duplicated information already present in the registry like "arguments", "inputs" and "outputs". Added optional "name" key in the network JSON in order to customize the name of the nodes in the graph.
 - [#116](https://github.com/2listic/dealiiX-platform/pull/116) Added support for the “output” connection type and for multiple outputs returned from a single node. Added support for node types float, str and for the generic any type. Added support for the Python backend through the new enum values primitive, function, and method.
 - [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for stateful nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
