@@ -33,7 +33,6 @@
     isEditingSshPath = false
     const file = sshFiles[0]
     if (!file) return
-    // @ts-ignore
     sshPath = window.electron.getFilePath(file)
     settingsState.setKey(SSH_PATH, sshPath)
     toastState.add({ message: 'SSH key absolute path updated' })

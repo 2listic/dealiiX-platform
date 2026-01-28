@@ -11,9 +11,7 @@ let colorMode: ColorModeClass = $state(initialColorMode)
  * It updates the theme mode browser side and in the electron main process if running. It also updates the localStorage
  */
 const updateThemeMode = async () => {
-  // @ts-ignore
   if (window.electron) {
-    // @ts-ignore
     const actualTheme = await window.electron.invoke('set-theme', colorMode)
     console.log('Electron theme: ', actualTheme)
   }

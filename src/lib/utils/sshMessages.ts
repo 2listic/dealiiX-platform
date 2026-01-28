@@ -1,11 +1,16 @@
+import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraph } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 
-export const executeWithPassword = async () => {
-  // @ts-ignore
+/**
+ * Executes a test SSH command using password authentication.
+ * Sends a hardcoded "Hello from Electron!" command to localhost with root credentials.
+ * @returns {Promise<void>} Resolves when the command execution completes.
+ */
+export const executeWithPassword = async (): Promise<void> => {
   const result = await window.electron.invoke(
     'execute-ssh-command-with-password',
     {
@@ -20,9 +25,13 @@ export const executeWithPassword = async () => {
   toastState.add({ message: 'Command was sent' })
 }
 
-export const executeWithKey = async () => {
+/**
+ * Executes a test SSH command using key-based authentication.
+ * Runs "whoami && ls -a" on the configured remote server and displays results in the panel.
+ * @returns {Promise<void>} Resolves when the command execution completes.
+ */
+export const executeWithKey = async (): Promise<void> => {
   console.log('command', concatState.command)
-  // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-with-key', {
     command: 'whoami && ls -a',
   })
@@ -31,34 +40,38 @@ export const executeWithKey = async () => {
   toastState.add({ message: 'Command was sent' })
 }
 
-export const exportAndEvalGraph = async (nodes, edges) => {
+/**
+ * Exports a computational graph to the remote server and executes it via Slurm.
+ * Polls the job status until completion and displays results via toast notifications.
+ * @param {Node[]} nodes - The array of nodes representing the computational graph.
+ * @param {Edge[]} edges - The array of edges connecting the nodes in the graph.
+ * @returns {Promise<void>} Resolves when the job completes or fails.
+ * @throws Will display error messages via toast notifications if export, execution, or polling fails.
+ */
+export const exportAndEvalGraph = async (
+  nodes: Node[],
+  edges: Edge[]
+): Promise<void> => {
   try {
     const parsedGraph = parseGraph(nodes, edges)
-    // @ts-ignore
     const resultExport = await window.electron.invoke('export-graph-ssh', {
       graph: parsedGraph,
     })
     console.log('SSH Connection Result:', resultExport)
 
-    // @ts-ignore
+    // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
+    const sbatchCommand =
+      'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g run /shared-data/graph.json"'
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-      // command: 'sbatch --wrap="sleep 20" --output=hello.out',
-      command:
-        'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g run /shared-data/graph.json"',
+      command: sbatchCommand,
     })
     console.log('SSH Connection Result:', resultExecute)
     toastState.add({ message: resultExecute })
 
     const jobId = resultExecute.match(/\d+/)[0]
     if (!jobId) throw new Error('Job ID not found')
-    const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
     // poll immediately then every 5 secs for 1 day
-    const finalState = await jobPolling(
-      jobId,
-      sacctCommand,
-      10 * 1000,
-      24 * 60 * 60 * 1000
-    )
+    const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
     toastState.add({
       message: `Job id ${jobId}: ${finalState}`,
       type: finalState === COMPLETED ? 'success' : 'error',
@@ -78,24 +91,25 @@ const RUNNING = 'RUNNING'
 
 /**
  * Polls the status of a job by executing an SSH command at regular intervals.
- *
- * @async
  * @param {string} jobId - The ID of the job to poll.
- * @param {string} command - The SSH command to execute for polling.
  * @param {number} interval - The interval (in milliseconds) between polling attempts.
  * @param {number} [timeout] - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
  * @returns {Promise<string>} A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
  * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
-const jobPolling = async (jobId, command, interval, timeout) => {
+const jobPolling = async (
+  jobId: string,
+  interval: number,
+  timeout?: number
+): Promise<string> => {
   await delay(5000) // wait few secs for job to be submitted then start polling
 
   const start = Date.now()
+  const sacctCommand = `sacct -j ${jobId} -n -X -P -o State`
   while (true) {
     try {
-      // @ts-ignore
       const result = await window.electron.invoke('execute-ssh-with-key', {
-        command: command,
+        command: sacctCommand,
       })
       console.log(result)
 
@@ -120,26 +134,31 @@ const jobPolling = async (jobId, command, interval, timeout) => {
   }
 }
 
-const delay = (ms) => new Promise((res) => setTimeout(res, ms))
+/**
+ * Delays execution for a specified duration.
+ * @param {number} ms - The delay duration in milliseconds.
+ * @returns {Promise<void>} A promise that resolves after the specified delay.
+ */
+const delay = (ms: number): Promise<void> => {
+  return new Promise((res) => setTimeout(res, ms))
+}
 
 export const JOB_DATE_INDEX = [2, 3]
 export const JOB_LIST_DAYS = 1
 
 /**
  * Retrieves the state of jobs from the last specified number of days.
- * @async
  * @param {number} numDays - The number of days to look back for job states.
- * @returns {Promise<Array<Array<string>>>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
- * @throws {Error} Throws an error if the SSH command execution fails or if the result contains an error.
+ * @returns {Promise<string[][]>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
+ * @throws {Error} Throws if the SSH command execution fails or if the result contains an error.
  */
-export const getJobsState = async (numDays) => {
+export const getJobsState = async (numDays: number): Promise<string[][]> => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
   // const command = `sacct -X -P -S 2025-09-29T10:10:00 -o JobID,State,Start,End`
 
-  // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
@@ -151,19 +170,19 @@ export const getJobsState = async (numDays) => {
   const last = resultJobs.pop()
   resultJobs.unshift(last)
   // Convert each job row string into an array of fields
-  const parsedJobs = resultJobs.map((line) => line.split('|'))
+  const parsedJobs = resultJobs.map((line: string) => line.split('|'))
   return parsedJobs
 }
 
 /**
  * Retrieves the content of the .out file for a specific job ID.
- * @async
  * @param {string | number} jobId - The ID of the Slurm job
  * @returns {Promise<string>} A promise that resolves to the content of the file
  */
-export const getOutFileContent = async (jobId) => {
+export const getOutFileContent = async (
+  jobId: string | number
+): Promise<string> => {
   const command = `cat /shared-data/slurm-${jobId}.out`
-  // @ts-ignore
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
@@ -171,14 +190,12 @@ export const getOutFileContent = async (jobId) => {
 
 /**
  * Opens a new browser window with the specified URL.
- * @async
  * @param {string} url - The URL to open in the new window
  * @returns {Promise<void>} Resolves when the operation is complete
  * @throws Will display error messages via toast notifications if opening fails
  */
-export async function openNewWindow(url) {
+export async function openNewWindow(url: string): Promise<void> {
   try {
-    //@ts-ignore
     const result = await window.electron.invoke('open-external-url', url)
     if (result.success) {
       toastState.add({ message: 'New window opened' })

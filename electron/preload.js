@@ -1,5 +1,9 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
+/**
+ * Declaration types at interface.d.ts declaration file to expose them over the context bridge in the renderer process.
+ * Docs: https://www.electronjs.org/docs/latest/tutorial/context-isolation#usage-with-typescript
+ */
 contextBridge.exposeInMainWorld('electron', {
   send: (channel, data) => ipcRenderer.send(channel, data),
   on: (channel, func) =>
