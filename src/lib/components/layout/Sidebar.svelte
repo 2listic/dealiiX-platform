@@ -1,7 +1,13 @@
 <script lang="ts">
-  import { getAvailableNodes, setRegistry } from '../../stores/nodes.svelte'
+  import {
+    getAvailableNodes,
+    getStoredNetworkNodes,
+    setNetworkNodes,
+    setRegistry,
+  } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import defaultNodesJson from '../../data/defaultNodes.json'
+  import defaultNetworkNodesJson from '../../data/defaultNetworkNodes.json'
   import {
     nodeColors,
     NodeType,
@@ -13,13 +19,19 @@
   import { sideBarState } from '../../stores/sidebar.svelte'
 
   const defaultNodes = defaultNodesJson as RegisteredNodes
+  const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
 
   let isMouseOver = $state(false)
+  const showNodeNames = $derived(isMouseOver || sideBarState.isExpanded)
 
   if (defaultNodes) {
     setRegistry(defaultNodes)
   }
   const availableNodes = $derived(getAvailableNodes())
+  if (defaultNetworkNodes) {
+    setNetworkNodes(defaultNetworkNodes)
+  }
+  const storedNetworkNodes = $derived(getStoredNetworkNodes())
 
   const onDragStart = (event: DragEvent, node: NodeData) => {
     if (!event.dataTransfer) {
@@ -49,13 +61,31 @@
             ondragstart={(event) => onDragStart(event, node)}
             draggable={true}
           >
-            {#if isMouseOver || sideBarState.isExpanded}
+            {#if showNodeNames}
               <span transition:fade|global={{ duration: 250 }}>
                 {returnNodeName(node)}
               </span>
             {/if}
           </div>
         {/if}
+      {/each}
+    {/if}
+    {#if storedNetworkNodes}
+      <div class="separator"></div>
+      {#each storedNetworkNodes as Array<NodeData> as node (node)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          style="--borderColor: {returnNodeColor(node.node_type)}"
+          class="node"
+          ondragstart={(event) => onDragStart(event, node)}
+          draggable={true}
+        >
+          {#if showNodeNames}
+            <span transition:fade|global={{ duration: 250 }}>
+              {returnNodeName(node)}
+            </span>
+          {/if}
+        </div>
       {/each}
     {/if}
   </div>
@@ -80,6 +110,11 @@
     padding: 3.5rem 1rem 2rem 1rem;
   }
 
+  .separator {
+    width: 100%;
+    height: 0.5rem;
+    transition: height 0.25s ease;
+  }
   .node {
     padding: 0.5rem 1rem;
     margin: 0 1rem;

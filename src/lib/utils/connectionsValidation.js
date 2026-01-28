@@ -1,5 +1,5 @@
 import { getNodes, getEdges } from '../stores/nodes.svelte'
-import { Outputs, Type } from '../types/nodeTypes'
+import { SELF, Type } from '../types/nodeTypes'
 
 let connectionCache = new Map()
 
@@ -55,7 +55,7 @@ const isValidConnection = (connection) => {
   const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
   const sourceIndexOutput = sourceNode.data.outputs[handleIndexOutput]
   let sourceType
-  if (sourceIndexOutput === Outputs.SELF) {
+  if (sourceIndexOutput === SELF) {
     // Check if node is derived by an abstract class to pick the right output type
     const baseClassType = sourceNode.data?.base ?? false
     sourceType = baseClassType ? baseClassType : sourceNode.data.type

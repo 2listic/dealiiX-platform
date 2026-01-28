@@ -4,12 +4,15 @@
     NodeData,
     NodeType.ELEMENTARY_CONSTRUCTOR
   >
+  // unused exports
   export type EmptyConstructor = Node<NodeData, NodeType.EMPTY_CONSTRUCTOR>
   export type Constructor = Node<NodeData, NodeType.CONSTRUCTOR>
   export type Abstract = Node<NodeData, NodeType.ABSTRACT>
   export type VoidMethod = Node<NodeData, NodeType.VOID_METHOD>
   export type VoidConstMethod = Node<NodeData, NodeType.VOID_CONST_METHOD>
   export type VoidFunction = Node<NodeData, NodeType.VOID_FUNCTION>
+  export type Function = Node<NodeData, NodeType.FUNCTION>
+  export type Network = Node<NodeData, NodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor
@@ -18,6 +21,7 @@
     | VoidMethod
     | VoidConstMethod
     | VoidFunction
+    | Function
 </script>
 
 <script lang="ts">
@@ -37,9 +41,11 @@
   import EditNodeNameModal from './EditNodeNameModal.svelte'
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
+
   data.is_valid = true
   let isValid = $derived(data.is_valid)
-
+  let hasCustomName = $derived(data.name && data.name.trim() !== '')
+  let isNetworkNode = data.node_type === NodeType.NETWORK
   const color = nodeColors[type]
 
   const { updateNodeData } = useSvelteFlow()
@@ -84,20 +90,22 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      {#if !data.name}
-        <div class="node-name">{data.type}</div>
-      {:else}
+      {#if hasCustomName}
         <div class="node-name">{data.name}</div>
         <div class="node-type">{data.type}</div>
+      {:else}
+        <div class="node-name">{data.type}</div>
       {/if}
     </div>
     <div class="node-buttons">
-      <button
-        class="node-button"
-        onclick={() => getModal(editNodeModalId)?.open()}
-      >
-        <EditIcon width="20px" height="20px" />
-      </button>
+      {#if !isNetworkNode}
+        <button
+          class="node-button"
+          onclick={() => getModal(editNodeModalId)?.open()}
+        >
+          <EditIcon width="20px" height="20px" />
+        </button>
+      {/if}
       <button class="node-button" onclick={() => removeNode(id)}>
         <TrashIcon width="20px" height="20px" />
       </button>
@@ -196,7 +204,7 @@
 <EditNodeNameModal
   modalId={editNodeModalId}
   nodeId={id}
-  currentName={data.name ?? data.type}
+  currentName={hasCustomName ? data.name : data.type}
 />
 
 <style>

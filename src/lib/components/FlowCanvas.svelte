@@ -45,6 +45,7 @@
     [NodeType.VOID_CONST_METHOD]: UnifiedNode,
     [NodeType.VOID_FUNCTION]: UnifiedNode,
     [NodeType.FUNCTION]: UnifiedNode,
+    [NodeType.NETWORK]: UnifiedNode,
     [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
     [NodeTypePyBackend.METHOD]: UnifiedNode,
   }

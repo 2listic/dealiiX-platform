@@ -1,12 +1,8 @@
 import { initialNodes, initialEdges } from '../data/flowData'
-import type { RegisteredNodes, Network, NodeData } from '../types/nodeTypes'
-import {
-  nodesFromProtocolToFlow,
-  edgesFromProtocolToFlow,
-  validateGraphData,
-} from '../utils/graphParser'
+import { type RegisteredNodes, type NodeData } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
 
+// ============= Nodes and edges states (on the canvas) ================
 /**
  * Svelte internal nodes and edges states
  */
@@ -78,6 +74,7 @@ export const getNextNodeId = (): number => {
   return lastNodeId
 }
 
+// ================= Registered nodes (sidebar) ========================
 /**
  * Application registry containing all the available nodes
  */
@@ -109,33 +106,76 @@ export const getAvailableNodes = (): NodeData[] => {
  * @throws {Error} If the node type is not found in the registry
  */
 export const getNodeData = (type: string): NodeData => {
-  if (!(type in registry)) {
-    console.error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
-    throw new Error(
-      `Node type '${type}' was not found in the list of available nodes.`
-    )
+  if (!isNodeInRegistry(type)) {
+    console.error(`Node type '${type}' was not found in the available nodes.`)
+    throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
   return $state.snapshot(registry[type])
 }
 
 /**
- * Load a graph object into the flow editor. Validates the graph data, then converts protocol
- * format to flow format and updates both nodes and edges in the editor
- * @param {Network} graphData - The graph data object containing workflow.nodes and workflow.edges
- * @throws {Error} If graph data is invalid or missing required fields
+ * Returns if node is present in the registry of the available nodes
+ * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
+ * @returns {boolean} True if present, false if not
  */
-export const loadGraph = (graphData: Network): void => {
-  validateGraphData(graphData)
+export const isNodeInRegistry = (type: string): boolean => {
+  return type in registry
+}
 
-  // Reset then load (ensures UI updates correctly)
-  setNodes([])
-  setEdges([])
+// ============ Registered network nodes section (sidebar) ======================
+/**
+ * Store containing all the registered network nodes
+ */
+let networkNodes = $state<RegisteredNodes>({})
 
-  const xyflowNodes = nodesFromProtocolToFlow(graphData.workflow.nodes)
-  setNodes(xyflowNodes)
-  const xyFlowEdges = edgesFromProtocolToFlow(graphData.workflow.edges)
-  setEdges(xyFlowEdges)
-  updateLastNodeId()
+/**
+ * Set the application store for the available network nodes
+ * @param {RegisteredNodes} data - Dictionary of node data to register
+ */
+export const setNetworkNodes = (data: RegisteredNodes) => {
+  networkNodes = data
+  console.log('Imported network nodes', $state.snapshot(registry))
+}
+
+/**
+ * Add or update a single network node in the relative store
+ * @param {string} key - The unique identifier for the network node
+ * @param {NodeData} nodeData - The node data to add or update
+ */
+export const addNetworkNode = (key: string, nodeData: NodeData) => {
+  networkNodes = { ...networkNodes, [key]: nodeData }
+  console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
+}
+
+/**
+ * Get all the stored network nodes
+ * @remarks Returns reactive state - changes will trigger UI updates
+ * @returns {NodeData[]}
+ */
+export const getStoredNetworkNodes = (): NodeData[] => {
+  const nodes = Object.values(networkNodes)
+  return nodes
+}
+
+/**
+ * Get network node data from the networkNodes store by name
+ * @param {string} name - The network node name identifier (unique key for the network node)
+ * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given network node
+ * @throws {Error} If the network node name is not found in the networkNodes store
+ */
+export const getNetworkNodeData = (name: string): NodeData => {
+  if (!isNodeInNetworkNodes(name)) {
+    console.error(`Sub-graph node '${name}' not found in networkNodes store`)
+    throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
+  }
+  return $state.snapshot(networkNodes[name])
+}
+
+/**
+ * Returns if network node exists in the networkNodes store
+ * @param {string} name - The network node name identifier (unique key for the network node)
+ * @returns {boolean} True if exists, false if not
+ */
+export const isNodeInNetworkNodes = (name: string): boolean => {
+  return name in networkNodes
 }

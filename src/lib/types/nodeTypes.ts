@@ -20,12 +20,9 @@ type Argument = {
   type: Type
 }
 
-export enum Inputs {
-  ZERO = 0,
-  ONE = 1,
-  TWO = 2,
-  THREE = 3,
-}
+export type InputIndex = number
+export const SELF = -1 as const
+export type OutputIndex = typeof SELF | number
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
@@ -36,6 +33,11 @@ export enum NodeType {
   VOID_CONST_METHOD = 'void_const_method',
   VOID_FUNCTION = 'void_function',
   FUNCTION = 'function',
+  NETWORK = 'network',
+}
+
+export enum TypeField {
+  CORAL_NETWORK = 'coral::Network',
 }
 
 export enum NodeTypePyBackend {
@@ -52,12 +54,9 @@ export const nodeColors = {
   [NodeType.VOID_CONST_METHOD]: 'skyblue',
   [NodeType.VOID_FUNCTION]: 'skyblue',
   [NodeType.FUNCTION]: 'skyblue',
+  [NodeType.NETWORK]: 'darkorchid',
   [NodeTypePyBackend.PRIMITIVE]: 'yellowgreen',
   [NodeTypePyBackend.METHOD]: 'skyblue',
-}
-
-export enum Outputs {
-  SELF = -1,
 }
 
 export enum Type {
@@ -76,11 +75,11 @@ export type NodeData = {
   arguments: Argument[]
   derived?: string[]
   base?: string
-  inputs: Inputs[]
+  inputs: InputIndex[]
   name?: string
   method_name?: string
   node_type: NodeType
-  outputs: Outputs[]
+  outputs: OutputIndex[]
   type: string
   value?: string
   is_valid?: boolean
@@ -113,8 +112,16 @@ export type NetworkNode = {
   position?: { x: number; y: number }
 }
 
+export interface NetworkNodeOfTypeNetwork extends NetworkNode {
+  type: TypeField.CORAL_NETWORK
+  node_type: NodeType.NETWORK
+  arguments?: Argument[]
+  inputs?: InputIndex[]
+  outputs?: OutputIndex[]
+}
+
 export type NetworkNodes = {
-  [id: string]: NetworkNode
+  [id: string]: NetworkNode | NetworkNodeOfTypeNetwork
 }
 
 /**
@@ -130,6 +137,26 @@ export type Network = {
     edges: NetworkEdges
     nodes: NetworkNodes
   }
+}
+
+/**
+ * Type guard to check if a network node has all required NodeData fields
+ * @param node - The node to check
+ * @returns True if the node has arguments, inputs, outputs, and node_type defined
+ */
+export const hasNodeDataFields = (
+  node: NetworkNodes[string]
+): node is NodeData => {
+  return (
+    'arguments' in node &&
+    node.arguments !== undefined &&
+    'inputs' in node &&
+    node.inputs !== undefined &&
+    'outputs' in node &&
+    node.outputs !== undefined &&
+    'node_type' in node &&
+    node.node_type !== undefined
+  )
 }
 
 /**

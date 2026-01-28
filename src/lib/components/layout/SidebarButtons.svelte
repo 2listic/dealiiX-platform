@@ -1,10 +1,6 @@
 <script lang="ts">
-  import {
-    getEdges,
-    getNodes,
-    setRegistry,
-    loadGraph,
-  } from '../../stores/nodes.svelte'
+  import { getEdges, getNodes, setRegistry } from '../../stores/nodes.svelte'
+  import { loadGraph, validateGraphData } from '../../utils/graphParser'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
@@ -27,12 +23,14 @@
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
+  import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
+  const createNetworkNodeModalId = 'create-network-node-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -57,7 +55,7 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  const handleExport = async () => {
+  const handleExecution = async () => {
     try {
       await exportAndEvalGraph(getNodes(), getEdges())
     } catch (error) {
@@ -65,6 +63,9 @@
     }
   }
 
+  /**
+   * Loads a graph from a file removing the edges that have type mismatches
+   */
   const loadGraphFromFile = async () => {
     if (importGraphFiles == null || importGraphFiles.length == 0) {
       return
@@ -72,7 +73,28 @@
     try {
       const importedGraphAsText = await readFileAsText(importGraphFiles[0])
       const importedGraph = JSON.parse(importedGraphAsText)
-      loadGraph(importedGraph)
+      const [validEdges, invalidEdges] = validateGraphData(importedGraph)
+      if (invalidEdges.length > 0) {
+        invalidEdges.forEach((invalidEdge) => {
+          toastState.add({
+            message: invalidEdge.error,
+            type: 'error',
+          })
+        })
+      }
+
+      const registeredNetworkNodes = loadGraph(
+        importedGraph.workflow.nodes,
+        validEdges
+      )
+      if (registeredNetworkNodes.length > 0) {
+        registeredNetworkNodes.forEach((nodeName) => {
+          toastState.add({
+            message: `Sub-graph node ${nodeName} was registered`,
+            type: 'success',
+          })
+        })
+      }
       currentProjectState.clear()
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())
@@ -142,6 +164,10 @@
     }
     // No existing project - open save modal for new project
     getModal(saveProjectModalId)?.open()
+  }
+
+  const handleCreateNetworkNode = () => {
+    getModal(createNetworkNodeModalId)?.open()
   }
 
   const handleGraphDownload = () => {
@@ -267,17 +293,17 @@
 
   <div class="button-container">
     <label
-      for="export-graph-button"
+      for="execute-graph-button"
       class="element-label"
-      title="Export JSON graph"
+      title="Execute graph"
     >
       <ExecuteIcon width="30px" height="30px" />
     </label>
     <button
-      id="export-graph-button"
-      onclick={handleExport}
+      id="execute-graph-button"
+      onclick={handleExecution}
       style="display: none"
-      aria-label="Export graph"
+      aria-label="Execute graph"
     ></button>
     <span class="button-text">Eval. Graph</span>
   </div>
@@ -333,6 +359,25 @@
     />
     <span class="button-text">Load Nodes</span>
   </div>
+
+  <div class="button-container">
+    <label
+      for="create-networknode"
+      class="element-label"
+      title="Create a new network node from current graph"
+    >
+      <UploadIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="create-networknode"
+      onclick={handleCreateNetworkNode}
+      style="display: none"
+      aria-label="Create a new network node from current graph"
+    ></button>
+    <span class="button-text">Create Sub-Graph</span>
+  </div>
+
+  <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />
 
   <div class="button-container">
     <label
