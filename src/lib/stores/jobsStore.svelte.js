@@ -1,4 +1,5 @@
 import { getJobsState, JOB_LIST_DAYS } from '../utils/sshMessages'
+import { toastState } from './toastsStore.svelte'
 
 let jobs = $state([])
 
@@ -18,6 +19,14 @@ export const jobsState = {
     jobs = value
   },
   async update() {
-    jobs = await getJobsState(JOB_LIST_DAYS)
+    try {
+      jobs = await getJobsState(JOB_LIST_DAYS)
+    } catch (error) {
+      console.error('Error updating jobs state:', error)
+      toastState.add({
+        message: error,
+        type: 'error',
+      })
+    }
   },
 }

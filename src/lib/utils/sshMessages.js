@@ -4,7 +4,7 @@ import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraph } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 
-const executeWithPassword = async () => {
+export const executeWithPassword = async () => {
   // @ts-ignore
   const result = await window.electron.invoke(
     'execute-ssh-command-with-password',
@@ -20,7 +20,7 @@ const executeWithPassword = async () => {
   toastState.add({ message: 'Command was sent' })
 }
 
-const executeWithKey = async () => {
+export const executeWithKey = async () => {
   console.log('command', concatState.command)
   // @ts-ignore
   const result = await window.electron.invoke('execute-ssh-with-key', {
@@ -31,7 +31,7 @@ const executeWithKey = async () => {
   toastState.add({ message: 'Command was sent' })
 }
 
-const exportAndEvalGraph = async (nodes, edges) => {
+export const exportAndEvalGraph = async (nodes, edges) => {
   try {
     const parsedGraph = parseGraph(nodes, edges)
     // @ts-ignore
@@ -71,8 +71,8 @@ const exportAndEvalGraph = async (nodes, edges) => {
   }
 }
 
-const COMPLETED = 'COMPLETED'
-const FAILED = 'FAILED'
+export const COMPLETED = 'COMPLETED'
+export const FAILED = 'FAILED'
 const PENDING = 'PENDING'
 const RUNNING = 'RUNNING'
 
@@ -122,45 +122,37 @@ const jobPolling = async (jobId, command, interval, timeout) => {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms))
 
-const JOB_DATE_INDEX = [2, 3]
-const JOB_LIST_DAYS = 1
+export const JOB_DATE_INDEX = [2, 3]
+export const JOB_LIST_DAYS = 1
 
 /**
  * Retrieves the state of jobs from the last specified number of days.
- *
  * @async
  * @param {number} numDays - The number of days to look back for job states.
  * @returns {Promise<Array<Array<string>>>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
  * @throws {Error} Throws an error if the SSH command execution fails or if the result contains an error.
  */
-const getJobsState = async (numDays) => {
+export const getJobsState = async (numDays) => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
   const command = `sacct -X -P -S ${startDateIso} -o JobID,State,Start,End`
   // const command = `sacct -X -P -S 2025-09-29T10:10:00 -o JobID,State,Start,End`
-  try {
-    // @ts-ignore
-    const result = await window.electron.invoke('execute-ssh-with-key', {
-      command: command,
-    })
-    if (result.includes('error')) throw new Error(result)
-    // Split sacct output string into an array and revert order (new jobs first)
-    const resultJobs = result.split('\n').reverse()
-    resultJobs.shift() // remove first empty element
-    // Move the last element (the headers) back to the front
-    const last = resultJobs.pop()
-    resultJobs.unshift(last)
-    // Convert each job row string into a nested array of fields
-    const parsedJobs = resultJobs.map((line) => line.split('|'))
-    return parsedJobs
-  } catch (error) {
-    toastState.add({
-      message: error,
-      type: 'error',
-    })
-    return []
-  }
+
+  // @ts-ignore
+  const result = await window.electron.invoke('execute-ssh-with-key', {
+    command: command,
+  })
+  if (result.includes('error')) throw new Error(result)
+  // Split sacct output string into an array and revert order (new jobs first)
+  const resultJobs = result.split('\n').reverse()
+  resultJobs.shift() // remove first empty element
+  // Move the last element (the headers) back to the front
+  const last = resultJobs.pop()
+  resultJobs.unshift(last)
+  // Convert each job row string into an array of fields
+  const parsedJobs = resultJobs.map((line) => line.split('|'))
+  return parsedJobs
 }
 
 /**
@@ -169,7 +161,7 @@ const getJobsState = async (numDays) => {
  * @param {string | number} jobId - The ID of the Slurm job
  * @returns {Promise<string>} A promise that resolves to the content of the file
  */
-const getOutFileContent = async (jobId) => {
+export const getOutFileContent = async (jobId) => {
   const command = `cat /shared-data/slurm-${jobId}.out`
   // @ts-ignore
   return await window.electron.invoke('execute-ssh-with-key', {
@@ -184,7 +176,7 @@ const getOutFileContent = async (jobId) => {
  * @returns {Promise<void>} Resolves when the operation is complete
  * @throws Will display error messages via toast notifications if opening fails
  */
-async function openNewWindow(url) {
+export async function openNewWindow(url) {
   try {
     //@ts-ignore
     const result = await window.electron.invoke('open-external-url', url)
@@ -202,17 +194,4 @@ async function openNewWindow(url) {
       type: 'error',
     })
   }
-}
-
-export {
-  executeWithPassword,
-  executeWithKey,
-  exportAndEvalGraph,
-  COMPLETED,
-  FAILED,
-  JOB_DATE_INDEX,
-  JOB_LIST_DAYS,
-  getJobsState,
-  getOutFileContent,
-  openNewWindow,
 }

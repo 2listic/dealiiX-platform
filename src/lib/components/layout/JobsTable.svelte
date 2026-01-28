@@ -20,7 +20,7 @@
 
   let isLoaded = $state(false)
   let jobsData = $derived(jobsState.current)
-  $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
+  // $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
     easing: cubicOut,
