@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal, { getModal } from './Modal.svelte'
   import Button from './Button.svelte'
+  import { AnsiUp } from 'ansi_up'
 
   interface Props {
     modalId: string
@@ -22,6 +23,12 @@
     closeOnBackdrop = true,
   }: Props = $props()
 
+  const ansiUp = new AnsiUp()
+
+  // transform text with ANSI codes to HTML
+  // if the message comes from an untrusted source, remember to sanitize it
+  const htmlMessage = $derived(ansiUp.ansi_to_html(message))
+
   const handleClose = () => {
     if (onClose) {
       onClose()
@@ -35,7 +42,8 @@
     {#if title}
       <h2>{title}</h2>
     {/if}
-    <div class="text-modal-content">{message}</div>
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    <div class="text-modal-content">{@html htmlMessage}</div>
     <div class="text-modal-actions">
       <Button size="small" onclick={handleClose}>{buttonText}</Button>
     </div>
@@ -53,14 +61,14 @@
   }
 
   .text-modal-content {
+    color: #efefef;
+    background-color: #1f1f1f;
     white-space: pre-wrap;
     text-align: left;
     max-height: 60vh;
     overflow-y: auto;
     font-family: monospace;
     padding: 0.5rem;
-    background-color: var(--background-color);
-    border-radius: 4px;
     user-select: text;
     cursor: text;
   }

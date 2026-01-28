@@ -63,6 +63,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "ansi_up": "^6.0.6",
     "electron-squirrel-startup": "^1.0.1",
     "fs": "^0.0.1-security",
     "ssh2": "^1.16.0"
