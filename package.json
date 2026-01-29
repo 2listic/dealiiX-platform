@@ -7,12 +7,12 @@
   "main": "electron/main.js",
   "author": "Dualistic",
   "build": {
-    "appId": "com.example.app",
-    "productName": "MyApp",
+    "appId": "com.dualistic.dealiix-platform",
+    "productName": "dealiix-platform",
     "linux": {
       "target": "deb",
       "category": "Utility",
-      "maintainer": "xxx",
+      "maintainer": "Dualistic",
       "description": "DealiiX Platform"
     }
   },
