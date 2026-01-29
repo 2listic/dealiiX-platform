@@ -2,35 +2,21 @@
   import {
     getAvailableNodes,
     getStoredNetworkNodes,
-    setNetworkNodes,
-    setRegistry,
   } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
-  import defaultNodesJson from '../../data/defaultNodes.json'
-  import defaultNetworkNodesJson from '../../data/defaultNetworkNodes.json'
   import {
     nodeColors,
     NodeType,
     returnNodeName,
     type NodeData,
-    type RegisteredNodes,
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
 
-  const defaultNodes = defaultNodesJson as RegisteredNodes
-  const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
-
   let isMouseOver = $state(false)
   const showNodeNames = $derived(isMouseOver || sideBarState.isExpanded)
 
-  if (defaultNodes) {
-    setRegistry(defaultNodes)
-  }
   const availableNodes = $derived(getAvailableNodes())
-  if (defaultNetworkNodes) {
-    setNetworkNodes(defaultNetworkNodes)
-  }
   const storedNetworkNodes = $derived(getStoredNetworkNodes())
 
   const onDragStart = (event: DragEvent, node: NodeData) => {

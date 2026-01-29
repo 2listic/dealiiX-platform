@@ -1,6 +1,8 @@
 import { initialNodes, initialEdges } from '../data/flowData'
 import { type RegisteredNodes, type NodeData } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
+import defaultNodesJson from '../data/defaultNodes.json'
+import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
 
 // ============= Nodes and edges states (on the canvas) ================
 /**
@@ -75,10 +77,15 @@ export const getNextNodeId = (): number => {
 }
 
 // ================= Registered nodes (sidebar) ========================
+
+const defaultNodes = defaultNodesJson as RegisteredNodes
+
 /**
  * Application registry containing all the available nodes
  */
-let registry = $state<RegisteredNodes>({})
+let registry = $state<RegisteredNodes>(
+  loadJsonFromLocalStorage('registered_nodes', defaultNodes)
+)
 
 /**
  * Set the application registry for the available nodes
@@ -87,6 +94,7 @@ let registry = $state<RegisteredNodes>({})
 export const setRegistry = (data: RegisteredNodes) => {
   registry = data
   console.log('Imported registry', $state.snapshot(registry))
+  localStorage.setItem('registered_nodes', JSON.stringify(registry))
 }
 
 /**
@@ -123,10 +131,15 @@ export const isNodeInRegistry = (type: string): boolean => {
 }
 
 // ============ Registered network nodes section (sidebar) ======================
+
+const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
+
 /**
  * Store containing all the registered network nodes
  */
-let networkNodes = $state<RegisteredNodes>({})
+let networkNodes = $state<RegisteredNodes>(
+  loadJsonFromLocalStorage('registered_network_nodes', defaultNetworkNodes)
+)
 
 /**
  * Set the application store for the available network nodes
@@ -134,7 +147,8 @@ let networkNodes = $state<RegisteredNodes>({})
  */
 export const setNetworkNodes = (data: RegisteredNodes) => {
   networkNodes = data
-  console.log('Imported network nodes', $state.snapshot(registry))
+  console.log('Imported network nodes', $state.snapshot(networkNodes))
+  localStorage.setItem('registered_network_nodes', JSON.stringify(networkNodes))
 }
 
 /**
@@ -145,6 +159,7 @@ export const setNetworkNodes = (data: RegisteredNodes) => {
 export const addNetworkNode = (key: string, nodeData: NodeData) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
+  localStorage.setItem('registered_network_nodes', JSON.stringify(networkNodes))
 }
 
 /**
@@ -178,4 +193,22 @@ export const getNetworkNodeData = (name: string): NodeData => {
  */
 export const isNodeInNetworkNodes = (name: string): boolean => {
   return name in networkNodes
+}
+
+// ============= localStorage Helpers ================
+/**
+ * Load and parse JSON data from localStorage
+ * @param {string} key - The localStorage key
+ * @param {RegisteredNodes} defaultValue - Default value if key doesn't exist
+ * @returns {RegisteredNodes} Parsed data or default value
+ */
+function loadJsonFromLocalStorage(
+  key: string,
+  defaultValue: RegisteredNodes
+): RegisteredNodes {
+  const stored = localStorage.getItem(key)
+  if (stored) {
+    return JSON.parse(stored)
+  }
+  return defaultValue
 }
