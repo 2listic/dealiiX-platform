@@ -141,10 +141,10 @@
 
   .close {
     position: absolute;
-    top: -12px;
-    right: -12px;
-    width: 24px;
-    height: 24px;
+    top: -10px;
+    right: -10px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
     fill: #f44;
     transition: transform 0.3s ease;

@@ -113,6 +113,7 @@ export type NetworkNode = {
 }
 
 export interface NetworkNodeOfTypeNetwork extends NetworkNode {
+  name: string
   type: TypeField.CORAL_NETWORK
   node_type: NodeType.NETWORK
   arguments?: Argument[]

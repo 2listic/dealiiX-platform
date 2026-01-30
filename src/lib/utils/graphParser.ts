@@ -13,6 +13,7 @@ import {
   type Network,
   type NetworkEdge,
   type NetworkEdges,
+  type NetworkNodeOfTypeNetwork,
   type NetworkNodes,
 } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
@@ -165,11 +166,11 @@ export const validateGraphData = (
     // Get source and target node definition (from registry or networkNodes)
     const sourceNodeData =
       sourceNode.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(sourceNode.name!)
+        ? (sourceNode as NetworkNodeOfTypeNetwork)
         : getNodeData(sourceNode.type)
     const targetNodeData =
       targetNode.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(targetNode.name!)
+        ? (targetNode as NetworkNodeOfTypeNetwork)
         : getNodeData(targetNode.type)
 
     // Determine source output type
