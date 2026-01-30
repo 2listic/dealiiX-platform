@@ -131,16 +131,16 @@ describe('validateGraphData', () => {
       expect(invalidEdges).toHaveLength(0)
     })
 
-    it('throws error when network node name is not found', () => {
-      // Modify name of the network node to trigger network node not found in the store
-      const invalidName = 'name_not_in_store'
-      graphNetworkNode.workflow.nodes['12'].name = invalidName
+    it('accepts a well defined MWE graph which includes a network node that is not already in the store', () => {
+      // Modify name of the network node
+      const nameNotInStore = 'name_not_in_store'
+      graphNetworkNode.workflow.nodes['12'].name = nameNotInStore
 
-      expect(() =>
-        validateGraphData(graphNetworkNode as unknown as Network)
-      ).toThrow(
-        `Sub-graph node '${invalidName}' not found in networkNodes store`
+      const [validEdges, invalidEdges] = validateGraphData(
+        graphNetworkNode as unknown as Network
       )
+      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(invalidEdges).toHaveLength(0)
     })
   })
 })
