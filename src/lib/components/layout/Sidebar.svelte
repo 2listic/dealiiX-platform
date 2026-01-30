@@ -1,7 +1,9 @@
 <script lang="ts">
   import {
+    addNetworkNode,
     getAvailableNodes,
     getStoredNetworkNodes,
+    removeNetworkNode,
   } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import {
@@ -12,6 +14,7 @@
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
+  import { toastState } from '../../stores/toastsStore.svelte'
 
   let isMouseOver = $state(false)
   const showNodeNames = $derived(isMouseOver || sideBarState.isExpanded)
@@ -29,6 +32,18 @@
 
   const returnNodeColor = (nodeTypeName) => {
     return nodeColors[nodeTypeName]
+  }
+
+  const handleDelete = async (networkNodeName) => {
+    try {
+      await removeNetworkNode(networkNodeName)
+    } catch (e) {
+      toastState.add({
+        message: e.message || `Failed to delete node ${addNetworkNode}`,
+        type: 'error',
+      })
+      console.error(`Failed to delete node ${addNetworkNode}`, e.message)
+    }
   }
 </script>
 
@@ -70,6 +85,16 @@
             <span transition:fade|global={{ duration: 250 }}>
               {returnNodeName(node)}
             </span>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <svg
+              class="close"
+              onclick={() => handleDelete(node.name)}
+              viewBox="0 0 12 12"
+            >
+              <circle cx="6" cy="6" r="6" />
+              <line x1="3" y1="3" x2="9" y2="9" />
+              <line x1="9" y1="3" x2="3" y2="9" />
+            </svg>
           {/if}
         </div>
       {/each}
@@ -102,6 +127,7 @@
     transition: height 0.25s ease;
   }
   .node {
+    position: relative;
     padding: 0.5rem 1rem;
     margin: 0 1rem;
     border-radius: 5px;
@@ -111,5 +137,25 @@
 
   .node:hover {
     border-color: var(--border-color-hover);
+  }
+
+  .close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    fill: #f44;
+    transition: transform 0.3s ease;
+  }
+
+  .close:hover {
+    transform: scale(1.5);
+  }
+
+  .close line {
+    stroke: #fff;
+    stroke-width: 2;
   }
 </style>

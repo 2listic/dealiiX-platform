@@ -189,6 +189,18 @@ export const addNetworkNode = async (key: string, nodeData: NodeData) => {
   )
 }
 
+export const removeNetworkNode = async (name: string) => {
+  if (isNodeInNetworkNodes(name)) {
+    delete networkNodes[name]
+    await window.electron.store.set(
+      'registered_network_nodes',
+      $state.snapshot(networkNodes)
+    )
+  } else {
+    throw new Error(`Network node '${name}' not found in networkNodes store`)
+  }
+}
+
 /**
  * Get all the stored network nodes
  * @remarks Returns reactive state - changes will trigger UI updates
