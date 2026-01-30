@@ -83,18 +83,27 @@ const defaultNodes = defaultNodesJson as RegisteredNodes
 /**
  * Application registry containing all the available nodes
  */
-let registry = $state<RegisteredNodes>(
-  loadJsonFromLocalStorage('registered_nodes', defaultNodes)
-)
+let registry = $state<RegisteredNodes>({})
+
+// Load registry from electron-store
+const loadRegistry = async () => {
+  if (window.electron?.store) {
+    registry = await window.electron.store.get('registered_nodes', defaultNodes)
+  } else {
+    registry = defaultNodes
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadRegistry()
 
 /**
  * Set the application registry for the available nodes
  * @param {RegisteredNodes} data - Dictionary of node data to register
  */
-export const setRegistry = (data: RegisteredNodes) => {
+export const setRegistry = async (data: RegisteredNodes) => {
   registry = data
   console.log('Imported registry', $state.snapshot(registry))
-  localStorage.setItem('registered_nodes', JSON.stringify(registry))
+  await window.electron.store.set('registered_nodes', $state.snapshot(registry))
 }
 
 /**
@@ -137,18 +146,28 @@ const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
 /**
  * Store containing all the registered network nodes
  */
-let networkNodes = $state<RegisteredNodes>(
-  loadJsonFromLocalStorage('registered_network_nodes', defaultNetworkNodes)
-)
+let networkNodes = $state<RegisteredNodes>({})
+
+// Load network nodes from electron-store
+const loadNetworkNodes = async () => {
+  if (window.electron?.store) {
+    networkNodes =
+      await window.electron.store.get('registered_network_nodes', defaultNetworkNodes)
+  } else {
+    networkNodes = defaultNetworkNodes
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadNetworkNodes()
 
 /**
  * Set the application store for the available network nodes
  * @param {RegisteredNodes} data - Dictionary of node data to register
  */
-export const setNetworkNodes = (data: RegisteredNodes) => {
+export const setNetworkNodes = async (data: RegisteredNodes) => {
   networkNodes = data
   console.log('Imported network nodes', $state.snapshot(networkNodes))
-  localStorage.setItem('registered_network_nodes', JSON.stringify(networkNodes))
+  await window.electron.store.set('registered_network_nodes', $state.snapshot(networkNodes))
 }
 
 /**
@@ -156,10 +175,10 @@ export const setNetworkNodes = (data: RegisteredNodes) => {
  * @param {string} key - The unique identifier for the network node
  * @param {NodeData} nodeData - The node data to add or update
  */
-export const addNetworkNode = (key: string, nodeData: NodeData) => {
+export const addNetworkNode = async (key: string, nodeData: NodeData) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
-  localStorage.setItem('registered_network_nodes', JSON.stringify(networkNodes))
+  await window.electron.store.set('registered_network_nodes', $state.snapshot(networkNodes))
 }
 
 /**
@@ -195,20 +214,3 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
   return name in networkNodes
 }
 
-// ============= localStorage Helpers ================
-/**
- * Load and parse JSON data from localStorage
- * @param {string} key - The localStorage key
- * @param {RegisteredNodes} defaultValue - Default value if key doesn't exist
- * @returns {RegisteredNodes} Parsed data or default value
- */
-function loadJsonFromLocalStorage(
-  key: string,
-  defaultValue: RegisteredNodes
-): RegisteredNodes {
-  const stored = localStorage.getItem(key)
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  return defaultValue
-}

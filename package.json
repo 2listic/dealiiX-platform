@@ -64,6 +64,7 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
+    "electron-store": "^11.0.2",
     "fs": "^0.0.1-security",
     "ssh2": "^1.16.0"
   }

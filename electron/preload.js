@@ -11,4 +11,10 @@ contextBridge.exposeInMainWorld('electron', {
     const path = webUtils.getPathForFile(file)
     return path
   },
+  // Storage API
+  store: {
+    get: (key, defaultValue) => ipcRenderer.invoke('store:get', key, defaultValue),
+    set: (key, value) => ipcRenderer.invoke('store:set', key, value),
+    remove: (key) => ipcRenderer.invoke('store:remove', key),
+  },
 })

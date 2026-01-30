@@ -23,13 +23,13 @@ import type { Node, Edge } from '@xyflow/svelte'
  * and updates both nodes and edges in the editor
  * @param {NetworkNodes} nodes - The nodes to load
  * @param {NetworkEdges} edges - The edges to load
- * @returns {string[]} Network node names that were registered or updated
+ * @returns {Promise<string[]>} Network node names that were registered or updated
  */
-export const loadGraph = (
+export const loadGraph = async (
   nodes: NetworkNodes,
   edges: NetworkEdges
-): string[] => {
-  const networkNodes = addNetworkNodesFromGraph(nodes)
+): Promise<string[]> => {
+  const networkNodes = await addNetworkNodesFromGraph(nodes)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
@@ -49,20 +49,22 @@ export const loadGraph = (
  * Each network node is added or updated only if it has the required fields.
  * TODO: generate network node arguments, inputs and ouptuts if not already present
  * @param {NetworkNodes} nodes - The nodes to check and register
- * @returns {string[]} Network node names that were registered or updated
+ * @returns {Promise<string[]>} Network node names that were registered or updated
  */
-const addNetworkNodesFromGraph = (nodes: NetworkNodes): string[] => {
+const addNetworkNodesFromGraph = async (
+  nodes: NetworkNodes
+): Promise<string[]> => {
   const networkNodes: string[] = []
-  Object.values(nodes).forEach((node) => {
+  for (const node of Object.values(nodes)) {
     if (node.type === TypeField.CORAL_NETWORK) {
       // Register only if not already done and use type narrowing to check for the required NodeData fields
       if (!networkNodes.includes(node.name) && hasNodeDataFields(node)) {
-        addNetworkNode(node.name, node)
+        await addNetworkNode(node.name, node)
         networkNodes.push(node.name)
       }
       // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
     }
-  })
+  }
   return networkNodes
 }
 
