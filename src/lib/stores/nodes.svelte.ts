@@ -151,8 +151,10 @@ let networkNodes = $state<RegisteredNodes>({})
 // Load network nodes from electron-store
 const loadNetworkNodes = async () => {
   if (window.electron?.store) {
-    networkNodes =
-      await window.electron.store.get('registered_network_nodes', defaultNetworkNodes)
+    networkNodes = await window.electron.store.get(
+      'registered_network_nodes',
+      defaultNetworkNodes
+    )
   } else {
     networkNodes = defaultNetworkNodes
     console.warn('Electron store not available (e.g., dev:vite mode)')
@@ -167,7 +169,10 @@ loadNetworkNodes()
 export const setNetworkNodes = async (data: RegisteredNodes) => {
   networkNodes = data
   console.log('Imported network nodes', $state.snapshot(networkNodes))
-  await window.electron.store.set('registered_network_nodes', $state.snapshot(networkNodes))
+  await window.electron.store.set(
+    'registered_network_nodes',
+    $state.snapshot(networkNodes)
+  )
 }
 
 /**
@@ -178,7 +183,10 @@ export const setNetworkNodes = async (data: RegisteredNodes) => {
 export const addNetworkNode = async (key: string, nodeData: NodeData) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
-  await window.electron.store.set('registered_network_nodes', $state.snapshot(networkNodes))
+  await window.electron.store.set(
+    'registered_network_nodes',
+    $state.snapshot(networkNodes)
+  )
 }
 
 /**
@@ -213,4 +221,3 @@ export const getNetworkNodeData = (name: string): NodeData => {
 export const isNodeInNetworkNodes = (name: string): boolean => {
   return name in networkNodes
 }
-

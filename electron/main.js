@@ -108,4 +108,3 @@ ipcMain.handle('set-theme', (event, theme) => {
   }
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 })
-

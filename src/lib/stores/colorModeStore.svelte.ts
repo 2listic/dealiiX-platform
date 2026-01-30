@@ -6,7 +6,10 @@ let colorMode: ColorModeClass = $state('light')
 // Load initial color mode from electron-store
 const loadColorMode = async () => {
   if (window.electron?.store) {
-    colorMode = (await window.electron.store.get('colorMode', 'light')) as ColorModeClass
+    colorMode = (await window.electron.store.get(
+      'colorMode',
+      'light'
+    )) as ColorModeClass
     updateThemeMode()
   } else {
     console.warn('Electron store not available (e.g., dev:vite mode)')
