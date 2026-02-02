@@ -178,8 +178,13 @@ export const validateGraphData = (
 
     // Check if the output is SELF (e.g., constructor or method returning this)
     if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
-      // For SELF outputs, use the base type if defined, otherwise use the node's type
-      sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
+      if ('base' in sourceNodeData) {
+        // If node is derived from a base class, use the base class type
+        sourceOutputType = sourceNodeData.base
+      } else {
+        // Otherwise use its type as usual
+        sourceOutputType = sourceNodeData.type
+      }
     } else {
       // Regular output - get from arguments array
       const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]

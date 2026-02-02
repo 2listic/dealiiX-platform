@@ -72,16 +72,16 @@ export enum Type {
 }
 
 export type NodeData = {
+  type: string
   arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
+  node_type: NodeType
+  name?: string
   derived?: string[]
   base?: string
-  inputs: InputIndex[]
-  name?: string
   method_name?: string
-  node_type: NodeType
-  outputs: OutputIndex[]
-  type: string
-  value?: string
+  value?: string | Network
   is_valid?: boolean
 }
 
@@ -105,20 +105,23 @@ export type NetworkEdges = {
 }
 
 export type NetworkNode = {
-  name?: string
   type: string
   base?: string
+  derived?: string[]
   value?: string
+  name?: string
   position?: { x: number; y: number }
 }
 
-export interface NetworkNodeOfTypeNetwork extends NetworkNode {
-  name: string
+export type NetworkNodeOfTypeNetwork = {
   type: TypeField.CORAL_NETWORK
   node_type: NodeType.NETWORK
+  value: Network
+  name: string
   arguments?: Argument[]
   inputs?: InputIndex[]
   outputs?: OutputIndex[]
+  position?: { x: number; y: number }
 }
 
 export type NetworkNodes = {
@@ -141,13 +144,30 @@ export type Network = {
 }
 
 /**
+ * Represents a network node that has all the required fields from NodeData.
+ * This is a discriminated union type returned by the hasNodeDataFields type guard.
+ */
+export type NetworkNodeComplete =
+  | (NetworkNode & {
+      arguments: Argument[]
+      inputs: InputIndex[]
+      outputs: OutputIndex[]
+      node_type: NodeType
+    })
+  | (NetworkNodeOfTypeNetwork & {
+      arguments: Argument[]
+      inputs: InputIndex[]
+      outputs: OutputIndex[]
+    })
+
+/**
  * Type guard to check if a network node has all required NodeData fields
  * @param node - The node to check
  * @returns True if the node has arguments, inputs, outputs, and node_type defined
  */
 export const hasNodeDataFields = (
   node: NetworkNodes[string]
-): node is NodeData => {
+): node is NetworkNodeComplete => {
   return (
     'arguments' in node &&
     node.arguments !== undefined &&
