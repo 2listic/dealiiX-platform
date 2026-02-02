@@ -118,9 +118,9 @@ export type NetworkNodeOfTypeNetwork = {
   node_type: NodeType.NETWORK
   value: Network
   name: string
-  arguments?: Argument[]
-  inputs?: InputIndex[]
-  outputs?: OutputIndex[]
+  arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
   position?: { x: number; y: number }
 }
 
@@ -144,39 +144,22 @@ export type Network = {
 }
 
 /**
- * Represents a network node that has all the required fields from NodeData.
- * This is a discriminated union type returned by the hasNodeDataFields type guard.
- */
-export type NetworkNodeComplete =
-  | (NetworkNode & {
-      arguments: Argument[]
-      inputs: InputIndex[]
-      outputs: OutputIndex[]
-      node_type: NodeType
-    })
-  | (NetworkNodeOfTypeNetwork & {
-      arguments: Argument[]
-      inputs: InputIndex[]
-      outputs: OutputIndex[]
-    })
-
-/**
- * Type guard to check if a network node has all required NodeData fields
+ * Type guard to check if a network node is of type NetworkNodeOfTypeNetwork
  * @param node - The node to check
- * @returns True if the node has arguments, inputs, outputs, and node_type defined
+ * @returns True if the node is a coral::Network node with all required fields
  */
-export const hasNodeDataFields = (
+export const isNetworkNodeOfTypeNetwork = (
   node: NetworkNodes[string]
-): node is NetworkNodeComplete => {
+): node is NetworkNodeOfTypeNetwork => {
   return (
-    'arguments' in node &&
-    node.arguments !== undefined &&
-    'inputs' in node &&
-    node.inputs !== undefined &&
-    'outputs' in node &&
-    node.outputs !== undefined &&
+    node.type === TypeField.CORAL_NETWORK &&
     'node_type' in node &&
-    node.node_type !== undefined
+    node.node_type === NodeType.NETWORK &&
+    'value' in node &&
+    'name' in node &&
+    'arguments' in node &&
+    'inputs' in node &&
+    'outputs' in node
   )
 }
 
