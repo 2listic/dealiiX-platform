@@ -3,8 +3,19 @@
  * https://joyofcode.xyz/how-to-share-state-in-svelte-5#using-property-accessors-to-read-and-write-to-reactive-values
  *  */
 
-let token = $state(localStorage.getItem('access_token'))
-let username = $state(localStorage.getItem('username'))
+let token = $state(null)
+let username = $state(null)
+
+// Load initial values from electron-store
+const loadAuth = async () => {
+  if (window.electron?.store) {
+    token = await window.electron.store.get('access_token')
+    username = await window.electron.store.get('username')
+  } else {
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadAuth()
 
 export const auth = {
   get token() {
@@ -15,18 +26,18 @@ export const auth = {
   get username() {
     return username
   },
-  setToken(newToken) {
+  async setToken(newToken) {
     token = newToken
-    localStorage.setItem('access_token', newToken)
+    await window.electron.store.set('access_token', newToken)
   },
-  setUsername(newUsername) {
+  async setUsername(newUsername) {
     username = newUsername
-    localStorage.setItem('username', newUsername)
+    await window.electron.store.set('username', newUsername)
   },
-  clearToken() {
+  async clearToken() {
     token = null
     username = null
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('username')
+    await window.electron.store.remove('access_token')
+    await window.electron.store.remove('username')
   },
 }

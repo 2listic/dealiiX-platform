@@ -1,10 +1,10 @@
 <script module>
   import type { NodeData } from '../../types/nodeTypes'
+  // unused exports
   export type ElementaryConstructor = Node<
     NodeData,
     NodeType.ELEMENTARY_CONSTRUCTOR
   >
-  // unused exports
   export type EmptyConstructor = Node<NodeData, NodeType.EMPTY_CONSTRUCTOR>
   export type Constructor = Node<NodeData, NodeType.CONSTRUCTOR>
   export type Abstract = Node<NodeData, NodeType.ABSTRACT>

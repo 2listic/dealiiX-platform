@@ -87,7 +87,7 @@
         })
       }
 
-      const registeredNetworkNodes = loadGraph(
+      const registeredNetworkNodes = await loadGraph(
         projectData.graph.workflow.nodes,
         validEdges
       )

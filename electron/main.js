@@ -7,6 +7,7 @@ import {
   connectToSSHWithKey,
   connectToSSHWithPassword,
 } from './utils/sshConnections.js'
+import store from './utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -56,12 +57,20 @@ ipcMain.handle(
 
 // Listen for messages from the renderer process
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
-  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
+  const settings = store.get('settings', {})
+  const pathToSsh = settings.sshPathKey
+  if (!pathToSsh) {
+    throw new Error('SSH key path not configured in settings')
+  }
   return await connectToSSHWithKey(command, pathToSsh)
 })
 
 ipcMain.handle('export-graph-ssh', async (event, { graph }) => {
-  const pathToSsh = await getKeyFromLocalStorage('sshPathKey')
+  const settings = store.get('settings', {})
+  const pathToSsh = settings.sshPathKey
+  if (!pathToSsh) {
+    throw new Error('SSH key path not configured in settings')
+  }
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)
   const remotePath = '/shared-data/graph.json'
@@ -99,11 +108,3 @@ ipcMain.handle('set-theme', (event, theme) => {
   }
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 })
-
-const getKeyFromLocalStorage = async (key) => {
-  const settingsStr = await mainWindow.webContents.executeJavaScript(
-    `localStorage.getItem('settings')`
-  )
-  const settingsObj = JSON.parse(settingsStr)
-  return settingsObj[key]
-}

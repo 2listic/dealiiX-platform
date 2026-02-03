@@ -50,8 +50,8 @@
     }
   }
 
-  const handleOncofirmLogout = () => {
-    auth.clearToken()
+  const handleOncofirmLogout = async () => {
+    await auth.clearToken()
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
@@ -83,7 +83,7 @@
         })
       }
 
-      const registeredNetworkNodes = loadGraph(
+      const registeredNetworkNodes = await loadGraph(
         importedGraph.workflow.nodes,
         validEdges
       )
@@ -114,7 +114,7 @@
     }
     const importedNodesAsText = await readFileAsText(importNodesFiles[0])
     const importedNodes = JSON.parse(importedNodesAsText)
-    setRegistry(importedNodes)
+    await setRegistry(importedNodes)
     toastState.add({ message: 'New nodes were loaded' })
   }
 

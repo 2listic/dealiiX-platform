@@ -72,16 +72,16 @@ export enum Type {
 }
 
 export type NodeData = {
+  type: string
   arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
+  node_type: NodeType
+  name?: string
   derived?: string[]
   base?: string
-  inputs: InputIndex[]
-  name?: string
   method_name?: string
-  node_type: NodeType
-  outputs: OutputIndex[]
-  type: string
-  value?: string
+  value?: string | Network
   is_valid?: boolean
 }
 
@@ -105,19 +105,23 @@ export type NetworkEdges = {
 }
 
 export type NetworkNode = {
-  name?: string
   type: string
   base?: string
+  derived?: string[]
   value?: string
+  name?: string
   position?: { x: number; y: number }
 }
 
-export interface NetworkNodeOfTypeNetwork extends NetworkNode {
+export type NetworkNodeOfTypeNetwork = {
   type: TypeField.CORAL_NETWORK
   node_type: NodeType.NETWORK
-  arguments?: Argument[]
-  inputs?: InputIndex[]
-  outputs?: OutputIndex[]
+  value: Network
+  name: string
+  arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
+  position?: { x: number; y: number }
 }
 
 export type NetworkNodes = {
@@ -140,22 +144,22 @@ export type Network = {
 }
 
 /**
- * Type guard to check if a network node has all required NodeData fields
+ * Type guard to check if a network node is of type NetworkNodeOfTypeNetwork
  * @param node - The node to check
- * @returns True if the node has arguments, inputs, outputs, and node_type defined
+ * @returns True if the node is a coral::Network node with all required fields
  */
-export const hasNodeDataFields = (
+export const isNetworkNodeOfTypeNetwork = (
   node: NetworkNodes[string]
-): node is NodeData => {
+): node is NetworkNodeOfTypeNetwork => {
   return (
-    'arguments' in node &&
-    node.arguments !== undefined &&
-    'inputs' in node &&
-    node.inputs !== undefined &&
-    'outputs' in node &&
-    node.outputs !== undefined &&
+    node.type === TypeField.CORAL_NETWORK &&
     'node_type' in node &&
-    node.node_type !== undefined
+    node.node_type === NodeType.NETWORK &&
+    'value' in node &&
+    'name' in node &&
+    'arguments' in node &&
+    'inputs' in node &&
+    'outputs' in node
   )
 }
 

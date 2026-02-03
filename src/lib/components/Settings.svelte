@@ -29,25 +29,25 @@
     }
   })
 
-  const handleOnChangeFile = () => {
+  const handleOnChangeFile = async () => {
     isEditingSshPath = false
     const file = sshFiles[0]
     if (!file) return
     // @ts-ignore
     sshPath = window.electron.getFilePath(file)
-    settingsState.setKey(SSH_PATH, sshPath)
+    await settingsState.setKey(SSH_PATH, sshPath)
     toastState.add({ message: 'SSH key absolute path updated' })
   }
 
-  const saveVisualizerUrl = () => {
-    settingsState.setKey(URL_VISUALIZER, urlVisualizer)
+  const saveVisualizerUrl = async () => {
+    await settingsState.setKey(URL_VISUALIZER, urlVisualizer)
     isEditingVisualizer = false
     toastState.add({ message: 'URL Visualizer saved' })
   }
 
-  const saveRemoteUrl = () => {
+  const saveRemoteUrl = async () => {
     const urlRemoteServerParsed = urlRemoteServer.replace(/\/$/, '') // remove last '/' if present
-    settingsState.setKey(URL_REMOTE_SERVER, urlRemoteServerParsed)
+    await settingsState.setKey(URL_REMOTE_SERVER, urlRemoteServerParsed)
     urlRemoteServer = urlRemoteServerParsed
     isEditingRemote = false
     toastState.add({ message: 'URL Remote Server saved' })
