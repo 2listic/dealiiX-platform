@@ -89,7 +89,15 @@ Or open a shell in the container (restarting the container if needed)
 Build the Coral backend in the container  
 `cd /app && mkdir build && cd build && cmake .. && make`
 
-#### Test Slurm
+#### Manually test the Coral backend
+
+Manually execute the backend from the running container
+`/app/build/dealii_backend.g run /shared-data/graph.json`
+
+Read a file located in shared-data from outside the container
+`ssh -p 2222 root@localhost 'cat /shared-data/slurm-1.out'`
+
+#### Manually test Slurm + Coral
 
 Test Slurm from the runninig container  
 `srun whoami`  
@@ -97,7 +105,7 @@ or
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/dealii_backend.g /shared-data/graph.json --output=sbatch.out`
+`sbatch --wrap="/app/build/dealii_backend.g run /shared-data/graph.json --output=sbatch.out`
 
 Test the state of a specific job id (i.e id 1) with sacct  
 `sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
