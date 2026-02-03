@@ -6,8 +6,8 @@ export interface ElectronAPI {
   getFilePath(file: File): string
   store: {
     get(key: string, defaultValue?: any): Promise<any>
-    set(key: string, value: any): Promise<void>
-    remove(key: string): Promise<void>
+    set(key: string, value: any): Promise<boolean>
+    remove(key: string): Promise<boolean>
   }
 }
 
