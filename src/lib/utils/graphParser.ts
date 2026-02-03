@@ -7,13 +7,12 @@ import {
   updateLastNodeId,
 } from '../stores/nodes.svelte'
 import {
-  hasNodeDataFields,
+  isNetworkNodeOfTypeNetwork,
   SELF,
   TypeField,
   type Network,
   type NetworkEdge,
   type NetworkEdges,
-  type NetworkNodeOfTypeNetwork,
   type NetworkNodes,
 } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
@@ -57,14 +56,12 @@ const addNetworkNodesFromGraph = async (
 ): Promise<string[]> => {
   const networkNodes: string[] = []
   for (const node of Object.values(nodes)) {
-    if (node.type === TypeField.CORAL_NETWORK) {
-      // Register only if not already done and use type narrowing to check for the required NodeData fields
-      if (!networkNodes.includes(node.name) && hasNodeDataFields(node)) {
-        await addNetworkNode(node.name, node)
-        networkNodes.push(node.name)
-      }
-      // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
+    if (isNetworkNodeOfTypeNetwork(node)) {
+      await addNetworkNode(node.name, node)
+      networkNodes.push(node.name)
     }
+    // TODO: add support for network nodes of type "network" with no arguments.
+    // In that case, we need to generate arguments, inputs and outputs and then add to networkNodes
   }
   return networkNodes
 }
@@ -164,22 +161,25 @@ export const validateGraphData = (
     }
 
     // Get source and target node definition (from registry or networkNodes)
-    const sourceNodeData =
-      sourceNode.type === TypeField.CORAL_NETWORK
-        ? (sourceNode as NetworkNodeOfTypeNetwork)
-        : getNodeData(sourceNode.type)
-    const targetNodeData =
-      targetNode.type === TypeField.CORAL_NETWORK
-        ? (targetNode as NetworkNodeOfTypeNetwork)
-        : getNodeData(targetNode.type)
+    const sourceNodeData = isNetworkNodeOfTypeNetwork(sourceNode)
+      ? sourceNode
+      : getNodeData(sourceNode.type)
+    const targetNodeData = isNetworkNodeOfTypeNetwork(targetNode)
+      ? targetNode
+      : getNodeData(targetNode.type)
 
     // Determine source output type
     let sourceOutputType: string
 
     // Check if the output is SELF (e.g., constructor or method returning this)
     if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
-      // For SELF outputs, use the base type if defined, otherwise use the node's type
-      sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
+      if ('base' in sourceNodeData) {
+        // If node is derived from a base class, use the base class type
+        sourceOutputType = sourceNodeData.base
+      } else {
+        // Otherwise use its type as usual
+        sourceOutputType = sourceNodeData.type
+      }
     } else {
       // Regular output - get from arguments array
       const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]

@@ -65,6 +65,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#141](https://github.com/2listic/dealiiX-platform/pull/141) Network nodes have the corresponding sub-graph saved in 'value' field as regular JSON instead of escaped string.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Removed "type_hash" from registry JSON and replaced with "type". Simplified nework JSON removing duplicated information already present in the registry like "arguments", "inputs" and "outputs". Added optional "name" key in the network JSON in order to customize the name of the nodes in the graph.
 - [#116](https://github.com/2listic/dealiiX-platform/pull/116) Added support for the “output” connection type and for multiple outputs returned from a single node. Added support for node types float, str and for the generic any type. Added support for the Python backend through the new enum values primitive, function, and method.
