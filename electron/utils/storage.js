@@ -1,7 +1,10 @@
 import Store from 'electron-store'
 import { ipcMain } from 'electron'
 
-// Create store instance with schema
+/**
+ * Create Electron-store's new store instance with JSON schema for validation
+ * See documentation at https://github.com/sindresorhus/electron-store
+ */
 const store = new Store({
   name: 'dealiix-storage',
   schema: {
@@ -16,15 +19,18 @@ const store = new Store({
 
 // Setup IPC handlers for renderer access
 ipcMain.handle('store:get', (event, key, defaultValue) => {
+  // Electron-store getter
   return store.get(key, defaultValue)
 })
 
 ipcMain.handle('store:set', (event, key, value) => {
+  // Electron-store setter
   store.set(key, value)
   return true
 })
 
 ipcMain.handle('store:remove', (event, key) => {
+  // Electron-store delete
   store.delete(key)
   return true
 })
