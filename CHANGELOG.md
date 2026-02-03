@@ -26,6 +26,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#138](https://github.com/2listic/dealiiX-platform/pull/138) Added button in the jobs table to read content of corresponding .out file. New library ansiUp is used to transform color ASCII codes into HTML tags.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added section in the sidebar to display and drag the network nodes in the canvas.
 - [#118](https://github.com/2listic/dealiiX-platform/pull/120) Added button to download the current graph locally.
 - [#113](https://github.com/2listic/dealiiX-platform/pull/120) Display logged-in user's username
@@ -86,6 +87,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH comunication to retrieve content of file .out for a specific job.
 - [#91](https://github.com/2listic/dealiiX-platform/pull/91) Updated SSH command to run Coral with new CLI
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) New functionality to open a Electron window pointing to a specific url
 - [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
