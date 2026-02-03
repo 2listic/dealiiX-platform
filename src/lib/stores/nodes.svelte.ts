@@ -163,7 +163,7 @@ const loadNetworkNodes = async () => {
 loadNetworkNodes()
 
 /**
- * Set the application store for the available network nodes
+ * Set the application store for the available network nodes and persist changes
  * @param {RegisteredNodes} data - Dictionary of node data to register
  */
 export const setNetworkNodes = async (data: RegisteredNodes) => {
@@ -176,7 +176,7 @@ export const setNetworkNodes = async (data: RegisteredNodes) => {
 }
 
 /**
- * Add or update a single network node in the relative store
+ * Add or update a single network node in the relative store and persist changes
  * @param {string} key - The unique identifier for the network node
  * @param {NodeData} nodeData - The node data to add or update
  */
@@ -189,6 +189,11 @@ export const addNetworkNode = async (key: string, nodeData: NodeData) => {
   )
 }
 
+/**
+ * Remove a network node from the networkNodes store and persist changes
+ * @param {string} name - The network node name identifier to remove
+ * @throws {Error} If the network node name is not found in the networkNodes store
+ */
 export const removeNetworkNode = async (name: string) => {
   if (isNodeInNetworkNodes(name)) {
     delete networkNodes[name]
