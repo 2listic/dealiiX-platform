@@ -7,7 +7,7 @@ import {
   updateLastNodeId,
 } from '../stores/nodes.svelte'
 import {
-  hasNodeDataFields,
+  isNetworkNodeOfTypeNetwork,
   SELF,
   TypeField,
   type Network,
@@ -23,13 +23,13 @@ import type { Node, Edge } from '@xyflow/svelte'
  * and updates both nodes and edges in the editor
  * @param {NetworkNodes} nodes - The nodes to load
  * @param {NetworkEdges} edges - The edges to load
- * @returns {string[]} Network node names that were registered or updated
+ * @returns {Promise<string[]>} Network node names that were registered or updated
  */
-export const loadGraph = (
+export const loadGraph = async (
   nodes: NetworkNodes,
   edges: NetworkEdges
-): string[] => {
-  const networkNodes = addNetworkNodesFromGraph(nodes)
+): Promise<string[]> => {
+  const networkNodes = await addNetworkNodesFromGraph(nodes)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
@@ -49,20 +49,20 @@ export const loadGraph = (
  * Each network node is added or updated only if it has the required fields.
  * TODO: generate network node arguments, inputs and ouptuts if not already present
  * @param {NetworkNodes} nodes - The nodes to check and register
- * @returns {string[]} Network node names that were registered or updated
+ * @returns {Promise<string[]>} Network node names that were registered or updated
  */
-const addNetworkNodesFromGraph = (nodes: NetworkNodes): string[] => {
+const addNetworkNodesFromGraph = async (
+  nodes: NetworkNodes
+): Promise<string[]> => {
   const networkNodes: string[] = []
-  Object.values(nodes).forEach((node) => {
-    if (node.type === TypeField.CORAL_NETWORK) {
-      // Register only if not already done and use type narrowing to check for the required NodeData fields
-      if (!networkNodes.includes(node.name) && hasNodeDataFields(node)) {
-        addNetworkNode(node.name, node)
-        networkNodes.push(node.name)
-      }
-      // TODO: generate arguments, inputs and outputs fields and only then add to networkNodes
+  for (const node of Object.values(nodes)) {
+    if (isNetworkNodeOfTypeNetwork(node)) {
+      await addNetworkNode(node.name, node)
+      networkNodes.push(node.name)
     }
-  })
+    // TODO: add support for network nodes of type "network" with no arguments.
+    // In that case, we need to generate arguments, inputs and outputs and then add to networkNodes
+  }
   return networkNodes
 }
 
@@ -161,22 +161,25 @@ export const validateGraphData = (
     }
 
     // Get source and target node definition (from registry or networkNodes)
-    const sourceNodeData =
-      sourceNode.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(sourceNode.name!)
-        : getNodeData(sourceNode.type)
-    const targetNodeData =
-      targetNode.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(targetNode.name!)
-        : getNodeData(targetNode.type)
+    const sourceNodeData = isNetworkNodeOfTypeNetwork(sourceNode)
+      ? sourceNode
+      : getNodeData(sourceNode.type)
+    const targetNodeData = isNetworkNodeOfTypeNetwork(targetNode)
+      ? targetNode
+      : getNodeData(targetNode.type)
 
     // Determine source output type
     let sourceOutputType: string
 
     // Check if the output is SELF (e.g., constructor or method returning this)
     if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
-      // For SELF outputs, use the base type if defined, otherwise use the node's type
-      sourceOutputType = sourceNodeData.base ?? sourceNodeData.type
+      if ('base' in sourceNodeData) {
+        // If node is derived from a base class, use the base class type
+        sourceOutputType = sourceNodeData.base
+      } else {
+        // Otherwise use its type as usual
+        sourceOutputType = sourceNodeData.type
+      }
     } else {
       // Regular output - get from arguments array
       const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]

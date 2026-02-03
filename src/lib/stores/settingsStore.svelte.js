@@ -1,4 +1,14 @@
-let settings = $state(JSON.parse(localStorage.getItem('settings')))
+let settings = $state({})
+
+// Load initial settings from electron-store
+const loadSettings = async () => {
+  if (window.electron?.store) {
+    settings = await window.electron.store.get('settings', {})
+  } else {
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadSettings()
 
 export const SSH_PATH = 'sshPathKey'
 export const URL_VISUALIZER = 'urlVisualizerKey'
@@ -8,10 +18,9 @@ export const settingsState = {
   getKey(key) {
     return settings?.[key] ?? undefined
   },
-  setKey(key, value) {
+  async setKey(key, value) {
     if (!settings) settings = {}
     settings[key] = value
-    const settingsJson = JSON.stringify(settings)
-    localStorage.setItem('settings', settingsJson)
+    await window.electron.store.set('settings', $state.snapshot(settings))
   },
 }

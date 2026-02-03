@@ -18,10 +18,10 @@
   let networkNodeName = $state('')
   const confirmModalId = 'confirm-override-network-node'
 
-  const createNetworkNode = (name: string) => {
+  const createNetworkNode = async (name: string) => {
     try {
       const newNetworkNode = createNewNetworkNode(name)
-      addNetworkNode(name, newNetworkNode)
+      await addNetworkNode(name, newNetworkNode)
 
       toastState.add({
         message: `Network node "${name}" created successfully`,

@@ -7,12 +7,12 @@
   "main": "electron/main.js",
   "author": "Dualistic",
   "build": {
-    "appId": "com.example.app",
-    "productName": "MyApp",
+    "appId": "com.dualistic.dealiix-platform",
+    "productName": "dealiix-platform",
     "linux": {
       "target": "deb",
       "category": "Utility",
-      "maintainer": "xxx",
+      "maintainer": "Dualistic",
       "description": "DealiiX Platform"
     }
   },
@@ -65,6 +65,7 @@
   "dependencies": {
     "ansi_up": "^6.0.6",
     "electron-squirrel-startup": "^1.0.1",
+    "electron-store": "^11.0.2",
     "fs": "^0.0.1-security",
     "ssh2": "^1.16.0"
   }

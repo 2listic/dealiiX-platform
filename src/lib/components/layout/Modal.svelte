@@ -166,17 +166,16 @@
     transition:fade={{ duration: 150 }}
   >
     <div
-      id="modal"
-      class={size ?? ''}
+      class="modal {size ?? ''}"
       transition:scale={{ duration: 200, start: 0.95 }}
       onclick={(e) => e.stopPropagation()}
     >
-      <svg id="close" onclick={() => close()} viewBox="0 0 12 12">
+      <svg class="close" onclick={() => close()} viewBox="0 0 12 12">
         <circle cx="6" cy="6" r="6" />
         <line x1="3" y1="3" x2="9" y2="9" />
         <line x1="9" y1="3" x2="3" y2="9" />
       </svg>
-      <div id="modal-content">
+      <div class="modal-content">
         {@render children?.()}
       </div>
     </div>
@@ -203,7 +202,7 @@
     display: flex;
   }
 
-  #modal {
+  .modal {
     position: relative;
     border-radius: 6px;
     background: var(--background-color-secondary);
@@ -214,19 +213,19 @@
     /*min-height: 50vh; */
   }
 
-  #modal.sm {
+  .modal.sm {
     width: 30vw;
   }
 
-  #modal.md {
+  .modal.md {
     width: 50vw;
   }
 
-  #modal.lg {
+  .modal.lg {
     width: 80vw;
   }
 
-  #close {
+  .close {
     position: absolute;
     top: -12px;
     right: -12px;
@@ -237,16 +236,16 @@
     transition: transform 0.3s ease;
   }
 
-  #close:hover {
+  .close:hover {
     transform: scale(1.5);
   }
 
-  #close line {
+  .close line {
     stroke: #fff;
     stroke-width: 2;
   }
 
-  #modal-content {
+  .modal-content {
     max-width: calc(100vw - 20px);
     max-height: calc(100vh - 20px);
     overflow: auto;

@@ -1,6 +1,8 @@
 import { initialNodes, initialEdges } from '../data/flowData'
 import { type RegisteredNodes, type NodeData } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
+import defaultNodesJson from '../data/defaultNodes.json'
+import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
 
 // ============= Nodes and edges states (on the canvas) ================
 /**
@@ -75,18 +77,33 @@ export const getNextNodeId = (): number => {
 }
 
 // ================= Registered nodes (sidebar) ========================
+
+const defaultNodes = defaultNodesJson as RegisteredNodes
+
 /**
  * Application registry containing all the available nodes
  */
 let registry = $state<RegisteredNodes>({})
 
+// Load registry from electron-store
+const loadRegistry = async () => {
+  if (window.electron?.store) {
+    registry = await window.electron.store.get('registered_nodes', defaultNodes)
+  } else {
+    registry = defaultNodes
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadRegistry()
+
 /**
  * Set the application registry for the available nodes
  * @param {RegisteredNodes} data - Dictionary of node data to register
  */
-export const setRegistry = (data: RegisteredNodes) => {
+export const setRegistry = async (data: RegisteredNodes) => {
   registry = data
   console.log('Imported registry', $state.snapshot(registry))
+  await window.electron.store.set('registered_nodes', $state.snapshot(registry))
 }
 
 /**
@@ -123,28 +140,70 @@ export const isNodeInRegistry = (type: string): boolean => {
 }
 
 // ============ Registered network nodes section (sidebar) ======================
+
+const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
+
 /**
  * Store containing all the registered network nodes
  */
 let networkNodes = $state<RegisteredNodes>({})
 
+// Load network nodes from electron-store
+const loadNetworkNodes = async () => {
+  if (window.electron?.store) {
+    networkNodes = await window.electron.store.get(
+      'registered_network_nodes',
+      defaultNetworkNodes
+    )
+  } else {
+    networkNodes = defaultNetworkNodes
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadNetworkNodes()
+
 /**
- * Set the application store for the available network nodes
+ * Set the application store for the available network nodes and persist changes
  * @param {RegisteredNodes} data - Dictionary of node data to register
  */
-export const setNetworkNodes = (data: RegisteredNodes) => {
+export const setNetworkNodes = async (data: RegisteredNodes) => {
   networkNodes = data
-  console.log('Imported network nodes', $state.snapshot(registry))
+  console.log('Imported network nodes', $state.snapshot(networkNodes))
+  await window.electron.store.set(
+    'registered_network_nodes',
+    $state.snapshot(networkNodes)
+  )
 }
 
 /**
- * Add or update a single network node in the relative store
+ * Add or update a single network node in the relative store and persist changes
  * @param {string} key - The unique identifier for the network node
  * @param {NodeData} nodeData - The node data to add or update
  */
-export const addNetworkNode = (key: string, nodeData: NodeData) => {
+export const addNetworkNode = async (key: string, nodeData: NodeData) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
+  await window.electron.store.set(
+    'registered_network_nodes',
+    $state.snapshot(networkNodes)
+  )
+}
+
+/**
+ * Remove a network node from the networkNodes store and persist changes
+ * @param {string} name - The network node name identifier to remove
+ * @throws {Error} If the network node name is not found in the networkNodes store
+ */
+export const removeNetworkNode = async (name: string) => {
+  if (isNodeInNetworkNodes(name)) {
+    delete networkNodes[name]
+    await window.electron.store.set(
+      'registered_network_nodes',
+      $state.snapshot(networkNodes)
+    )
+  } else {
+    throw new Error(`Network node '${name}' not found in networkNodes store`)
+  }
 }
 
 /**

@@ -177,7 +177,7 @@ export const createNewNetworkNode = (name: string): NodeData => {
 
   // Step 5: Serialize the graph to the value field
   const graphData = parseGraph(currentNodes, currentEdges)
-  const value = JSON.stringify(graphData)
+  const value = graphData
 
   // Step 6: Construct the final NodeData object
   return {
