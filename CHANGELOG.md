@@ -53,6 +53,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
 - [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
 - Electron setup with IPC communication
 - SSH command execution via password and private key
@@ -73,6 +74,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#139](https://github.com/2listic/dealiiX-platform/pull/139) Added library Electron-store to persist data and settings across sessions.
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added Coral repo as a sub-dependency
 - [#77](https://github.com/2listic/dealiiX-platform/pull/77) Dependency versions updated in package-lock.json
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Nodes are unified in one unique component.
