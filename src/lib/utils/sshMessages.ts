@@ -61,7 +61,7 @@ export const exportAndEvalGraph = async (
 
     // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
     const sbatchCommand =
-      'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g run /shared-data/graph.json"'
+      'sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir node_execution_status"'
     const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
       command: sbatchCommand,
     })
@@ -182,7 +182,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
 export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
-  const command = `cat /shared-data/slurm-${jobId}.out`
+  const command = `cat /app/shared-data/slurm-${jobId}.out`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
