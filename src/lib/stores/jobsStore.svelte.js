@@ -1,10 +1,11 @@
+import { SvelteMap } from 'svelte/reactivity'
 import { getJobsState, JOB_LIST_DAYS } from '../utils/sshMessages'
 import { toastState } from './toastsStore.svelte'
 
 let jobs = $state([])
 
-/** @type {Record<number, number>} Maps scheduler job IDs to internal job IDs */
-let jobIdMap = $state({})
+/** @type {SvelteMap<number, number>} Maps scheduler job IDs to internal job IDs */
+const jobIdMap = new SvelteMap()
 
 /**
  * Store for mapping scheduler job IDs to internal jobs IDs.
@@ -13,10 +14,10 @@ export const jobIdMapState = {
   get current() {
     return jobIdMap
   },
-  /** Returns the next available incremental key */
+  /** Returns the next available internal job ID (0, 1, 2, ...) */
   getNextKey() {
-    const keys = Object.keys(jobIdMap).map(Number)
-    return keys.length === 0 ? 0 : Math.max(...keys) + 1
+    if (jobIdMap.size === 0) return 0
+    return Math.max(...jobIdMap.values()) + 1
   },
   /**
    * Adds a job ID mapping
@@ -24,7 +25,7 @@ export const jobIdMapState = {
    * @param {number} jobIdInternal - The incremental key used as touch-dir
    */
   add(jobIdScheduler, jobIdInternal) {
-    jobIdMap = { ...jobIdMap, [jobIdScheduler]: jobIdInternal }
+    jobIdMap.set(jobIdScheduler, jobIdInternal)
   },
   /**
    * Gets the internal job ID for a given scheduler job ID
@@ -32,7 +33,7 @@ export const jobIdMapState = {
    * @returns {number | undefined} The internal jobs IDs or undefined if not found
    */
   getJobIdInternal(jobIdScheduler) {
-    return jobIdMap[jobIdScheduler]
+    return jobIdMap.get(jobIdScheduler)
   },
 }
 
