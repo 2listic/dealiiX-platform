@@ -9,6 +9,7 @@
     size = 'medium',
     onclick,
     disabled = false,
+    title,
     children,
   }: {
     variant?: ButtonVariant
@@ -16,11 +17,18 @@
     size?: ButtonSize
     onclick?: () => any
     disabled?: boolean
+    title?: string
     children?: () => any
   } = $props()
 </script>
 
-<button {type} class="btn btn-{variant} btn-{size}" {onclick} {disabled}>
+<button
+  {type}
+  class="btn btn-{variant} btn-{size}"
+  {onclick}
+  {disabled}
+  {title}
+>
   {@render children?.()}
 </button>
 

@@ -159,16 +159,19 @@
             {/each}
             <td>
               {#if [COMPLETED, FAILED].includes(line[1])}
-                <Button size="xsmall" onclick={() => handleLogClick(line[0])}
-                  >{line[0]}.out</Button
+                <Button
+                  size="xsmall"
+                  title="View logs from the current job"
+                  onclick={() => handleLogClick(line[0])}>{line[0]}.out</Button
                 >
               {/if}
             </td>
             <td>
               <Button
                 size="xsmall"
+                title="View the execution status of nodes for the current job"
                 onclick={() => handleNodesExecutionStatus(line[0])}
-                >Nodes</Button
+                >Status</Button
               >
             </td>
           </tr>
