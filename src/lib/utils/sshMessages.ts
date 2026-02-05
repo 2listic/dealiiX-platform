@@ -195,17 +195,35 @@ export const getOutFileContent = async (
 }
 
 /**
- * Retrieves the list of node execution status files for a given touch-dir key.
+ * Retrieves the execution status of nodes for a given touch-dir key.
  * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
- * @returns {Promise<string>} A promise that resolves to the list of files as a string
+ * @returns {Promise<Map<number, string[]>>} A promise that resolves to a Map where keys are node IDs and values are arrays of status strings
  */
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
-): Promise<string> => {
+): Promise<Map<number, string[]>> => {
+  // define the command to list the files in the touch-dir
   const command = `ls /app/shared-data/${jobIdInternal}`
-  return await window.electron.invoke('execute-ssh-with-key', {
+
+  // get the raw output string with lines in format "nodeId.status"
+  const output = await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
+
+  // parse output into a Map where key is node ID and value is array of status strings
+  const result = new Map<number, string[]>()
+
+  for (const line of output.trim().split('\n')) {
+    const [nodeId, status] = line.split('.')
+    const id = parseInt(nodeId, 10)
+
+    if (!result.has(id)) {
+      result.set(id, [])
+    }
+    result.get(id)!.push(status)
+  }
+
+  return result
 }
 
 /**
