@@ -3,6 +3,33 @@ import { toastState } from './toastsStore.svelte'
 
 let jobs = $state([])
 
+/** @type {Record<number, string>} Maps incremental keys to Slurm job IDs */
+let jobIdMap = $state({})
+
+/**
+ * Store for mapping incremental touch-dir keys to Slurm job IDs.
+ * Used to correlate node execution status directories with their jobs.
+ */
+export const jobIdMapState = {
+  get current() {
+    return jobIdMap
+  },
+  /** Returns the next available incremental key */
+  getNextKey() {
+    const keys = Object.keys(jobIdMap).map(Number)
+    return keys.length === 0 ? 0 : Math.max(...keys) + 1
+  },
+  /**
+   * Adds a job ID mapping
+   * @param {number} key - The incremental key used as touch-dir
+   * @param {string} jobId - The Slurm job ID
+   */
+  add(key, jobId) {
+    jobIdMap = { ...jobIdMap, [key]: jobId }
+    // console.log('jobIdMapState', $state.snapshot(jobIdMapState))
+  },
+}
+
 export const jobsState = {
   get current() {
     return jobs

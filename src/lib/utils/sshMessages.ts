@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
-import { jobsState } from '../stores/jobsStore.svelte'
+import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraph } from './graphParser'
 import { setPanelContent } from './panelContent.js'
@@ -52,25 +52,36 @@ export const exportAndEvalGraph = async (
   nodes: Node[],
   edges: Edge[]
 ): Promise<void> => {
+  // parse graph
   const parsedGraph = parseGraph(nodes, edges)
+
+  // export graph
   const resultExport = await window.electron.invoke('export-graph-ssh', {
     graph: parsedGraph,
   })
   console.log('SSH Connection Result:', resultExport)
 
+  // get next available touch-dir key
+  const touchDirKey = jobIdMapState.getNextKey()
+
+  // execute graph
   // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand =
-    'sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir node_execution_status"'
+  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir ${touchDirKey}"`
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: sbatchCommand,
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
 
+  // get job id and store mapping
   const jobId = resultExecute.match(/\d+/)[0]
   if (!jobId) throw new Error('Job ID not found')
+  jobIdMapState.add(touchDirKey, jobId)
+
   // poll immediately then every 5 secs for 1 day
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+
+  // message to user
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === COMPLETED ? 'success' : 'error',
@@ -110,6 +121,7 @@ const jobPolling = async (
       if ([COMPLETED, FAILED, PENDING, RUNNING].includes(cleaned)) {
         await jobsState.update()
 
+        // if completed or failed stop polling and return the final status
         if ([COMPLETED, FAILED].includes(cleaned)) {
           return cleaned
         }
@@ -164,6 +176,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
   resultJobs.unshift(last)
   // Convert each job row string into an array of fields
   const parsedJobs = resultJobs.map((line: string) => line.split('|'))
+  console.log('parsedJobs', parsedJobs)
   return parsedJobs
 }
 
