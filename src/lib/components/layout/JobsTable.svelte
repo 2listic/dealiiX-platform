@@ -134,73 +134,45 @@
             </thead>
             <tbody>
               {#if isJobListExpanded}
-                {#each jobsData as line, index (line[0])}
-                  {#if index > 0}
-                    <tr>
-                      {#each line as bodyCell, i (i)}
-                        <td>
-                          <span>
-                            {#if JOB_DATE_INDEX.includes(i)}
-                              {bodyCell.replace('T', ' ')}
-                            {:else}
-                              {bodyCell}
-                            {/if}
-                          </span>
-                        </td>
-                      {/each}
-                      <td>
-                        {#if [COMPLETED, FAILED].includes(line[1])}
-                          <Button
-                            size="xsmall"
-                            onclick={() => handleLogClick(line[0])}
-                            >{line[0]}.out</Button
-                          >
-                        {/if}
-                      </td>
-                      <td>
-                        <Button
-                          size="xsmall"
-                          onclick={() => handleNodesExecutionStatus(line[0])}
-                          >Nodes</Button
-                        >
-                      </td>
-                    </tr>
-                  {/if}
+                {#each jobsData.slice(1) as line (line[0])}
+                  {@render jobRow(line)}
                 {/each}
               {:else}
-                <tr>
-                  {#each jobsData[1] as bodyCell, i (i)}
-                    <td>
-                      <span>
-                        {#if JOB_DATE_INDEX.includes(i)}
-                          {bodyCell.replace('T', ' ')}
-                        {:else}
-                          {bodyCell}
-                        {/if}
-                      </span>
-                    </td>
-                  {/each}
-                  <td>
-                    {#if [COMPLETED, FAILED].includes(jobsData[1][1])}
-                      <Button
-                        size="xsmall"
-                        onclick={() => handleLogClick(jobsData[1][0])}
-                        >{jobsData[1][0]}.out</Button
-                      >
-                    {/if}
-                  </td>
-                  <td>
-                    <Button
-                      size="xsmall"
-                      onclick={() => handleNodesExecutionStatus(jobsData[1][0])}
-                      >Nodes</Button
-                    >
-                  </td>
-                </tr>
+                {@render jobRow(jobsData[1])}
               {/if}
             </tbody>
           </table>
         </div>
+
+        {#snippet jobRow(line)}
+          <tr>
+            {#each line as bodyCell, i (i)}
+              <td>
+                <span>
+                  {#if JOB_DATE_INDEX.includes(i)}
+                    {bodyCell.replace('T', ' ')}
+                  {:else}
+                    {bodyCell}
+                  {/if}
+                </span>
+              </td>
+            {/each}
+            <td>
+              {#if [COMPLETED, FAILED].includes(line[1])}
+                <Button size="xsmall" onclick={() => handleLogClick(line[0])}
+                  >{line[0]}.out</Button
+                >
+              {/if}
+            </td>
+            <td>
+              <Button
+                size="xsmall"
+                onclick={() => handleNodesExecutionStatus(line[0])}
+                >Nodes</Button
+              >
+            </td>
+          </tr>
+        {/snippet}
       {:else}
         <div transition:slide>
           <table transition:fade>
