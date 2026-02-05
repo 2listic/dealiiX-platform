@@ -17,6 +17,7 @@
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import TextModal from './TextModal.svelte'
+  import NodeStatusModal from './NodeStatusModal.svelte'
   import { getModal } from './Modal.svelte'
 
   let isLoaded = $state(false)
@@ -50,6 +51,10 @@
   let currentJobId = $state('')
   const outLogModalId = 'out-log-modal'
 
+  let nodeStatusMap = $state(new Map())
+  let currentStatusJobId = $state()
+  const nodeStatusModalId = 'node-status-modal'
+
   const handleLogClick = async (jobId) => {
     try {
       currentJobId = jobId
@@ -65,13 +70,15 @@
 
   const handleNodesExecutionStatus = async (jobIdSlurm) => {
     try {
-      const key = jobIdMapState.getJobIdInternal(jobIdSlurm)
-      if (key === undefined) {
-        throw new Error(`No internal key found for job ${jobIdSlurm}`)
+      const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
+      if (jobIdInternal === undefined) {
+        throw new Error(`No internal job Id found for scheduler job Id ${jobIdSlurm}`)
       }
-      const result = await getNodesExecutionStatus(key)
-      console.log('Nodes execution status:', result)
-      return result
+      console.log(`Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`)
+      const result = await getNodesExecutionStatus(jobIdInternal)
+      nodeStatusMap = result
+      currentStatusJobId = jobIdSlurm
+      getModal(nodeStatusModalId)?.open()
     } catch (error) {
       toastState.add({
         message: error,
@@ -200,6 +207,16 @@
   onClose={() => {
     outLogText = ''
     currentJobId = ''
+  }}
+/>
+
+<NodeStatusModal
+  modalId={nodeStatusModalId}
+  statusMap={nodeStatusMap}
+  title={`Job ${currentStatusJobId} - Nodes Status`}
+  onClose={() => {
+    nodeStatusMap = new Map()
+    currentStatusJobId = ''
   }}
 />
 
