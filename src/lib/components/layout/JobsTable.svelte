@@ -3,12 +3,13 @@
   import { fade, slide } from 'svelte/transition'
   import { Tween } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
-  import { jobsState } from '../../stores/jobsStore.svelte'
+  import { jobsState, jobIdMapState } from '../../stores/jobsStore.svelte'
   import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
   import {
     COMPLETED,
     FAILED,
     getOutFileContent,
+    getNodesExecutionStatus,
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
@@ -54,6 +55,23 @@
       currentJobId = jobId
       outLogText = await getOutFileContent(jobId)
       getModal(outLogModalId)?.open()
+    } catch (error) {
+      toastState.add({
+        message: error,
+        type: 'error',
+      })
+    }
+  }
+
+  const handleNodesExecutionStatus = async (jobIdSlurm) => {
+    try {
+      const key = jobIdMapState.getJobIdInternal(jobIdSlurm)
+      if (key === undefined) {
+        throw new Error(`No internal key found for job ${jobIdSlurm}`)
+      }
+      const result = await getNodesExecutionStatus(key)
+      console.log('Nodes execution status:', result)
+      return result
     } catch (error) {
       toastState.add({
         message: error,

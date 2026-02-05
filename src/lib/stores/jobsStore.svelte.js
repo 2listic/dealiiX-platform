@@ -3,12 +3,11 @@ import { toastState } from './toastsStore.svelte'
 
 let jobs = $state([])
 
-/** @type {Record<number, string>} Maps incremental keys to Slurm job IDs */
+/** @type {Record<number, number>} Maps scheduler job IDs to internal job IDs */
 let jobIdMap = $state({})
 
 /**
- * Store for mapping incremental touch-dir keys to Slurm job IDs.
- * Used to correlate node execution status directories with their jobs.
+ * Store for mapping scheduler job IDs to internal jobs IDs.
  */
 export const jobIdMapState = {
   get current() {
@@ -21,12 +20,19 @@ export const jobIdMapState = {
   },
   /**
    * Adds a job ID mapping
-   * @param {number} key - The incremental key used as touch-dir
-   * @param {string} jobId - The Slurm job ID
+   * @param {number} jobIdScheduler - The scheduler job ID
+   * @param {number} jobIdInternal - The incremental key used as touch-dir
    */
-  add(key, jobId) {
-    jobIdMap = { ...jobIdMap, [key]: jobId }
-    // console.log('jobIdMapState', $state.snapshot(jobIdMapState))
+  add(jobIdScheduler, jobIdInternal) {
+    jobIdMap = { ...jobIdMap, [jobIdScheduler]: jobIdInternal }
+  },
+  /**
+   * Gets the internal job ID for a given scheduler job ID
+   * @param {number} jobIdScheduler - The scheduler job ID
+   * @returns {number | undefined} The internal jobs IDs or undefined if not found
+   */
+  getJobIdInternal(jobIdScheduler) {
+    return jobIdMap[jobIdScheduler]
   },
 }
 

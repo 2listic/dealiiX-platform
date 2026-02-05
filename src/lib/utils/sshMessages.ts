@@ -61,12 +61,12 @@ export const exportAndEvalGraph = async (
   })
   console.log('SSH Connection Result:', resultExport)
 
-  // get next available touch-dir key
-  const touchDirKey = jobIdMapState.getNextKey()
+  // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
+  const internalJobId = jobIdMapState.getNextKey()
 
   // execute graph
   // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir ${touchDirKey}"`
+  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: sbatchCommand,
   })
@@ -76,7 +76,7 @@ export const exportAndEvalGraph = async (
   // get job id and store mapping
   const jobId = resultExecute.match(/\d+/)[0]
   if (!jobId) throw new Error('Job ID not found')
-  jobIdMapState.add(touchDirKey, jobId)
+  jobIdMapState.add(jobId, internalJobId)
 
   // poll immediately then every 5 secs for 1 day
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
@@ -189,6 +189,20 @@ export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
   const command = `cat /app/shared-data/slurm-${jobId}.out`
+  return await window.electron.invoke('execute-ssh-with-key', {
+    command: command,
+  })
+}
+
+/**
+ * Retrieves the list of node execution status files for a given touch-dir key.
+ * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
+ * @returns {Promise<string>} A promise that resolves to the list of files as a string
+ */
+export const getNodesExecutionStatus = async (
+  jobIdInternal: number
+): Promise<string> => {
+  const command = `ls /app/shared-data/${jobIdInternal}`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
