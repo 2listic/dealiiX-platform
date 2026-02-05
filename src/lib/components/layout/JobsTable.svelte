@@ -116,10 +116,12 @@
         <div transition:slide>
           <table transition:fade>
             <colgroup>
-              <col style="width: 12%;" />
-              <col style="width: 22%;" />
-              <col style="width: 33%;" />
-              <col style="width: 33%;" />
+              <col style="width: 10%;" />
+              <col style="width: 18%;" />
+              <col style="width: 27%;" />
+              <col style="width: 27%;" />
+              <col style="width: 9%;" />
+              <col style="width: 9%;" />
             </colgroup>
             <thead>
               <tr>
@@ -127,6 +129,7 @@
                   <th>{headCell}</th>
                 {/each}
                 <th>Logs</th>
+                <th>Nodes Status</th>
               </tr>
             </thead>
             <tbody>
@@ -154,6 +157,13 @@
                           >
                         {/if}
                       </td>
+                      <td>
+                        <Button
+                          size="xsmall"
+                          onclick={() => handleNodesExecutionStatus(line[0])}
+                          >Nodes</Button
+                        >
+                      </td>
                     </tr>
                   {/if}
                 {/each}
@@ -178,6 +188,13 @@
                         >{jobsData[1][0]}.out</Button
                       >
                     {/if}
+                  </td>
+                  <td>
+                    <Button
+                      size="xsmall"
+                      onclick={() => handleNodesExecutionStatus(jobsData[1][0])}
+                      >Nodes</Button
+                    >
                   </td>
                 </tr>
               {/if}
