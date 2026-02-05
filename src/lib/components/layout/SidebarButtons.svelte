@@ -59,7 +59,11 @@
     try {
       await exportAndEvalGraph(getNodes(), getEdges())
     } catch (error) {
-      console.error('Upload failed:', error)
+      console.error('Failed to execute graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to execute graph',
+        type: 'error',
+      })
     }
   }
 

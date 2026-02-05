@@ -46,42 +46,35 @@ export const executeWithKey = async (): Promise<void> => {
  * @param {Node[]} nodes - The array of nodes representing the computational graph.
  * @param {Edge[]} edges - The array of edges connecting the nodes in the graph.
  * @returns {Promise<void>} Resolves when the job completes or fails.
- * @throws Will display error messages via toast notifications if export, execution, or polling fails.
+ * @throws {Error} Throws if export, execution, or polling fails.
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],
   edges: Edge[]
 ): Promise<void> => {
-  try {
-    const parsedGraph = parseGraph(nodes, edges)
-    const resultExport = await window.electron.invoke('export-graph-ssh', {
-      graph: parsedGraph,
-    })
-    console.log('SSH Connection Result:', resultExport)
+  const parsedGraph = parseGraph(nodes, edges)
+  const resultExport = await window.electron.invoke('export-graph-ssh', {
+    graph: parsedGraph,
+  })
+  console.log('SSH Connection Result:', resultExport)
 
-    // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-    const sbatchCommand =
-      'sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir node_execution_status"'
-    const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-      command: sbatchCommand,
-    })
-    console.log('SSH Connection Result:', resultExecute)
-    toastState.add({ message: resultExecute })
+  // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
+  const sbatchCommand =
+    'sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir node_execution_status"'
+  const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
+    command: sbatchCommand,
+  })
+  console.log('SSH Connection Result:', resultExecute)
+  toastState.add({ message: resultExecute })
 
-    const jobId = resultExecute.match(/\d+/)[0]
-    if (!jobId) throw new Error('Job ID not found')
-    // poll immediately then every 5 secs for 1 day
-    const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-    toastState.add({
-      message: `Job id ${jobId}: ${finalState}`,
-      type: finalState === COMPLETED ? 'success' : 'error',
-    })
-  } catch (error) {
-    toastState.add({
-      message: error,
-      type: 'error',
-    })
-  }
+  const jobId = resultExecute.match(/\d+/)[0]
+  if (!jobId) throw new Error('Job ID not found')
+  // poll immediately then every 5 secs for 1 day
+  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === COMPLETED ? 'success' : 'error',
+  })
 }
 
 export const COMPLETED = 'COMPLETED'
