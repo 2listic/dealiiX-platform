@@ -4,6 +4,16 @@ import { toastState } from './toastsStore.svelte'
 
 let jobs = $state([])
 
+// Load initial jobs from electron-store
+const loadJobs = async () => {
+  if (window.electron?.store) {
+    jobs = await window.electron.store.get('jobs', [])
+  } else {
+    console.warn('Electron store not available (e.g., dev:vite mode)')
+  }
+}
+loadJobs()
+
 /** @type {SvelteMap<number, number>} Maps scheduler job IDs to internal job IDs */
 const jobIdMap = new SvelteMap()
 
@@ -55,6 +65,7 @@ export const jobsState = {
   async update() {
     try {
       jobs = await getJobsState(JOB_LIST_DAYS)
+      await window.electron?.store?.set('jobs', $state.snapshot(jobs))
     } catch (error) {
       console.error('Error updating jobs state:', error)
       toastState.add({

@@ -14,6 +14,7 @@ const store = new Store({
     colorMode: { type: 'string', default: 'light' },
     registered_nodes: { type: 'object' },
     registered_network_nodes: { type: 'object' },
+    jobs: { type: 'array', default: [] },
   },
 })
 

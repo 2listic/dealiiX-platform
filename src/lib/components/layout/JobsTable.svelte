@@ -1,10 +1,8 @@
 <script>
-  import { onMount } from 'svelte'
   import { fade, slide } from 'svelte/transition'
   import { Tween } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
   import { jobsState, jobIdMapState } from '../../stores/jobsStore.svelte'
-  import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
   import {
     COMPLETED,
     FAILED,
@@ -20,20 +18,11 @@
   import NodeStatusModal from './NodeStatusModal.svelte'
   import { getModal } from './Modal.svelte'
 
-  let isLoaded = $state(false)
   let jobsData = $derived(jobsState.current)
   // $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
     easing: cubicOut,
-  })
-
-  onMount(async () => {
-    if (settingsState.getKey(SSH_PATH)) {
-      // run sacct only if ssh path is set
-      await jobsState.update()
-    }
-    isLoaded = true
   })
 
   let isJobListExpanded = $state(false)
@@ -123,85 +112,82 @@
       <RefreshIcon width="20px" height="20px" {rotation} />
     </button>
   </div>
-  {#if isLoaded}
-    <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
-      {#if !jobsState.isEmpty}
-        <div transition:slide>
-          <table transition:fade>
-            <colgroup>
-              <col style="width: 10%;" />
-              <col style="width: 18%;" />
-              <col style="width: 27%;" />
-              <col style="width: 27%;" />
-              <col style="width: 9%;" />
-              <col style="width: 9%;" />
-            </colgroup>
-            <thead>
-              <tr>
-                {#each jobsData[0] as headCell, i (i)}
-                  <th>{headCell}</th>
-                {/each}
-                <th>Logs</th>
-                <th>Nodes Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#if isJobListExpanded}
-                {#each jobsData.slice(1) as line (line[0])}
-                  {@render jobRow(line)}
-                {/each}
-              {:else}
-                {@render jobRow(jobsData[1])}
-              {/if}
-            </tbody>
-          </table>
-        </div>
+  <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
+    {#if !jobsState.isEmpty}
+      <div transition:slide>
+        <table transition:fade>
+          <colgroup>
+            <col style="width: 10%;" />
+            <col style="width: 18%;" />
+            <col style="width: 27%;" />
+            <col style="width: 27%;" />
+            <col style="width: 9%;" />
+            <col style="width: 9%;" />
+          </colgroup>
+          <thead>
+            <tr>
+              {#each jobsData[0] as headCell, i (i)}
+                <th>{headCell}</th>
+              {/each}
+              <th>Logs</th>
+              <th>Nodes Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#if isJobListExpanded}
+              {#each jobsData.slice(1) as line (line[0])}
+                {@render jobRow(line)}
+              {/each}
+            {:else}
+              {@render jobRow(jobsData[1])}
+            {/if}
+          </tbody>
+        </table>
+      </div>
 
-        {#snippet jobRow(line)}
-          <tr>
-            {#each line as bodyCell, i (i)}
-              <td>
-                <span>
-                  {#if JOB_DATE_INDEX.includes(i)}
-                    {bodyCell.replace('T', ' ')}
-                  {:else}
-                    {bodyCell}
-                  {/if}
-                </span>
-              </td>
-            {/each}
+      {#snippet jobRow(line)}
+        <tr>
+          {#each line as bodyCell, i (i)}
             <td>
-              {#if [COMPLETED, FAILED].includes(line[1])}
-                <Button
-                  size="xsmall"
-                  title="View logs from the current job"
-                  onclick={() => handleLogClick(line[0])}>{line[0]}.out</Button
-                >
-              {/if}
+              <span>
+                {#if JOB_DATE_INDEX.includes(i)}
+                  {bodyCell.replace('T', ' ')}
+                {:else}
+                  {bodyCell}
+                {/if}
+              </span>
             </td>
-            <td>
+          {/each}
+          <td>
+            {#if [COMPLETED, FAILED].includes(line[1])}
               <Button
                 size="xsmall"
-                title="View the execution status of nodes for the current job"
-                onclick={() => handleNodesExecutionStatus(line[0])}
-                >Status</Button
+                title="View logs from the current job"
+                onclick={() => handleLogClick(line[0])}>{line[0]}.out</Button
               >
-            </td>
-          </tr>
-        {/snippet}
-      {:else}
-        <div transition:slide>
-          <table transition:fade>
-            <tbody>
-              <tr>
-                <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      {/if}
-    </div>
-  {/if}
+            {/if}
+          </td>
+          <td>
+            <Button
+              size="xsmall"
+              title="View the execution status of nodes for the current job"
+              onclick={() => handleNodesExecutionStatus(line[0])}>Status</Button
+            >
+          </td>
+        </tr>
+      {/snippet}
+    {:else}
+      <div transition:slide>
+        <table transition:fade>
+          <tbody>
+            <tr>
+              <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <TextModal
