@@ -1,21 +1,21 @@
-import { SvelteMap } from 'svelte/reactivity'
 import { getJobsState, JOB_LIST_DAYS } from '../utils/sshMessages'
 import { toastState } from './toastsStore.svelte'
 
+/** @type {Record<number, number>} Maps scheduler job IDs to internal job IDs */
+let jobIdMap = $state({})
+
 let jobs = $state([])
 
-// Load initial jobs from electron-store
-const loadJobs = async () => {
+// Load initial values from electron-store
+const loadStore = async () => {
   if (window.electron?.store) {
+    jobIdMap = await window.electron.store.get('jobIdMap', {})
     jobs = await window.electron.store.get('jobs', [])
   } else {
     console.warn('Electron store not available (e.g., dev:vite mode)')
   }
 }
-loadJobs()
-
-/** @type {SvelteMap<number, number>} Maps scheduler job IDs to internal job IDs */
-const jobIdMap = new SvelteMap()
+loadStore()
 
 /**
  * Store for mapping scheduler job IDs to internal jobs IDs.
@@ -26,16 +26,18 @@ export const jobIdMapState = {
   },
   /** Returns the next available internal job ID (0, 1, 2, ...) */
   getNextKey() {
-    if (jobIdMap.size === 0) return 0
-    return Math.max(...jobIdMap.values()) + 1
+    const values = Object.values(jobIdMap)
+    if (values.length === 0) return 0
+    return Math.max(...values) + 1
   },
   /**
    * Adds a job ID mapping
    * @param {number} jobIdScheduler - The scheduler job ID
    * @param {number} jobIdInternal - The incremental key used as touch-dir
    */
-  add(jobIdScheduler, jobIdInternal) {
-    jobIdMap.set(jobIdScheduler, jobIdInternal)
+  async add(jobIdScheduler, jobIdInternal) {
+    jobIdMap[jobIdScheduler] = jobIdInternal
+    await window.electron?.store?.set('jobIdMap', $state.snapshot(jobIdMap))
   },
   /**
    * Gets the internal job ID for a given scheduler job ID
@@ -43,7 +45,7 @@ export const jobIdMapState = {
    * @returns {number | undefined} The internal jobs IDs or undefined if not found
    */
   getJobIdInternal(jobIdScheduler) {
-    return jobIdMap.get(jobIdScheduler)
+    return jobIdMap[jobIdScheduler]
   },
 }
 

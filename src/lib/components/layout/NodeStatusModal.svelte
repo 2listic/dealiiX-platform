@@ -1,6 +1,8 @@
 <script lang="ts">
   import Modal, { getModal } from './Modal.svelte'
   import Button from './Button.svelte'
+  import SuccessIcon from '../icons/SuccessIcon.svelte'
+  import ErrorIcon from '../icons/ErrorIcon.svelte'
   import { getNodesExecutionStatus } from '../../utils/sshMessages'
 
   interface Props {
@@ -29,20 +31,26 @@
     }
   })
 
+  const STATUS = {
+    FAILED: 'Failed',
+    SUCCEEDED: 'Succeeded',
+    RUNNING: 'running...',
+    UNKNOWN: 'unknown',
+  } as const
+
   const getDisplayStatus = (statuses: string[]): string => {
-    if (statuses.includes('failed')) return 'failed'
-    if (statuses.includes('succeeded')) return 'succeeded'
-    if (statuses.includes('running')) return 'running'
-    return 'unknown'
+    if (statuses.includes('failed')) return STATUS.FAILED
+    if (statuses.includes('succeeded')) return STATUS.SUCCEEDED
+    if (statuses.includes('running')) return STATUS.RUNNING
+    return STATUS.UNKNOWN
   }
 
   // Check if all nodes have a terminal status (succeeded or failed)
   const allNodesTerminal = $derived.by(() => {
-    console.log('allNodesTerminal', $state.snapshot(internalStatusMap))
     if (internalStatusMap.size === 0) return false
     for (const statuses of internalStatusMap.values()) {
       const status = getDisplayStatus(statuses)
-      if (status !== 'succeeded' && status !== 'failed') {
+      if (status !== STATUS.SUCCEEDED && status !== STATUS.FAILED) {
         return false
       }
     }
@@ -52,17 +60,21 @@
   // Polling effect - stops when all nodes are terminal or modal closes
   // effect runs when modal component is mounted and when reactive dependencies jobIdInternal or allNodesTerminal changes
   $effect(() => {
-    console.log('Polling effect', jobIdInternal, allNodesTerminal)
+    console.log(
+      'Internal jobId',
+      jobIdInternal,
+      'are all nodes terminal?',
+      allNodesTerminal
+    )
     // early return if jobIdInternal is not set or all nodes have terminal status
     if (jobIdInternal === undefined || allNodesTerminal) return
 
     const interval = setInterval(async () => {
       try {
-        console.log('Polling for job status', jobIdInternal)
+        console.log('Polling for internal jobId', jobIdInternal)
         const result = await getNodesExecutionStatus(jobIdInternal)
         console.log('Polling result', $state.snapshot(result))
         internalStatusMap = result
-        console.log('internalStatusMap', $state.snapshot(internalStatusMap))
       } catch (error) {
         console.error('Polling error:', error)
       }
@@ -82,10 +94,20 @@
     <h2>{title}</h2>
     <div class="status-list">
       {#each internalStatusMap as [nodeId, statuses] (nodeId)}
+        {@const displayStatus = getDisplayStatus(statuses)}
         <div class="status-row">
           <span>{nodeId}</span>
-          <span class:failed={getDisplayStatus(statuses) === 'failed'}>
-            {getDisplayStatus(statuses)}
+          <span
+            class="status-badge"
+            class:failed={displayStatus === STATUS.FAILED}
+            class:running={displayStatus === STATUS.RUNNING}
+          >
+            {#if displayStatus === STATUS.SUCCEEDED}
+              <SuccessIcon width="16px" />
+            {:else if displayStatus === STATUS.FAILED}
+              <ErrorIcon width="16px" />
+            {/if}
+            {displayStatus}
           </span>
         </div>
       {/each}
@@ -115,12 +137,29 @@
     padding: 0.3vh 0.5vh;
     border-bottom: 1px solid #333;
   }
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+  }
+  .failed {
+    color: #ff4444;
+  }
+  .running {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
   .actions {
     display: flex;
     justify-content: center;
     margin-top: 1vh;
-  }
-  .failed {
-    color: #ff4444;
   }
 </style>

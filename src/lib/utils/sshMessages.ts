@@ -76,7 +76,7 @@ export const exportAndEvalGraph = async (
   // get job id and store mapping
   const jobId = resultExecute.match(/\d+/)[0]
   if (!jobId) throw new Error('Job ID not found')
-  jobIdMapState.add(jobId, internalJobId)
+  await jobIdMapState.add(jobId, internalJobId)
 
   // poll immediately then every 5 secs for 1 day
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
@@ -212,8 +212,11 @@ export const getNodesExecutionStatus = async (
 
   // parse output into a Map where key is node ID and value is array of status strings
   const result = new Map<number, string[]>()
+  const trimmed = output.trim()
 
-  for (const line of output.trim().split('\n')) {
+  if (!trimmed) return result
+
+  for (const line of trimmed.split('\n')) {
     const [nodeId, status] = line.split('.')
     const id = parseInt(nodeId, 10)
 
