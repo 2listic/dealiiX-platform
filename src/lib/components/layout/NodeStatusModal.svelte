@@ -73,12 +73,11 @@
   })
 
   const handleClose = () => {
-    onClose?.()
     getModal(modalId).close()
   }
 </script>
 
-<Modal id={modalId} size="sm">
+<Modal id={modalId} size="sm" {onClose}>
   <div class="status-modal">
     <h2>{title}</h2>
     <div class="status-list">
