@@ -52,7 +52,8 @@
   const outLogModalId = 'out-log-modal'
 
   let nodeStatusMap = $state(new Map())
-  let currentStatusJobId = $state()
+  let currentStatusJobId = $state('')
+  let currentJobIdInternal = $state(undefined)
   const nodeStatusModalId = 'node-status-modal'
 
   const handleLogClick = async (jobId) => {
@@ -72,12 +73,17 @@
     try {
       const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
       if (jobIdInternal === undefined) {
-        throw new Error(`No internal job Id found for scheduler job Id ${jobIdSlurm}`)
+        throw new Error(
+          `No internal job Id found for scheduler job Id ${jobIdSlurm}`
+        )
       }
-      console.log(`Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`)
+      console.log(
+        `Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`
+      )
       const result = await getNodesExecutionStatus(jobIdInternal)
       nodeStatusMap = result
       currentStatusJobId = jobIdSlurm
+      currentJobIdInternal = jobIdInternal
       getModal(nodeStatusModalId)?.open()
     } catch (error) {
       toastState.add({
@@ -213,10 +219,12 @@
 <NodeStatusModal
   modalId={nodeStatusModalId}
   statusMap={nodeStatusMap}
+  jobIdInternal={currentJobIdInternal}
   title={`Job ${currentStatusJobId} - Nodes Status`}
   onClose={() => {
     nodeStatusMap = new Map()
     currentStatusJobId = ''
+    currentJobIdInternal = undefined
   }}
 />
 
