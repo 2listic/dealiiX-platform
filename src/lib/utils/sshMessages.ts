@@ -154,6 +154,9 @@ export const JOB_LIST_DAYS = 7
  * @param {number} numDays - The number of days to look back for job states.
  * @returns {Promise<string[][]>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
  * @throws {Error} Throws if the SSH command execution fails or if the result contains an error.
+ * @example
+ * const jobs = await getJobsState(7)
+ * // [['JobID', 'State', 'Start', 'End'], ['55', 'COMPLETED', '2026-02-09T08:20:39', '2026-02-09T08:21:40'], ...]
  */
 export const getJobsState = async (numDays: number): Promise<string[][]> => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
@@ -196,6 +199,9 @@ export const getOutFileContent = async (
  * Retrieves the execution status of nodes for a given touch-dir key.
  * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
  * @returns {Promise<Map<number, string[]>>} A promise that resolves to a Map where keys are node IDs and values are arrays of status strings
+ * @example
+ * const statuses = await getNodesExecutionStatus(42)
+ * // Map { 9 => ['running', 'succeeded'], 12 => ['running', 'failed'], 15 => ['running'] }
  */
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
