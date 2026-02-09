@@ -7,3 +7,13 @@ export enum ExecNodeStatus {
   SUCCEEDED = 'succeeded',
   RUNNING = 'running',
 }
+
+/**
+ * Slurm job status values returned by `sacct -o State`
+ */
+export enum JobStatus {
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING',
+}

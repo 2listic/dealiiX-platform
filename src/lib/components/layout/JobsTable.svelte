@@ -4,13 +4,12 @@
   import { cubicOut } from 'svelte/easing'
   import { jobsState, jobIdMapState } from '../../stores/jobsStore.svelte'
   import {
-    COMPLETED,
-    FAILED,
     getOutFileContent,
     getNodesExecutionStatus,
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
+  import { JobStatus } from '../../types/executionStatus'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -159,7 +158,7 @@
             </td>
           {/each}
           <td>
-            {#if [COMPLETED, FAILED].includes(line[1])}
+            {#if [JobStatus.COMPLETED, JobStatus.FAILED].includes(line[1])}
               <Button
                 size="xsmall"
                 title="View logs from the current job"

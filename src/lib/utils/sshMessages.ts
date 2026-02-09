@@ -4,6 +4,7 @@ import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraph } from './graphParser'
 import { setPanelContent } from './panelContent.js'
+import { JobStatus } from '../types/executionStatus'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -78,20 +79,15 @@ export const exportAndEvalGraph = async (
   if (!jobId) throw new Error('Job ID not found')
   await jobIdMapState.add(jobId, internalJobId)
 
-  // poll immediately then every 5 secs for 1 day
+  // poll immediately then every 10 secs for 1 day
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
 
   // message to user
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
-    type: finalState === COMPLETED ? 'success' : 'error',
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
   })
 }
-
-export const COMPLETED = 'COMPLETED'
-export const FAILED = 'FAILED'
-const PENDING = 'PENDING'
-const RUNNING = 'RUNNING'
 
 /**
  * Polls the status of a job by executing an SSH command at regular intervals.
@@ -118,11 +114,13 @@ const jobPolling = async (
       console.log(result)
 
       const cleaned = result.trim()
-      if ([COMPLETED, FAILED, PENDING, RUNNING].includes(cleaned)) {
+      if (Object.values(JobStatus).includes(cleaned as JobStatus)) {
         await jobsState.update()
 
         // if completed or failed stop polling and return the final status
-        if ([COMPLETED, FAILED].includes(cleaned)) {
+        if (
+          [JobStatus.COMPLETED, JobStatus.FAILED].includes(cleaned as JobStatus)
+        ) {
           return cleaned
         }
       }
