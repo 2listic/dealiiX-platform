@@ -169,6 +169,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
     command: command,
   })
   if (result.includes('error')) throw new Error(result)
+
   // Split sacct output string into an array and revert order (new jobs first)
   const resultJobs = result.split('\n').reverse()
   resultJobs.shift() // remove first empty element
@@ -177,7 +178,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
   resultJobs.unshift(last)
   // Convert each job row string into an array of fields
   const parsedJobs = resultJobs.map((line: string) => line.split('|'))
-  console.log('parsedJobs', parsedJobs)
+
   return parsedJobs
 }
 
