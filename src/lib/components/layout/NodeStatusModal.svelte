@@ -4,6 +4,7 @@
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import ErrorIcon from '../icons/ErrorIcon.svelte'
   import { getNodesExecutionStatus } from '../../utils/sshMessages'
+  import { ExecNodeStatus } from '../../types/executionStatus'
 
   interface Props {
     modalId: string
@@ -31,18 +32,21 @@
     }
   })
 
-  const STATUS = {
-    FAILED: 'Failed',
-    SUCCEEDED: 'Succeeded',
-    RUNNING: 'running...',
+  const StatusToDisplay = {
+    [ExecNodeStatus.FAILED]: 'Failed',
+    [ExecNodeStatus.SUCCEEDED]: 'Succeeded',
+    [ExecNodeStatus.RUNNING]: 'running...',
     UNKNOWN: 'unknown',
   } as const
 
   const getDisplayStatus = (statuses: string[]): string => {
-    if (statuses.includes('failed')) return STATUS.FAILED
-    if (statuses.includes('succeeded')) return STATUS.SUCCEEDED
-    if (statuses.includes('running')) return STATUS.RUNNING
-    return STATUS.UNKNOWN
+    if (statuses.includes(ExecNodeStatus.FAILED))
+      return StatusToDisplay[ExecNodeStatus.FAILED]
+    if (statuses.includes(ExecNodeStatus.SUCCEEDED))
+      return StatusToDisplay[ExecNodeStatus.SUCCEEDED]
+    if (statuses.includes(ExecNodeStatus.RUNNING))
+      return StatusToDisplay[ExecNodeStatus.RUNNING]
+    return StatusToDisplay.UNKNOWN
   }
 
   // Check if all nodes have a terminal status (succeeded or failed)
@@ -50,7 +54,10 @@
     if (internalStatusMap.size === 0) return false
     for (const statuses of internalStatusMap.values()) {
       const status = getDisplayStatus(statuses)
-      if (status !== STATUS.SUCCEEDED && status !== STATUS.FAILED) {
+      if (
+        status !== StatusToDisplay[ExecNodeStatus.SUCCEEDED] &&
+        status !== StatusToDisplay[ExecNodeStatus.FAILED]
+      ) {
         return false
       }
     }
@@ -99,12 +106,14 @@
           <span>{nodeId}</span>
           <span
             class="status-badge"
-            class:failed={displayStatus === STATUS.FAILED}
-            class:running={displayStatus === STATUS.RUNNING}
+            class:failed={displayStatus ===
+              StatusToDisplay[ExecNodeStatus.FAILED]}
+            class:running={displayStatus ===
+              StatusToDisplay[ExecNodeStatus.RUNNING]}
           >
-            {#if displayStatus === STATUS.SUCCEEDED}
+            {#if displayStatus === StatusToDisplay[ExecNodeStatus.SUCCEEDED]}
               <SuccessIcon width="16px" />
-            {:else if displayStatus === STATUS.FAILED}
+            {:else if displayStatus === StatusToDisplay[ExecNodeStatus.FAILED]}
               <ErrorIcon width="16px" />
             {/if}
             {displayStatus}

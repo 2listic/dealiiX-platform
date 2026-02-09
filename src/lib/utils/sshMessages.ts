@@ -149,7 +149,7 @@ const delay = (ms: number): Promise<void> => {
 }
 
 export const JOB_DATE_INDEX = [2, 3]
-export const JOB_LIST_DAYS = 1
+export const JOB_LIST_DAYS = 7
 
 /**
  * Retrieves the state of jobs from the last specified number of days.
