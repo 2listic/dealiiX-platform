@@ -44,10 +44,11 @@ export const executeWithKey = async (): Promise<void> => {
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
- * @param {Node[]} nodes - The array of nodes representing the computational graph.
- * @param {Edge[]} edges - The array of edges connecting the nodes in the graph.
+ * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
  * @returns {Promise<void>} Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
+ * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],

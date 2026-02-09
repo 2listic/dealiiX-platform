@@ -4,6 +4,8 @@
   import ConfirmationModal from '../layout/ConfirmationModal.svelte'
   import {
     addNetworkNode,
+    getNodesSnapshot,
+    getEdgesSnapshot,
     isNodeInNetworkNodes,
   } from '../../stores/nodes.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -20,7 +22,11 @@
 
   const createNetworkNode = async (name: string) => {
     try {
-      const newNetworkNode = createNewNetworkNode(name)
+      const newNetworkNode = createNewNetworkNode(
+        name,
+        getNodesSnapshot(),
+        getEdgesSnapshot()
+      )
       await addNetworkNode(name, newNetworkNode)
 
       toastState.add({

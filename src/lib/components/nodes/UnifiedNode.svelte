@@ -33,7 +33,12 @@
     type Node,
   } from '@xyflow/svelte'
   import { getModal } from '../layout/Modal.svelte'
-  import { nodeColors, NodeType, Type } from '../../types/nodeTypes'
+  import {
+    nodeColors,
+    NodeType,
+    Type,
+    isNumericType,
+  } from '../../types/nodeTypes'
   import { removeNode } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
@@ -42,8 +47,8 @@
 
   let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
 
-  data.is_valid = true
-  let isValid = $derived(data.is_valid)
+  // data.is_valid = true
+  let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = data.node_type === NodeType.NETWORK
   const color = nodeColors[type]
@@ -51,12 +56,6 @@
   const { updateNodeData } = useSvelteFlow()
 
   const editNodeModalId = `edit-node-${id}`
-
-  $effect(() => {
-    // Clear connection cache when isValid changes
-    isValid
-    clearConnectionCache()
-  })
 
   const isValidNum = (value) => {
     const numValue = Number(value)
@@ -77,6 +76,28 @@
         return !isNaN(numValue) && value.trim() !== ''
     }
   }
+
+  /**
+   * Validate elementary constructor values on mount and when value changes
+   * Also clear connection cache when is_valid changes
+   */
+  $effect(() => {
+    if (isNumericType(data.type)) {
+      const value = data.value
+      const expectedIsValid = isValidNum(value)
+
+      // Only update if validation state differs from current state
+      if (expectedIsValid !== data.is_valid) {
+        updateNodeData(id, { is_valid: expectedIsValid })
+        clearConnectionCache()
+      }
+    } else {
+      // Non-numeric types are for now always valid
+      if (data?.is_valid !== true) {
+        updateNodeData(id, { is_valid: true })
+      }
+    }
+  })
 
   // let nodes = useNodes()
   // $effect(() => {
@@ -164,18 +185,13 @@
 
   <!-- Elementary constructors input fields -->
   <div>
-    {#if data.type === Type.UNSIGNED || data.type === Type.UNSIGNED_INT || data.type === Type.INT || data.type === Type.DOUBLE || data.type === Type.FLOAT}
+    {#if isNumericType(data.type)}
       <input
         type="text"
         class={isValid ? '' : 'invalid'}
         value={data.value}
         oninput={(evt) => {
-          const value = evt.currentTarget.value
-          const isValid = isValidNum(value)
-          updateNodeData(id, {
-            value: value,
-            is_valid: isValid,
-          })
+          updateNodeData(id, { value: evt.currentTarget.value })
         }}
       />
     {:else if data.type === Type.STRING || data.type === Type.STR}

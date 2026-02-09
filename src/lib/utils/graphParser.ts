@@ -68,7 +68,7 @@ const addNetworkNodesFromGraph = async (
 
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
- * xyflow-compatible node objects with positions and merged data
+ * xyflow-compatible node objects with positions and merged data.
  * @param {NetworkNodes} nodes - Dictionary of nodes from network protocol
  * @returns {Node[]} Array of nodes formatted for the flow editor
  */
@@ -77,11 +77,10 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
   const arrNodeIds = Object.keys(nodes)
   const xyFlowNodes = arrNodeIds.map((id, index) => {
     const node = nodes[id]
-    const nodeData =
-      node.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(node.name)
-        : getNodeData(node.type)
-    const concatData = { ...nodeData, ...node } // concat data from registry and network
+
+    // Get snapshot from store and merge with instance-specific data
+    const nodeData = mergeNodeData(node)
+
     return {
       id: id,
       type: nodeData.node_type,
@@ -89,10 +88,35 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
         x: node.position?.x ?? index * 100,
         y: node.position?.y ?? index * 100,
       },
-      data: concatData,
+      data: nodeData,
     }
   })
   return xyFlowNodes
+}
+
+/**
+ * Gets snapshot from store and merges it with instance-specific data.
+ * @param {NetworkNodes[string]} protocolNode - Node data from network protocol
+ * @returns {NodeData} Merged node data for xyflow
+ */
+const mergeNodeData = (protocolNode: NetworkNodes[string]) => {
+  if (protocolNode.type === TypeField.CORAL_NETWORK) {
+    // Network nodes: fetch by name, only position is instance-specific
+    const storeNodeData = getNetworkNodeData(protocolNode.name)
+    return {
+      ...storeNodeData,
+      position: protocolNode.position,
+    }
+  } else {
+    // Regular nodes: fetch by type, position/name/value are all instance-specific
+    const storeNodeData = getNodeData(protocolNode.type)
+    return {
+      ...storeNodeData,
+      position: protocolNode.position,
+      ...(protocolNode.name && { name: protocolNode.name }),
+      ...(protocolNode.value !== undefined && { value: protocolNode.value }),
+    }
+  }
 }
 
 /**
@@ -218,10 +242,11 @@ export const validateGraphData = (
 
 // =================== From Svelte xyflow to CORAL Protocol ======================
 /**
- * Parse nodes and edges into the CORAL network JSON format
- * @param {Node[]} nodes - Array of node objects from the flow editor
- * @param {Edge[]} edges - Array of edge objects from the flow editor
+ * Parse nodes and edges into the CORAL network JSON format.
+ * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
  * @returns {Network} Complete network object in CORAL protocol format
+ * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {

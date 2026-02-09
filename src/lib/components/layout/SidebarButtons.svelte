@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { getEdges, getNodes, setRegistry } from '../../stores/nodes.svelte'
+  import {
+    getEdges,
+    getEdgesSnapshot,
+    getNodes,
+    getNodesSnapshot,
+    setRegistry,
+  } from '../../stores/nodes.svelte'
   import { loadGraph, validateGraphData } from '../../utils/graphParser'
   import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
@@ -57,7 +63,7 @@
 
   const handleExecution = async () => {
     try {
-      await exportAndEvalGraph(getNodes(), getEdges())
+      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot())
     } catch (error) {
       console.error('Failed to execute graph:', error)
       toastState.add({
@@ -148,7 +154,7 @@
     if (currentProjectState.id) {
       // Update existing project
       try {
-        const parsedGraph = parseGraph(getNodes(), getEdges())
+        const parsedGraph = parseGraph(getNodesSnapshot(), getEdgesSnapshot())
         const updatedProject = await updateProject(currentProjectState.id, {
           graph: parsedGraph,
         })
@@ -177,7 +183,7 @@
   const handleGraphDownload = () => {
     try {
       // Parse current graph to Network JSON format
-      const graphData = parseGraph(getNodes(), getEdges())
+      const graphData = parseGraph(getNodesSnapshot(), getEdgesSnapshot())
       const jsonString = JSON.stringify(graphData, null, 2)
 
       // Create blob with JSON data + filename

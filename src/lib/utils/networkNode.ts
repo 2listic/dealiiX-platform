@@ -1,4 +1,4 @@
-import { getEdges, getNodes } from '../stores/nodes.svelte'
+import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
   NodeType,
@@ -9,19 +9,21 @@ import {
 import { parseGraph } from './graphParser'
 
 /**
- * Creates a new network node from the current graph by identifying free (unconnected)
+ * Creates a new network node from the provided graph by identifying free (unconnected)
  * inputs and outputs and encapsulating the entire graph structure.
  *
  * @param {string} name - The custom name for the network node
+ * @param {Node[]} currentNodes - Array of nodes (must be snapshots, not reactive)
+ * @param {Edge[]} currentEdges - Array of edges (must be snapshots, not reactive)
  * @returns {NodeData} A complete network node definition ready to be added to the networkNodes store
- * @throws {Error} If the current graph is empty (no nodes)
+ * @throws {Error} If the graph is empty (no nodes)
  */
-export const createNewNetworkNode = (name: string): NodeData => {
-  // Step 1: Retrieve current graph state
-  const currentNodes = getNodes()
-  const currentEdges = getEdges()
-
-  // Step 1.1: Validate we have nodes
+export const createNewNetworkNode = (
+  name: string,
+  currentNodes: Node[],
+  currentEdges: Edge[]
+): NodeData => {
+  // Step 1: Validate there are nodes
   if (currentNodes.length === 0) {
     throw new Error('Cannot create network node from empty graph')
   }

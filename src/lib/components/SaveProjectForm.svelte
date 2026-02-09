@@ -1,6 +1,6 @@
 <script lang="ts">
   import { saveProject } from '../requests/projects'
-  import { getEdges, getNodes } from '../stores/nodes.svelte'
+  import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import { parseGraph } from '../utils/graphParser'
@@ -26,7 +26,7 @@
     }
 
     try {
-      const parsedGraph = parseGraph(getNodes(), getEdges())
+      const parsedGraph = parseGraph(getNodesSnapshot(), getEdgesSnapshot())
       const savedProject = await saveProject({
         name,
         description:

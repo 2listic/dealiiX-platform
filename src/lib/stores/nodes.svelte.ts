@@ -26,6 +26,24 @@ export const getNodes = (): Node[] => nodes
 export const getEdges = (): Edge[] => edges
 
 /**
+ * Get a plain snapshot of the current nodes for serialization/computation
+ * @remarks Returns non-reactive snapshot
+ * @returns {Node[]} Plain array of flow nodes
+ */
+export const getNodesSnapshot = (): Node[] => {
+  return $state.snapshot(getNodes()) as unknown as Node[]
+}
+
+/**
+ * Get a plain snapshot of the current edges for serialization/computation
+ * @remarks Returns non-reactive snapshot
+ * @returns {Edge[]} Plain array of flow edges
+ */
+export const getEdgesSnapshot = (): Edge[] => {
+  return $state.snapshot(getEdges()) as unknown as Edge[]
+}
+
+/**
  * Replace all nodes in the flow editor
  * @param {Node[]} newNodes - Array of nodes to set
  */
@@ -117,7 +135,7 @@ export const getAvailableNodes = (): NodeData[] => {
 }
 
 /**
- * Get node data from the registry by type
+ * Get node data from the registry by type (snapshot for validation)
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
  * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given type
  * @throws {Error} If the node type is not found in the registry
@@ -128,6 +146,20 @@ export const getNodeData = (type: string): NodeData => {
     throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
   return $state.snapshot(registry[type])
+}
+
+/**
+ * Get reactive node data from the registry by type (for canvas nodes)
+ * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
+ * @returns {NodeData} Reactive reference to the node data for the given type
+ * @throws {Error} If the node type is not found in the registry
+ */
+export const getNodeDataReactive = (type: string): NodeData => {
+  if (!isNodeInRegistry(type)) {
+    console.error(`Node type '${type}' was not found in the available nodes.`)
+    throw new Error(`Node type '${type}' was not found in the available nodes.`)
+  }
+  return registry[type]
 }
 
 /**
@@ -217,7 +249,7 @@ export const getStoredNetworkNodes = (): NodeData[] => {
 }
 
 /**
- * Get network node data from the networkNodes store by name
+ * Get network node data from the networkNodes store by name (snapshot for validation)
  * @param {string} name - The network node name identifier (unique key for the network node)
  * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given network node
  * @throws {Error} If the network node name is not found in the networkNodes store
@@ -228,6 +260,20 @@ export const getNetworkNodeData = (name: string): NodeData => {
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
   }
   return $state.snapshot(networkNodes[name])
+}
+
+/**
+ * Get reactive network node data from the networkNodes store by name (for canvas nodes)
+ * @param {string} name - The network node name identifier (unique key for the network node)
+ * @returns {NodeData} Reactive reference to the node data for the given network node
+ * @throws {Error} If the network node name is not found in the networkNodes store
+ */
+export const getNetworkNodeDataReactive = (name: string): NodeData => {
+  if (!isNodeInNetworkNodes(name)) {
+    console.error(`Sub-graph node '${name}' not found in networkNodes store`)
+    throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
+  }
+  return networkNodes[name]
 }
 
 /**

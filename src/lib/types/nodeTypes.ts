@@ -71,6 +71,26 @@ export enum Type {
   ANY = 'any',
 }
 
+/**
+ * Array of all numeric types that require validation
+ */
+export const NUMERIC_TYPES: Type[] = [
+  Type.UNSIGNED,
+  Type.UNSIGNED_INT,
+  Type.INT,
+  Type.DOUBLE,
+  Type.FLOAT,
+]
+
+/**
+ * Check if a type is a numeric type that requires validation
+ * @param type - The type to check
+ * @returns True if the type is numeric (int, unsigned, double, float)
+ */
+export const isNumericType = (type: string): boolean => {
+  return NUMERIC_TYPES.includes(type as Type)
+}
+
 export type NodeData = {
   type: string
   arguments: Argument[]
@@ -154,12 +174,7 @@ export const isNetworkNodeOfTypeNetwork = (
   return (
     node.type === TypeField.CORAL_NETWORK &&
     'node_type' in node &&
-    node.node_type === NodeType.NETWORK &&
-    'value' in node &&
-    'name' in node &&
-    'arguments' in node &&
-    'inputs' in node &&
-    'outputs' in node
+    node.node_type === NodeType.NETWORK
   )
 }
 
