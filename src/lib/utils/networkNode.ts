@@ -5,6 +5,7 @@ import {
   type Type,
   type NodeData,
   TypeField,
+  type NetworkNodeOfTypeNetwork,
 } from '../types/nodeTypes'
 import { parseGraph } from './graphParser'
 
@@ -15,14 +16,14 @@ import { parseGraph } from './graphParser'
  * @param {string} name - The custom name for the network node
  * @param {Node[]} currentNodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} currentEdges - Array of edges (must be snapshots, not reactive)
- * @returns {NodeData} A complete network node definition ready to be added to the networkNodes store
+ * @returns {NetworkNodeOfTypeNetwork} A complete network node definition ready to be added to the networkNodes store
  * @throws {Error} If the graph is empty (no nodes)
  */
 export const createNewNetworkNode = (
   name: string,
   currentNodes: Node[],
   currentEdges: Edge[]
-): NodeData => {
+): NetworkNodeOfTypeNetwork => {
   // Step 1: Validate there are nodes
   if (currentNodes.length === 0) {
     throw new Error('Cannot create network node from empty graph')

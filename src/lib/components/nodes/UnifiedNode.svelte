@@ -1,5 +1,8 @@
 <script module>
-  import type { NodeData } from '../../types/nodeTypes'
+  import type {
+    NetworkNodeOfTypeNetwork,
+    NodeData,
+  } from '../../types/nodeTypes'
   // unused exports
   export type ElementaryConstructor = Node<
     NodeData,
@@ -12,7 +15,7 @@
   export type VoidConstMethod = Node<NodeData, NodeType.VOID_CONST_METHOD>
   export type VoidFunction = Node<NodeData, NodeType.VOID_FUNCTION>
   export type Function = Node<NodeData, NodeType.FUNCTION>
-  export type Network = Node<NodeData, NodeType.NETWORK>
+  export type Network = Node<NetworkNodeOfTypeNetwork, NodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor

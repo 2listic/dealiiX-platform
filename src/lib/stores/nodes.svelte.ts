@@ -1,5 +1,10 @@
 import { initialNodes, initialEdges } from '../data/flowData'
-import { type RegisteredNodes, type NodeData } from '../types/nodeTypes'
+import {
+  type RegisteredNodes,
+  type NodeData,
+  type NetworkNodeOfTypeNetwork,
+  type RegisteredNetworkNodes,
+} from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
@@ -149,20 +154,6 @@ export const getNodeData = (type: string): NodeData => {
 }
 
 /**
- * Get reactive node data from the registry by type (for canvas nodes)
- * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
- * @returns {NodeData} Reactive reference to the node data for the given type
- * @throws {Error} If the node type is not found in the registry
- */
-export const getNodeDataReactive = (type: string): NodeData => {
-  if (!isNodeInRegistry(type)) {
-    console.error(`Node type '${type}' was not found in the available nodes.`)
-    throw new Error(`Node type '${type}' was not found in the available nodes.`)
-  }
-  return registry[type]
-}
-
-/**
  * Returns if node is present in the registry of the available nodes
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
  * @returns {boolean} True if present, false if not
@@ -173,12 +164,12 @@ export const isNodeInRegistry = (type: string): boolean => {
 
 // ============ Registered network nodes section (sidebar) ======================
 
-const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNodes
+const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNetworkNodes
 
 /**
  * Store containing all the registered network nodes
  */
-let networkNodes = $state<RegisteredNodes>({})
+let networkNodes = $state<RegisteredNetworkNodes>({})
 
 // Load network nodes from electron-store
 const loadNetworkNodes = async () => {
@@ -196,9 +187,9 @@ loadNetworkNodes()
 
 /**
  * Set the application store for the available network nodes and persist changes
- * @param {RegisteredNodes} data - Dictionary of node data to register
+ * @param {RegisteredNetworkNodes} data - Dictionary of node data to register
  */
-export const setNetworkNodes = async (data: RegisteredNodes) => {
+export const setNetworkNodes = async (data: RegisteredNetworkNodes) => {
   networkNodes = data
   console.log('Imported network nodes', $state.snapshot(networkNodes))
   await window.electron.store.set(
@@ -210,9 +201,12 @@ export const setNetworkNodes = async (data: RegisteredNodes) => {
 /**
  * Add or update a single network node in the relative store and persist changes
  * @param {string} key - The unique identifier for the network node
- * @param {NodeData} nodeData - The node data to add or update
+ * @param {NetworkNodeOfTypeNetwork} nodeData - The node data to add or update
  */
-export const addNetworkNode = async (key: string, nodeData: NodeData) => {
+export const addNetworkNode = async (
+  key: string,
+  nodeData: NetworkNodeOfTypeNetwork
+) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
   await window.electron.store.set(
@@ -241,9 +235,9 @@ export const removeNetworkNode = async (name: string) => {
 /**
  * Get all the stored network nodes
  * @remarks Returns reactive state - changes will trigger UI updates
- * @returns {NodeData[]}
+ * @returns {NetworkNodeOfTypeNetwork[]}
  */
-export const getStoredNetworkNodes = (): NodeData[] => {
+export const getStoredNetworkNodes = (): NetworkNodeOfTypeNetwork[] => {
   const nodes = Object.values(networkNodes)
   return nodes
 }
@@ -251,29 +245,15 @@ export const getStoredNetworkNodes = (): NodeData[] => {
 /**
  * Get network node data from the networkNodes store by name (snapshot for validation)
  * @param {string} name - The network node name identifier (unique key for the network node)
- * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given network node
+ * @returns {NetworkNodeOfTypeNetwork} A snapshot (non-reactive copy) of the node data for the given network node
  * @throws {Error} If the network node name is not found in the networkNodes store
  */
-export const getNetworkNodeData = (name: string): NodeData => {
+export const getNetworkNodeData = (name: string): NetworkNodeOfTypeNetwork => {
   if (!isNodeInNetworkNodes(name)) {
     console.error(`Sub-graph node '${name}' not found in networkNodes store`)
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
   }
   return $state.snapshot(networkNodes[name])
-}
-
-/**
- * Get reactive network node data from the networkNodes store by name (for canvas nodes)
- * @param {string} name - The network node name identifier (unique key for the network node)
- * @returns {NodeData} Reactive reference to the node data for the given network node
- * @throws {Error} If the network node name is not found in the networkNodes store
- */
-export const getNetworkNodeDataReactive = (name: string): NodeData => {
-  if (!isNodeInNetworkNodes(name)) {
-    console.error(`Sub-graph node '${name}' not found in networkNodes store`)
-    throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)
-  }
-  return networkNodes[name]
 }
 
 /**

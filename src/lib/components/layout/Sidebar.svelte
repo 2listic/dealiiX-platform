@@ -10,6 +10,7 @@
     nodeColors,
     NodeType,
     returnNodeName,
+    type NetworkNodeOfTypeNetwork,
     type NodeData,
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
@@ -22,7 +23,10 @@
   const availableNodes = $derived(getAvailableNodes())
   const storedNetworkNodes = $derived(getStoredNetworkNodes())
 
-  const onDragStart = (event: DragEvent, node: NodeData) => {
+  const onDragStart = (
+    event: DragEvent,
+    node: NodeData | NetworkNodeOfTypeNetwork
+  ) => {
     if (!event.dataTransfer) {
       return null
     }
@@ -73,7 +77,7 @@
     {/if}
     {#if storedNetworkNodes}
       <div class="separator"></div>
-      {#each storedNetworkNodes as Array<NodeData> as node (node)}
+      {#each storedNetworkNodes as Array<NetworkNodeOfTypeNetwork> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           style="--borderColor: {returnNodeColor(node.node_type)}"

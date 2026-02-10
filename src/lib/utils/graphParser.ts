@@ -13,6 +13,8 @@ import {
   type Network,
   type NetworkEdge,
   type NetworkEdges,
+  type NetworkNode,
+  type NetworkNodeOfTypeNetwork,
   type NetworkNodes,
 } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
@@ -101,14 +103,15 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
  */
 const mergeNodeData = (protocolNode: NetworkNodes[string]) => {
   if (protocolNode.type === TypeField.CORAL_NETWORK) {
-    // Network nodes: fetch by name, only position is instance-specific
+    // Network nodes: fetch by name, remove value, copy position
     const storeNodeData = getNetworkNodeData(protocolNode.name)
+    const { value, ...storeNodeDataWithoutValue } = storeNodeData
     return {
-      ...storeNodeData,
+      ...storeNodeDataWithoutValue,
       position: protocolNode.position,
     }
   } else {
-    // Regular nodes: fetch by type, position/name/value are all instance-specific
+    // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = getNodeData(protocolNode.type)
     return {
       ...storeNodeData,
@@ -250,10 +253,17 @@ export const validateGraphData = (
  */
 export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
-    acc[obj.id] = {
-      ...obj.data,
-      position: obj.position,
+    let nodeData = { ...(obj.data as NetworkNode | NetworkNodeOfTypeNetwork) }
+
+    // Restore value field with full sub-graph object for nodes of type network
+    if (isNetworkNodeOfTypeNetwork(nodeData)) {
+      const networkNodeData = getNetworkNodeData(nodeData.name)
+      nodeData.value = networkNodeData.value
     }
+
+    nodeData.position = obj.position
+
+    acc[obj.id] = nodeData
     return acc
   }, {})
 

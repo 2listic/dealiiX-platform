@@ -101,7 +101,7 @@ export type NodeData = {
   derived?: string[]
   base?: string
   method_name?: string
-  value?: string | Network
+  value?: string
   is_valid?: boolean
 }
 
@@ -111,6 +111,10 @@ export type NodeData = {
  */
 export type RegisteredNodes = {
   [key: string]: NodeData
+}
+
+export type RegisteredNetworkNodes = {
+  [key: string]: NetworkNodeOfTypeNetwork
 }
 
 export type NetworkEdge = {
@@ -142,6 +146,7 @@ export type NetworkNodeOfTypeNetwork = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   position?: { x: number; y: number }
+  is_valid?: boolean
 }
 
 export type NetworkNodes = {
@@ -185,7 +190,9 @@ export const isNetworkNodeOfTypeNetwork = (
  * @param node
  * @returns
  */
-export const returnNodeName = (node: NodeData): string => {
+export const returnNodeName = (
+  node: NodeData | NetworkNodeOfTypeNetwork
+): string => {
   let nodeName =
     'name' in node
       ? node.name

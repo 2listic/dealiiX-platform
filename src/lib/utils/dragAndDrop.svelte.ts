@@ -1,6 +1,10 @@
 import type { XYPosition } from '@xyflow/svelte'
 import { getNextNodeId, getNodes, setNodes } from '../stores/nodes.svelte'
-import type { NodeData } from '../types/nodeTypes'
+import {
+  TypeField,
+  type NetworkNodeOfTypeNetwork,
+  type NodeData,
+} from '../types/nodeTypes'
 
 export const onDragOver = (event: DragEvent) => {
   event.preventDefault()
@@ -13,13 +17,20 @@ export const onDrop = (
   event: DragEvent,
   // eslint-disable-next-line no-unused-vars
   screenToFlowPosition: (XYPosition: XYPosition) => XYPosition,
-  draggedNodeData: NodeData | null
+  draggedNodeData: NodeData | NetworkNodeOfTypeNetwork | null
 ) => {
   event.preventDefault()
   if (!draggedNodeData) {
     return
   }
-  const data = draggedNodeData
+
+  // Remove value field for network nodes (stored in networkNodes store)
+  let data = draggedNodeData
+  if (draggedNodeData.type === TypeField.CORAL_NETWORK) {
+    // eslint-disable-next-line no-unused-vars
+    const { value, ...dataWithoutValue } = draggedNodeData
+    data = dataWithoutValue as NetworkNodeOfTypeNetwork
+  }
 
   const position = screenToFlowPosition({
     x: event.clientX,

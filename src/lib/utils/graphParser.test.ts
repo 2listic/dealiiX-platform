@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Network, NodeData, RegisteredNodes } from '../types/nodeTypes'
+import type {
+  Network,
+  NetworkNodeOfTypeNetwork,
+  NodeData,
+  RegisteredNodes,
+  RegisteredNetworkNodes,
+} from '../types/nodeTypes'
 import validGraph from '../../../test_files/network-mwe.json'
 import validGraphNewtorkNode from '../../../test_files/network-mwe-network-node.json'
 import defaultRegistry from '../data/defaultNodes.json'
@@ -7,7 +13,7 @@ import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
 // Mock registries data populated per-test
 let mockRegistry = defaultRegistry as RegisteredNodes
-let mockNetworkNodes = defaultNetworkNodes as RegisteredNodes
+let mockNetworkNodes = defaultNetworkNodes as RegisteredNetworkNodes
 
 vi.mock('../stores/nodes.svelte', () => ({
   getNodeData: vi.fn((type: string): NodeData => {
@@ -18,7 +24,7 @@ vi.mock('../stores/nodes.svelte', () => ({
     }
     return { ...mockRegistry[type] } // Return a copy
   }),
-  getNetworkNodeData: vi.fn((name: string): NodeData => {
+  getNetworkNodeData: vi.fn((name: string): NetworkNodeOfTypeNetwork => {
     if (!(name in mockNetworkNodes)) {
       throw new Error(
         `Sub-graph node '${name}' not found in networkNodes store`
