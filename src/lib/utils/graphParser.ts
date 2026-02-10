@@ -17,7 +17,7 @@ import {
   type NetworkNodeOfTypeNetwork,
   type NetworkNodes,
 } from '../types/nodeTypes'
-import type { Node, Edge } from '@xyflow/svelte'
+import { type Node, type Edge, Position } from '@xyflow/svelte'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -253,15 +253,16 @@ export const validateGraphData = (
  */
 export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
-    let nodeData = { ...(obj.data as NetworkNode | NetworkNodeOfTypeNetwork) }
+    let nodeData = { 
+      ...(obj.data as NetworkNode | NetworkNodeOfTypeNetwork),
+      position: obj.position
+    }
 
     // Restore value field with full sub-graph object for nodes of type network
     if (isNetworkNodeOfTypeNetwork(nodeData)) {
       const networkNodeData = getNetworkNodeData(nodeData.name)
       nodeData.value = networkNodeData.value
     }
-
-    nodeData.position = obj.position
 
     acc[obj.id] = nodeData
     return acc

@@ -105,10 +105,6 @@ export type NodeData = {
   is_valid?: boolean
 }
 
-/**
- * Registry protocol JSON structure. Used for loading available nodes and holding
- * their definitions
- */
 export type RegisteredNodes = {
   [key: string]: NodeData
 }
