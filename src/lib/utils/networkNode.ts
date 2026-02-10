@@ -7,7 +7,7 @@ import {
   TypeField,
   type NetworkNodeOfTypeNetwork,
 } from '../types/nodeTypes'
-import { parseGraph } from './graphParser'
+import { parseGraphToProtocol } from './graphParser'
 
 /**
  * Creates a new network node from the provided graph by identifying free (unconnected)
@@ -179,7 +179,7 @@ export const createNewNetworkNode = (
   })
 
   // Step 5: Serialize the graph to the value field
-  const graphData = parseGraph(currentNodes, currentEdges)
+  const graphData = parseGraphToProtocol(currentNodes, currentEdges)
   const value = graphData
 
   // Step 6: Construct the final NodeData object

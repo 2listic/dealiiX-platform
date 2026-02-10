@@ -38,7 +38,7 @@ vi.mock('../stores/nodes.svelte', () => ({
   updateLastNodeId: vi.fn(),
 }))
 
-import { validateGraphData } from './graphParser'
+import { validateGraphData, addQualifiedIds } from './graphParser'
 
 describe('validateGraphData', () => {
   // beforeEach(() => {
@@ -148,5 +148,55 @@ describe('validateGraphData', () => {
       expect(Object.keys(validEdges)).toHaveLength(4)
       expect(invalidEdges).toHaveLength(0)
     })
+  })
+})
+
+describe('addQualifiedIds', () => {
+  it('assigns node id as qualified_id for top-level nodes', () => {
+    const graph = structuredClone(validGraph) as Network
+    const result = addQualifiedIds(graph)
+
+    for (const nodeId of Object.keys(result.workflow.nodes)) {
+      expect(result.workflow.nodes[nodeId].qualified_id).toBe(nodeId)
+    }
+  })
+
+  it('prefixes nested node ids with parent qualified_id', () => {
+    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
+    const result = addQualifiedIds(graph)
+
+    // Top-level nodes get their own id
+    expect(result.workflow.nodes['1'].qualified_id).toBe('1')
+    expect(result.workflow.nodes['12'].qualified_id).toBe('12')
+
+    // Nested nodes inside network node "12" get prefixed
+    const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
+      .nodes
+    expect(nestedNodes['0'].qualified_id).toBe('12_0')
+    expect(nestedNodes['3'].qualified_id).toBe('12_3')
+    expect(nestedNodes['5'].qualified_id).toBe('12_5')
+    expect(nestedNodes['8'].qualified_id).toBe('12_8')
+    expect(nestedNodes['10'].qualified_id).toBe('12_10')
+    expect(nestedNodes['11'].qualified_id).toBe('12_11')
+  })
+
+  it('does not mutate the original network', () => {
+    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
+    addQualifiedIds(graph)
+
+    // Original nodes should not have qualified_id
+    expect((graph.workflow.nodes['1'] as any).qualified_id).toBeUndefined()
+    expect((graph.workflow.nodes['12'] as any).qualified_id).toBeUndefined()
+  })
+
+  it('handles a network with no nodes', () => {
+    const emptyNetwork: Network = {
+      author: 'test',
+      date_time_utc: '',
+      version: 1,
+      workflow: { nodes: {}, edges: {} },
+    }
+    const result = addQualifiedIds(emptyNetwork)
+    expect(Object.keys(result.workflow.nodes)).toHaveLength(0)
   })
 })

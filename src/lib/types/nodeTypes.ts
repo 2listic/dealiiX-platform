@@ -165,6 +165,24 @@ export type Network = {
 }
 
 /**
+ * Types for networks with qualified ids that includes the ancestor ids if any
+ */
+export type QualifiedNetworkNode = NetworkNode & { qualified_id: string }
+export type QualifiedNetworkNodeOfTypeNetwork = Omit<
+  NetworkNodeOfTypeNetwork,
+  'value'
+> & {
+  qualified_id: string
+  value: QualifiedNetwork
+}
+export type QualifiedNetworkNodes = {
+  [id: string]: QualifiedNetworkNode | QualifiedNetworkNodeOfTypeNetwork
+}
+export type QualifiedNetwork = Omit<Network, 'workflow'> & {
+  workflow: { edges: NetworkEdges; nodes: QualifiedNetworkNodes }
+}
+
+/**
  * Type guard to check if a network node is of type NetworkNodeOfTypeNetwork
  * @param node - The node to check
  * @returns True if the node is a coral::Network node with all required fields

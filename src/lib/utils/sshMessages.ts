@@ -2,7 +2,7 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraph } from './graphParser'
+import { parseGraphWithQualifiedIds } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 import { JobStatus } from '../types/executionStatus'
 
@@ -55,7 +55,7 @@ export const exportAndEvalGraph = async (
   edges: Edge[]
 ): Promise<void> => {
   // parse graph
-  const parsedGraph = parseGraph(nodes, edges)
+  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
 
   // export graph
   const resultExport = await window.electron.invoke('export-graph-ssh', {
