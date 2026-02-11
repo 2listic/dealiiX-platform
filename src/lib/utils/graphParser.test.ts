@@ -8,6 +8,7 @@ import type {
 } from '../types/nodeTypes'
 import validGraph from '../../../test_files/network-mwe.json'
 import validGraphNewtorkNode from '../../../test_files/network-mwe-network-node.json'
+import qualifiedGraph from '../../../test_files/network-mwe-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
@@ -38,7 +39,11 @@ vi.mock('../stores/nodes.svelte', () => ({
   updateLastNodeId: vi.fn(),
 }))
 
-import { validateGraphData, addQualifiedIds } from './graphParser'
+import {
+  validateGraphData,
+  addQualifiedIds,
+  removeQualifiedIds,
+} from './graphParser'
 
 describe('validateGraphData', () => {
   // beforeEach(() => {
@@ -198,5 +203,33 @@ describe('addQualifiedIds', () => {
     }
     const result = addQualifiedIds(emptyNetwork)
     expect(Object.keys(result.workflow.nodes)).toHaveLength(0)
+  })
+})
+
+describe('removeQualifiedIds', () => {
+  it('removes qualified_id from all top-level and nested nodes', () => {
+    const graph = structuredClone(qualifiedGraph) as unknown as Network
+    const result = removeQualifiedIds(graph)
+
+    // Top-level nodes should not have qualified_id
+    for (const node of Object.values(result.workflow.nodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+
+    // Nested nodes inside network node "12" should not have qualified_id
+    const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
+      .nodes
+    for (const node of Object.values(nestedNodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+  })
+
+  it('is the inverse of addQualifiedIds', () => {
+    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
+    const withIds = addQualifiedIds(graph)
+    const roundTripped = removeQualifiedIds(withIds)
+
+    // Should match the original graph (no qualified_id fields)
+    expect(roundTripped).toEqual(graph)
   })
 })
