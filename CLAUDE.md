@@ -32,13 +32,16 @@ The application uses two JSON protocols to communicate with CORAL:
 **Key conversion functions** in `src/lib/utils/graphParser.ts`:
 
 - `nodesFromProtocolToFlow()` / `edgesFromProtocolToFlow()` - Convert CORAL network format → @xyflow format
-- `parseGraph()` - Convert @xyflow format → CORAL network format
+- `parseGraphToProtocol()` - Convert @xyflow format → CORAL network format
+- `parseGraphWithQualifiedIds()` - Same as above but adds hierarchical `qualified_id` to all nodes (used for export/save/download)
+- `addQualifiedIds()` / `removeQualifiedIds()` - Add/remove `qualified_id` fields recursively through nested network nodes
+- `loadGraphFromProtocol()` - Load a graph from CORAL protocol format (renamed from `loadGraph()`)
 
 ### State Management
 
 Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
-- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `setNodes()`, `getEdges()`, `setEdges()`, `setRegistry()`, `loadGraph()`
+- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types.
 - `auth.svelte.js` - JWT token for coral-remote-server API
 - `settingsStore.svelte.js` - User settings (SSH key path, visualizer URL)
 - `currentProjectStore.svelte.js` - Current project metadata
@@ -163,8 +166,9 @@ Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational g
   - Example: `inputs: [0, 2, 5]` means arguments at indices 0, 2, and 5 are inputs
   - Edges reference these via handles: `targetHandle: "input-1"` connects to `arguments[inputs[1]]`
 - **Pass-through Arguments**: An argument with `connection_type: 'pass_through'` stays the same only if both input and output are free for the same internal node. On the contrary if one of internal `pass_trough` is connected, then at the netwrok node level the argument will be marked with a `connection_type: 'input'` or `output`.
-- **Value Field**: Contains the entire graph serialized as an escaped JSON string using `parseGraph()`
-- **Creating Network Nodes**: Use `createNewNetworkNode(name)` from `nodes.svelte.ts` to create a network node from the current graph
+- **Value Field**: Contains the sub-graph as a `Network` object. The value is stripped from node data when on canvas and restored during export via `parseGraphToProtocol()`.
+- **Qualified IDs**: On export/save/download, `addQualifiedIds()` adds a `qualified_id` field to every node encoding its position in the nesting hierarchy (e.g., `"12_3"` for node 3 inside network node 12). Removed on import via `removeQualifiedIds()`.
+- **Creating Network Nodes**: Use `createNewNetworkNode(name, nodes, edges)` from `networkNode.ts` (takes snapshot arrays, not reactive state)
   - The function automatically identifies free inputs/outputs by checking which connections have no edges
   - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)`
 
