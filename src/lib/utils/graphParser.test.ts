@@ -130,7 +130,9 @@ describe('validateGraphData', () => {
 
   describe('graphs with network nodes', () => {
     beforeEach(() => {
-      graphNetworkNode = structuredClone(validQualifiedGraphNetworkNode) as Network
+      graphNetworkNode = structuredClone(
+        validQualifiedGraphNetworkNode
+      ) as Network
     })
 
     it('accepts a well defined MWE graph which includes a network node', () => {
