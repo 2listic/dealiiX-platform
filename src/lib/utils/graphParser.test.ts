@@ -6,9 +6,8 @@ import type {
   RegisteredNodes,
   RegisteredNetworkNodes,
 } from '../types/nodeTypes'
-import validGraph from '../../../test_files/network-mwe.json'
-import validGraphNewtorkNode from '../../../test_files/network-mwe-network-node.json'
-import qualifiedGraph from '../../../test_files/network-mwe-network-node-qualified.json'
+import validQualifiedGraph from '../../../test_files/network-mwe-qualified.json'
+import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
@@ -74,12 +73,12 @@ describe('validateGraphData', () => {
 
   describe('standard graphs with no network nodes', () => {
     beforeEach(() => {
-      graph = structuredClone(validGraph) as Network
+      graph = structuredClone(validQualifiedGraph) as Network
     })
 
     it('accepts a well defined MWE graph (no network nodes)', () => {
       const [validEdges, invalidEdges] = validateGraphData(
-        validGraph as unknown as Network
+        validQualifiedGraph as unknown as Network
       )
       expect(Object.keys(validEdges)).toHaveLength(9)
       expect(invalidEdges).toHaveLength(0)
@@ -131,12 +130,12 @@ describe('validateGraphData', () => {
 
   describe('graphs with network nodes', () => {
     beforeEach(() => {
-      graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
+      graphNetworkNode = structuredClone(validQualifiedGraphNetworkNode) as Network
     })
 
     it('accepts a well defined MWE graph which includes a network node', () => {
       const [validEdges, invalidEdges] = validateGraphData(
-        validGraphNewtorkNode as unknown as Network
+        validQualifiedGraphNetworkNode as unknown as Network
       )
       expect(Object.keys(validEdges)).toHaveLength(4)
       expect(invalidEdges).toHaveLength(0)
@@ -156,25 +155,43 @@ describe('validateGraphData', () => {
   })
 })
 
-describe('addQualifiedIds', () => {
-  it('assigns node id as qualified_id for top-level nodes', () => {
-    const graph = structuredClone(validGraph) as Network
-    const result = addQualifiedIds(graph)
+describe('addQualifiedIds / removeQualifiedIds', () => {
+  let qualifiedGraph: Network
+  let cleanGraph: Network
+
+  beforeEach(() => {
+    qualifiedGraph = structuredClone(
+      validQualifiedGraphNetworkNode
+    ) as unknown as Network
+    cleanGraph = removeQualifiedIds(qualifiedGraph)
+  })
+
+  it('removeQualifiedIds strips qualified_id from all top-level and nested nodes', () => {
+    for (const node of Object.values(cleanGraph.workflow.nodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+
+    const nestedNodes = (cleanGraph.workflow.nodes['12'] as any).value.workflow
+      .nodes
+    for (const node of Object.values(nestedNodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+  })
+
+  it('addQualifiedIds assigns node id as qualified_id for top-level nodes', () => {
+    const result = addQualifiedIds(cleanGraph)
 
     for (const nodeId of Object.keys(result.workflow.nodes)) {
       expect(result.workflow.nodes[nodeId].qualified_id).toBe(nodeId)
     }
   })
 
-  it('prefixes nested node ids with parent qualified_id', () => {
-    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
-    const result = addQualifiedIds(graph)
+  it('addQualifiedIds prefixes nested node ids with parent qualified_id', () => {
+    const result = addQualifiedIds(cleanGraph)
 
-    // Top-level nodes get their own id
     expect(result.workflow.nodes['1'].qualified_id).toBe('1')
     expect(result.workflow.nodes['12'].qualified_id).toBe('12')
 
-    // Nested nodes inside network node "12" get prefixed
     const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
       .nodes
     expect(nestedNodes['0'].qualified_id).toBe('12_0')
@@ -185,16 +202,20 @@ describe('addQualifiedIds', () => {
     expect(nestedNodes['11'].qualified_id).toBe('12_11')
   })
 
-  it('does not mutate the original network', () => {
-    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
-    addQualifiedIds(graph)
+  it('addQualifiedIds does not mutate the original network', () => {
+    addQualifiedIds(cleanGraph)
 
-    // Original nodes should not have qualified_id
-    expect((graph.workflow.nodes['1'] as any).qualified_id).toBeUndefined()
-    expect((graph.workflow.nodes['12'] as any).qualified_id).toBeUndefined()
+    for (const node of Object.values(cleanGraph.workflow.nodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
   })
 
-  it('handles a network with no nodes', () => {
+  it('round-trip: removeQualifiedIds then addQualifiedIds restores the original', () => {
+    const roundTripped = addQualifiedIds(cleanGraph)
+    expect(roundTripped).toEqual(qualifiedGraph)
+  })
+
+  it('addQualifiedIds handles an empty network', () => {
     const emptyNetwork: Network = {
       author: 'test',
       date_time_utc: '',
@@ -203,33 +224,5 @@ describe('addQualifiedIds', () => {
     }
     const result = addQualifiedIds(emptyNetwork)
     expect(Object.keys(result.workflow.nodes)).toHaveLength(0)
-  })
-})
-
-describe('removeQualifiedIds', () => {
-  it('removes qualified_id from all top-level and nested nodes', () => {
-    const graph = structuredClone(qualifiedGraph) as unknown as Network
-    const result = removeQualifiedIds(graph)
-
-    // Top-level nodes should not have qualified_id
-    for (const node of Object.values(result.workflow.nodes)) {
-      expect((node as any).qualified_id).toBeUndefined()
-    }
-
-    // Nested nodes inside network node "12" should not have qualified_id
-    const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
-      .nodes
-    for (const node of Object.values(nestedNodes)) {
-      expect((node as any).qualified_id).toBeUndefined()
-    }
-  })
-
-  it('is the inverse of addQualifiedIds', () => {
-    const graph = structuredClone(validGraphNewtorkNode) as unknown as Network
-    const withIds = addQualifiedIds(graph)
-    const roundTripped = removeQualifiedIds(withIds)
-
-    // Should match the original graph (no qualified_id fields)
-    expect(roundTripped).toEqual(graph)
   })
 })
