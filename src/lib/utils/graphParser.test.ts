@@ -6,8 +6,8 @@ import type {
   RegisteredNodes,
   RegisteredNetworkNodes,
 } from '../types/nodeTypes'
-import validQualifiedGraph from '../../../test_files/network-mwe-qualified.json'
-import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-network-node-qualified.json'
+import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
+import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
@@ -88,7 +88,6 @@ describe('validateGraphData', () => {
       // Modify type of second node to trigger node not in the registry
       const invalidType = 'type_not_registered'
       graph.workflow.nodes['1'].type = invalidType
-      graph.workflow.nodes['3'].arguments[1].type = invalidType
 
       expect(() => validateGraphData(graph as unknown as Network)).toThrow(
         `Node type '${invalidType}' was not found in the available nodes.`
@@ -139,7 +138,7 @@ describe('validateGraphData', () => {
       const [validEdges, invalidEdges] = validateGraphData(
         validQualifiedGraphNetworkNode as unknown as Network
       )
-      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(Object.keys(validEdges)).toHaveLength(5)
       expect(invalidEdges).toHaveLength(0)
     })
 
@@ -151,7 +150,7 @@ describe('validateGraphData', () => {
       const [validEdges, invalidEdges] = validateGraphData(
         graphNetworkNode as unknown as Network
       )
-      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(Object.keys(validEdges)).toHaveLength(5)
       expect(invalidEdges).toHaveLength(0)
     })
   })
@@ -196,7 +195,6 @@ describe('addQualifiedIds / removeQualifiedIds', () => {
 
     const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
       .nodes
-    expect(nestedNodes['0'].qualified_id).toBe('12_0')
     expect(nestedNodes['3'].qualified_id).toBe('12_3')
     expect(nestedNodes['5'].qualified_id).toBe('12_5')
     expect(nestedNodes['8'].qualified_id).toBe('12_8')

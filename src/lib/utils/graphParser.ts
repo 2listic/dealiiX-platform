@@ -286,18 +286,33 @@ export const removeQualifiedIds = (
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
-    let nodeData = {
-      ...(obj.data as NetworkNode | NetworkNodeOfTypeNetwork),
-      position: obj.position,
+    const data = obj.data as NetworkNode | NetworkNodeOfTypeNetwork
+
+    if (isNetworkNodeOfTypeNetwork(data)) {
+      // Network nodes: get position, data fields + 'value' from registred node
+      const networkNodeData = getNetworkNodeData(data.name)
+      acc[obj.id] = {
+        type: data.type,
+        node_type: data.node_type,
+        name: data.name,
+        arguments: data.arguments,
+        inputs: data.inputs,
+        outputs: data.outputs,
+        value: networkNodeData.value,
+        position: obj.position,
+      }
+    } else {
+      // Regular nodes: only keep relevant fields not already present in the registry
+      const node: NetworkNode = {
+        type: data.type,
+        position: obj.position,
+      }
+      if (data.base) node.base = data.base
+      if (data.name) node.name = data.name
+      if (data.value !== undefined) node.value = data.value
+      acc[obj.id] = node
     }
 
-    // Restore value field with full sub-graph object for nodes of type network
-    if (isNetworkNodeOfTypeNetwork(nodeData)) {
-      const networkNodeData = getNetworkNodeData(nodeData.name)
-      nodeData.value = networkNodeData.value
-    }
-
-    acc[obj.id] = nodeData
     return acc
   }, {})
 
