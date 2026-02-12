@@ -2,7 +2,7 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraph } from './graphParser'
+import { parseGraphWithQualifiedIds } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 import { JobStatus } from '../types/executionStatus'
 
@@ -44,17 +44,18 @@ export const executeWithKey = async (): Promise<void> => {
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
- * @param {Node[]} nodes - The array of nodes representing the computational graph.
- * @param {Edge[]} edges - The array of edges connecting the nodes in the graph.
+ * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
  * @returns {Promise<void>} Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
+ * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],
   edges: Edge[]
 ): Promise<void> => {
   // parse graph
-  const parsedGraph = parseGraph(nodes, edges)
+  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
 
   // export graph
   const resultExport = await window.electron.invoke('export-graph-ssh', {
@@ -67,7 +68,7 @@ export const exportAndEvalGraph = async (
 
   // execute graph
   // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
+  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: sbatchCommand,
   })
@@ -199,14 +200,15 @@ export const getOutFileContent = async (
 /**
  * Retrieves the execution status of nodes for a given touch-dir key.
  * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
- * @returns {Promise<Map<number, string[]>>} A promise that resolves to a Map where keys are node IDs and values are arrays of status strings
+ * @returns {Promise<Map<string, string[]>>} A promise that resolves to a Map where
+ * keys are the qualified node IDs and values are arrays of status strings
  * @example
  * const statuses = await getNodesExecutionStatus(42)
- * // Map { 9 => ['running', 'succeeded'], 12 => ['running', 'failed'], 15 => ['running'] }
+ * // Map { '9' => ['running', 'succeeded'], '12_1' => ['running', 'failed'], '12_2' => ['running'] }
  */
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
-): Promise<Map<number, string[]>> => {
+): Promise<Map<string, string[]>> => {
   // define the command to list the files in the touch-dir
   const command = `ls -tr /app/shared-data/${jobIdInternal}`
 
@@ -216,20 +218,20 @@ export const getNodesExecutionStatus = async (
   })
 
   // parse output into a Map where key is node ID and value is array of status strings
-  const result = new Map<number, string[]>()
+  const result = new Map<string, string[]>()
   const trimmed = output.trim()
 
   if (!trimmed) return result
 
   for (const line of trimmed.split('\n')) {
     const [nodeId, status] = line.split('.')
-    const id = parseInt(nodeId, 10)
 
-    if (!result.has(id)) {
-      result.set(id, [])
+    if (!result.has(nodeId)) {
+      result.set(nodeId, [])
     }
-    result.get(id)!.push(status)
+    result.get(nodeId)!.push(status)
   }
+  console.log('getNodesExecutionStatus', result)
 
   return result
 }

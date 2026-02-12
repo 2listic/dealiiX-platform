@@ -1,4 +1,4 @@
-import { getNodes, getEdges } from '../stores/nodes.svelte'
+import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import { SELF, Type } from '../types/nodeTypes'
 
 let connectionCache = new Map()
@@ -14,8 +14,8 @@ const isValidConnection = (connection) => {
   console.log('connection', connection)
 
   // Get the current nodes and edges
-  const nodes = getNodes()
-  const edges = getEdges()
+  const nodes = getNodesSnapshot()
+  const edges = getEdgesSnapshot()
   console.log('nodes', nodes)
   console.log('edges', edges)
 

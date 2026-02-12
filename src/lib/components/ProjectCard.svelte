@@ -1,7 +1,11 @@
 <script lang="ts">
   import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
-  import { loadGraph, validateGraphData } from '../utils/graphParser'
+  import {
+    loadGraphFromProtocol,
+    removeQualifiedIds,
+    validateGraphData,
+  } from '../utils/graphParser'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
@@ -87,8 +91,9 @@
         })
       }
 
-      const registeredNetworkNodes = await loadGraph(
-        projectData.graph.workflow.nodes,
+      const cleanedGraph = removeQualifiedIds(projectData.graph)
+      const registeredNetworkNodes = await loadGraphFromProtocol(
+        cleanedGraph.workflow.nodes,
         validEdges
       )
       if (registeredNetworkNodes.length > 0) {

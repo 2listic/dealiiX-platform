@@ -71,6 +71,26 @@ export enum Type {
   ANY = 'any',
 }
 
+/**
+ * Array of all numeric types that require validation
+ */
+export const NUMERIC_TYPES: Type[] = [
+  Type.UNSIGNED,
+  Type.UNSIGNED_INT,
+  Type.INT,
+  Type.DOUBLE,
+  Type.FLOAT,
+]
+
+/**
+ * Check if a type is a numeric type that requires validation
+ * @param type - The type to check
+ * @returns True if the type is numeric (int, unsigned, double, float)
+ */
+export const isNumericType = (type: string): boolean => {
+  return NUMERIC_TYPES.includes(type as Type)
+}
+
 export type NodeData = {
   type: string
   arguments: Argument[]
@@ -81,16 +101,16 @@ export type NodeData = {
   derived?: string[]
   base?: string
   method_name?: string
-  value?: string | Network
+  value?: string
   is_valid?: boolean
 }
 
-/**
- * Registry protocol JSON structure. Used for loading available nodes and holding
- * their definitions
- */
 export type RegisteredNodes = {
   [key: string]: NodeData
+}
+
+export type RegisteredNetworkNodes = {
+  [key: string]: NetworkNodeOfTypeNetwork
 }
 
 export type NetworkEdge = {
@@ -122,6 +142,7 @@ export type NetworkNodeOfTypeNetwork = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   position?: { x: number; y: number }
+  is_valid?: boolean
 }
 
 export type NetworkNodes = {
@@ -144,6 +165,24 @@ export type Network = {
 }
 
 /**
+ * Types for networks with qualified ids that includes the ancestor ids if any
+ */
+export type QualifiedNetworkNode = NetworkNode & { qualified_id: string }
+export type QualifiedNetworkNodeOfTypeNetwork = Omit<
+  NetworkNodeOfTypeNetwork,
+  'value'
+> & {
+  qualified_id: string
+  value: QualifiedNetwork
+}
+export type QualifiedNetworkNodes = {
+  [id: string]: QualifiedNetworkNode | QualifiedNetworkNodeOfTypeNetwork
+}
+export type QualifiedNetwork = Omit<Network, 'workflow'> & {
+  workflow: { edges: NetworkEdges; nodes: QualifiedNetworkNodes }
+}
+
+/**
  * Type guard to check if a network node is of type NetworkNodeOfTypeNetwork
  * @param node - The node to check
  * @returns True if the node is a coral::Network node with all required fields
@@ -154,12 +193,7 @@ export const isNetworkNodeOfTypeNetwork = (
   return (
     node.type === TypeField.CORAL_NETWORK &&
     'node_type' in node &&
-    node.node_type === NodeType.NETWORK &&
-    'value' in node &&
-    'name' in node &&
-    'arguments' in node &&
-    'inputs' in node &&
-    'outputs' in node
+    node.node_type === NodeType.NETWORK
   )
 }
 
@@ -170,7 +204,9 @@ export const isNetworkNodeOfTypeNetwork = (
  * @param node
  * @returns
  */
-export const returnNodeName = (node: NodeData): string => {
+export const returnNodeName = (
+  node: NodeData | NetworkNodeOfTypeNetwork
+): string => {
   let nodeName =
     'name' in node
       ? node.name

@@ -86,13 +86,17 @@ Or open a shell in the container (restarting the container if needed)
 
 `docker exec -it coral-ssh-slurm bash`
 
-Build the Coral backend in the container  
-`cd /app && mkdir build && cd build && cmake .. && make`
+Build the Coral backend in the container
+
+```
+cd app
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+```
 
 #### Manually test the Coral backend
 
 Manually execute the backend from the running container with path to the graph.json to execute and the path to the directory where the node execution status files will be written
-`/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir node-execution-status`
+`/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir node-execution-status`
 
 Read a file located in shared-data from outside the container
 `ssh -p 2222 root@localhost 'cat /app/shared-data/slurm-1.out'`
@@ -105,7 +109,7 @@ or
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --output=sbatch.out`
+`sbatch --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --output=sbatch.out`
 
 Test the state of a specific job id (i.e id 1) with sacct  
 `sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  

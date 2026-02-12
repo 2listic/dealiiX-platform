@@ -14,6 +14,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Network node `value` (sub-graph) is stripped from canvas data and restored during export. `createNewNetworkNode` now takes snapshot arrays as parameters. Stronger typing for network nodes with dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types. Added `getNodesSnapshot()` / `getEdgesSnapshot()` helpers. Added `isNumericType()` utility and `NUMERIC_TYPES` constant.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added button to create a network node from the current graph. Added support for new network nodes during the loading and the exporting of a graph. Added feature to validate all the connection types of every input-output linked by an edge in a graph.
 - [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
@@ -69,6 +70,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added `qualified_id` to all nodes during export/save/download, encoding nesting hierarchy (e.g., `"12_3"`). Removed on import. Added `parseGraphWithQualifiedIds()`, `addQualifiedIds()` and `removeQualifiedIds()`. Fixed removal of duplicate fields in standard nodes during export/save/download.
 - [#141](https://github.com/2listic/dealiiX-platform/pull/141) Network nodes have the corresponding sub-graph saved in 'value' field as regular JSON instead of escaped string.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Removed "type_hash" from registry JSON and replaced with "type". Simplified nework JSON removing duplicated information already present in the registry like "arguments", "inputs" and "outputs". Added optional "name" key in the network JSON in order to customize the name of the nodes in the graph.
@@ -120,4 +122,5 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Testing
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added unit tests for `addQualifiedIds` and `removeQualifiedIds`.
 - [#135](https://github.com/2listic/dealiiX-platform/pull/135) Added support for unit test with Vitest. Added unit tests for the function validateGraphData responsible for validating a graph before importing it into the editor.
