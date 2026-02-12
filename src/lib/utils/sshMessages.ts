@@ -1,9 +1,10 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
-import { jobsState } from '../stores/jobsStore.svelte'
+import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraph } from './graphParser'
+import { parseGraphWithQualifiedIds } from './graphParser'
 import { setPanelContent } from './panelContent.js'
+import { JobStatus } from '../types/executionStatus'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -43,51 +44,51 @@ export const executeWithKey = async (): Promise<void> => {
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
- * @param {Node[]} nodes - The array of nodes representing the computational graph.
- * @param {Edge[]} edges - The array of edges connecting the nodes in the graph.
+ * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
  * @returns {Promise<void>} Resolves when the job completes or fails.
- * @throws Will display error messages via toast notifications if export, execution, or polling fails.
+ * @throws {Error} Throws if export, execution, or polling fails.
+ * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],
   edges: Edge[]
 ): Promise<void> => {
-  try {
-    const parsedGraph = parseGraph(nodes, edges)
-    const resultExport = await window.electron.invoke('export-graph-ssh', {
-      graph: parsedGraph,
-    })
-    console.log('SSH Connection Result:', resultExport)
+  // parse graph
+  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
 
-    // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-    const sbatchCommand =
-      'sbatch --chdir=/shared-data --wrap="/app/build/dealii_backend.g run /shared-data/graph.json"'
-    const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-      command: sbatchCommand,
-    })
-    console.log('SSH Connection Result:', resultExecute)
-    toastState.add({ message: resultExecute })
+  // export graph
+  const resultExport = await window.electron.invoke('export-graph-ssh', {
+    graph: parsedGraph,
+  })
+  console.log('SSH Connection Result:', resultExport)
 
-    const jobId = resultExecute.match(/\d+/)[0]
-    if (!jobId) throw new Error('Job ID not found')
-    // poll immediately then every 5 secs for 1 day
-    const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-    toastState.add({
-      message: `Job id ${jobId}: ${finalState}`,
-      type: finalState === COMPLETED ? 'success' : 'error',
-    })
-  } catch (error) {
-    toastState.add({
-      message: error,
-      type: 'error',
-    })
-  }
+  // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
+  const internalJobId = jobIdMapState.getNextKey()
+
+  // execute graph
+  // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
+  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
+  const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
+    command: sbatchCommand,
+  })
+  console.log('SSH Connection Result:', resultExecute)
+  toastState.add({ message: resultExecute })
+
+  // get job id and store mapping
+  const jobId = resultExecute.match(/\d+/)[0]
+  if (!jobId) throw new Error('Job ID not found')
+  await jobIdMapState.add(jobId, internalJobId)
+
+  // poll immediately then every 10 secs for 1 day
+  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+
+  // message to user
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
 }
-
-export const COMPLETED = 'COMPLETED'
-export const FAILED = 'FAILED'
-const PENDING = 'PENDING'
-const RUNNING = 'RUNNING'
 
 /**
  * Polls the status of a job by executing an SSH command at regular intervals.
@@ -114,10 +115,13 @@ const jobPolling = async (
       console.log(result)
 
       const cleaned = result.trim()
-      if ([COMPLETED, FAILED, PENDING, RUNNING].includes(cleaned)) {
+      if (Object.values(JobStatus).includes(cleaned as JobStatus)) {
         await jobsState.update()
 
-        if ([COMPLETED, FAILED].includes(cleaned)) {
+        // if completed or failed stop polling and return the final status
+        if (
+          [JobStatus.COMPLETED, JobStatus.FAILED].includes(cleaned as JobStatus)
+        ) {
           return cleaned
         }
       }
@@ -144,13 +148,16 @@ const delay = (ms: number): Promise<void> => {
 }
 
 export const JOB_DATE_INDEX = [2, 3]
-export const JOB_LIST_DAYS = 1
+export const JOB_LIST_DAYS = 7
 
 /**
  * Retrieves the state of jobs from the last specified number of days.
  * @param {number} numDays - The number of days to look back for job states.
  * @returns {Promise<string[][]>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
  * @throws {Error} Throws if the SSH command execution fails or if the result contains an error.
+ * @example
+ * const jobs = await getJobsState(7)
+ * // [['JobID', 'State', 'Start', 'End'], ['55', 'COMPLETED', '2026-02-09T08:20:39', '2026-02-09T08:21:40'], ...]
  */
 export const getJobsState = async (numDays: number): Promise<string[][]> => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
@@ -163,6 +170,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
     command: command,
   })
   if (result.includes('error')) throw new Error(result)
+
   // Split sacct output string into an array and revert order (new jobs first)
   const resultJobs = result.split('\n').reverse()
   resultJobs.shift() // remove first empty element
@@ -171,6 +179,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
   resultJobs.unshift(last)
   // Convert each job row string into an array of fields
   const parsedJobs = resultJobs.map((line: string) => line.split('|'))
+
   return parsedJobs
 }
 
@@ -182,10 +191,49 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
 export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
-  const command = `cat /shared-data/slurm-${jobId}.out`
+  const command = `cat /app/shared-data/slurm-${jobId}.out`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
+}
+
+/**
+ * Retrieves the execution status of nodes for a given touch-dir key.
+ * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
+ * @returns {Promise<Map<string, string[]>>} A promise that resolves to a Map where
+ * keys are the qualified node IDs and values are arrays of status strings
+ * @example
+ * const statuses = await getNodesExecutionStatus(42)
+ * // Map { '9' => ['running', 'succeeded'], '12_1' => ['running', 'failed'], '12_2' => ['running'] }
+ */
+export const getNodesExecutionStatus = async (
+  jobIdInternal: number
+): Promise<Map<string, string[]>> => {
+  // define the command to list the files in the touch-dir
+  const command = `ls -tr /app/shared-data/${jobIdInternal}`
+
+  // get the raw output string with lines in format "nodeId.status"
+  const output = await window.electron.invoke('execute-ssh-with-key', {
+    command: command,
+  })
+
+  // parse output into a Map where key is node ID and value is array of status strings
+  const result = new Map<string, string[]>()
+  const trimmed = output.trim()
+
+  if (!trimmed) return result
+
+  for (const line of trimmed.split('\n')) {
+    const [nodeId, status] = line.split('.')
+
+    if (!result.has(nodeId)) {
+      result.set(nodeId, [])
+    }
+    result.get(nodeId)!.push(status)
+  }
+  console.log('getNodesExecutionStatus', result)
+
+  return result
 }
 
 /**

@@ -13,9 +13,13 @@ import {
   type Network,
   type NetworkEdge,
   type NetworkEdges,
+  type NetworkNode,
+  type NetworkNodeOfTypeNetwork,
   type NetworkNodes,
+  type QualifiedNetworkNodes,
+  type QualifiedNetwork,
 } from '../types/nodeTypes'
-import type { Node, Edge } from '@xyflow/svelte'
+import { type Node, type Edge, Position } from '@xyflow/svelte'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -25,7 +29,7 @@ import type { Node, Edge } from '@xyflow/svelte'
  * @param {NetworkEdges} edges - The edges to load
  * @returns {Promise<string[]>} Network node names that were registered or updated
  */
-export const loadGraph = async (
+export const loadGraphFromProtocol = async (
   nodes: NetworkNodes,
   edges: NetworkEdges
 ): Promise<string[]> => {
@@ -68,7 +72,7 @@ const addNetworkNodesFromGraph = async (
 
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
- * xyflow-compatible node objects with positions and merged data
+ * xyflow-compatible node objects with positions and merged data.
  * @param {NetworkNodes} nodes - Dictionary of nodes from network protocol
  * @returns {Node[]} Array of nodes formatted for the flow editor
  */
@@ -77,11 +81,10 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
   const arrNodeIds = Object.keys(nodes)
   const xyFlowNodes = arrNodeIds.map((id, index) => {
     const node = nodes[id]
-    const nodeData =
-      node.type === TypeField.CORAL_NETWORK
-        ? getNetworkNodeData(node.name)
-        : getNodeData(node.type)
-    const concatData = { ...nodeData, ...node } // concat data from registry and network
+
+    // Get snapshot from store and merge with instance-specific data
+    const nodeData = mergeNodeData(node)
+
     return {
       id: id,
       type: nodeData.node_type,
@@ -89,10 +92,36 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
         x: node.position?.x ?? index * 100,
         y: node.position?.y ?? index * 100,
       },
-      data: concatData,
+      data: nodeData,
     }
   })
   return xyFlowNodes
+}
+
+/**
+ * Gets snapshot from store and merges it with instance-specific data.
+ * @param {NetworkNodes[string]} protocolNode - Node data from network protocol
+ * @returns {NodeData} Merged node data for xyflow
+ */
+const mergeNodeData = (protocolNode: NetworkNodes[string]) => {
+  if (protocolNode.type === TypeField.CORAL_NETWORK) {
+    // Network nodes: fetch by name, remove value, copy position
+    const storeNodeData = getNetworkNodeData(protocolNode.name)
+    const { value, ...storeNodeDataWithoutValue } = storeNodeData
+    return {
+      ...storeNodeDataWithoutValue,
+      position: protocolNode.position,
+    }
+  } else {
+    // Regular nodes: fetch by type, copy position/name/value (instance-specific)
+    const storeNodeData = getNodeData(protocolNode.type)
+    return {
+      ...storeNodeData,
+      position: protocolNode.position,
+      ...(protocolNode.name && { name: protocolNode.name }),
+      ...(protocolNode.value !== undefined && { value: protocolNode.value }),
+    }
+  }
 }
 
 /**
@@ -216,19 +245,74 @@ export const validateGraphData = (
   return [validEdges, invalidEdges]
 }
 
+/**
+ * Removes the `qualified_id` field from every node in a Network, including
+ * recursively in nested network nodes' `value` fields. Inverse of `addQualifiedIds`.
+ * @param network - The network to process (may or may not have qualified_id fields)
+ * @returns A new Network with qualified_id removed from all nodes
+ */
+export const removeQualifiedIds = (
+  network: Network | QualifiedNetwork
+): Network => {
+  const cleanedNodes: NetworkNodes = {}
+
+  for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
+    const { qualified_id, ...rest } = node as typeof node & {
+      qualified_id?: string
+    }
+
+    if (isNetworkNodeOfTypeNetwork(rest)) {
+      // TODO add backward compatibility for stringified JSON values
+      const cleanedValue = removeQualifiedIds(rest.value)
+      cleanedNodes[nodeId] = { ...rest, value: cleanedValue }
+    } else {
+      cleanedNodes[nodeId] = rest
+    }
+  }
+
+  return {
+    ...network,
+    workflow: { ...network.workflow, nodes: cleanedNodes },
+  }
+}
+
 // =================== From Svelte xyflow to CORAL Protocol ======================
 /**
- * Parse nodes and edges into the CORAL network JSON format
- * @param {Node[]} nodes - Array of node objects from the flow editor
- * @param {Edge[]} edges - Array of edge objects from the flow editor
+ * Parse nodes and edges into the CORAL network JSON format.
+ * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
  * @returns {Network} Complete network object in CORAL protocol format
+ * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
-export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
+export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
-    acc[obj.id] = {
-      ...obj.data,
-      position: obj.position,
+    const data = obj.data as NetworkNode | NetworkNodeOfTypeNetwork
+
+    if (isNetworkNodeOfTypeNetwork(data)) {
+      // Network nodes: get position, data fields + 'value' from registred node
+      const networkNodeData = getNetworkNodeData(data.name)
+      acc[obj.id] = {
+        type: data.type,
+        node_type: data.node_type,
+        name: data.name,
+        arguments: data.arguments,
+        inputs: data.inputs,
+        outputs: data.outputs,
+        value: networkNodeData.value,
+        position: obj.position,
+      }
+    } else {
+      // Regular nodes: only keep relevant fields not already present in the registry
+      const node: NetworkNode = {
+        type: data.type,
+        position: obj.position,
+      }
+      if (data.base) node.base = data.base
+      if (data.name) node.name = data.name
+      if (data.value !== undefined) node.value = data.value
+      acc[obj.id] = node
     }
+
     return acc
   }, {})
 
@@ -251,4 +335,55 @@ export const parseGraph = (nodes: Node[], edges: Edge[]): Network => {
     author: 'dealiix-platform',
     date_time_utc: new Date().toISOString(),
   }
+}
+
+/**
+ * Adds a `qualified_id` field to every node in a Network. The qualified_id
+ * encodes the node's position in the nesting hierarchy by concatenating
+ * parent ids with underscores (e.g., "12_3" for node "3" inside node "12").
+ * @param network - The network to process
+ * @param parentQualifiedId - Prefix from parent nodes (used in recursion)
+ * @returns A new Network with qualified_id added to all nodes
+ */
+export const addQualifiedIds = (
+  network: Network,
+  parentQualifiedId: string = ''
+): QualifiedNetwork => {
+  const transformedNodes: QualifiedNetworkNodes = {}
+
+  for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
+    const qualifiedId = parentQualifiedId
+      ? `${parentQualifiedId}_${nodeId}`
+      : nodeId
+
+    if (isNetworkNodeOfTypeNetwork(node)) {
+      const transformedValue = addQualifiedIds(node.value, qualifiedId)
+      transformedNodes[nodeId] = {
+        ...node,
+        qualified_id: qualifiedId,
+        value: transformedValue,
+      }
+    } else {
+      transformedNodes[nodeId] = { ...node, qualified_id: qualifiedId }
+    }
+  }
+
+  return {
+    ...network,
+    workflow: { ...network.workflow, nodes: transformedNodes },
+  }
+}
+
+/**
+ * Parse nodes and edges into the CORAL network JSON format with qualified IDs.
+ * Use this for all export paths (save, download, execute) where qualified IDs are needed.
+ * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
+ * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
+ * @returns {QualifiedNetwork} Complete network object with qualified_id on all nodes
+ */
+export const parseGraphWithQualifiedIds = (
+  nodes: Node[],
+  edges: Edge[]
+): QualifiedNetwork => {
+  return addQualifiedIds(parseGraphToProtocol(nodes, edges))
 }

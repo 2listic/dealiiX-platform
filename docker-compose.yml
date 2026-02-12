@@ -14,7 +14,7 @@ services:
       - '6818:6818'
       - '8000:8000'
     volumes:
-      - ./containers/shared-data:/shared-data
+      - ./containers/shared-data:/app/shared-data
     networks:
       - coral-network
     # restart: unless-stopped

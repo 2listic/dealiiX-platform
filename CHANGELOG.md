@@ -14,6 +14,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Network node `value` (sub-graph) is stripped from canvas data and restored during export. `createNewNetworkNode` now takes snapshot arrays as parameters. Stronger typing for network nodes with dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types. Added `getNodesSnapshot()` / `getEdgesSnapshot()` helpers. Added `isNumericType()` utility and `NUMERIC_TYPES` constant.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added button to create a network node from the current graph. Added support for new network nodes during the loading and the exporting of a graph. Added feature to validate all the connection types of every input-output linked by an edge in a graph.
 - [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
@@ -26,6 +27,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added button in the jobs table that opens a modal with the execution status for every node in the corresponding job.
 - [#138](https://github.com/2listic/dealiiX-platform/pull/138) Added button in the jobs table to read content of corresponding .out file. New library ansiUp is used to transform color ASCII codes into HTML tags.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added section in the sidebar to display and drag the network nodes in the canvas.
 - [#118](https://github.com/2listic/dealiiX-platform/pull/120) Added button to download the current graph locally.
@@ -54,6 +56,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#142](https://github.com/2listic/dealiiX-platform/pull/142) Jobs state is now persistent across sessions. Added new persistent store to track internal job Ids with scheduler job Ids.
 - [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
 - [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
 - Electron setup with IPC communication
@@ -67,6 +70,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added `qualified_id` to all nodes during export/save/download, encoding nesting hierarchy (e.g., `"12_3"`). Removed on import. Added `parseGraphWithQualifiedIds()`, `addQualifiedIds()` and `removeQualifiedIds()`. Fixed removal of duplicate fields in standard nodes during export/save/download.
 - [#141](https://github.com/2listic/dealiiX-platform/pull/141) Network nodes have the corresponding sub-graph saved in 'value' field as regular JSON instead of escaped string.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Removed "type_hash" from registry JSON and replaced with "type". Simplified nework JSON removing duplicated information already present in the registry like "arguments", "inputs" and "outputs". Added optional "name" key in the network JSON in order to customize the name of the nodes in the graph.
@@ -87,7 +91,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
-- [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH comunication to retrieve content of file .out for a specific job.
+- [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added SSH communication to get the execution status of all the nodes in a specific job.
+- [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH communication to retrieve content of file .out for a specific job.
 - [#91](https://github.com/2listic/dealiiX-platform/pull/91) Updated SSH command to run Coral with new CLI
 - [#88](https://github.com/2listic/dealiiX-platform/pull/88) New functionality to open a Electron window pointing to a specific url
 - [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
@@ -117,4 +122,5 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Testing
 
+- [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added unit tests for `addQualifiedIds` and `removeQualifiedIds`.
 - [#135](https://github.com/2listic/dealiiX-platform/pull/135) Added support for unit test with Vitest. Added unit tests for the function validateGraphData responsible for validating a graph before importing it into the editor.

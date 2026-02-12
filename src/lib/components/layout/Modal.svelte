@@ -88,10 +88,22 @@
      * @optional
      */
     size?: 'sm' | 'md' | 'lg'
+
+    /**
+     * Callback invoked whenever the modal closes (backdrop, X button, ESC, or programmatic).
+     * @optional
+     */
+    onClose?: () => void
   }
 
   /** Destructure props with default values. */
-  let { id, children, closeOnBackdrop = true, size }: Props = $props()
+  let {
+    id,
+    children,
+    closeOnBackdrop = true,
+    size,
+    onClose: onCloseProp,
+  }: Props = $props()
 
   function keyPress(ev: KeyboardEvent) {
     // only respond if the current modal is the top one (and pressing ESC)
@@ -122,6 +134,7 @@
     if (onTop === null) document.body.style.overflow = ''
 
     visible = false
+    onCloseProp?.()
   }
 
   function isVisible() {

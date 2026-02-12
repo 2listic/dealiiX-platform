@@ -30,14 +30,11 @@
   const htmlMessage = $derived(ansiUp.ansi_to_html(message))
 
   const handleClose = () => {
-    if (onClose) {
-      onClose()
-    }
     getModal(modalId).close()
   }
 </script>
 
-<Modal id={modalId} {closeOnBackdrop} {size}>
+<Modal id={modalId} {closeOnBackdrop} {size} {onClose}>
   <div class="text-modal">
     {#if title}
       <h2>{title}</h2>

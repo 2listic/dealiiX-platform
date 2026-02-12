@@ -1,37 +1,27 @@
 <script>
-  import { onMount } from 'svelte'
   import { fade, slide } from 'svelte/transition'
   import { Tween } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
-  import { jobsState } from '../../stores/jobsStore.svelte'
-  import { settingsState, SSH_PATH } from '../../stores/settingsStore.svelte'
+  import { jobsState, jobIdMapState } from '../../stores/jobsStore.svelte'
   import {
-    COMPLETED,
-    FAILED,
     getOutFileContent,
+    getNodesExecutionStatus,
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
+  import { JobStatus } from '../../types/executionStatus'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import TextModal from './TextModal.svelte'
+  import NodeStatusModal from './NodeStatusModal.svelte'
   import { getModal } from './Modal.svelte'
 
-  let isLoaded = $state(false)
   let jobsData = $derived(jobsState.current)
   // $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
     easing: cubicOut,
-  })
-
-  onMount(async () => {
-    if (settingsState.getKey(SSH_PATH)) {
-      // run sacct only if ssh path is set
-      await jobsState.update()
-    }
-    isLoaded = true
   })
 
   let isJobListExpanded = $state(false)
@@ -49,11 +39,40 @@
   let currentJobId = $state('')
   const outLogModalId = 'out-log-modal'
 
+  let nodeStatusMap = $state(new Map())
+  let currentStatusJobId = $state('')
+  let currentJobIdInternal = $state(undefined)
+  const nodeStatusModalId = 'node-status-modal'
+
   const handleLogClick = async (jobId) => {
     try {
       currentJobId = jobId
       outLogText = await getOutFileContent(jobId)
       getModal(outLogModalId)?.open()
+    } catch (error) {
+      toastState.add({
+        message: error,
+        type: 'error',
+      })
+    }
+  }
+
+  const handleNodesExecutionStatus = async (jobIdSlurm) => {
+    try {
+      const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
+      if (jobIdInternal === undefined) {
+        throw new Error(
+          `No internal job Id found for scheduler job Id ${jobIdSlurm}`
+        )
+      }
+      console.log(
+        `Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`
+      )
+      const result = await getNodesExecutionStatus(jobIdInternal)
+      nodeStatusMap = result
+      currentStatusJobId = jobIdSlurm
+      currentJobIdInternal = jobIdInternal
+      getModal(nodeStatusModalId)?.open()
     } catch (error) {
       toastState.add({
         message: error,
@@ -92,93 +111,82 @@
       <RefreshIcon width="20px" height="20px" {rotation} />
     </button>
   </div>
-  {#if isLoaded}
-    <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
-      {#if !jobsState.isEmpty}
-        <div transition:slide>
-          <table transition:fade>
-            <colgroup>
-              <col style="width: 12%;" />
-              <col style="width: 22%;" />
-              <col style="width: 33%;" />
-              <col style="width: 33%;" />
-            </colgroup>
-            <thead>
-              <tr>
-                {#each jobsData[0] as headCell, i (i)}
-                  <th>{headCell}</th>
-                {/each}
-                <th>Logs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#if isJobListExpanded}
-                {#each jobsData as line, index (line[0])}
-                  {#if index > 0}
-                    <tr>
-                      {#each line as bodyCell, i (i)}
-                        <td>
-                          <span>
-                            {#if JOB_DATE_INDEX.includes(i)}
-                              {bodyCell.replace('T', ' ')}
-                            {:else}
-                              {bodyCell}
-                            {/if}
-                          </span>
-                        </td>
-                      {/each}
-                      <td>
-                        {#if [COMPLETED, FAILED].includes(line[1])}
-                          <Button
-                            size="xsmall"
-                            onclick={() => handleLogClick(line[0])}
-                            >{line[0]}.out</Button
-                          >
-                        {/if}
-                      </td>
-                    </tr>
-                  {/if}
-                {/each}
-              {:else}
-                <tr>
-                  {#each jobsData[1] as bodyCell, i (i)}
-                    <td>
-                      <span>
-                        {#if JOB_DATE_INDEX.includes(i)}
-                          {bodyCell.replace('T', ' ')}
-                        {:else}
-                          {bodyCell}
-                        {/if}
-                      </span>
-                    </td>
-                  {/each}
-                  <td>
-                    {#if [COMPLETED, FAILED].includes(jobsData[1][1])}
-                      <Button
-                        size="xsmall"
-                        onclick={() => handleLogClick(jobsData[1][0])}
-                        >{jobsData[1][0]}.out</Button
-                      >
-                    {/if}
-                  </td>
-                </tr>
-              {/if}
-            </tbody>
-          </table>
-        </div>
-      {:else}
-        <div transition:slide>
-          <table transition:fade>
-            <tbody>
-              <tr>
-                <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      {/if}
-    </div>
-  {/if}
+  <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
+    {#if !jobsState.isEmpty}
+      <div transition:slide>
+        <table transition:fade>
+          <colgroup>
+            <col style="width: 10%;" />
+            <col style="width: 18%;" />
+            <col style="width: 27%;" />
+            <col style="width: 27%;" />
+            <col style="width: 9%;" />
+            <col style="width: 9%;" />
+          </colgroup>
+          <thead>
+            <tr>
+              {#each jobsData[0] as headCell, i (i)}
+                <th>{headCell}</th>
+              {/each}
+              <th>Logs</th>
+              <th>Nodes Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#if isJobListExpanded}
+              {#each jobsData.slice(1) as line (line[0])}
+                {@render jobRow(line)}
+              {/each}
+            {:else}
+              {@render jobRow(jobsData[1])}
+            {/if}
+          </tbody>
+        </table>
+      </div>
+
+      {#snippet jobRow(line)}
+        <tr>
+          {#each line as bodyCell, i (i)}
+            <td>
+              <span>
+                {#if JOB_DATE_INDEX.includes(i)}
+                  {bodyCell.replace('T', ' ')}
+                {:else}
+                  {bodyCell}
+                {/if}
+              </span>
+            </td>
+          {/each}
+          <td>
+            {#if [JobStatus.COMPLETED, JobStatus.FAILED].includes(line[1])}
+              <Button
+                size="xsmall"
+                title="View logs from the current job"
+                onclick={() => handleLogClick(line[0])}>{line[0]}.out</Button
+              >
+            {/if}
+          </td>
+          <td>
+            <Button
+              size="xsmall"
+              title="View the execution status of nodes for the current job"
+              onclick={() => handleNodesExecutionStatus(line[0])}>Status</Button
+            >
+          </td>
+        </tr>
+      {/snippet}
+    {:else}
+      <div transition:slide>
+        <table transition:fade>
+          <tbody>
+            <tr>
+              <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <TextModal
@@ -190,6 +198,18 @@
   onClose={() => {
     outLogText = ''
     currentJobId = ''
+  }}
+/>
+
+<NodeStatusModal
+  modalId={nodeStatusModalId}
+  statusMap={nodeStatusMap}
+  jobIdInternal={currentJobIdInternal}
+  title={`Job ${currentStatusJobId} - Nodes Status`}
+  onClose={() => {
+    nodeStatusMap = new Map()
+    currentStatusJobId = ''
+    currentJobIdInternal = undefined
   }}
 />
 

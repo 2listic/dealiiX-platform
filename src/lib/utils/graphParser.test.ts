@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Network, NodeData, RegisteredNodes } from '../types/nodeTypes'
-import validGraph from '../../../test_files/network-mwe.json'
-import validGraphNewtorkNode from '../../../test_files/network-mwe-network-node.json'
+import type {
+  Network,
+  NetworkNodeOfTypeNetwork,
+  NodeData,
+  RegisteredNodes,
+  RegisteredNetworkNodes,
+} from '../types/nodeTypes'
+import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
+import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
 // Mock registries data populated per-test
 let mockRegistry = defaultRegistry as RegisteredNodes
-let mockNetworkNodes = defaultNetworkNodes as RegisteredNodes
+let mockNetworkNodes = defaultNetworkNodes as RegisteredNetworkNodes
 
 vi.mock('../stores/nodes.svelte', () => ({
   getNodeData: vi.fn((type: string): NodeData => {
@@ -18,7 +24,7 @@ vi.mock('../stores/nodes.svelte', () => ({
     }
     return { ...mockRegistry[type] } // Return a copy
   }),
-  getNetworkNodeData: vi.fn((name: string): NodeData => {
+  getNetworkNodeData: vi.fn((name: string): NetworkNodeOfTypeNetwork => {
     if (!(name in mockNetworkNodes)) {
       throw new Error(
         `Sub-graph node '${name}' not found in networkNodes store`
@@ -32,7 +38,11 @@ vi.mock('../stores/nodes.svelte', () => ({
   updateLastNodeId: vi.fn(),
 }))
 
-import { validateGraphData } from './graphParser'
+import {
+  validateGraphData,
+  addQualifiedIds,
+  removeQualifiedIds,
+} from './graphParser'
 
 describe('validateGraphData', () => {
   // beforeEach(() => {
@@ -63,12 +73,12 @@ describe('validateGraphData', () => {
 
   describe('standard graphs with no network nodes', () => {
     beforeEach(() => {
-      graph = structuredClone(validGraph) as Network
+      graph = structuredClone(validQualifiedGraph) as Network
     })
 
     it('accepts a well defined MWE graph (no network nodes)', () => {
       const [validEdges, invalidEdges] = validateGraphData(
-        validGraph as unknown as Network
+        validQualifiedGraph as unknown as Network
       )
       expect(Object.keys(validEdges)).toHaveLength(9)
       expect(invalidEdges).toHaveLength(0)
@@ -78,7 +88,6 @@ describe('validateGraphData', () => {
       // Modify type of second node to trigger node not in the registry
       const invalidType = 'type_not_registered'
       graph.workflow.nodes['1'].type = invalidType
-      graph.workflow.nodes['3'].arguments[1].type = invalidType
 
       expect(() => validateGraphData(graph as unknown as Network)).toThrow(
         `Node type '${invalidType}' was not found in the available nodes.`
@@ -120,14 +129,16 @@ describe('validateGraphData', () => {
 
   describe('graphs with network nodes', () => {
     beforeEach(() => {
-      graphNetworkNode = structuredClone(validGraphNewtorkNode) as Network
+      graphNetworkNode = structuredClone(
+        validQualifiedGraphNetworkNode
+      ) as Network
     })
 
     it('accepts a well defined MWE graph which includes a network node', () => {
       const [validEdges, invalidEdges] = validateGraphData(
-        validGraphNewtorkNode as unknown as Network
+        validQualifiedGraphNetworkNode as unknown as Network
       )
-      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(Object.keys(validEdges)).toHaveLength(5)
       expect(invalidEdges).toHaveLength(0)
     })
 
@@ -139,8 +150,79 @@ describe('validateGraphData', () => {
       const [validEdges, invalidEdges] = validateGraphData(
         graphNetworkNode as unknown as Network
       )
-      expect(Object.keys(validEdges)).toHaveLength(4)
+      expect(Object.keys(validEdges)).toHaveLength(5)
       expect(invalidEdges).toHaveLength(0)
     })
+  })
+})
+
+describe('addQualifiedIds / removeQualifiedIds', () => {
+  let qualifiedGraph: Network
+  let cleanGraph: Network
+
+  beforeEach(() => {
+    qualifiedGraph = structuredClone(
+      validQualifiedGraphNetworkNode
+    ) as unknown as Network
+    cleanGraph = removeQualifiedIds(qualifiedGraph)
+  })
+
+  it('removeQualifiedIds strips qualified_id from all top-level and nested nodes', () => {
+    for (const node of Object.values(cleanGraph.workflow.nodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+
+    const nestedNodes = (cleanGraph.workflow.nodes['12'] as any).value.workflow
+      .nodes
+    for (const node of Object.values(nestedNodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+  })
+
+  it('addQualifiedIds assigns node id as qualified_id for top-level nodes', () => {
+    const result = addQualifiedIds(cleanGraph)
+
+    for (const nodeId of Object.keys(result.workflow.nodes)) {
+      expect(result.workflow.nodes[nodeId].qualified_id).toBe(nodeId)
+    }
+  })
+
+  it('addQualifiedIds prefixes nested node ids with parent qualified_id', () => {
+    const result = addQualifiedIds(cleanGraph)
+
+    expect(result.workflow.nodes['1'].qualified_id).toBe('1')
+    expect(result.workflow.nodes['12'].qualified_id).toBe('12')
+
+    const nestedNodes = (result.workflow.nodes['12'] as any).value.workflow
+      .nodes
+    expect(nestedNodes['3'].qualified_id).toBe('12_3')
+    expect(nestedNodes['5'].qualified_id).toBe('12_5')
+    expect(nestedNodes['8'].qualified_id).toBe('12_8')
+    expect(nestedNodes['10'].qualified_id).toBe('12_10')
+    expect(nestedNodes['11'].qualified_id).toBe('12_11')
+  })
+
+  it('addQualifiedIds does not mutate the original network', () => {
+    addQualifiedIds(cleanGraph)
+
+    for (const node of Object.values(cleanGraph.workflow.nodes)) {
+      expect((node as any).qualified_id).toBeUndefined()
+    }
+  })
+
+  it('round-trip: removeQualifiedIds then addQualifiedIds restores the original', () => {
+    const roundTripped = addQualifiedIds(cleanGraph)
+    expect(roundTripped).toEqual(qualifiedGraph)
+  })
+
+  it('addQualifiedIds handles an empty network', () => {
+    const emptyNetwork: Network = {
+      author: 'test',
+      date_time_utc: '',
+      version: 1,
+      workflow: { nodes: {}, edges: {} },
+    }
+    const result = addQualifiedIds(emptyNetwork)
+    expect(Object.keys(result.workflow.nodes)).toHaveLength(0)
   })
 })

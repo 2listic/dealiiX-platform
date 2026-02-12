@@ -73,7 +73,7 @@ ipcMain.handle('export-graph-ssh', async (event, { graph }) => {
   }
   const jsonGraph = JSON.stringify(graph)
   console.log('exported graph', jsonGraph)
-  const remotePath = '/shared-data/graph.json'
+  const remotePath = '/app/shared-data/graph.json'
   return await connectAndUploadGraph(jsonGraph, remotePath, pathToSsh)
 })
 
