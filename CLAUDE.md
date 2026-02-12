@@ -216,7 +216,7 @@ docker exec -it coral-ssh-slurm bash           # Shell in container
 **Build Coral in container:**
 
 ```bash
-cd /app && mkdir build && cd build && cmake .. && make
+cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 ```
 
 ## Key Technical Details

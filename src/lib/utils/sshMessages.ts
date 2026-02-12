@@ -68,7 +68,7 @@ export const exportAndEvalGraph = async (
 
   // execute graph
   // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/dealii_backend.g run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
+  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: sbatchCommand,
   })
@@ -200,14 +200,15 @@ export const getOutFileContent = async (
 /**
  * Retrieves the execution status of nodes for a given touch-dir key.
  * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
- * @returns {Promise<Map<number, string[]>>} A promise that resolves to a Map where keys are node IDs and values are arrays of status strings
+ * @returns {Promise<Map<string, string[]>>} A promise that resolves to a Map where
+ * keys are the qualified node IDs and values are arrays of status strings
  * @example
  * const statuses = await getNodesExecutionStatus(42)
- * // Map { 9 => ['running', 'succeeded'], 12 => ['running', 'failed'], 15 => ['running'] }
+ * // Map { '9' => ['running', 'succeeded'], '12_1' => ['running', 'failed'], '12_2' => ['running'] }
  */
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
-): Promise<Map<number, string[]>> => {
+): Promise<Map<string, string[]>> => {
   // define the command to list the files in the touch-dir
   const command = `ls -tr /app/shared-data/${jobIdInternal}`
 
@@ -217,20 +218,20 @@ export const getNodesExecutionStatus = async (
   })
 
   // parse output into a Map where key is node ID and value is array of status strings
-  const result = new Map<number, string[]>()
+  const result = new Map<string, string[]>()
   const trimmed = output.trim()
 
   if (!trimmed) return result
 
   for (const line of trimmed.split('\n')) {
     const [nodeId, status] = line.split('.')
-    const id = parseInt(nodeId, 10)
 
-    if (!result.has(id)) {
-      result.set(id, [])
+    if (!result.has(nodeId)) {
+      result.set(nodeId, [])
     }
-    result.get(id)!.push(status)
+    result.get(nodeId)!.push(status)
   }
+  console.log('getNodesExecutionStatus', result)
 
   return result
 }

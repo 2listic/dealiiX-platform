@@ -8,7 +8,7 @@
 
   interface Props {
     modalId: string
-    statusMap: Map<number, string[]>
+    statusMap: Map<string, string[]>
     jobIdInternal: number | undefined
     title?: string
     onClose?: () => void
@@ -23,7 +23,7 @@
   }: Props = $props()
 
   // Internal state for polling updates
-  let internalStatusMap = $state(new Map<number, string[]>())
+  let internalStatusMap = $state(new Map<string, string[]>())
 
   // Sync internal state when prop changes (only when modal opens with new data)
   $effect(() => {
@@ -49,38 +49,57 @@
     return StatusToDisplay.UNKNOWN
   }
 
-  // Check if all nodes have a terminal status (succeeded or failed)
-  const allNodesTerminal = $derived.by(() => {
+  // Split qualified Id over underscore to get array of Ids
+  const formatNodeId = (nodeId: string): string[] => {
+    return nodeId.split('_')
+  }
+
+  // Check if all nodes have succeeded
+  const allNodesSucceeded = $derived.by(() => {
     if (internalStatusMap.size === 0) return false
     for (const statuses of internalStatusMap.values()) {
       const status = getDisplayStatus(statuses)
-      if (
-        status !== StatusToDisplay[ExecNodeStatus.SUCCEEDED] &&
-        status !== StatusToDisplay[ExecNodeStatus.FAILED]
-      ) {
+      if (status !== StatusToDisplay[ExecNodeStatus.SUCCEEDED]) {
         return false
       }
     }
     return true
   })
 
-  // Polling effect - stops when all nodes are terminal or modal closes
-  // effect runs when modal component is mounted and when reactive dependencies jobIdInternal or allNodesTerminal changes
+  // Check if at least one node has failed
+  const anyNodeFailed = $derived.by(() => {
+    if (internalStatusMap.size === 0) return false
+    for (const statuses of internalStatusMap.values()) {
+      const status = getDisplayStatus(statuses)
+      if (status === StatusToDisplay[ExecNodeStatus.FAILED]) {
+        return true
+      }
+    }
+    return false
+  })
+
+  // Polling effect - stops when all nodes succeed, any node fails, or modal closes
+  // effect runs when modal component is mounted and when reactive dependencies change
   $effect(() => {
     console.log(
       'Internal jobId',
       jobIdInternal,
-      'are all nodes terminal?',
-      allNodesTerminal
+      'all nodes succeeded?',
+      allNodesSucceeded,
+      'any node failed?',
+      anyNodeFailed
     )
-    // early return if jobIdInternal is not set or all nodes have terminal status
-    if (jobIdInternal === undefined || allNodesTerminal) return
+    // early return if jobIdInternal is not set, all nodes succeeded, or any node has failed
+    if (jobIdInternal === undefined || allNodesSucceeded || anyNodeFailed)
+      return
 
     const interval = setInterval(async () => {
       try {
-        console.log('Polling for internal jobId', jobIdInternal)
         const result = await getNodesExecutionStatus(jobIdInternal)
-        console.log('Polling result', $state.snapshot(result))
+        console.log(
+          `Polling for internal jobId ${jobIdInternal}`,
+          $state.snapshot(result)
+        )
         internalStatusMap = result
       } catch (error) {
         console.error('Polling error:', error)
@@ -102,22 +121,32 @@
     <div class="status-list">
       {#each internalStatusMap as [nodeId, statuses] (nodeId)}
         {@const displayStatus = getDisplayStatus(statuses)}
+        {@const idParts = formatNodeId(nodeId)}
         <div class="status-row">
-          <span>{nodeId}</span>
-          <span
-            class="status-badge"
-            class:failed={displayStatus ===
-              StatusToDisplay[ExecNodeStatus.FAILED]}
-            class:running={displayStatus ===
-              StatusToDisplay[ExecNodeStatus.RUNNING]}
-          >
-            {#if displayStatus === StatusToDisplay[ExecNodeStatus.SUCCEEDED]}
-              <SuccessIcon width="16px" />
-            {:else if displayStatus === StatusToDisplay[ExecNodeStatus.FAILED]}
-              <ErrorIcon width="16px" />
-            {/if}
-            {displayStatus}
+          <span class="node-id">
+            {#each idParts as part, i (i)}
+              <span class="id-part">{part}</span>
+              {#if i < idParts.length - 1}
+                <span class="id-separator">→</span>
+              {/if}
+            {/each}
           </span>
+          {#if !(displayStatus === StatusToDisplay[ExecNodeStatus.RUNNING] && anyNodeFailed)}
+            <span
+              class="status-badge"
+              class:failed={displayStatus ===
+                StatusToDisplay[ExecNodeStatus.FAILED]}
+              class:running={displayStatus ===
+                StatusToDisplay[ExecNodeStatus.RUNNING]}
+            >
+              {#if displayStatus === StatusToDisplay[ExecNodeStatus.SUCCEEDED]}
+                <SuccessIcon width="16px" />
+              {:else if displayStatus === StatusToDisplay[ExecNodeStatus.FAILED]}
+                <ErrorIcon width="16px" />
+              {/if}
+              {displayStatus}
+            </span>
+          {/if}
         </div>
       {/each}
     </div>
@@ -146,6 +175,18 @@
     padding: 0.3vh 0.5vh;
     border-bottom: 1px solid #333;
   }
+  .node-id {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+  /* .id-part {
+    font-weight: 500;
+  }
+  .id-separator {
+    font-size: 0.9em;
+    padding: 0 0.1em;
+  } */
   .status-badge {
     display: flex;
     align-items: center;
