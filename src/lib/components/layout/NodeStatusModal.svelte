@@ -22,7 +22,8 @@
     onClose,
   }: Props = $props()
 
-  // Internal state for polling updates
+  // Internal state for polling updates 
+  // consider to use SvelteMap if partial updates are needed instead of full replacement
   let internalStatusMap = $state(new Map<string, string[]>())
 
   // Sync internal state when prop changes (only when modal opens with new data)
