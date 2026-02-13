@@ -124,5 +124,6 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Testing
 
+- [#146](https://github.com/2listic/dealiiX-platform/pull/146) Added unit tests for `filterValidNodes` function.
 - [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added unit tests for `addQualifiedIds` and `removeQualifiedIds`.
 - [#135](https://github.com/2listic/dealiiX-platform/pull/135) Added support for unit test with Vitest. Added unit tests for the function validateGraphData responsible for validating a graph before importing it into the editor.
