@@ -47,7 +47,7 @@ export enum NodeTypePyBackend {
 
 /**
  * Node types that should not appear in the sidebar's available nodes list.
- * Abstract nodes only provide type information for their derived nodes. 
+ * Abstract nodes only provide type information for their derived nodes.
  * Network nodes have their concrete implementations in a different section.
  */
 export const HIDDEN_SIDEBAR_NODE_TYPES: NodeType[] = [

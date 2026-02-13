@@ -71,6 +71,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
+- [#146](https://github.com/2listic/dealiiX-platform/issues/146) Validate registry JSON during import: filter out non-compliant nodes. Exclude `abstract` and `network` node types from the sidebar available nodes list.
 - [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added `qualified_id` to all nodes during export/save/download, encoding nesting hierarchy (e.g., `"12_3"`). Removed on import. Added `parseGraphWithQualifiedIds()`, `addQualifiedIds()` and `removeQualifiedIds()`. Fixed removal of duplicate fields in standard nodes during export/save/download.
 - [#141](https://github.com/2listic/dealiiX-platform/pull/141) Network nodes have the corresponding sub-graph saved in 'value' field as regular JSON instead of escaped string.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
