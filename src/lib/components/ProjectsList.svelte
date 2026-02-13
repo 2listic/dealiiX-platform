@@ -73,7 +73,7 @@
 
   {#if isLoading}
     <div class="loading">Loading projects...</div>
-  {:else if projects.length === 0}
+  {:else if !projects || projects.length === 0}
     <div class="empty">No projects found</div>
   {:else}
     <div class="projects-list">
