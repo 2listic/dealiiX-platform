@@ -7,8 +7,8 @@
   } from '../../stores/nodes.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import {
+    HIDDEN_SIDEBAR_NODE_TYPES,
     nodeColors,
-    NodeType,
     returnNodeName,
     type NetworkNodeOfTypeNetwork,
     type NodeData,
@@ -58,7 +58,7 @@
   <div class="nodes-container">
     {#if availableNodes}
       {#each availableNodes as Array<NodeData> as node (node)}
-        {#if node.node_type != NodeType.ABSTRACT}
+        {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             style="--borderColor: {returnNodeColor(node.node_type)}"
