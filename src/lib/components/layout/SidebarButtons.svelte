@@ -129,7 +129,13 @@
     }
     const importedNodesAsText = await readFileAsText(importNodesFiles[0])
     const importedNodes = JSON.parse(importedNodesAsText)
-    await setRegistry(importedNodes)
+    const skippedKeys = await setRegistry(importedNodes)
+    skippedKeys.forEach((key) => {
+      toastState.add({
+        message: `Registry key '${key}' is not a valid node and was skipped`,
+        type: 'error',
+      })
+    })
     toastState.add({ message: 'New nodes were loaded' })
   }
 

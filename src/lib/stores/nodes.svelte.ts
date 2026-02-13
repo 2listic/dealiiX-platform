@@ -120,13 +120,34 @@ const loadRegistry = async () => {
 loadRegistry()
 
 /**
- * Set the application registry for the available nodes
- * @param {RegisteredNodes} data - Dictionary of node data to register
+ * Set the application registry for the available nodes.
+ * Filters out entries that are not valid NodeData objects
+ * @param  data - Dictionary of node data to register
+ * @returns List of keys that were skipped due to invalid structure
  */
-export const setRegistry = async (data: RegisteredNodes) => {
-  registry = data
+export const setRegistry = async (
+  data: Record<string, unknown>
+): Promise<string[]> => {
+  const skipped: string[] = []
+  const filtered: RegisteredNodes = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (
+      typeof value !== 'object' ||
+      value === null ||
+      !('node_type' in value) ||
+      !('arguments' in value) ||
+      !('inputs' in value) ||
+      !('outputs' in value)
+    ) {
+      skipped.push(key)
+      continue
+    }
+    filtered[key] = value as NodeData
+  }
+  registry = filtered
   console.log('Imported registry', $state.snapshot(registry))
   await window.electron.store.set('registered_nodes', $state.snapshot(registry))
+  return skipped
 }
 
 /**
