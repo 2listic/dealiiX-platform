@@ -187,37 +187,32 @@
   {/if}
 
   <!-- Elementary constructors input fields -->
-  <div>
-    {#if isNumericType(data.type)}
-      <input
-        type="text"
-        class={isValid ? '' : 'invalid'}
-        value={data.value}
-        oninput={(evt) => {
-          updateNodeData(id, { value: evt.currentTarget.value })
-        }}
-      />
-    {:else if data.type === Type.STRING || data.type === Type.STR}
-      <input
-        type="text"
-        value={data.value}
-        oninput={(evt) => {
-          updateNodeData(id, { value: evt.currentTarget.value })
-        }}
-      />
-    {:else if data.type === Type.BOOLEAN}
-      <input
-        type="checkbox"
-        value={data.value}
-        oninput={(evt) => {
-          updateNodeData(id, {
-            value: evt.currentTarget.checked ? 'true' : 'false',
-          })
-        }}
-      />
-      <span>{data.value === 'true' ? 'true' : 'false'}</span>
-    {/if}
-  </div>
+  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR}
+    <div>
+      {#if data.type === Type.BOOLEAN}
+        <input
+          type="checkbox"
+          value={data.value}
+          oninput={(evt) => {
+            updateNodeData(id, {
+              value: evt.currentTarget.checked ? 'true' : 'false',
+            })
+          }}
+        />
+        <span>{data.value === 'true' ? 'true' : 'false'}</span>
+      {:else}
+        <!-- All other elementary constructors -->
+        <input
+          type="text"
+          class={isValid ? '' : 'invalid'}
+          value={data.value}
+          oninput={(evt) => {
+            updateNodeData(id, { value: evt.currentTarget.value })
+          }}
+        />
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <EditNodeNameModal
