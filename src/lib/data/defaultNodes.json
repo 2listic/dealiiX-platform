@@ -45,6 +45,54 @@
     "outputs": [2],
     "type": "GridOut::write_vtk<2>"
   },
+  "PoissonSolver<2, 2>": {
+    "arguments": [
+      {
+        "connection_type": "input",
+        "name": "triangulation",
+        "type": "dealii::Triangulation<2, 2>"
+      },
+      {
+        "connection_type": "input",
+        "name": "fe",
+        "type": "dealii::FiniteElement<2, 2>"
+      },
+      {
+        "connection_type": "input",
+        "name": "output_file_name",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "rhs_function_expression",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "dirichlet_boundary_ids",
+        "type": "std::set<unsigned int>"
+      },
+      {
+        "connection_type": "input",
+        "name": "dirichlet_function_expression",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "neumann_boundary_ids",
+        "type": "std::set<unsigned int>"
+      },
+      {
+        "connection_type": "input",
+        "name": "neumann_function_expression",
+        "type": "std::string"
+      }
+    ],
+    "inputs": [0, 1, 2, 3, 4, 5, 6, 7],
+    "node_type": "constructor",
+    "outputs": [-1],
+    "type": "PoissonSolver<2, 2>"
+  },
   "Triangulation<2>::refine_global": {
     "arguments": [
       {
@@ -63,6 +111,7 @@
     "outputs": [0],
     "type": "Triangulation<2>::refine_global"
   },
+  "__backend_name": "dealii",
   "bool": {
     "arguments": [],
     "inputs": [],
@@ -70,6 +119,14 @@
     "outputs": [-1],
     "type": "bool",
     "value": "false"
+  },
+  "coral::Network": {
+    "arguments": [],
+    "inputs": [],
+    "node_type": "network",
+    "outputs": [],
+    "type": "coral::Network",
+    "value": {}
   },
   "dealii::DoFHandler<2, 2>": {
     "arguments": [
@@ -83,6 +140,28 @@
     "node_type": "constructor",
     "outputs": [-1],
     "type": "dealii::DoFHandler<2, 2>"
+  },
+  "dealii::FE_Q<2, 2>": {
+    "arguments": [
+      {
+        "connection_type": "input",
+        "name": "fe_degree",
+        "type": "unsigned int"
+      }
+    ],
+    "base": "dealii::FiniteElement<2, 2>",
+    "inputs": [0],
+    "node_type": "constructor",
+    "outputs": [-1],
+    "type": "dealii::FE_Q<2, 2>"
+  },
+  "dealii::FiniteElement<2, 2>": {
+    "arguments": [],
+    "derived": ["dealii::FE_Q<2, 2>"],
+    "inputs": [],
+    "node_type": "abstract",
+    "outputs": [],
+    "type": "dealii::FiniteElement<2, 2>"
   },
   "dealii::GridOut": {
     "arguments": [],
@@ -135,6 +214,14 @@
     "node_type": "abstract",
     "outputs": [],
     "type": "std::ostream"
+  },
+  "std::set<unsigned int>": {
+    "arguments": [],
+    "inputs": [],
+    "node_type": "elementary_constructor",
+    "outputs": [-1],
+    "type": "std::set<unsigned int>",
+    "value": "[]"
   },
   "std::string": {
     "arguments": [],
