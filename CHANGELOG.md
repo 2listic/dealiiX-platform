@@ -6,24 +6,26 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
-- [#122](https://github.com/2listic/dealiiX-platform/pull/82) Update registry and network exaples to the new protocol indtroduced by PR #120
-- [#82](https://github.com/2listic/dealiiX-platform/pull/82) Add instructions to debug Svelte-renderer code in the Electron-Chromium dev tools
-- [#38](https://github.com/2listic/dealiiX-platform/pull/39) Add Git Hub section to the readme file. Update the pull request template.
-- [#42](https://github.com/2listic/dealiiX-platform/pull/42) Add debugging instructions for Electron and Svelte
-- [#17](https://github.com/2listic/dealiiX-platform/pull/17) Create readme with install, run and packaging instructions
+- [#151](https://github.com/2listic/dealiiX-platform/pull/151) Updated registry and network exaples to include Step 4 Poisson solver example.
+- [#122](https://github.com/2listic/dealiiX-platform/pull/82) Updated registry and network exaples to the new protocol indtroduced by PR #120.
+- [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added instructions to debug Svelte-renderer code in the Electron-Chromium dev tools.
+- [#38](https://github.com/2listic/dealiiX-platform/pull/39) Added Git Hub section to the readme file. Update the pull request template.
+- [#42](https://github.com/2listic/dealiiX-platform/pull/42) Added debugging instructions for Electron and Svelte.
+- [#17](https://github.com/2listic/dealiiX-platform/pull/17) Created readme with install, run and packaging instructions.
 
 ### Canvas-graph
 
+- [#151](https://github.com/2listic/dealiiX-platform/pull/151) Bug fix over validation of new connections between nodes.
 - [#143](https://github.com/2listic/dealiiX-platform/pull/143) Network node `value` (sub-graph) is stripped from canvas data and restored during export. `createNewNetworkNode` now takes snapshot arrays as parameters. Stronger typing for network nodes with dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types. Added `getNodesSnapshot()` / `getEdgesSnapshot()` helpers. Added `isNumericType()` utility and `NUMERIC_TYPES` constant.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added button to create a network node from the current graph. Added support for new network nodes during the loading and the exporting of a graph. Added feature to validate all the connection types of every input-output linked by an edge in a graph.
-- [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fix connection validation after deleting an edge. Added caching for is_valid.
-- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Add missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
-- [#59](https://github.com/2listic/dealiiX-platform/pull/59) Add button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
+- [#99](https://github.com/2listic/dealiiX-platform/pull/99) Fixed connection validation after deleting an edge. Added caching for is_valid.
+- [#67](https://github.com/2listic/dealiiX-platform/pull/67) Added missing nodes for the complete MWE. Added validation for nodes derived from abstract classes. Drag and drop state simplified.
+- [#59](https://github.com/2listic/dealiiX-platform/pull/59) Added button to import graph from previously exported JSON file or from a JSON file adhering to the protocol.
 - [#52](https://github.com/2listic/dealiiX-platform/pull/52) Nodes are removable by clicking on a dedicated button
 - [#29](https://github.com/2listic/dealiiX-platform/pull/29) Added new nodes: std string, gridGenerator generate_from_name_and_arguments function, gridOut constructor, write_vtk method and bool. Nodes are rendered now more dynamically with a declarative approach based on the type of the node and the corresponding information provided in the uploaded JSON file.
 - [#27](https://github.com/2listic/dealiiX-platform/pull/27) Added first new real Deal.II nodes: Unsigned, Triangulation<2,2> and Triangulation<2>::refine_global. Also included validation for new connections, validation for Unsigned internal values, drag&drop functionality and includes a bug fix on node id generation.
-- [#22](https://github.com/2listic/dealiiX-platform/pull/22) Add type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
-- Initial nodes and edges with string concatenation
+- [#22](https://github.com/2listic/dealiiX-platform/pull/22) Added type validation for new connections. Prevent multiple connections entering the same input handle. Added a simple cache system to reduce computation for connections already checked.
+- Initial nodes and edges with string concatenation.
 
 ### UI/UX
 
@@ -32,7 +34,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#138](https://github.com/2listic/dealiiX-platform/pull/138) Added button in the jobs table to read content of corresponding .out file. New library ansiUp is used to transform color ASCII codes into HTML tags.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added section in the sidebar to display and drag the network nodes in the canvas.
 - [#118](https://github.com/2listic/dealiiX-platform/pull/120) Added button to download the current graph locally.
-- [#113](https://github.com/2listic/dealiiX-platform/pull/120) Display logged-in user's username
+- [#113](https://github.com/2listic/dealiiX-platform/pull/120) Display logged-in user's username.
 - [#120](https://github.com/2listic/dealiiX-platform/pull/120) Added functionality for editing the displayed node's name.
 - [#116](https://github.com/2listic/dealiiX-platform/pull/116) Input argument names are now displayed for clarity, along with the output types. Handlers are now larger and easier to interact with.
 - [#114](https://github.com/2listic/dealiiX-platform/pull/114) Added reusable confirmation modal to user logout and project deletion.
@@ -60,9 +62,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Jobs state is now persistent across sessions. Added new persistent store to track internal job Ids with scheduler job Ids.
 - [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
 - [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
-- Electron setup with IPC communication
-- SSH command execution via password and private key
-- SSH file writing via private key
+- Electron setup with IPC communication.
+- SSH command execution via password and private key.
+- SSH file writing via private key.
 
 ### Remote-Server
 
@@ -71,7 +73,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Protocol
 
-- [#146](https://github.com/2listic/dealiiX-platform/issues/146) Validate registry JSON during import: filter out non-compliant nodes. Exclude `abstract` and `network` node types from the sidebar available nodes list.
+- [#146](https://github.com/2listic/dealiiX-platform/issues/146) Validated registry JSON during import: filter out non-compliant nodes. Excluded `abstract` and `network` node types from the sidebar available nodes list.
 - [#143](https://github.com/2listic/dealiiX-platform/pull/143) Added `qualified_id` to all nodes during export/save/download, encoding nesting hierarchy (e.g., `"12_3"`). Removed on import. Added `parseGraphWithQualifiedIds()`, `addQualifiedIds()` and `removeQualifiedIds()`. Fixed removal of duplicate fields in standard nodes during export/save/download.
 - [#141](https://github.com/2listic/dealiiX-platform/pull/141) Network nodes have the corresponding sub-graph saved in 'value' field as regular JSON instead of escaped string.
 - [#134](https://github.com/2listic/dealiiX-platform/pull/134) Added support for the new "network node" type.
@@ -85,11 +87,11 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added Coral repo as a sub-dependency
 - [#77](https://github.com/2listic/dealiiX-platform/pull/77) Dependency versions updated in package-lock.json
 - [#67](https://github.com/2listic/dealiiX-platform/pull/67) Nodes are unified in one unique component.
-- [#41](https://github.com/2listic/dealiiX-platform/pull/41) Add Prettier plugin for Svelte
-- [#35](https://github.com/2listic/dealiiX-platform/pull/35) Update icon and title of the .deb distributable
-- [#34](https://github.com/2listic/dealiiX-platform/pull/34) Add Prettier and automatic formatting on commit
+- [#41](https://github.com/2listic/dealiiX-platform/pull/41) Added Prettier plugin for Svelte
+- [#35](https://github.com/2listic/dealiiX-platform/pull/35) Updated icon and title of the .deb distributable
+- [#34](https://github.com/2listic/dealiiX-platform/pull/34) Added Prettier and automatic formatting on commit
 - [#16](https://github.com/2listic/dealiiX-platform/pull/16) gitignore .vscode and .continue folders
-- [#21](https://github.com/2listic/dealiiX-platform/pull/21) added husky to automatically lint on commit
+- [#21](https://github.com/2listic/dealiiX-platform/pull/21) Added husky to automatically lint on commit
 
 ### SSH communication
 
@@ -104,13 +106,14 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Building
 
-- [#12](https://github.com/2listic/dealiiX-platform/pull/12) Add electron-forge
-- [#4](https://github.com/2listic/dealiiX-platform/pull/4) Add .deb distributable for Linux
-- [#14](https://github.com/2listic/dealiiX-platform/pull/14) Add .dmg distributable for macOS
+- [#12](https://github.com/2listic/dealiiX-platform/pull/12) Added electron-forge.
+- [#4](https://github.com/2listic/dealiiX-platform/pull/4) Added .deb distributable for Linux.
+- [#14](https://github.com/2listic/dealiiX-platform/pull/14) Added .dmg distributable for macOS.
 
 ### Submodules
 
-- [#95](https://github.com/2listic/dealiiX-platform/pull/95) Update Coral Visualizer submodule to show carotid vtk file + fix add Coral submodule
+- [#151](https://github.com/2listic/dealiiX-platform/pull/151) Coral submodule updated to include Step 4 Poisson Solver.
+- [#95](https://github.com/2listic/dealiiX-platform/pull/95) Coral Visualizer submodule updated to show carotid vtk file + fix add Coral submodule.
 
 ### Docker
 
