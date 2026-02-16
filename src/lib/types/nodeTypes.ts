@@ -111,7 +111,7 @@ export type NodeData = {
   derived?: string[]
   base?: string
   method_name?: string
-  value?: string
+  value?: any
   is_valid?: boolean
 }
 

@@ -111,7 +111,6 @@
     "outputs": [0],
     "type": "Triangulation<2>::refine_global"
   },
-  "__backend_name": "dealii",
   "bool": {
     "arguments": [],
     "inputs": [],
