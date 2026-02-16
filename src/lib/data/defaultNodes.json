@@ -45,6 +45,19 @@
     "outputs": [2],
     "type": "GridOut::write_vtk<2>"
   },
+  "PoissonSolver::solve<2>": {
+    "arguments": [
+      {
+        "connection_type": "pass_through",
+        "name": "poisson_solver",
+        "type": "PoissonSolver<2, 2>"
+      }
+    ],
+    "inputs": [0],
+    "node_type": "void_method",
+    "outputs": [0],
+    "type": "PoissonSolver::solve<2>"
+  },
   "PoissonSolver<2, 2>": {
     "arguments": [
       {
