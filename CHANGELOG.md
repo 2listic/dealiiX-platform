@@ -112,7 +112,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
-- [#151](https://github.com/2listic/dealiiX-platform/pull/151) Coral submodule updated to include Step 4 Poisson Solver. Coral-Visualizer submodule updated to support .vtu files.
+- [#151](https://github.com/2listic/dealiiX-platform/pull/151) Coral submodule updated to include Step 4 Poisson Solver. Coral-Visualizer submodule updated to support .vtu files and show solution field.
 - [#95](https://github.com/2listic/dealiiX-platform/pull/95) Coral Visualizer submodule updated to show carotid vtk file + fix add Coral submodule.
 
 ### Docker
