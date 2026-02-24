@@ -44,7 +44,8 @@ const isValidConnection = (connection) => {
   // If the expected input type is 'any', allow any connection
   const targetNode = nodes.find((node) => node.id === connection.target)
   const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const expectedInputType = targetNode.data.arguments[handleIndexInput].type
+  const targetIndexInput = targetNode.data.inputs[handleIndexInput]
+  const expectedInputType = targetNode.data.arguments[targetIndexInput].type
   if (expectedInputType === Type.ANY) {
     console.log(`Handle ${connection.targetHandle} accepts any type`)
     connectionCache.set(cacheKey, true)
