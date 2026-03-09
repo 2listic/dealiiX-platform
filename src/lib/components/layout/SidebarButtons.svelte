@@ -446,8 +446,10 @@
     background: var(--primary-color);
     display: flex;
     flex-direction: column;
+    flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
+    align-content: center;
   }
 
   .button-container {
@@ -480,5 +482,7 @@
     text-align: center;
     font-weight: bold;
     line-height: 1.2;
+    max-width: 70px;
+    word-wrap: break-word;
   }
 </style>
