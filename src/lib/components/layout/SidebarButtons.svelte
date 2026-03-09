@@ -442,6 +442,7 @@
 
 <style>
   aside {
+    --btn-size: clamp(36px, 5.5vh, 50px);
     height: 100vh;
     background: var(--primary-color);
     display: flex;
@@ -463,8 +464,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 50px;
-    height: 50px;
+    width: var(--btn-size);
+    height: var(--btn-size);
     background-color: var(--background-color-secondary);
     border: 1px solid grey;
     border-radius: 10px;
@@ -482,7 +483,7 @@
     text-align: center;
     font-weight: bold;
     line-height: 1.2;
-    max-width: 70px;
+    max-width: calc(var(--btn-size) + 15px);
     word-wrap: break-word;
   }
 </style>
