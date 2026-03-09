@@ -55,7 +55,10 @@
   onmouseenter={() => (isMouseOver = true)}
   onmouseleave={() => (isMouseOver = false)}
 >
-  <div class="nodes-container">
+  <div
+    class="nodes-container"
+    style:overflow-y={showNodeNames ? 'auto' : 'hidden'}
+  >
     {#if availableNodes}
       {#each availableNodes as Array<NodeData> as node (node)}
         {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
@@ -109,17 +112,20 @@
 <style>
   aside {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: var(--background-color-secondary);
     font-size: 1rem;
   }
 
   .nodes-container {
     display: flex;
+    flex: 1;
+    min-height: 0;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     padding-top: 10em;
-    overflow-y: auto; /* Vertical scrollbar only when overflowing */
     overflow-x: hidden;
     gap: 1rem;
     padding: 3.5rem 1rem 2rem 1rem;
