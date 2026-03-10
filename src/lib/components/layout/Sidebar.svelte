@@ -129,6 +129,7 @@
     overflow-x: hidden;
     gap: 1rem;
     padding: 3.5rem 1rem 2rem 1rem;
+    scrollbar-width: thin;
   }
 
   .separator {
