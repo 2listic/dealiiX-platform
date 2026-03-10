@@ -20,7 +20,6 @@
   import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
-  import ImportIcon from '../icons/ImportIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
@@ -34,6 +33,8 @@
   import ConfirmationModal from './ConfirmationModal.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
+  import SidebarGroupButton from './SidebarGroupButton.svelte'
+  import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -49,8 +50,9 @@
   const loginTitle = $derived.by(() => {
     return token ? 'logout' : 'Login'
   })
-  let importGraphFiles: FileList | null = $state()
-  let importNodesFiles: FileList | null = $state()
+
+  let importGraphInput: HTMLInputElement | undefined = $state()
+  let importNodesInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = () => {
     if (token) {
@@ -81,11 +83,12 @@
    * Loads a graph from a file removing the edges that have type mismatches
    */
   const loadGraphFromFile = async () => {
-    if (importGraphFiles == null || importGraphFiles.length == 0) {
+    const files = importGraphInput?.files
+    if (files == null || files.length == 0) {
       return
     }
     try {
-      const importedGraphAsText = await readFileAsText(importGraphFiles[0])
+      const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const [validEdges, invalidEdges] = validateGraphData(importedGraph)
       if (invalidEdges.length > 0) {
@@ -124,10 +127,11 @@
   }
 
   const onFileChangeLoadNodes = async () => {
-    if (importNodesFiles == null || importNodesFiles.length == 0) {
+    const files = importNodesInput?.files
+    if (files == null || files.length == 0) {
       return
     }
-    const importedNodesAsText = await readFileAsText(importNodesFiles[0])
+    const importedNodesAsText = await readFileAsText(files[0])
     const importedNodes = JSON.parse(importedNodesAsText)
     const skippedKeys = await setRegistry(importedNodes)
     skippedKeys.forEach((key) => {
@@ -139,18 +143,13 @@
     toastState.add({ message: 'New nodes were loaded' })
   }
 
-  const readFileAsText = (file) =>
+  const readFileAsText = (file: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result as string)
       reader.onerror = reject
       reader.readAsText(file)
     })
-
-  // TODO: remove this check. This is just for debugging purposes
-  // $effect(() => {
-  //   console.log('auth.token', auth.token)
-  // })
 
   const handleOpenVisualizer = () => {
     const url = settingsState.getKey(URL_VISUALIZER)
@@ -229,6 +228,7 @@
 </script>
 
 <aside>
+  <!-- Login (standalone) -->
   <div class="button-container">
     <label for="login-button" class="element-label" title={loginTitle}>
       <LoginIcon width="30px" height="30px" />
@@ -256,12 +256,9 @@
     onConfirm={handleOncofirmLogout}
   />
 
-  <div class="button-container">
-    <label
-      for="save-project-button"
-      class="element-label"
-      title="Save project to Remote"
-    >
+  <!-- Project group -->
+  <SidebarGroupButton title="Project">
+    {#snippet icon()}
       <svg
         fill="var(--ternary-color)"
         width="30px"
@@ -274,50 +271,31 @@
           d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
         ></path>
       </svg>
-    </label>
-    <button
-      id="save-project-button"
-      onclick={handleSaveProject}
-      style="display: none"
-      aria-label="Save project"
-    ></button>
-    <span class="button-text">Save</span>
-  </div>
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Save Project"
+        onclick={handleSaveProject}
+      />
+      <SidebarGroupButtonItem
+        label="Load Projects"
+        onclick={handleLoadProjects}
+      />
+      <SidebarGroupButtonItem
+        label="Download Graph"
+        onclick={handleGraphDownload}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+
   <Modal id={saveProjectModalId} size="sm">
     <SaveProjectForm modalId={saveProjectModalId} />
   </Modal>
-
-  <div class="button-container">
-    <label
-      for="load-projects-button"
-      class="element-label"
-      title="Load a project from Remote"
-    >
-      <svg
-        fill="var(--ternary-color)"
-        width="30px"
-        height="30px"
-        viewBox="0 0 32 32"
-        version="1.1"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M23.845 8.125c-1.395-3.701-4.392-6.045-8.92-6.045-5.762 0-9.793 4.279-10.14 9.861-2.779 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h0.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-0.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.515 1.763-4.783 3.974-5.163l0.907-0.156-0.081-0.917-0.008-0.011c0-4.871 3.206-8.545 8.162-8.545 3.972 0 6.204 1.957 7.236 5.295l0.213 0.688 0.721 0.015c3.715 0.078 6.971 3.092 6.971 6.837 0 3.408-2.259 7.206-5.679 7.206h-0.285c-0.552 0-1 0.448-1 1s0.448 1 1 1v-0.003c5-0.132 7.883-4.909 7.883-9.203-0.001-4.617-3.619-8.304-8.141-8.791zM20.198 24.233c-0.279-0.292-0.731-0.292-1.010-0l-2.2 2.427v-10.067c0-0.552-0.448-1-1-1s-1 0.448-1 1v10.076l-2.128-2.373c-0.28-0.292-0.732-0.355-1.011-0.063l-0.252 0.138c-0.28 0.293-0.28 0.765 0 1.057l3.61 3.992c0.005 0.005 0.006 0.012 0.011 0.017l0.253 0.265c0.14 0.146 0.324 0.219 0.509 0.218 0.183 0.001 0.368-0.072 0.507-0.218l0.253-0.265c0.005-0.005 0.008-0.011 0.012-0.017l3.701-4.055c0.279-0.292 0.279-0.639 0-0.932z"
-        ></path>
-      </svg>
-    </label>
-    <button
-      id="load-projects-button"
-      onclick={handleLoadProjects}
-      style="display: none"
-      aria-label="Load projects"
-    ></button>
-    <span class="button-text">Projects</span>
-  </div>
   <Modal id={projectsModalId}>
     <ProjectsList modalId={projectsModalId} />
   </Modal>
 
+  <!-- Execute Graph (standalone) -->
   <div class="button-container">
     <label
       for="execute-graph-button"
@@ -332,8 +310,10 @@
       style="display: none"
       aria-label="Execute graph"
     ></button>
-    <span class="button-text">Eval. Graph</span>
+    <span class="button-text">Execute</span>
   </div>
+
+  <!-- VTK Visualizer (standalone) -->
   <div class="button-container">
     <label
       for="vtk-visualizer-button"
@@ -348,81 +328,49 @@
       style="display: none"
       aria-label="Open VTK Visualizer"
     ></button>
-    <span class="button-text">VTK Visualiz.</span>
-  </div>
-  <div class="button-container">
-    <label
-      for="import-graph-input"
-      class="element-label"
-      title="Import grpah from JSON file"
-    >
-      <UploadIcon width="30px" height="30px" />
-    </label>
-    <input
-      id="import-graph-input"
-      type="file"
-      onchange={loadGraphFromFile}
-      accept=".json"
-      bind:files={importGraphFiles}
-      style="display: none"
-    />
-    <span class="button-text">Import Graph</span>
-  </div>
-  <div class="button-container">
-    <label
-      for="import-nodes-input"
-      class="element-label"
-      title="Import nodes from JSON file"
-    >
-      <UploadIcon width="30px" height="30px" />
-    </label>
-    <input
-      id="import-nodes-input"
-      type="file"
-      onchange={onFileChangeLoadNodes}
-      accept=".json"
-      bind:files={importNodesFiles}
-      style="display: none"
-    />
-    <span class="button-text">Load Nodes</span>
+    <span class="button-text">Visualiz.</span>
   </div>
 
-  <div class="button-container">
-    <label
-      for="create-networknode"
-      class="element-label"
-      title="Create a new network node from current graph"
-    >
+  <!-- Import group -->
+  <SidebarGroupButton title="Import">
+    {#snippet icon()}
       <UploadIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="create-networknode"
-      onclick={handleCreateNetworkNode}
-      style="display: none"
-      aria-label="Create a new network node from current graph"
-    ></button>
-    <span class="button-text">Create Sub-Graph</span>
-  </div>
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Import Graph"
+        onclick={() => importGraphInput?.click()}
+      />
+      <SidebarGroupButtonItem
+        label="Import Nodes"
+        onclick={() => importNodesInput?.click()}
+      />
+      <SidebarGroupButtonItem
+        label="Create Sub-Graph"
+        onclick={handleCreateNetworkNode}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+
+  <!-- Hidden file inputs -->
+  <input
+    bind:this={importGraphInput}
+    type="file"
+    onchange={loadGraphFromFile}
+    accept=".json"
+    style="display: none"
+  />
+  <input
+    bind:this={importNodesInput}
+    type="file"
+    onchange={onFileChangeLoadNodes}
+    accept=".json"
+    style="display: none"
+  />
 
   <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />
 
-  <div class="button-container">
-    <label
-      for="download-graph-locally"
-      class="element-label"
-      title="Import nodes from JSON file"
-    >
-      <ImportIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="download-graph-locally"
-      onclick={handleGraphDownload}
-      style="display: none"
-      aria-label="Download graph locally"
-    ></button>
-    <span class="button-text">Download Graph</span>
-  </div>
-
+  <!-- Settings (standalone) -->
   <div class="button-container">
     <label for="settings-button" class="element-label" title="Settings">
       <SettingsIcon width="30px" height="30px" />
