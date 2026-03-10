@@ -59,27 +59,12 @@
     class="nodes-container"
     style:overflow-y={showNodeNames ? 'auto' : 'hidden'}
   >
-    {#if availableNodes}
-      {#each availableNodes as Array<NodeData> as node (node)}
-        {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            style="--borderColor: {returnNodeColor(node.node_type)}"
-            class="node"
-            ondragstart={(event) => onDragStart(event, node)}
-            draggable={true}
-          >
-            {#if showNodeNames}
-              <span transition:fade|global={{ duration: 250 }}>
-                {returnNodeName(node)}
-              </span>
-            {/if}
-          </div>
-        {/if}
-      {/each}
-    {/if}
-    {#if storedNetworkNodes}
-      <div class="separator"></div>
+    {#if storedNetworkNodes && storedNetworkNodes.length > 0}
+      {#if showNodeNames}
+        <span class="section-label" transition:fade|global={{ duration: 250 }}
+          >Network Nodes</span
+        >
+      {/if}
       {#each storedNetworkNodes as Array<NetworkNodeOfTypeNetwork> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -104,6 +89,31 @@
             </svg>
           {/if}
         </div>
+      {/each}
+      <div class="separator"></div>
+    {/if}
+    {#if availableNodes}
+      {#if showNodeNames}
+        <span class="section-label" transition:fade|global={{ duration: 250 }}
+          >Registry Nodes</span
+        >
+      {/if}
+      {#each availableNodes as Array<NodeData> as node (node)}
+        {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style="--borderColor: {returnNodeColor(node.node_type)}"
+            class="node"
+            ondragstart={(event) => onDragStart(event, node)}
+            draggable={true}
+          >
+            {#if showNodeNames}
+              <span transition:fade|global={{ duration: 250 }}>
+                {returnNodeName(node)}
+              </span>
+            {/if}
+          </div>
+        {/if}
       {/each}
     {/if}
   </div>
@@ -130,6 +140,15 @@
     gap: 1rem;
     padding: 3.5rem 1rem 2rem 1rem;
     scrollbar-width: thin;
+  }
+
+  .section-label {
+    width: 100%;
+    /* font-size: 0.7rem; */
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-color-secondary, #888);
+    text-align: left;
   }
 
   .separator {
