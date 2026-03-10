@@ -29,6 +29,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#152](https://github.com/2listic/dealiiX-platform/pull/152) Fixed sidebar overflow when too many nodes or buttons exceed the window height (wraps to two columns). Grouped related sidebar buttons into dropdown components.
 - [#147](https://github.com/2listic/dealiiX-platform/pull/147) Simplified elementary constructor input field rendering logic. Added fallback text input for all elementary constructor types.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added button in the jobs table that opens a modal with the execution status for every node in the corresponding job.
 - [#138](https://github.com/2listic/dealiiX-platform/pull/138) Added button in the jobs table to read content of corresponding .out file. New library ansiUp is used to transform color ASCII codes into HTML tags.
