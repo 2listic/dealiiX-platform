@@ -23,6 +23,15 @@
   const availableNodes = $derived(getAvailableNodes())
   const storedNetworkNodes = $derived(getStoredNetworkNodes())
 
+  let searchQuery = $state('')
+  const filteredAvailableNodes = $derived(
+    availableNodes?.filter(
+      (node) =>
+        !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
+        node.type.toLowerCase().includes(searchQuery.toLowerCase())
+    ) ?? []
+  )
+
   const onDragStart = (
     event: DragEvent,
     node: NodeData | NetworkNodeOfTypeNetwork
@@ -97,23 +106,28 @@
         <span class="section-label" transition:fade|global={{ duration: 250 }}
           >Registry Nodes</span
         >
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Filter by type..."
+          bind:value={searchQuery}
+          transition:fade|global={{ duration: 250 }}
+        />
       {/if}
-      {#each availableNodes as Array<NodeData> as node (node)}
-        {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            style="--borderColor: {returnNodeColor(node.node_type)}"
-            class="node"
-            ondragstart={(event) => onDragStart(event, node)}
-            draggable={true}
-          >
-            {#if showNodeNames}
-              <span transition:fade|global={{ duration: 250 }}>
-                {returnNodeName(node)}
-              </span>
-            {/if}
-          </div>
-        {/if}
+      {#each filteredAvailableNodes as Array<NodeData> as node (node)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          style="--borderColor: {returnNodeColor(node.node_type)}"
+          class="node"
+          ondragstart={(event) => onDragStart(event, node)}
+          draggable={true}
+        >
+          {#if showNodeNames}
+            <span transition:fade|global={{ duration: 250 }}>
+              {returnNodeName(node)}
+            </span>
+          {/if}
+        </div>
       {/each}
     {/if}
   </div>
@@ -135,6 +149,7 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    align-content: flex-start;
     padding-top: 10em;
     overflow-x: hidden;
     gap: 1rem;
@@ -144,11 +159,24 @@
 
   .section-label {
     width: 100%;
-    /* font-size: 0.7rem; */
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--text-color-secondary, #888);
     text-align: left;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 4px;
+    background: var(--background-color-secondary);
+    color: var(--ternary-color);
+    font-size: inherit;
+    outline: none;
+  }
+
+  .search-input:focus {
+    border-color: var(--border-color-hover);
   }
 
   .separator {
