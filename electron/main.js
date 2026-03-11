@@ -3,7 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import {
-  connectAndUploadGraph,
+  uploadFileViaSftp,
   connectToSSHWithKey,
   connectToSSHWithPassword,
 } from './utils/sshConnections.js'
@@ -65,16 +65,13 @@ ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   return await connectToSSHWithKey(command, pathToSsh)
 })
 
-ipcMain.handle('export-graph-ssh', async (event, { graph }) => {
+ipcMain.handle('upload-file-ssh', async (event, { content, remotePath }) => {
   const settings = store.get('settings', {})
   const pathToSsh = settings.sshPathKey
   if (!pathToSsh) {
     throw new Error('SSH key path not configured in settings')
   }
-  const jsonGraph = JSON.stringify(graph)
-  console.log('exported graph', jsonGraph)
-  const remotePath = '/app/shared-data/graph.json'
-  return await connectAndUploadGraph(jsonGraph, remotePath, pathToSsh)
+  return await uploadFileViaSftp(content, remotePath, pathToSsh)
 })
 
 ipcMain.handle('open-external-url', async (event, url) => {

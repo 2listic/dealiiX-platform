@@ -86,23 +86,23 @@ function connectToSSHWithKey(command, pathToSsh) {
   })
 }
 
-function connectAndUploadGraph(jsonGraph, remotePath, pathToSsh) {
+function uploadFileViaSftp(content, remotePath, pathToSsh) {
   return new Promise((resolve, reject) => {
-    console.log('connectAndUploadGraph called')
+    console.log('uploadFileViaSftp called')
     const conn = new Client()
     conn
       .on('ready', () => {
         console.log('SSH Connection with key established')
         conn.sftp((err, sftp) => {
           if (err) return reject(err)
-          sftp.writeFile(remotePath, jsonGraph, (err) => {
+          sftp.writeFile(remotePath, content, (err) => {
             if (err) {
               conn.end()
               return reject(err)
             }
             console.log('File uploaded successfully')
             conn.end()
-            resolve(`Graph uploaded to: ${remotePath}`)
+            resolve(`File uploaded to: ${remotePath}`)
           })
         })
       })
@@ -120,4 +120,4 @@ function connectAndUploadGraph(jsonGraph, remotePath, pathToSsh) {
   })
 }
 
-export { connectToSSHWithPassword, connectToSSHWithKey, connectAndUploadGraph }
+export { connectToSSHWithPassword, connectToSSHWithKey, uploadFileViaSftp }

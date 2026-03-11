@@ -58,19 +58,31 @@ export const exportAndEvalGraph = async (
   const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
 
   // export graph
-  const resultExport = await window.electron.invoke('export-graph-ssh', {
-    graph: parsedGraph,
+  const resultExport = await window.electron.invoke('upload-file-ssh', {
+    content: JSON.stringify(parsedGraph),
+    remotePath: '/app/shared-data/graph.json',
   })
   console.log('SSH Connection Result:', resultExport)
 
   // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
   const internalJobId = jobIdMapState.getNextKey()
 
-  // execute graph
-  // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
+  // generate and upload batch script
+  const scriptContent = `#!/bin/bash
+#SBATCH --chdir=/app/shared-data
+#SBATCH --output=/app/shared-data/slurm-%j.out
+#SBATCH --job-name=coral-${internalJobId}
+
+/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}
+`
+  await window.electron.invoke('upload-file-ssh', {
+    content: scriptContent,
+    remotePath: '/app/shared-data/job.sh',
+  })
+
+  // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: sbatchCommand,
+    command: 'sbatch /app/shared-data/job.sh',
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
