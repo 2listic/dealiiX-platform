@@ -5,6 +5,10 @@ import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 import { JobStatus } from '../types/executionStatus'
+// The `?raw` Vite suffix imports the file contents as a plain string at build time.
+// It works identically in dev, built app, and packaged Electron binaries.
+// Docs: https://vite.dev/guide/assets#importing-asset-as-string
+import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -67,14 +71,14 @@ export const exportAndEvalGraph = async (
   // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
   const internalJobId = jobIdMapState.getNextKey()
 
-  // generate and upload batch script
-  const scriptContent = `#!/bin/bash
-#SBATCH --chdir=/app/shared-data
-#SBATCH --output=/app/shared-data/slurm-%j.out
-#SBATCH --job-name=coral-${internalJobId}
-
-/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}
-`
+  // generate batch script from stored template (or default)
+  const template =
+    (await window.electron.store.get('sbatch_template')) ??
+    defaultSbatchTemplate
+  const scriptContent = template.replaceAll(
+    '{{INTERNAL_JOB_ID}}',
+    String(internalJobId)
+  )
   await window.electron.invoke('upload-file-ssh', {
     content: scriptContent,
     remotePath: '/app/shared-data/job.sh',
