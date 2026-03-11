@@ -226,7 +226,7 @@ export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
   // define the command to list the files in the touch-dir
-  const command = `ls -tr /app/shared-data/${jobIdInternal}`
+  const command = `ls -tr /app/shared-data/nodes-exec-status/${jobIdInternal}`
 
   // get the raw output string with lines in format "nodeId.status"
   const output = await window.electron.invoke('execute-ssh-with-key', {
