@@ -67,10 +67,10 @@ The app uses [electron-store](https://github.com/sindresorhus/electron-store) to
 
 ```js
 // Get a value
-await window.electron.store.get('sbatch_template')
+await window.electron.store.get('jobIdMap')
 
 // Remove a value
-await window.electron.store.remove('sbatch_template')
+await window.electron.store.remove('jobIdMap')
 ```
 
 Available keys are defined in [electron/utils/storage.js](electron/utils/storage.js).

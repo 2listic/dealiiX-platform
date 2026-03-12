@@ -9,6 +9,8 @@ import { JobStatus } from '../types/executionStatus'
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
 import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
+import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
+import { settingsState, USE_MPI } from '../stores/settingsStore.svelte'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -71,10 +73,9 @@ export const exportAndEvalGraph = async (
   // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
   const internalJobId = jobIdMapState.getNextKey()
 
-  // generate batch script from stored template (or default)
-  const template =
-    (await window.electron.store.get('sbatch_template')) ??
-    defaultSbatchTemplate
+  // generate batch script based on MPI setting
+  const useMpi = settingsState.getKey(USE_MPI) ?? false
+  const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
   const scriptContent = template.replaceAll(
     '{{INTERNAL_JOB_ID}}',
     String(internalJobId)
