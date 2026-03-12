@@ -48,10 +48,7 @@ export default defineConfig([
       // Allow underscore-prefixed names to be declared but unused.
       // This is needed for callback parameter names in TypeScript interface definitions,
       // See: https://eslint.org/docs/latest/rules/no-unused-vars#argsignorepattern
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' },
-      ],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ])
