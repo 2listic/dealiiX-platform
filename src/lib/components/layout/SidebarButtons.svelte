@@ -11,7 +11,11 @@
     removeQualifiedIds,
     validateGraphData,
   } from '../../utils/graphParser'
-  import { exportAndEvalGraph, openNewWindow, type MpiConfig } from '../../utils/sshMessages'
+  import {
+    exportAndEvalGraph,
+    openNewWindow,
+    type MpiConfig,
+  } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -85,7 +89,11 @@
 
   const executeGraph = async (mpiConfig?: MpiConfig) => {
     try {
-      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot(), mpiConfig)
+      await exportAndEvalGraph(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        mpiConfig
+      )
     } catch (error) {
       console.error('Failed to execute graph:', error)
       toastState.add({

@@ -153,6 +153,11 @@
 </div>
 
 <style>
+  h2 {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
   .inputs-container {
     display: flex;
     flex-direction: column;

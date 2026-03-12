@@ -28,8 +28,8 @@
 <Modal id={modalId} size="sm">
   <div class="mpi-config">
     <h2>MPI Configuration</h2>
-    <div class="fields">
-      <div class="field">
+    <div class="inputs-container">
+      <div class="input-container">
         <label for="mpi-nodes">Nodes</label>
         <input
           id="mpi-nodes"
@@ -39,7 +39,7 @@
           class="input-field"
         />
       </div>
-      <div class="field">
+      <div class="input-container">
         <label for="mpi-tasks-per-node">Tasks per node</label>
         <input
           id="mpi-tasks-per-node"
@@ -49,12 +49,12 @@
           class="input-field"
         />
       </div>
-      <div class="field total">
-        <span>Total MPI processes</span>
+      <div class="input-container total">
+        <span class="total-label">Total</span>
         <span class="total-value">{totalProcesses}</span>
       </div>
     </div>
-    <div class="actions">
+    <div class="button-container">
       <Button size="small" onclick={handleCancel}>Cancel</Button>
       <Button variant="action" size="small" onclick={handleConfirm}>
         Execute
@@ -73,47 +73,48 @@
     text-align: center;
   }
 
-  .fields {
+  .inputs-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2vh;
+    padding: 2vh 0;
+  }
+
+  .input-container {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1vh;
+    flex: 1;
+    min-width: 0;
   }
 
-  .field {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .field label,
-  .field span {
+  .input-container label,
+  .total-label {
     font-weight: bold;
   }
 
   .input-field {
+    padding: 1vh;
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
-    padding: 0.5rem;
     font-size: 1rem;
-    background-color: var(--secondary-color);
-    width: 80px;
-    text-align: center;
+    background: var(--secondary-color);
   }
 
   .total {
-    border-top: 1px solid var(--ternary-color);
-    padding-top: 1rem;
+    border-left: 1px solid var(--ternary-color);
+    padding-left: 2vh;
+    flex: 0 0 auto;
   }
 
   .total-value {
     font-size: 1.1rem;
+    font-weight: bold;
     color: var(--button-action-bg);
-    min-width: 80px;
-    text-align: center;
+    padding: 1vh 0;
   }
 
-  .actions {
+  .button-container {
     display: flex;
     justify-content: center;
     gap: 1rem;
