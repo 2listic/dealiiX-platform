@@ -47,18 +47,25 @@ export const executeWithKey = async (): Promise<void> => {
   toastState.add({ message: 'Command was sent' })
 }
 
+export type MpiConfig = {
+  nodes: number
+  tasksPerNode: number
+}
+
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
  * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
+ * @param {MpiConfig} [mpiConfig] - Optional MPI configuration for template placeholders
  * @returns {Promise<void>} Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],
-  edges: Edge[]
+  edges: Edge[],
+  mpiConfig?: MpiConfig
 ): Promise<void> => {
   // parse graph
   const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
@@ -76,10 +83,16 @@ export const exportAndEvalGraph = async (
   // generate batch script based on MPI setting
   const useMpi = settingsState.getKey(USE_MPI) ?? false
   const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
-  const scriptContent = template.replaceAll(
+  let scriptContent = template.replaceAll(
     '{{INTERNAL_JOB_ID}}',
     String(internalJobId)
   )
+  if (useMpi) {
+    // fall back to default values (i.e. 1 nodes) if mpiConfig was not provided
+    scriptContent = scriptContent
+      .replaceAll('{{NODES}}', String(mpiConfig?.nodes ?? 1))
+      .replaceAll('{{NTASKS_PER_NODE}}', String(mpiConfig?.tasksPerNode ?? 4))
+  }
   await window.electron.invoke('upload-file-ssh', {
     content: scriptContent,
     remotePath: '/app/shared-data/job.sh',

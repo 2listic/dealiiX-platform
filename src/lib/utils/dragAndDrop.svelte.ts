@@ -15,8 +15,8 @@ export const onDragOver = (event: DragEvent) => {
 
 export const onDrop = (
   event: DragEvent,
-  // eslint-disable-next-line no-unused-vars
-  screenToFlowPosition: (XYPosition: XYPosition) => XYPosition,
+  // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
+  screenToFlowPosition: (_XYPosition: XYPosition) => XYPosition,
   draggedNodeData: NodeData | NetworkNodeOfTypeNetwork | null
 ) => {
   event.preventDefault()

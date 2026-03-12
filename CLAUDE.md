@@ -43,7 +43,7 @@ Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
 - `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types.
 - `auth.svelte.js` - JWT token for coral-remote-server API
-- `settingsStore.svelte.js` - User settings (SSH key path, visualizer URL)
+- `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
 - `currentProjectStore.svelte.js` - Current project metadata
 - `jobsStore.svelte.js` - Slurm job tracking
 
@@ -225,6 +225,7 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`
 - **Pre-commit hooks**: Husky runs `npm run lint` then Prettier; lint failures abort commit
 - **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token
+- **Slurm batch templates**: Two templates in `src/lib/templates/` — `sbatch.template.sh` (non-MPI) and `sbatch-mpi.template.sh` (MPI via `mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1}`). Imported at build time via Vite's `?raw` suffix. `sshMessages.ts` selects between them based on the `USE_MPI` setting. The MPI template additionally exposes `{{NODES}}` and `{{NTASKS_PER_NODE}}` placeholders filled at runtime from `MpiConfig` (defaults: 1 node, 4 tasks/node). When MPI is enabled, clicking Execute opens `MpiConfigModal.svelte` to let the user configure these values before submission.
 
 ## Git Workflow
 

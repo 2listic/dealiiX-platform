@@ -11,7 +11,7 @@
     removeQualifiedIds,
     validateGraphData,
   } from '../../utils/graphParser'
-  import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
+  import { exportAndEvalGraph, openNewWindow, type MpiConfig } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -26,6 +26,7 @@
   import {
     settingsState,
     URL_VISUALIZER,
+    USE_MPI,
   } from '../../stores/settingsStore.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
@@ -35,6 +36,7 @@
   import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
+  import MpiConfigModal from '../MpiConfigModal.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -42,6 +44,7 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const createNetworkNodeModalId = 'create-network-node-modal'
+  const mpiConfigModalId = 'mpi-config-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -67,9 +70,22 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  const handleExecution = async () => {
+  const handleExecution = () => {
+    const useMpi = settingsState.getKey(USE_MPI) ?? false
+    if (useMpi) {
+      getModal(mpiConfigModalId)?.open()
+    } else {
+      executeGraph()
+    }
+  }
+
+  const handleMpiConfirm = (config: MpiConfig) => {
+    executeGraph(config)
+  }
+
+  const executeGraph = async (mpiConfig?: MpiConfig) => {
     try {
-      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot())
+      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot(), mpiConfig)
     } catch (error) {
       console.error('Failed to execute graph:', error)
       toastState.add({
@@ -312,6 +328,8 @@
     ></button>
     <span class="button-text">Execute</span>
   </div>
+
+  <MpiConfigModal modalId={mpiConfigModalId} onConfirm={handleMpiConfirm} />
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">

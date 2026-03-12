@@ -34,8 +34,8 @@
 
   interface Props {
     project: Project
-    // eslint-disable-next-line no-unused-vars
-    onDelete: (projectId: number) => void
+    // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
+    onDelete: (_projectId: number) => void
     onLoad: () => void
     onShare: () => void
     onEdit: () => void
