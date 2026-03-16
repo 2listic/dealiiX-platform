@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added documentation to inspect and programmatically empty keys from the Electron-store store.
 - [#151](https://github.com/2listic/dealiiX-platform/pull/151) Updated registry and network exaples to include Step 4 Poisson solver example.
 - [#122](https://github.com/2listic/dealiiX-platform/pull/82) Updated registry and network exaples to the new protocol indtroduced by PR #120.
 - [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added instructions to debug Svelte-renderer code in the Electron-Chromium dev tools.
@@ -29,6 +30,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) New modal to configure MPI execution.
 - [#152](https://github.com/2listic/dealiiX-platform/pull/152) Fixed sidebar overflow when too many nodes or buttons exceed the window height (wraps to two columns). Grouped related sidebar buttons into dropdown components. New input text in the sidebar to filter registry nodes by "type". Moved network nodes before registry nodes in the sidebar. Elementary constructor nodes ordered first among the other registry nodes.
 - [#147](https://github.com/2listic/dealiiX-platform/pull/147) Simplified elementary constructor input field rendering logic. Added fallback text input for all elementary constructor types.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added button in the jobs table that opens a modal with the execution status for every node in the corresponding job.
@@ -60,6 +62,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Execution nodes' status is now saved in a dedicated `nodes-exec-status` directory on the remote server.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Jobs state is now persistent across sessions. Added new persistent store to track internal job Ids with scheduler job Ids.
 - [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
 - [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
@@ -96,6 +99,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added MPI support for Slurm job submission using two default sbatch templates (MPI and non-MPI). The active template is selected by a new switch button in the Settings modal, persisted in the settings store. Parameters are passed to the template from the UI.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added SSH communication to get the execution status of all the nodes in a specific job.
 - [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH communication to retrieve content of file .out for a specific job.
 - [#91](https://github.com/2listic/dealiiX-platform/pull/91) Updated SSH command to run Coral with new CLI
