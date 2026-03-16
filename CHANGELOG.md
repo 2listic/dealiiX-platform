@@ -10,7 +10,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
-- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added documentation to inspect and programmatically empty keys from the Electron-store store.
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added documentation to inspect and programmatically empty keys from the Electron-store store. Added `network-mpi.json` file to test MPI support via plugin.
 - [#151](https://github.com/2listic/dealiiX-platform/pull/151) Updated registry and network exaples to include Step 4 Poisson solver example.
 
 ### Canvas-graph
