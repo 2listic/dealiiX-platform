@@ -39,7 +39,7 @@
 </script>
 
 <Modal id={modalId} size="sm">
-  <div class="mpi-config">
+  <div class="job-config">
     <h2>Job Configuration</h2>
     <div class="inputs-container">
       {#if showMpiFields}
@@ -72,9 +72,9 @@
       {/if}
       <div class="inputs-row">
         <div class="input-container time-limit">
-          <label for="mpi-time-limit">Time limit</label>
+          <label for="job-time-limit">Time limit</label>
           <input
-            id="mpi-time-limit"
+            id="job-time-limit"
             type="text"
             placeholder="e.g. 01:00:00"
             bind:value={timeLimit}
@@ -102,11 +102,11 @@
 </Modal>
 
 <style>
-  .mpi-config {
+  .job-config {
     padding: 1rem;
   }
 
-  .mpi-config h2 {
+  .job-config h2 {
     margin: 0 0 1.5rem 0;
     text-align: center;
   }

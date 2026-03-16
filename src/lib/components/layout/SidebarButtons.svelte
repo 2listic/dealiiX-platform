@@ -41,7 +41,7 @@
   import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
-  import MpiConfigModal from '../MpiConfigModal.svelte'
+  import JobConfigModal from '../JobConfigModal.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -49,7 +49,7 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const createNetworkNodeModalId = 'create-network-node-modal'
-  const mpiConfigModalId = 'mpi-config-modal'
+  const JobConfigModalId = 'job-config-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -76,7 +76,7 @@
   }
 
   const handleExecution = () => {
-    getModal(mpiConfigModalId)?.open()
+    getModal(JobConfigModalId)?.open()
   }
 
   const handleJobConfirm = (config: JobConfig) => {
@@ -331,8 +331,8 @@
     <span class="button-text">Execute</span>
   </div>
 
-  <MpiConfigModal
-    modalId={mpiConfigModalId}
+  <JobConfigModal
+    modalId={JobConfigModalId}
     showMpiFields={settingsState.getKey(USE_MPI) ?? false}
     onConfirm={handleJobConfirm}
   />
