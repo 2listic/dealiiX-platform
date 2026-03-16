@@ -50,6 +50,7 @@ export const executeWithKey = async (): Promise<void> => {
 export type MpiConfig = {
   nodes: number
   tasksPerNode: number
+  timeLimit: string
 }
 
 /**
@@ -88,10 +89,11 @@ export const exportAndEvalGraph = async (
     String(internalJobId)
   )
   if (useMpi) {
-    // fall back to default values (i.e. 1 nodes) if mpiConfig was not provided
+    // fall back to default values if mpiConfig was not provided (i.e. 1 for nodes)
     scriptContent = scriptContent
       .replaceAll('{{NODES}}', String(mpiConfig?.nodes ?? 1))
       .replaceAll('{{NTASKS_PER_NODE}}', String(mpiConfig?.tasksPerNode ?? 4))
+      .replaceAll('{{TIME_LIMIT}}', mpiConfig?.timeLimit ?? '01:00:00')
   }
   await window.electron.invoke('upload-file-ssh', {
     content: scriptContent,
