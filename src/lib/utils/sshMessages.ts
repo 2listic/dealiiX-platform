@@ -47,7 +47,7 @@ export const executeWithKey = async (): Promise<void> => {
   toastState.add({ message: 'Command was sent' })
 }
 
-export type MpiConfig = {
+export type JobConfig = {
   nodes: number
   tasksPerNode: number
   timeLimit: string
@@ -58,7 +58,7 @@ export type MpiConfig = {
  * Polls the job status until completion and displays results via toast notifications.
  * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
- * @param {MpiConfig} [mpiConfig] - Optional MPI configuration for template placeholders
+ * @param {JobConfig} [config] - Optional job configuration for template placeholders
  * @returns {Promise<void>} Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
@@ -66,39 +66,21 @@ export type MpiConfig = {
 export const exportAndEvalGraph = async (
   nodes: Node[],
   edges: Edge[],
-  mpiConfig?: MpiConfig
+  config?: JobConfig
 ): Promise<void> => {
-  // parse graph
-  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
-
-  // export graph
-  const resultExport = await window.electron.invoke('upload-file-ssh', {
-    content: JSON.stringify(parsedGraph),
-    remotePath: '/app/shared-data/graph.json',
-  })
-  console.log('SSH Connection Result:', resultExport)
-
-  // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
-  const internalJobId = jobIdMapState.getNextKey()
-
-  // generate batch script based on MPI setting
   const useMpi = settingsState.getKey(USE_MPI) ?? false
-  const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
-  let scriptContent = template.replaceAll(
-    '{{INTERNAL_JOB_ID}}',
-    String(internalJobId)
+
+  // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
+  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  await uploadFileSsh(
+    JSON.stringify(graphPayload),
+    '/app/shared-data/graph.json'
   )
-  if (useMpi) {
-    // fall back to default values if mpiConfig was not provided (i.e. 1 for nodes)
-    scriptContent = scriptContent
-      .replaceAll('{{NODES}}', String(mpiConfig?.nodes ?? 1))
-      .replaceAll('{{NTASKS_PER_NODE}}', String(mpiConfig?.tasksPerNode ?? 4))
-      .replaceAll('{{TIME_LIMIT}}', mpiConfig?.timeLimit ?? '01:00:00')
-  }
-  await window.electron.invoke('upload-file-ssh', {
-    content: scriptContent,
-    remotePath: '/app/shared-data/job.sh',
-  })
+
+  // build and upload batch script
+  const internalJobId = jobIdMapState.getNextKey()
+  const batchScript = buildBatchScript(useMpi, internalJobId, config)
+  await uploadFileSsh(batchScript, '/app/shared-data/job.sh')
 
   // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
@@ -112,14 +94,64 @@ export const exportAndEvalGraph = async (
   if (!jobId) throw new Error('Job ID not found')
   await jobIdMapState.add(jobId, internalJobId)
 
-  // poll immediately then every 10 secs for 1 day
+  // poll every 10 secs for 1 day, finally display final status
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-
-  // message to user
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
   })
+}
+
+/**
+ * Builds the graph payload to upload, injecting the MPI plugin block when MPI is enabled.
+ * The plugin block tells CORAL to initialise MPI with the given thread cap.
+ */
+export const buildGraphPayload = (
+  nodes: Node[],
+  edges: Edge[],
+  useMpi: boolean
+) => {
+  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
+  if (!useMpi) return parsedGraph
+  return {
+    plugin: { MPI: { enabled: true, max_num_threads: 1 } },
+    ...parsedGraph,
+  }
+}
+
+/**
+ * Builds the batch script content from the appropriate template, replacing all placeholders.
+ * {{TIME_LIMIT}} applies to both MPI and non-MPI templates.
+ * {{NODES}} and {{NTASKS_PER_NODE}} apply only to the MPI template.
+ * Falls back to sensible defaults if config is not provided.
+ */
+const buildBatchScript = (
+  useMpi: boolean,
+  internalJobId: number,
+  config?: JobConfig
+): string => {
+  const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
+  let script = template
+    .replaceAll('{{INTERNAL_JOB_ID}}', String(internalJobId))
+    .replaceAll('{{TIME_LIMIT}}', config?.timeLimit ?? '01:00:00')
+  if (useMpi) {
+    script = script
+      .replaceAll('{{NODES}}', String(config?.nodes ?? 1))
+      .replaceAll('{{NTASKS_PER_NODE}}', String(config?.tasksPerNode ?? 4))
+  }
+  return script
+}
+
+/** Uploads a string as a file to the remote server via SSH. */
+const uploadFileSsh = async (
+  content: string,
+  remotePath: string
+): Promise<void> => {
+  const result = await window.electron.invoke('upload-file-ssh', {
+    content,
+    remotePath,
+  })
+  console.log('SSH upload result:', result)
 }
 
 /**

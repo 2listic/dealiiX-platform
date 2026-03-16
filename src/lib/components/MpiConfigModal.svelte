@@ -1,15 +1,16 @@
 <script lang="ts">
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
-  import type { MpiConfig } from '../utils/sshMessages'
+  import type { JobConfig } from '../utils/sshMessages'
 
   interface Props {
     modalId: string
+    showMpiFields: boolean
     // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
-    onConfirm: (_config: MpiConfig) => void
+    onConfirm: (_config: JobConfig) => void
   }
 
-  let { modalId, onConfirm }: Props = $props()
+  let { modalId, showMpiFields, onConfirm }: Props = $props()
 
   let nodes = $state(1)
   let tasksPerNode = $state(4)
@@ -39,34 +40,36 @@
 
 <Modal id={modalId} size="sm">
   <div class="mpi-config">
-    <h2>MPI Configuration</h2>
+    <h2>Job Configuration</h2>
     <div class="inputs-container">
-      <div class="inputs-row">
-        <div class="input-container">
-          <label for="mpi-nodes">Nodes</label>
-          <input
-            id="mpi-nodes"
-            type="number"
-            min="1"
-            bind:value={nodes}
-            class="input-field"
-          />
+      {#if showMpiFields}
+        <div class="inputs-row">
+          <div class="input-container">
+            <label for="mpi-nodes">Nodes</label>
+            <input
+              id="mpi-nodes"
+              type="number"
+              min="1"
+              bind:value={nodes}
+              class="input-field"
+            />
+          </div>
+          <div class="input-container">
+            <label for="mpi-tasks-per-node">Tasks per node</label>
+            <input
+              id="mpi-tasks-per-node"
+              type="number"
+              min="1"
+              bind:value={tasksPerNode}
+              class="input-field"
+            />
+          </div>
+          <div class="input-container total">
+            <span class="total-label">Total</span>
+            <span class="total-value">{totalProcesses}</span>
+          </div>
         </div>
-        <div class="input-container">
-          <label for="mpi-tasks-per-node">Tasks per node</label>
-          <input
-            id="mpi-tasks-per-node"
-            type="number"
-            min="1"
-            bind:value={tasksPerNode}
-            class="input-field"
-          />
-        </div>
-        <div class="input-container total">
-          <span class="total-label">Total</span>
-          <span class="total-value">{totalProcesses}</span>
-        </div>
-      </div>
+      {/if}
       <div class="inputs-row">
         <div class="input-container time-limit">
           <label for="mpi-time-limit">Time limit</label>

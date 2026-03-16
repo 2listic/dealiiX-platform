@@ -13,8 +13,9 @@
   } from '../../utils/graphParser'
   import {
     exportAndEvalGraph,
+    buildGraphPayload,
     openNewWindow,
-    type MpiConfig,
+    type JobConfig,
   } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
@@ -75,25 +76,16 @@
   }
 
   const handleExecution = () => {
-    const useMpi = settingsState.getKey(USE_MPI) ?? false
-    if (useMpi) {
-      getModal(mpiConfigModalId)?.open()
-    } else {
-      executeGraph()
-    }
+    getModal(mpiConfigModalId)?.open()
   }
 
-  const handleMpiConfirm = (config: MpiConfig) => {
+  const handleJobConfirm = (config: JobConfig) => {
     executeGraph(config)
   }
 
-  const executeGraph = async (mpiConfig?: MpiConfig) => {
+  const executeGraph = async (config?: JobConfig) => {
     try {
-      await exportAndEvalGraph(
-        getNodesSnapshot(),
-        getEdgesSnapshot(),
-        mpiConfig
-      )
+      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot(), config)
     } catch (error) {
       console.error('Failed to execute graph:', error)
       toastState.add({
@@ -219,10 +211,12 @@
 
   const handleGraphDownload = () => {
     try {
-      // Parse current graph to Network JSON format
-      const graphData = parseGraphWithQualifiedIds(
+      // Parse current graph to Network JSON format (MPI plugin block included)
+      const useMpi = settingsState.getKey(USE_MPI) ?? false
+      const graphData = buildGraphPayload(
         getNodesSnapshot(),
-        getEdgesSnapshot()
+        getEdgesSnapshot(),
+        useMpi
       )
       const jsonString = JSON.stringify(graphData, null, 2)
 
@@ -337,7 +331,11 @@
     <span class="button-text">Execute</span>
   </div>
 
-  <MpiConfigModal modalId={mpiConfigModalId} onConfirm={handleMpiConfirm} />
+  <MpiConfigModal
+    modalId={mpiConfigModalId}
+    showMpiFields={settingsState.getKey(USE_MPI) ?? false}
+    onConfirm={handleJobConfirm}
+  />
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">
