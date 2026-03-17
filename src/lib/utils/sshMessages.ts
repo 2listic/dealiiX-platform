@@ -5,6 +5,12 @@ import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
 import { setPanelContent } from './panelContent.js'
 import { JobStatus } from '../types/executionStatus'
+// The `?raw` Vite suffix imports the file contents as a plain string at build time.
+// It works identically in dev, built app, and packaged Electron binaries.
+// Docs: https://vite.dev/guide/assets#importing-asset-as-string
+import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
+import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
+import { settingsState, USE_MPI } from '../stores/settingsStore.svelte'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -41,36 +47,44 @@ export const executeWithKey = async (): Promise<void> => {
   toastState.add({ message: 'Command was sent' })
 }
 
+export type JobConfig = {
+  nodes: number
+  tasksPerNode: number
+  timeLimit: string
+}
+
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
  * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
+ * @param {JobConfig} [config] - Optional job configuration for template placeholders
  * @returns {Promise<void>} Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalGraph = async (
   nodes: Node[],
-  edges: Edge[]
+  edges: Edge[],
+  config?: JobConfig
 ): Promise<void> => {
-  // parse graph
-  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
+  const useMpi = settingsState.getKey(USE_MPI) ?? false
 
-  // export graph
-  const resultExport = await window.electron.invoke('export-graph-ssh', {
-    graph: parsedGraph,
-  })
-  console.log('SSH Connection Result:', resultExport)
+  // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
+  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  await uploadFileSsh(
+    JSON.stringify(graphPayload),
+    '/app/shared-data/graph.json'
+  )
 
-  // get next available internal job Id and use it as name of the directory where nodes' execution status will be placed
+  // build and upload batch script
   const internalJobId = jobIdMapState.getNextKey()
+  const batchScript = buildBatchScript(useMpi, internalJobId, config)
+  await uploadFileSsh(batchScript, '/app/shared-data/job.sh')
 
-  // execute graph
-  // const sbatchCommand = 'sbatch --wrap="sleep 20" --output=hello.out'
-  const sbatchCommand = `sbatch --chdir=/app/shared-data --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir ${internalJobId}"`
+  // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: sbatchCommand,
+    command: 'sbatch /app/shared-data/job.sh',
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
@@ -80,14 +94,64 @@ export const exportAndEvalGraph = async (
   if (!jobId) throw new Error('Job ID not found')
   await jobIdMapState.add(jobId, internalJobId)
 
-  // poll immediately then every 10 secs for 1 day
+  // poll every 10 secs for 1 day, finally display final status
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-
-  // message to user
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
   })
+}
+
+/**
+ * Builds the graph payload to upload, injecting the MPI plugin block when MPI is enabled.
+ * The plugin block tells CORAL to initialise MPI with the given thread cap.
+ */
+export const buildGraphPayload = (
+  nodes: Node[],
+  edges: Edge[],
+  useMpi: boolean
+) => {
+  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
+  if (!useMpi) return parsedGraph
+  return {
+    plugin: { MPI: { enabled: true, max_num_threads: 1 } },
+    ...parsedGraph,
+  }
+}
+
+/**
+ * Builds the batch script content from the appropriate template, replacing all placeholders.
+ * {{TIME_LIMIT}} applies to both MPI and non-MPI templates.
+ * {{NODES}} and {{NTASKS_PER_NODE}} apply only to the MPI template.
+ * Falls back to sensible defaults if config is not provided.
+ */
+const buildBatchScript = (
+  useMpi: boolean,
+  internalJobId: number,
+  config?: JobConfig
+): string => {
+  const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
+  let script = template
+    .replaceAll('{{INTERNAL_JOB_ID}}', String(internalJobId))
+    .replaceAll('{{TIME_LIMIT}}', config?.timeLimit ?? '01:00:00')
+  if (useMpi) {
+    script = script
+      .replaceAll('{{NODES}}', String(config?.nodes ?? 1))
+      .replaceAll('{{NTASKS_PER_NODE}}', String(config?.tasksPerNode ?? 4))
+  }
+  return script
+}
+
+/** Uploads a string as a file to the remote server via SSH. */
+const uploadFileSsh = async (
+  content: string,
+  remotePath: string
+): Promise<void> => {
+  const result = await window.electron.invoke('upload-file-ssh', {
+    content,
+    remotePath,
+  })
+  console.log('SSH upload result:', result)
 }
 
 /**
@@ -210,7 +274,7 @@ export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
   // define the command to list the files in the touch-dir
-  const command = `ls -tr /app/shared-data/${jobIdInternal}`
+  const command = `ls -tr /app/shared-data/nodes-exec-status/${jobIdInternal}`
 
   // get the raw output string with lines in format "nodeId.status"
   const output = await window.electron.invoke('execute-ssh-with-key', {

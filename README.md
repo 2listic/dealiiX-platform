@@ -61,7 +61,21 @@ Run unit tests
 
 For more options see the [general instructions](https://www.electronjs.org/docs/latest/tutorial/debugging-main-process) or the [specific ones](https://www.electronjs.org/docs/latest/tutorial/debugging-vscode) for VS Code
 
-### Debugging Svelte
+#### Inspecting the Electron Store
+
+The app uses [electron-store](https://github.com/sindresorhus/electron-store) to persist data. You can inspect and modify it from the DevTools console (**CTRL+SHIFT+I**):
+
+```js
+// Get a value
+await window.electron.store.get('jobIdMap')
+
+// Remove a value
+await window.electron.store.remove('jobIdMap')
+```
+
+Available keys are defined in [electron/utils/storage.js](electron/utils/storage.js).
+
+## Debugging Svelte
 
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).

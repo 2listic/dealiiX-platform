@@ -15,6 +15,9 @@ services:
       - '8000:8000'
     volumes:
       - ./containers/shared-data:/app/shared-data
+    environment:
+      - OMPI_ALLOW_RUN_AS_ROOT=1
+      - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     networks:
       - coral-network
     # restart: unless-stopped

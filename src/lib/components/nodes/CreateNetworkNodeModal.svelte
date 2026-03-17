@@ -103,6 +103,11 @@
 />
 
 <style>
+  h2 {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
   .create-network-node-form {
     display: flex;
     flex-direction: column;

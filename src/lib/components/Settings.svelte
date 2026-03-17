@@ -4,6 +4,7 @@
     SSH_PATH,
     URL_VISUALIZER,
     URL_REMOTE_SERVER,
+    USE_MPI,
   } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import Button from './layout/Button.svelte'
@@ -18,6 +19,7 @@
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $state(settingsState.getKey(URL_REMOTE_SERVER))
   let isEditingRemote = $state(false)
+  let useMpi = $state(settingsState.getKey(USE_MPI) ?? false)
 
   // Put here all the logic needed to reset the states when modal is re-opened.
   // Triggers when parent modal changes visibility.
@@ -50,6 +52,12 @@
     urlRemoteServer = urlRemoteServerParsed
     isEditingRemote = false
     toastState.add({ message: 'URL Remote Server saved' })
+  }
+
+  const toggleMpi = async () => {
+    useMpi = !useMpi
+    await settingsState.setKey(USE_MPI, useMpi)
+    toastState.add({ message: `MPI ${useMpi ? 'enabled' : 'disabled'}` })
   }
 
   const closeModal = () => getModal(modalId).close()
@@ -128,6 +136,15 @@
         </div>
       {/if}
     </div>
+    <div class="input-container">
+      <div class="input-line-save">
+        <span style="font-weight: bold">Use MPI</span>
+        <label class="switch">
+          <input type="checkbox" checked={useMpi} onchange={toggleMpi} />
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
     <div class="button-container">
       <Button variant="default" type="button" onclick={closeModal}>Close</Button
       >
@@ -136,6 +153,11 @@
 </div>
 
 <style>
+  h2 {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
   .inputs-container {
     display: flex;
     flex-direction: column;
@@ -173,6 +195,57 @@
 
   .input-field:invalid {
     border-color: red;
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 27px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: '';
+    height: 21px;
+    width: 21px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+  }
+
+  input:checked + .slider {
+    background-color: var(--button-action-bg);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(21px);
+  }
+
+  .slider.round {
+    border-radius: 27px;
+  }
+
+  .slider.round:before {
+    border-radius: 50%;
   }
 
   .button-container {
