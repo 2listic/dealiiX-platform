@@ -23,6 +23,15 @@
   const availableNodes = $derived(getAvailableNodes())
   const storedNetworkNodes = $derived(getStoredNetworkNodes())
 
+  let searchQuery = $state('')
+  const filteredAvailableNodes = $derived(
+    availableNodes?.filter(
+      (node) =>
+        !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
+        node.type.toLowerCase().includes(searchQuery.toLowerCase())
+    ) ?? []
+  )
+
   const onDragStart = (
     event: DragEvent,
     node: NodeData | NetworkNodeOfTypeNetwork
@@ -55,28 +64,16 @@
   onmouseenter={() => (isMouseOver = true)}
   onmouseleave={() => (isMouseOver = false)}
 >
-  <div class="nodes-container">
-    {#if availableNodes}
-      {#each availableNodes as Array<NodeData> as node (node)}
-        {#if !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            style="--borderColor: {returnNodeColor(node.node_type)}"
-            class="node"
-            ondragstart={(event) => onDragStart(event, node)}
-            draggable={true}
-          >
-            {#if showNodeNames}
-              <span transition:fade|global={{ duration: 250 }}>
-                {returnNodeName(node)}
-              </span>
-            {/if}
-          </div>
-        {/if}
-      {/each}
-    {/if}
-    {#if storedNetworkNodes}
-      <div class="separator"></div>
+  <div
+    class="nodes-container"
+    style:overflow-y={showNodeNames ? 'auto' : 'hidden'}
+  >
+    {#if storedNetworkNodes && storedNetworkNodes.length > 0}
+      {#if showNodeNames}
+        <span class="section-label" transition:fade|global={{ duration: 250 }}
+          >Network Nodes</span
+        >
+      {/if}
       {#each storedNetworkNodes as Array<NetworkNodeOfTypeNetwork> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -102,6 +99,36 @@
           {/if}
         </div>
       {/each}
+      <div class="separator"></div>
+    {/if}
+    {#if availableNodes}
+      {#if showNodeNames}
+        <span class="section-label" transition:fade|global={{ duration: 250 }}
+          >Registry Nodes</span
+        >
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Filter by type..."
+          bind:value={searchQuery}
+          transition:fade|global={{ duration: 250 }}
+        />
+      {/if}
+      {#each filteredAvailableNodes as Array<NodeData> as node (node)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          style="--borderColor: {returnNodeColor(node.node_type)}"
+          class="node"
+          ondragstart={(event) => onDragStart(event, node)}
+          draggable={true}
+        >
+          {#if showNodeNames}
+            <span transition:fade|global={{ duration: 250 }}>
+              {returnNodeName(node)}
+            </span>
+          {/if}
+        </div>
+      {/each}
     {/if}
   </div>
 </aside>
@@ -109,20 +136,47 @@
 <style>
   aside {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: var(--background-color-secondary);
     font-size: 1rem;
   }
 
   .nodes-container {
     display: flex;
+    flex: 1;
+    min-height: 0;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    align-content: flex-start;
     padding-top: 10em;
-    overflow-y: auto; /* Vertical scrollbar only when overflowing */
     overflow-x: hidden;
     gap: 1rem;
     padding: 3.5rem 1rem 2rem 1rem;
+    scrollbar-width: thin;
+  }
+
+  .section-label {
+    width: 100%;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: left;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 4px;
+    background: var(--background-color-secondary);
+    color: var(--ternary-color);
+    font-size: inherit;
+    outline: none;
+  }
+
+  .search-input:focus {
+    border-color: var(--border-color-hover);
   }
 
   .separator {

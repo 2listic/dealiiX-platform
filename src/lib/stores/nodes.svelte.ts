@@ -4,6 +4,7 @@ import {
   type NodeData,
   type NetworkNodeOfTypeNetwork,
   type RegisteredNetworkNodes,
+  NodeType,
 } from '../types/nodeTypes'
 import type { Node, Edge } from '@xyflow/svelte'
 import defaultNodesJson from '../data/defaultNodes.json'
@@ -105,6 +106,25 @@ export const getNextNodeId = (): number => {
 const defaultNodes = defaultNodesJson as RegisteredNodes
 
 /**
+ * Sort a registry so that ELEMENTARY_CONSTRUCTOR nodes appear first,
+ * preserving relative order within each group.
+ * @param {RegisteredNodes} nodes - The registry to sort
+ * @returns {RegisteredNodes} A new registry with ELEMENTARY_CONSTRUCTOR nodes first
+ */
+const sortRegistry = (nodes: RegisteredNodes): RegisteredNodes => {
+  const elementary: [string, NodeData][] = []
+  const rest: [string, NodeData][] = []
+  for (const entry of Object.entries(nodes)) {
+    if (entry[1].node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
+      elementary.push(entry)
+    } else {
+      rest.push(entry)
+    }
+  }
+  return Object.fromEntries([...elementary, ...rest])
+}
+
+/**
  * Application registry containing all the available nodes
  */
 let registry = $state<RegisteredNodes>({})
@@ -112,9 +132,11 @@ let registry = $state<RegisteredNodes>({})
 // Load registry from electron-store
 const loadRegistry = async () => {
   if (window.electron?.store) {
-    registry = await window.electron.store.get('registered_nodes', defaultNodes)
+    registry = sortRegistry(
+      await window.electron.store.get('registered_nodes', defaultNodes)
+    )
   } else {
-    registry = defaultNodes
+    registry = sortRegistry(defaultNodes)
     console.warn('Electron store not available (e.g., dev:vite mode)')
   }
 }
@@ -130,7 +152,7 @@ export const setRegistry = async (
   data: Record<string, unknown>
 ): Promise<string[]> => {
   const [filtered, skipped] = filterValidNodes(data)
-  registry = filtered
+  registry = sortRegistry(filtered)
   console.log('Imported registry', $state.snapshot(registry))
   await window.electron.store.set('registered_nodes', $state.snapshot(registry))
   return skipped

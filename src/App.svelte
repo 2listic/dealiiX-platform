@@ -86,8 +86,8 @@
   }
 
   #sidebar-buttons-wrapper {
-    flex: 1; /* Takes 1 part of the remaining space */
-    max-width: 80px;
+    flex: 0 0 auto; /* Don't grow, don't shrink, use element's intrinsic width (fit-content) as starting size */
+    width: fit-content;
   }
 
   .flow-wrapper {
