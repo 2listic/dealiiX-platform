@@ -69,10 +69,16 @@
 </div>
 
 <style>
+  h2 {
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+  }
+
   .inputs-container {
     display: flex;
     flex-direction: row;
     gap: 2vh;
+    padding: 1vh 0;
   }
 
   .input-container {

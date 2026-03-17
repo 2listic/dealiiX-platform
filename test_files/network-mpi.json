@@ -1,0 +1,35 @@
+{
+  "plugin": { 
+    "MPI": { 
+      "enabled": true,
+      "max_num_threads": 1
+    }
+  },
+  "workflow": {
+    "nodes": {
+      "2": {
+        "type": "std::string",
+        "position": { "x": -247.56635394948717, "y": 375.3717066817897 },
+        "value": "laplace-problem",
+        "qualified_id": "2"
+      },
+      "6": {
+        "type": "LaplaceProblem::run<2>",
+        "position": { "x": 154.32888923688336, "y": 264.52935128677746 },
+        "qualified_id": "6"
+      },
+      "8": {
+        "type": "LaplaceProblem<2>",
+        "position": { "x": -236.8555047646572, "y": 242.6178965506271 },
+        "qualified_id": "8"
+      }
+    },
+    "edges": {
+      "0": { "source": 2, "target": 6, "source_output": 0, "target_input": 1 },
+      "1": { "source": 8, "target": 6, "source_output": 0, "target_input": 0 }
+    }
+  },
+  "version": 1,
+  "author": "dealiix-platform",
+  "date_time_utc": "2026-03-16T13:21:09.943Z"
+}

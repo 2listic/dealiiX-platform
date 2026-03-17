@@ -11,7 +11,12 @@
     removeQualifiedIds,
     validateGraphData,
   } from '../../utils/graphParser'
-  import { exportAndEvalGraph, openNewWindow } from '../../utils/sshMessages'
+  import {
+    exportAndEvalGraph,
+    buildGraphPayload,
+    openNewWindow,
+    type JobConfig,
+  } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -26,6 +31,7 @@
   import {
     settingsState,
     URL_VISUALIZER,
+    USE_MPI,
   } from '../../stores/settingsStore.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
@@ -35,6 +41,7 @@
   import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
+  import JobConfigModal from '../JobConfigModal.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -42,6 +49,7 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const createNetworkNodeModalId = 'create-network-node-modal'
+  const JobConfigModalId = 'job-config-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -67,9 +75,17 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  const handleExecution = async () => {
+  const handleExecution = () => {
+    getModal(JobConfigModalId)?.open()
+  }
+
+  const handleJobConfirm = (config: JobConfig) => {
+    executeGraph(config)
+  }
+
+  const executeGraph = async (config?: JobConfig) => {
     try {
-      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot())
+      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot(), config)
     } catch (error) {
       console.error('Failed to execute graph:', error)
       toastState.add({
@@ -195,10 +211,12 @@
 
   const handleGraphDownload = () => {
     try {
-      // Parse current graph to Network JSON format
-      const graphData = parseGraphWithQualifiedIds(
+      // Parse current graph to Network JSON format (MPI plugin block included)
+      const useMpi = settingsState.getKey(USE_MPI) ?? false
+      const graphData = buildGraphPayload(
         getNodesSnapshot(),
-        getEdgesSnapshot()
+        getEdgesSnapshot(),
+        useMpi
       )
       const jsonString = JSON.stringify(graphData, null, 2)
 
@@ -312,6 +330,12 @@
     ></button>
     <span class="button-text">Execute</span>
   </div>
+
+  <JobConfigModal
+    modalId={JobConfigModalId}
+    showMpiFields={settingsState.getKey(USE_MPI) ?? false}
+    onConfirm={handleJobConfirm}
+  />
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">

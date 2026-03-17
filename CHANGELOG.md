@@ -10,6 +10,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added documentation to inspect and programmatically empty keys from the Electron-store store. Added `network-mpi.json` file to test MPI support via plugin.
 - [#151](https://github.com/2listic/dealiiX-platform/pull/151) Updated registry and network exaples to include Step 4 Poisson solver example.
 
 ### Canvas-graph
@@ -19,6 +20,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) New modal to configure MPI execution.
 - [#152](https://github.com/2listic/dealiiX-platform/pull/152) Fixed sidebar overflow when too many nodes or buttons exceed the window height (wraps to two columns). Grouped related sidebar buttons into dropdown components. New input text in the sidebar to filter registry nodes by "type". Moved network nodes before registry nodes in the sidebar. Elementary constructor nodes ordered first among the other registry nodes.
 - [#147](https://github.com/2listic/dealiiX-platform/pull/147) Simplified elementary constructor input field rendering logic. Added fallback text input for all elementary constructor types.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added button in the jobs table that opens a modal with the execution status for every node in the corresponding job.
@@ -26,6 +28,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Execution nodes' status is now saved in a dedicated `nodes-exec-status` directory on the remote server.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Jobs state is now persistent across sessions. Added new persistent store to track internal job Ids with scheduler job Ids.
 - [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
 
@@ -41,6 +44,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added MPI support for Slurm job submission using two default sbatch templates (MPI and non-MPI). The active template is selected by a new switch button in the Settings modal, persisted in the settings store. Parameters are passed to the template from the UI.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added SSH communication to get the execution status of all the nodes in a specific job.
 - [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH communication to retrieve content of file .out for a specific job.
 
@@ -162,6 +166,20 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - Buttons to run concatenated command via SSH on server
 - [#9](https://github.com/2listic/dealiiX-platform/pull/9) Button to export and upload graph to server
 
+### Electron-Backend
+
+- [#142](https://github.com/2listic/dealiiX-platform/pull/142) Jobs state is now persistent across sessions. Added new persistent store to track internal job Ids with scheduler job Ids.
+- [#139](https://github.com/2listic/dealiiX-platform/pull/139) App persistent storage moved from localStorage in the renderer to electron-store in the main process.
+- [#72](https://github.com/2listic/dealiiX-platform/pull/72) Color mode made persistent across sessions
+- Electron setup with IPC communication.
+- SSH command execution via password and private key.
+- SSH file writing via private key.
+
+### Remote-Server
+
+- [#103](https://github.com/2listic/dealiiX-platform/pull/103) Added HTTP requests for sharing projects with other users giving read or write permissions.
+- [#101](https://github.com/2listic/dealiiX-platform/pull/101) Added logic to make HTTP requests to the new Remote Server, specifically authorization functionality and CRUD operations to the Projects endpoints.
+
 ### Protocol
 
 - [#47](https://github.com/2listic/dealiiX-platform/pull/47) Migration from "self" to "-1" as output for stateful nodes. Index of edge's source_output starting from 0. Nodes and edges indexes starting from 0.
@@ -179,6 +197,12 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added SSH communication to get the execution status of all the nodes in a specific job.
+- [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH communication to retrieve content of file .out for a specific job.
+- [#91](https://github.com/2listic/dealiiX-platform/pull/91) Updated SSH command to run Coral with new CLI
+- [#88](https://github.com/2listic/dealiiX-platform/pull/88) New functionality to open a Electron window pointing to a specific url
+- [#83](https://github.com/2listic/dealiiX-platform/pull/83) Added logic to retrieve status, start and finish time of the last submitted jobs
+- [#82](https://github.com/2listic/dealiiX-platform/pull/82) Added polling to display if submitted Slurm job finishes with failed or completed status
 - [#78](https://github.com/2listic/dealiiX-platform/pull/78) Added container with Coral, Deal.II, Slurm and SSH server. Now a new job is queued with Slurm, when a new JSON graph is exported to the cluster
 - [#71](https://github.com/2listic/dealiiX-platform/pull/71) Path to SSH private key is dynamically retrieved from localStorage
 

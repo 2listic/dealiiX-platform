@@ -13,6 +13,7 @@ loadSettings()
 export const SSH_PATH = 'sshPathKey'
 export const URL_VISUALIZER = 'urlVisualizerKey'
 export const URL_REMOTE_SERVER = 'urlRemoteServerKey'
+export const USE_MPI = 'useMpiKey'
 
 export const settingsState = {
   getKey(key) {
