@@ -40,7 +40,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
-- [#139](https://github.com/2listic/dealiiX-platform/pull/139) Added library Electron-store to persist data and settings across sessions.
+- [#157](https://github.com/2listic/dealiiX-platform/pull/157) Dependency versions updated in package-lock.json.
+- [#139](https://github.com/2listic/dealiiX-platform/pull/139) Added library Electron-store to persist data and settings across. sessions.
 
 ### SSH communication
 
