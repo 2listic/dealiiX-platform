@@ -45,9 +45,9 @@
 
   let shareModalRef: ShareProjectModal
 
-  const deleteModalId = `delete-project-${project.id}`
-  const shareModalId = `share-project-${project.id}`
-  const updateProjectModal = `update-project-${project.id}`
+  let deleteModalId = $derived(`delete-project-${project.id}`)
+  let shareModalId = $derived(`share-project-${project.id}`)
+  let updateProjectModal = $derived(`update-project-${project.id}`)
 
   const handleDelete = async () => {
     getModal(deleteModalId)?.open()
