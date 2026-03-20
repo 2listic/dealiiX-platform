@@ -31,8 +31,11 @@
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
+  import Button from './layout/Button.svelte'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
+
+  let { onToggleParameters }: { onToggleParameters?: () => void } = $props()
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -98,8 +101,14 @@
     </div>
   </Panel>
   <Panel position="top-right">
-    <ButtonToggleDarkMode />
+    <div class="top-right-controls">
+      <ButtonToggleDarkMode />
+      {#if onToggleParameters}
+        <Button size="medium" onclick={onToggleParameters}>Parameters</Button>
+      {/if}
+    </div>
   </Panel>
+
   <Controls position="bottom-center" orientation="horizontal" />
   <MiniMap />
   <Background />
@@ -130,6 +139,13 @@
     flex-wrap: wrap;
     gap: 1vw;
     max-width: 50vw;
+  }
+
+  .top-right-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-end;
   }
 
   .custom-panel {

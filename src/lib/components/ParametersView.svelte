@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Button from './layout/Button.svelte'
+
   type ParameterLeaf = {
     value: string
     default_value: string
@@ -88,9 +90,7 @@
         onchange={loadFile}
         hidden
       />
-      <button class="load-button" onclick={() => fileInput.click()}>
-        Load Parameters File
-      </button>
+      <Button onclick={() => fileInput.click()}>Load Parameters File</Button>
     </div>
   {:else}
     <div class="toolbar">
@@ -101,12 +101,8 @@
         onchange={loadFile}
         hidden
       />
-      <button class="load-button small" onclick={() => fileInput.click()}>
-        Load File
-      </button>
-      <button class="load-button small" onclick={downloadParameters}>
-        Download
-      </button>
+      <Button size="small" onclick={() => fileInput.click()}>Load File</Button>
+      <Button size="small" onclick={downloadParameters}>Download</Button>
     </div>
     <div class="tree">
       {#snippet renderTree(tree: ParameterTree, depth: number)}
@@ -195,27 +191,10 @@
   }
 
   .toolbar {
+    display: flex;
+    justify-content: space-between;
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--xy-edge-stroke, #ccc);
-  }
-
-  .load-button {
-    padding: 0.6rem 1.2rem;
-    background: var(--primary-color);
-    color: var(--ternary-color);
-    border: 1px solid var(--xy-edge-stroke, #ccc);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-
-  .load-button.small {
-    padding: 0.3rem 0.8rem;
-    font-size: 0.85rem;
-  }
-
-  .load-button:hover {
-    background: var(--background-color-secondary);
   }
 
   .tree {

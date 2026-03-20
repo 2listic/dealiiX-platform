@@ -7,10 +7,9 @@
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
-  import TabBar from './lib/components/layout/TabBar.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
 
-  let activeTab: 'node-editor' | 'parameters' = $state('node-editor')
+  let parametersOpen = $state(false)
 
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem
@@ -50,13 +49,18 @@
         <SidebarButtons />
       </div>
       <div class="main-content">
-        <div class="flow-wrapper" class:hidden={activeTab !== 'node-editor'}>
-          <FlowCanvas />
+        <div class="flow-wrapper">
+          <FlowCanvas
+            onToggleParameters={() => (parametersOpen = !parametersOpen)}
+          />
         </div>
-        <div class="flow-wrapper" class:hidden={activeTab !== 'parameters'}>
+        <div class="parameters-panel" class:open={parametersOpen}>
+          <div class="parameters-panel-header">
+            <span>Parameters</span>
+            <button onclick={() => (parametersOpen = false)}>&times;</button>
+          </div>
           <ParametersView />
         </div>
-        <TabBar {activeTab} onchange={(tab) => (activeTab = tab)} />
       </div>
     </div>
   </SvelteFlowProvider>
@@ -103,16 +107,61 @@
   .main-content {
     flex: 12;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
 
   .flow-wrapper {
-    flex: 1;
-    min-height: 0;
+    width: 100%;
+    height: 100%;
   }
 
-  .hidden {
-    display: none;
+  .parameters-panel {
+    position: absolute;
+    top: 7rem;
+    right: 0;
+    width: 65%;
+    height: calc(100% - 7rem);
+    z-index: 50;
+    background-color: var(--background-color);
+    border-top: 2px solid var(--xy-edge-stroke, #ccc);
+    border-left: 1px solid var(--xy-edge-stroke, #ccc);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .parameters-panel.open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .parameters-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    border-bottom: 1px solid var(--xy-edge-stroke, #ccc);
+    flex: 0 0 auto;
+  }
+
+  .parameters-panel-header span {
+    font-weight: 600;
+    color: var(--ternary-color);
+  }
+
+  .parameters-panel-header button {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--ternary-color);
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
   }
 </style>
