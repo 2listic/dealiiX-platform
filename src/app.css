@@ -2,6 +2,7 @@
 :root.light {
   --primary-color: white;
   --secondary-color: #efefef;
+  --background-color: white;
   --background-color-secondary: linear-gradient(#f2f2f2, white);
   --ternary-color: #383838;
   --border-color-hover: #646cff;
@@ -20,6 +21,7 @@
 :root.dark {
   --primary-color: #1f1f1f;
   --secondary-color: #efefef;
+  --background-color: black;
   --background-color-secondary: linear-gradient(#1f1f1f, #383838);
   --ternary-color: #ececec;
   --text-color-backup: #c9c9c9;

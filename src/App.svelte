@@ -1,12 +1,16 @@
 <script lang="ts">
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
+  import ParametersView from './lib/components/ParametersView.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
+  import TabBar from './lib/components/layout/TabBar.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
+
+  let activeTab: 'node-editor' | 'parameters' = $state('node-editor')
 
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem
@@ -45,8 +49,14 @@
       <div id="sidebar-buttons-wrapper">
         <SidebarButtons />
       </div>
-      <div class="flow-wrapper">
-        <FlowCanvas />
+      <div class="main-content">
+        <div class="flow-wrapper" class:hidden={activeTab !== 'node-editor'}>
+          <FlowCanvas />
+        </div>
+        <div class="flow-wrapper" class:hidden={activeTab !== 'parameters'}>
+          <ParametersView />
+        </div>
+        <TabBar {activeTab} onchange={(tab) => (activeTab = tab)} />
       </div>
     </div>
   </SvelteFlowProvider>
@@ -90,8 +100,19 @@
     width: fit-content;
   }
 
-  .flow-wrapper {
-    flex: 12; /* Takes 12 parts of the remaining space */
+  .main-content {
+    flex: 12;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .flow-wrapper {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .hidden {
+    display: none;
   }
 </style>
