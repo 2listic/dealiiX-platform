@@ -105,8 +105,10 @@
   }
 
   .main-content {
-    flex: 12;
+    /* flex:1 — sole growing child in the flex row, it takes all remaining horizontal space after the sidebar. */
+    flex: 1;
     height: 100vh;
+    /* position: relative - makes it the anchor for the absolutely-positioned parameters panel. */
     position: relative;
     overflow: hidden;
   }
@@ -119,6 +121,7 @@
   .parameters-panel {
     position: absolute;
     top: 7rem;
+    /* Positioned to the right edge of .main-content */
     right: 0;
     width: 65%;
     height: calc(100% - 7rem);
@@ -127,6 +130,7 @@
     border-top: 2px solid var(--xy-edge-stroke, #ccc);
     border-left: 1px solid var(--xy-edge-stroke, #ccc);
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    /* Transform - translates fully off-screen to the right */
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
     pointer-events: none;
@@ -136,6 +140,7 @@
   }
 
   .parameters-panel.open {
+    /* Remove the translation */
     transform: translateX(0);
     pointer-events: auto;
   }
