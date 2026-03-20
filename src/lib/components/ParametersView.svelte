@@ -40,10 +40,13 @@
     reader.readAsText(file)
   }
 
-  function parsePatternType(desc: string): 'bool' | 'selection' | 'number' | 'text' {
+  function parsePatternType(
+    desc: string
+  ): 'bool' | 'selection' | 'number' | 'text' {
     if (desc === '[Bool]') return 'bool'
     if (desc.startsWith('[Selection')) return 'selection'
-    if (desc.startsWith('[Integer') || desc.startsWith('[Double')) return 'number'
+    if (desc.startsWith('[Integer') || desc.startsWith('[Double'))
+      return 'number'
     return 'text'
   }
 
@@ -141,7 +144,9 @@
                   <input
                     type="number"
                     value={val.value}
-                    step={val.pattern_description.startsWith('[Integer') ? '1' : 'any'}
+                    step={val.pattern_description.startsWith('[Integer')
+                      ? '1'
+                      : 'any'}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
                     }}
@@ -239,15 +244,17 @@
     margin-left: 0.5rem;
   }
 
-  @media (min-width: 900px) {     /* only apply when viewport is ≥ 900px */
+  @media (min-width: 900px) {
+    /* only apply when viewport is ≥ 900px */
     .section-content {
       display: grid;
-      grid-template-columns: 1fr 1fr;   /* two equal-width columns */
+      grid-template-columns: 1fr 1fr; /* two equal-width columns */
       column-gap: 1.5rem;
     }
 
-    .section-content :global(details) {   /* :global() needed because <details> is in a snippet */
-      grid-column: 1 / -1;      /* make <details> span from column 1 to the last column */
+    .section-content :global(details) {
+      /* :global() needed because <details> is in a snippet */
+      grid-column: 1 / -1; /* make <details> span from column 1 to the last column */
     }
   }
 
