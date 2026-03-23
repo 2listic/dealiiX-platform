@@ -56,6 +56,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
+- [#166](https://github.com/2listic/dealiiX-platform/pull/166) Coral submodule updated to include Step 40 MPI support. Coral-Visualizer submodule updated to support files located in sub-folders.
 - [#151](https://github.com/2listic/dealiiX-platform/pull/151) Coral submodule updated to include Step 4 Poisson Solver. Coral-Visualizer submodule updated to support .vtu files and show solution field.
 
 ### Testing
