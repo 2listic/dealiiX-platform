@@ -20,8 +20,17 @@
     onUpdate: () => void
   } = $props()
 
-  let name = $state(project.name)
-  let description = $state(project.description)
+  let name = $state('')
+  let description = $state('')
+
+  // Initialized via $effect.pre so `project` is read in a reactive context.
+  // $effect.pre runs before first render, so no empty-string flash on mount.
+  // Re-syncs if `project` prop changes; does NOT re-run when the user edits
+  // the fields (bind:value only writes to `name`/`description`, not `project`).
+  $effect.pre(() => {
+    name = project.name
+    description = project.description
+  })
   let formElement
 
   const validateAndSubmit = async () => {

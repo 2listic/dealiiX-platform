@@ -24,8 +24,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      webSecurity: true, // Ensure web security is enabled
-      contentSecurityPolicy: "default-src 'self'; script-src 'self'", // Set a basic CSP
+      webSecurity: true,
     },
   })
 

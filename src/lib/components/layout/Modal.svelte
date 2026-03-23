@@ -152,17 +152,19 @@
 
   /**
    * Register this instance in the global registry and expose its API.
-   * This makes it accessible via `getModal(id)`.
+   * Wrapped in $effect so the key stays correct if `id` ever changes.
    */
-  modals[id] = { open, close, isVisible }
+  $effect(() => {
+    modals[id] = { open, close, isVisible }
+    return () => {
+      delete modals[id]
+    }
+  })
 
   /**
-   * Cleanup on component destroy:
-   * - Unregister from the registry.
-   * - Detach event listeners.
+   * Cleanup on component destroy: detach event listeners.
    */
   onDestroy(() => {
-    delete modals[id]
     window.removeEventListener('keydown', keyPress)
   })
 </script>
