@@ -123,7 +123,7 @@ or
 `sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
 
 Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --output=sbatch.out`
+`sbatch --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json"`
 
 Test the state of a specific job id (i.e id 1) with sacct  
 `sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
@@ -136,6 +136,17 @@ Test the state of a specific job id (i.e id 1) with sacct
 #### Debugging Slurm
 
 `slurmctld -Dvv` to run the slurm controller in the forground and debug mode
+
+### Shared data folder
+
+The `containers/shared-data/` local folder is mounted as a volume into the `coral-ssh-slurm` container at `/app/shared-data/` and into the `coral-visualizer` container at `/deploy/data/`. This means any file placed in the local folder is accessible inside the containers and vice versa.
+
+In particular, when the app exports a `graph.json` for execution, it is written to this shared folder. You can inspect or replace it either:
+
+- **Locally**: check `containers/shared-data/graph.json`
+- **Inside the container**: `docker exec -it coral-ssh-slurm cat /app/shared-data/graph.json`
+
+Output files (e.g., `.vtk` files, Slurm logs) produced by CORAL during execution are also written here and served by the `coral-visualizer` container.
 
 ### Other usefull Docker commands
 
