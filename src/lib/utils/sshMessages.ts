@@ -11,6 +11,7 @@ import { JobStatus } from '../types/executionStatus'
 import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
 import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
 import { settingsState, USE_MPI } from '../stores/settingsStore.svelte'
+import { parametersState } from '../stores/parametersStore.svelte'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -51,6 +52,8 @@ export type JobConfig = {
   nodes: number
   tasksPerNode: number
   timeLimit: string
+  uploadGraph: boolean
+  uploadParameters: boolean
 }
 
 /**
@@ -69,13 +72,28 @@ export const exportAndEvalGraph = async (
   config?: JobConfig
 ): Promise<void> => {
   const useMpi = settingsState.getKey(USE_MPI) ?? false
+  const uploadGraph = config?.uploadGraph ?? true
+  const uploadParameters = config?.uploadParameters ?? false
 
   // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
-  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-  await uploadFileSsh(
-    JSON.stringify(graphPayload),
-    '/app/shared-data/graph.json'
-  )
+  if (uploadGraph) {
+    const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+    await uploadFileSsh(
+      JSON.stringify(graphPayload),
+      '/app/shared-data/graph.json'
+    )
+  }
+
+  // upload parameters JSON if enabled
+  if (uploadParameters) {
+    const params = parametersState.snapshot
+    if (params) {
+      await uploadFileSsh(
+        JSON.stringify(params, null, 2),
+        '/app/shared-data/template_parameters.json'
+      )
+    }
+  }
 
   // build and upload batch script
   const internalJobId = jobIdMapState.getNextKey()
@@ -139,6 +157,18 @@ const buildBatchScript = (
       .replaceAll('{{NODES}}', String(config?.nodes ?? 1))
       .replaceAll('{{NTASKS_PER_NODE}}', String(config?.tasksPerNode ?? 4))
   }
+
+  // Build the run/input-parameters flags based on config switches
+  const uploadGraph = config?.uploadGraph ?? true
+  const uploadParameters = config?.uploadParameters ?? false
+  const runFlag = uploadGraph ? 'run /app/shared-data/graph.json' : 'run'
+  const paramsFlag = uploadParameters
+    ? ' -input-parameters /app/shared-data/template_parameters.json'
+    : ''
+  script = script.replaceAll('{{RUN_FLAGS}}', runFlag + paramsFlag)
+
+  console.log('Generated script:', script)
+
   return script
 }
 

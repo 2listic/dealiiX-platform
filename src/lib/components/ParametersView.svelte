@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from './layout/Button.svelte'
+  import { parametersState } from '../stores/parametersStore.svelte'
 
   type ParameterLeaf = {
     value: string
@@ -14,7 +15,7 @@
     [key: string]: ParameterLeaf | ParameterTree
   }
 
-  let parameters: ParameterTree | null = $state(null)
+  let parameters = $derived(parametersState.value)
   // null! asserts non-null to TS — safe because bind:this assigns the element before any user interaction
   let fileInput: HTMLInputElement = $state(null!)
 
@@ -34,7 +35,7 @@
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        parameters = JSON.parse(e.target?.result as string)
+        parametersState.value = JSON.parse(e.target?.result as string)
       } catch {
         /* invalid JSON */
       }
@@ -63,7 +64,7 @@
 
   function downloadParameters() {
     if (!parameters) return
-    const json = JSON.stringify($state.snapshot(parameters), null, 4)
+    const json = JSON.stringify(parametersState.snapshot, null, 4)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -75,7 +76,7 @@
 
   $effect(() => {
     if (parameters) {
-      console.log('parameters changed:', $state.snapshot(parameters))
+      console.log('parameters changed:', parametersState.snapshot)
     }
   })
 </script>

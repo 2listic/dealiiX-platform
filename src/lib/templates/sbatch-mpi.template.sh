@@ -6,4 +6,4 @@
 #SBATCH --ntasks-per-node={{NTASKS_PER_NODE}}
 #SBATCH --time={{TIME_LIMIT}}
 
-mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1} /app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir nodes-exec-status/{{INTERNAL_JOB_ID}}
+mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1} /app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so {{RUN_FLAGS}} --touch-dir nodes-exec-status/{{INTERNAL_JOB_ID}}
