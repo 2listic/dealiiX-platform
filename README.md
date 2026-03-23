@@ -171,7 +171,7 @@ The GitHub Actions workflows are defined in the [.github/workflows](.github/work
 To create a new release by triggering the GitHub Actions workflows, tag the commit on `main` and push it:
 
 ```bash
-git tag v1.0.0
+git tag -a v1.0.0 -m "Release v1.0.0: brief description of changes"
 git push origin v1.0.0
 ```
 

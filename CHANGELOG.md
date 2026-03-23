@@ -4,6 +4,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-23
+
 ### Building
 
 - [#161](https://github.com/2listic/dealiiX-platform/issues/161) Fixed `TypeError: object is not iterable` in Electron main process by downgrading Electron from v37 to v36.
