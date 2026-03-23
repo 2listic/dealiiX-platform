@@ -6,7 +6,12 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Building
 
+- [#161](https://github.com/2listic/dealiiX-platform/issues/161) Fixed `TypeError: object is not iterable` in Electron main process by downgrading Electron from v37 to v36.
 - [#155](https://github.com/2listic/dealiiX-platform/pull/155) Added `--no-sandbox` flag to `dev` and `start` scripts to fix Electron sandbox crash on Linux systems where `chrome-sandbox` is not owned by root after `npm install`.
+
+### Code-Quality
+
+- [#159](https://github.com/2listic/dealiiX-platform/issues/159) Fixed Svelte 5 warnings in `EditProjectForm`, `ProjectCard`, `Modal`, `EditNodeNameModal`, and `UnifiedNode` components. Added `svelte-check` as a dev dependency.
 
 ### Documentation
 
@@ -40,7 +45,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
-- [#139](https://github.com/2listic/dealiiX-platform/pull/139) Added library Electron-store to persist data and settings across sessions.
+- [#157](https://github.com/2listic/dealiiX-platform/pull/157) Dependency versions updated in package-lock.json.
+- [#139](https://github.com/2listic/dealiiX-platform/pull/139) Added library Electron-store to persist data and settings across. sessions.
 
 ### SSH communication
 

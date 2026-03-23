@@ -53,12 +53,12 @@
   // data.is_valid = true
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
-  let isNetworkNode = data.node_type === NodeType.NETWORK
-  const color = nodeColors[type]
+  let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
+  let color = $derived(nodeColors[type])
 
   const { updateNodeData } = useSvelteFlow()
 
-  const editNodeModalId = `edit-node-${id}`
+  let editNodeModalId = $derived(`edit-node-${id}`)
 
   const isValidNum = (value) => {
     const numValue = Number(value)

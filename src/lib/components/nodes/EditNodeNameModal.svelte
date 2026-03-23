@@ -12,7 +12,7 @@
   let { modalId, nodeId, currentName }: Props = $props()
 
   let editedName = $derived(currentName)
-  let inputId = `edit-node-name-input-${nodeId}`
+  let inputId = $derived(`edit-node-name-input-${nodeId}`)
 
   const { updateNodeData } = useSvelteFlow()
 
