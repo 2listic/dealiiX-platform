@@ -50,16 +50,21 @@
       </div>
       <div class="main-content">
         <div class="flow-wrapper">
-          <FlowCanvas
-            onToggleParameters={() => (parametersOpen = !parametersOpen)}
-          />
+          <FlowCanvas />
         </div>
         <div class="parameters-panel" class:open={parametersOpen}>
-          <div class="parameters-panel-header">
+          <button
+            class="parameters-tab"
+            onclick={() => (parametersOpen = !parametersOpen)}
+            title={parametersOpen
+              ? 'Close parameters panel'
+              : 'Open parameters panel'}
+          >
             <span>Parameters</span>
-            <button onclick={() => (parametersOpen = false)}>&times;</button>
+          </button>
+          <div class="parameters-panel-inner">
+            <ParametersView />
           </div>
-          <ParametersView />
         </div>
       </div>
     </div>
@@ -108,7 +113,7 @@
     /* flex:1 — sole growing child in the flex row, it takes all remaining horizontal space after the sidebar. */
     flex: 1;
     height: 100vh;
-    /* position: relative - makes it the anchor for the absolutely-positioned parameters panel. */
+    /* position: relative - makes it the anchor for the absolutely-positioned parameters panel and its pull-tab. */
     position: relative;
     overflow: hidden;
   }
@@ -120,12 +125,12 @@
 
   .parameters-panel {
     position: absolute;
+    z-index: 50;
     top: 7rem;
     /* Positioned to the right edge of .main-content */
     right: 0;
     width: 65%;
     height: calc(100% - 7rem);
-    z-index: 50;
     background-color: var(--background-color);
     border-top: 2px solid var(--xy-edge-stroke, #ccc);
     border-left: 1px solid var(--xy-edge-stroke, #ccc);
@@ -136,37 +141,47 @@
     pointer-events: none;
     display: flex;
     flex-direction: column;
+  }
+
+  .parameters-panel-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
     overflow: hidden;
+  }
+
+  .parameters-tab {
+    position: absolute;
+    left: -3rem;
+    top: 1rem;
+    width: 3rem;
+    height: 9rem;
+    background: var(--primary-color);
+    border: 1px solid var(--xy-edge-stroke, #ccc);
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--ternary-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+
+  .parameters-tab span {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    user-select: none;
+    letter-spacing: 0.04em;
   }
 
   .parameters-panel.open {
     /* Remove the translation */
     transform: translateX(0);
     pointer-events: auto;
-  }
-
-  .parameters-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: var(--primary-color);
-    border-bottom: 1px solid var(--xy-edge-stroke, #ccc);
-    flex: 0 0 auto;
-  }
-
-  .parameters-panel-header span {
-    font-weight: 600;
-    color: var(--ternary-color);
-  }
-
-  .parameters-panel-header button {
-    background: none;
-    border: none;
-    font-size: 1.4rem;
-    cursor: pointer;
-    color: var(--ternary-color);
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
   }
 </style>

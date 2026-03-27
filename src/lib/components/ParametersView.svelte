@@ -193,9 +193,9 @@
 
   .toolbar {
     display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--xy-edge-stroke, #ccc);
+    gap: 5rem;
+    justify-content: center;
+    padding: 1rem 1rem;
   }
 
   .tree {

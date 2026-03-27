@@ -31,11 +31,8 @@
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
-  import Button from './layout/Button.svelte'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
-
-  let { onToggleParameters }: { onToggleParameters?: () => void } = $props()
 
   const { screenToFlowPosition } = useSvelteFlow()
 
@@ -103,9 +100,6 @@
   <Panel position="top-right">
     <div class="top-right-controls">
       <ButtonToggleDarkMode />
-      {#if onToggleParameters}
-        <Button size="medium" onclick={onToggleParameters}>Parameters</Button>
-      {/if}
     </div>
   </Panel>
 
