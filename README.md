@@ -166,6 +166,15 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory.
 
+### Creating a Release
+
+To create a new release by triggering the GitHub Actions workflows, tag the commit on `main` and push it:
+
+```bash
+git tag -a v1.0.0 -m "Release v1.0.0: brief description of changes"
+git push origin v1.0.0
+```
+
 ### Pull request template
 
 A pull request template is defined at [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
