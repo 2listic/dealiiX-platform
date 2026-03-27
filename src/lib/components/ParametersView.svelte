@@ -16,8 +16,7 @@
   }
 
   let parameters = $derived(parametersState.value)
-  // null! asserts non-null to TS — safe because bind:this assigns the element before any user interaction
-  let fileInput: HTMLInputElement = $state(null!)
+  let fileInput: HTMLInputElement = $state(null)
 
   function isLeaf(obj: unknown): obj is ParameterLeaf {
     return (

@@ -25,6 +25,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) "Upload Graph" and "Upload Parameters" checkboxes added to the "Job Execution" modal so users can choose what to upload before job execution.
 - [#153](https://github.com/2listic/dealiiX-platform/pull/153) New modal to configure MPI execution.
 - [#152](https://github.com/2listic/dealiiX-platform/pull/152) Fixed sidebar overflow when too many nodes or buttons exceed the window height (wraps to two columns). Grouped related sidebar buttons into dropdown components. New input text in the sidebar to filter registry nodes by "type". Moved network nodes before registry nodes in the sidebar. Elementary constructor nodes ordered first among the other registry nodes.
 - [#147](https://github.com/2listic/dealiiX-platform/pull/147) Simplified elementary constructor input field rendering logic. Added fallback text input for all elementary constructor types.
@@ -50,6 +52,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) Conditionally upload of the graph JSON and/or template parameters file. Sbatch templates replaced the hardcoded execution command with a new placeholder that is resolved to include or omit a new flag to handle parameters file.
 - [#153](https://github.com/2listic/dealiiX-platform/pull/153) Added MPI support for Slurm job submission using two default sbatch templates (MPI and non-MPI). The active template is selected by a new switch button in the Settings modal, persisted in the settings store. Parameters are passed to the template from the UI.
 - [#142](https://github.com/2listic/dealiiX-platform/pull/142) Added SSH communication to get the execution status of all the nodes in a specific job.
 - [#138](https://github.com/2listic/dealiiX-platform/pull/91) Added SSH communication to retrieve content of file .out for a specific job.
