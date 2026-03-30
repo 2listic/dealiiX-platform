@@ -4,6 +4,15 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### UI/UX
+
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) "Upload Graph" and "Upload Parameters" checkboxes added to the "Job Execution" modal so users can choose what to upload before job execution.
+
+### SSH communication
+
+- [#158](https://github.com/2listic/dealiiX-platform/issues/158) Conditionally upload of the graph JSON and/or template parameters file. Sbatch templates replaced the hardcoded execution command with a new placeholder that is resolved to include or omit a new flag to handle parameters file.
+
 ## [1.3.0] - 2026-03-23
 
 ### Building
