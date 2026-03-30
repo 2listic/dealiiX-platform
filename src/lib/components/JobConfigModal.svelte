@@ -2,6 +2,7 @@
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
   import type { JobConfig } from '../utils/sshMessages'
+  import { parametersState } from '../stores/parametersStore.svelte'
 
   interface Props {
     modalId: string
@@ -15,6 +16,9 @@
   let nodes = $state(1)
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
+  let uploadGraph = $state(true)
+  let uploadParameters = $state(false)
+  let hasParameters = $derived(parametersState.value !== null)
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
@@ -29,7 +33,7 @@
   )
 
   const handleConfirm = () => {
-    onConfirm({ nodes, tasksPerNode, timeLimit })
+    onConfirm({ nodes, tasksPerNode, timeLimit, uploadGraph, uploadParameters })
     getModal(modalId).close()
   }
 
@@ -87,11 +91,28 @@
         </div>
       </div>
     </div>
+    <hr />
+    <div class="toggle-container">
+      <label class="toggle-label">
+        <input type="checkbox" bind:checked={uploadGraph} />
+        <span>Upload Graph</span>
+      </label>
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          bind:checked={uploadParameters}
+          disabled={!hasParameters}
+          title={hasParameters
+            ? 'Upload parameters file'
+            : 'Load a parameters file first'}
+        />
+        <span class:disabled={!hasParameters}>Upload Parameters</span>
+      </label>
+    </div>
     <div class="button-container">
-      <Button size="small" onclick={handleCancel}>Cancel</Button>
+      <Button onclick={handleCancel}>Cancel</Button>
       <Button
         variant="action"
-        size="small"
         onclick={handleConfirm}
         disabled={!!timeLimitError}
       >
@@ -175,6 +196,36 @@
     flex: 0 1 auto;
     min-width: 10rem;
     max-width: 16rem;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--ternary-color);
+    margin: 1rem 0 0;
+  }
+
+  .toggle-container {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 0;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .toggle-label input[type='checkbox'] {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+  }
+
+  .toggle-label .disabled {
+    opacity: 0.5;
   }
 
   .button-container {
