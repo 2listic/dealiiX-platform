@@ -88,6 +88,10 @@ Adjust your path to your public SSH key in the `docker-compose.yml` file (it has
 
 `docker compose up -d`
 
+To rebuild images (e.g. after updating the `coral` submodule or changing the `Dockerfile.coral`):
+
+`docker compose up -d --build`
+
 In the main app window click on the settings button and set the default url for the Visualizer  
 `http://localhost:8008/`
 
@@ -102,9 +106,16 @@ Or open a shell in the container (restarting the container if needed)
 
 Build the Coral backend in the container
 
-```
+```bash
 cd app
 cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+```
+
+#### Manually generate available nodes file registry.json
+
+```bash
+cd app
+./build/core/coral --plugin ./build/backends/dealii/libcoral_backend_dealii.so register --registry-path shared-data/registry.json
 ```
 
 #### Manually test the Coral backend
@@ -147,16 +158,6 @@ In particular, when the app exports a `graph.json` for execution, it is written 
 - **Inside the container**: `docker exec -it coral-ssh-slurm cat /app/shared-data/graph.json`
 
 Output files (e.g., `.vtk` files, Slurm logs) produced by CORAL during execution are also written here and served by the `coral-visualizer` container.
-
-### Other usefull Docker commands
-
-Stop the containers
-
-`docker compose stop`
-
-Restart
-
-`docker compose restart`
 
 # Packaging
 
