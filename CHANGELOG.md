@@ -13,6 +13,14 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) Conditionally upload of the graph JSON and/or template parameters file. Sbatch templates replaced the hardcoded execution command with a new placeholder that is resolved to include or omit a new flag to handle parameters file.
 
+### Submodules
+
+- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
+
+### Protocol
+
+- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Updated registry JSON file with available nodes to include new `read_grid` node.
+
 ## [1.3.0] - 2026-03-23
 
 ### Building
