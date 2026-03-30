@@ -1,4 +1,4 @@
-FROM dealii/dealii:v9.6.0-noble
+FROM dealii/dealii:v9.7.1-noble
 
 USER root
 RUN apt update -y && \
