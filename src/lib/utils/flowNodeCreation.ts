@@ -9,19 +9,15 @@ import {
   HIDDEN_SIDEBAR_NODE_TYPES,
   SELF,
   Type,
-  type NetworkNodeOfTypeNetwork,
+  returnNodeName,
+  type CanvasNode,
   type NodeData,
 } from '../types/nodeTypes'
-
-// TODO: consider to move types to a separate file as already done with nodeTypes.ts
-// Consider if CanvasNodeTemplate can be replaced or moved to nodeTypes.ts
-// Consider also that NodeData | NetworkNodeOfTypeNetwork signature is already used in other files like:
-// Sidebar.svelte and dragAndDrop.svelte
-export type CanvasNodeTemplate = NodeData | NetworkNodeOfTypeNetwork
+import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 
 /** A template match that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
-  template: CanvasNodeTemplate
+  template: CanvasNode
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
   argumentName: string
@@ -47,21 +43,19 @@ export type ConnectedNodeDraft = {
  * Shallow-clones a template so canvas node mutations don't affect the registry.
  * @param template - Registry template to clone.
  */
-const cloneTemplateData = (
-  template: CanvasNodeTemplate
-): CanvasNodeTemplate => {
+const cloneTemplateData = (template: CanvasNode): CanvasNode => {
   const cloned = {
     ...template,
     arguments: template.arguments.map((argument) => ({ ...argument })),
     inputs: [...template.inputs],
     outputs: [...template.outputs],
-  } as CanvasNodeTemplate
+  } as CanvasNode
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
     // Stored network nodes keep an embedded graph that is not needed on-canvas.
     // eslint-disable-next-line no-unused-vars
     const { value, ...dataWithoutValue } = cloned
-    return dataWithoutValue as NetworkNodeOfTypeNetwork
+    return dataWithoutValue as CanvasNode
   }
 
   return cloned
@@ -69,18 +63,15 @@ const cloneTemplateData = (
 
 /**
  * Creates a new @xyflow `Node` from a registry template.
+ * The node ID is generated automatically from the store counter.
  * @param template - Source template from the sidebar registry.
  * @param position - Canvas position for the new node.
- * @param options - `id` (required) and optional `name` override.
+ * @param options - Optional `name` override for the new node.
  */
 export const createCanvasNode = (
-  template: CanvasNodeTemplate,
+  template: CanvasNode,
   position: XYPosition,
-  // TODO: rethink the options argument, should the id be generated internally?
-  options: {
-    id: string
-    name?: string
-  }
+  options?: { name?: string }
 ): Node => {
   const data = cloneTemplateData(template)
 
@@ -89,7 +80,7 @@ export const createCanvasNode = (
   }
 
   return {
-    id: options.id,
+    id: getNextNodeId().toString(),
     type: data.node_type,
     data,
     position,
@@ -168,7 +159,7 @@ export const getOutputMetadata = (
  * @param excludedTemplateType - Template type to skip (usually the source node itself).
  */
 export const findCompatibleNodeOptions = (
-  templates: CanvasNodeTemplate[],
+  templates: CanvasNode[],
   sourceType: string,
   excludedTemplateType?: string
 ): CompatibleNodeOption[] => {
@@ -191,7 +182,7 @@ export const findCompatibleNodeOptions = (
         template,
         handleId: `input-${handleIndex}`,
         argumentName: argument.name,
-        defaultNodeName: getDefaultTemplateNodeName(template),
+        defaultNodeName: returnNodeName(template),
       })
     }
   }
@@ -245,12 +236,6 @@ export const formatSuggestedNodeName = (name: string): string => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
 
-/** Returns the formatted display name for a template, preferring `name` over `type`. */
-// TODO: consider to extract this function and merge with returnNodeNmae at nodeTypes.ts
-export const getDefaultTemplateNodeName = (
-  template: CanvasNodeTemplate
-): string => formatSuggestedNodeName(template.name ?? template.type)
-
 /**
  * Finds all templates that produce `expectedInputType` on any output handle.
  * Mirror of {@link findCompatibleNodeOptions} for the reverse drag direction (from a target handle).
@@ -259,7 +244,7 @@ export const getDefaultTemplateNodeName = (
  * @param excludedTemplateType - Template type to skip (usually the target node itself).
  */
 export const findCompatibleSourceNodeOptions = (
-  templates: CanvasNodeTemplate[],
+  templates: CanvasNode[],
   expectedInputType: string,
   excludedTemplateType?: string
 ): CompatibleNodeOption[] => {
@@ -289,7 +274,7 @@ export const findCompatibleSourceNodeOptions = (
           argumentIndex === SELF
             ? (template.name ?? template.type)
             : (template.arguments?.[argumentIndex]?.name ?? template.type),
-        defaultNodeName: getDefaultTemplateNodeName(template),
+        defaultNodeName: returnNodeName(template),
       })
     }
   }
@@ -309,7 +294,7 @@ export const resolveConnectionContext = (
   node: Node,
   handleType: 'source' | 'target',
   handleId: string,
-  templates: CanvasNodeTemplate[]
+  templates: CanvasNode[]
 ): {
   compatibleOptions: CompatibleNodeOption[]
   connectionName: string

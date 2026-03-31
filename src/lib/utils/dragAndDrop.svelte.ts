@@ -1,6 +1,6 @@
 import type { XYPosition } from '@xyflow/svelte'
-import { getNextNodeId, getNodes, setNodes } from '../stores/nodes.svelte'
-import type { NetworkNodeOfTypeNetwork, NodeData } from '../types/nodeTypes'
+import { getNodes, setNodes } from '../stores/nodes.svelte'
+import type { CanvasNode } from '../types/nodeTypes'
 import { createCanvasNode } from './flowNodeCreation'
 
 export const onDragOver = (event: DragEvent) => {
@@ -14,7 +14,7 @@ export const onDrop = (
   event: DragEvent,
   // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
   screenToFlowPosition: (_XYPosition: XYPosition) => XYPosition,
-  draggedNodeData: NodeData | NetworkNodeOfTypeNetwork | null
+  draggedNodeData: CanvasNode | null
 ) => {
   event.preventDefault()
   if (!draggedNodeData) {
@@ -25,9 +25,8 @@ export const onDrop = (
     x: event.clientX,
     y: event.clientY,
   })
-  const newNode = createCanvasNode(draggedNodeData, position, {
-    id: getNextNodeId().toString(),
-  })
+  const newNode = createCanvasNode(draggedNodeData, position)
 
+  // TODO: use new addNode() function
   setNodes([...getNodes(), newNode])
 }

@@ -25,7 +25,6 @@
     setEdges,
     addEdge,
     getAvailableNodes,
-    getNextNodeId,
     getStoredNetworkNodes,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
@@ -113,10 +112,7 @@
       const newNode = createCanvasNode(
         option.template,
         connectedNodeDraft.position,
-        {
-          id: getNextNodeId().toString(),
-          name,
-        }
+        { name }
       )
 
       // TODO create addNode function as done with addEdge

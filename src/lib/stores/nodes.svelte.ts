@@ -6,6 +6,8 @@ import {
   type RegisteredNetworkNodes,
   NodeType,
 } from '../types/nodeTypes'
+import { setLastNodeId, getNextNodeId } from './nodeIdCounter.svelte'
+export { getNextNodeId }
 import type { Node, Edge } from '@xyflow/svelte'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
@@ -86,28 +88,15 @@ export const addEdge = (edge: Edge): void => {
 }
 
 /**
- * Node ID management
- */
-let lastNodeId = $state<number>(0)
-
-/**
- * Update the last used node ID based on current nodes
- * Scans all nodes to find the highest ID value
+ * Sync the ID counter to the highest node ID in the current graph.
+ * Call this after loading a graph so new nodes don't collide with existing ones.
  */
 export const updateLastNodeId = (): void => {
-  lastNodeId = nodes.reduce((max, node) => Math.max(max, parseInt(node.id)), -1)
+  setLastNodeId(
+    nodes.reduce((max, node) => Math.max(max, parseInt(node.id)), -1)
+  )
 }
-updateLastNodeId() // Initialize lastNodeId
-
-/**
- * Get the next available node ID
- * Increments the internal counter and returns the new ID
- * @returns {number} The next available node ID
- */
-export const getNextNodeId = (): number => {
-  lastNodeId++
-  return lastNodeId
-}
+updateLastNodeId() // Initialize counter from current nodes
 
 // ================= Registered nodes (sidebar) ========================
 

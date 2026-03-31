@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { NodeType, SELF, Type, TypeField } from '../types/nodeTypes'
+import {
+  NodeType,
+  SELF,
+  Type,
+  TypeField,
+  returnNodeName,
+} from '../types/nodeTypes'
 import {
   createCanvasNode,
   findCompatibleSourceNodeOptions,
   findCompatibleNodeOptions,
   formatSuggestedNodeName,
-  getDefaultTemplateNodeName,
   getInputMetadata,
   getOutputMetadata,
 } from './flowNodeCreation'
@@ -214,7 +219,7 @@ describe('flowNodeCreation', () => {
 
   it('builds default node names from the destination template', () => {
     expect(
-      getDefaultTemplateNodeName({
+      returnNodeName({
         type: 'target_node_type',
         node_type: NodeType.FUNCTION,
         arguments: [],
@@ -233,11 +238,7 @@ describe('flowNodeCreation', () => {
       outputs: [],
     }
 
-    const node = createCanvasNode(
-      template,
-      { x: 10, y: 20 },
-      { id: '10', name: 'mesh' }
-    )
+    const node = createCanvasNode(template, { x: 10, y: 20 }, { name: 'mesh' })
 
     expect(node.data).not.toBe(template)
     expect(node.data.name).toBe('mesh')

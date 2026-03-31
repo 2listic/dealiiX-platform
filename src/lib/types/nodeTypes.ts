@@ -155,6 +155,11 @@ export type NetworkNodeOfTypeNetwork = {
   is_valid?: boolean
 }
 
+/** A node that can be placed on the canvas — either a registry node or a stored network node. */
+// TODO: use this around the codebase
+// TODO: rename NodeData and/or NetworkNodeOfTypeNetwork to something more descriptive
+export type CanvasNode = NodeData | NetworkNodeOfTypeNetwork
+
 export type NetworkNodes = {
   [id: string]: NetworkNode | NetworkNodeOfTypeNetwork
 }
@@ -208,14 +213,12 @@ export const isNetworkNodeOfTypeNetwork = (
 }
 
 /**
- * Returns the name property -or method_name or type if not present- formatted with
- * spaces instead of underscores.
- * @param node
- * @returns
+ * Returns the display name for a node template: prefers `name` over `type`,
+ * replaces underscores with spaces, and capitalizes the first letter.
+ * @param node - Registry node or stored network node.
  */
-export const returnNodeName = (
-  node: NodeData | NetworkNodeOfTypeNetwork
-): string => {
-  let nodeName = 'name' in node ? node.name : node.type
-  return nodeName.replaceAll('_', ' ')
+export const returnNodeName = (node: CanvasNode): string => {
+  const normalized = (node.name ?? node.type).replaceAll('_', ' ').trim()
+  if (!normalized) return ''
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
