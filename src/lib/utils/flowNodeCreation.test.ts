@@ -6,7 +6,6 @@ import {
   findCompatibleNodeOptions,
   formatSuggestedNodeName,
   getDefaultTemplateNodeName,
-  getSuggestedCreatedNodeName,
   getInputMetadata,
   getOutputMetadata,
 } from './flowNodeCreation'
@@ -225,28 +224,6 @@ describe('flowNodeCreation', () => {
     ).toBe('Target node type')
   })
 
-  it('suggests the created node name from the destination template for elementary sources', () => {
-    expect(
-      getSuggestedCreatedNodeName({
-        connectionName: 'value',
-        startHandleType: 'source',
-        startNodeType: NodeType.ELEMENTARY_CONSTRUCTOR,
-        firstCompatibleDefaultName: 'Target node type',
-      })
-    ).toBe('Target node type')
-  })
-
-  it('suggests the created node name from the connection name otherwise', () => {
-    expect(
-      getSuggestedCreatedNodeName({
-        connectionName: 'my_connection_name',
-        startHandleType: 'target',
-        startNodeType: NodeType.FUNCTION,
-        firstCompatibleDefaultName: 'Ignored name',
-      })
-    ).toBe('My connection name')
-  })
-
   it('clones created nodes and applies the requested name', () => {
     const template = {
       type: 'Consumer',
@@ -256,7 +233,11 @@ describe('flowNodeCreation', () => {
       outputs: [],
     }
 
-    const node = createCanvasNode(template, { x: 10, y: 20 }, { id: '10', name: 'mesh' })
+    const node = createCanvasNode(
+      template,
+      { x: 10, y: 20 },
+      { id: '10', name: 'mesh' }
+    )
 
     expect(node.data).not.toBe(template)
     expect(node.data.name).toBe('mesh')

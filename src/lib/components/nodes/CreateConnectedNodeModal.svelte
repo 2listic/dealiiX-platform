@@ -7,23 +7,16 @@
   interface Props {
     modalId: string
     options: CompatibleNodeOption[]
-    initialName: string
     sourceType: string
     onCreate: (_option: CompatibleNodeOption, _name: string) => void
     onCancel: () => void
   }
 
-  let { modalId, options, initialName, sourceType, onCreate, onCancel }: Props =
-    $props()
+  let { modalId, options, sourceType, onCreate, onCancel }: Props = $props()
 
-  // eslint-disable-next-line svelte/prefer-writable-derived
-  let nodeName = $state(initialName)
   // eslint-disable-next-line svelte/prefer-writable-derived
   let selectedOptionId = $state('')
-
-  $effect(() => {
-    nodeName = initialName
-  })
+  let nodeName = $state('')
 
   $effect(() => {
     selectedOptionId = options[0]
@@ -33,7 +26,8 @@
 
   $effect(() => {
     const selectedOption = options.find(
-      (option) => `${option.template.type}-${option.handleId}` === selectedOptionId
+      (option) =>
+        `${option.template.type}-${option.handleId}` === selectedOptionId
     )
     if (selectedOption) {
       nodeName = selectedOption.defaultNodeName
@@ -42,19 +36,22 @@
 
   const handleCreate = () => {
     const selectedOption = options.find(
-      (option) => `${option.template.type}-${option.handleId}` === selectedOptionId
+      (option) =>
+        `${option.template.type}-${option.handleId}` === selectedOptionId
     )
     if (!selectedOption) {
       return
     }
-    onCreate(selectedOption, nodeName.trim() || initialName)
+    onCreate(selectedOption, nodeName.trim() || selectedOption.defaultNodeName)
   }
 </script>
 
 <Modal id={modalId} size="sm" onClose={onCancel}>
   <div class="create-connected-node-form">
     <h2>Create Connected Node</h2>
-    <p class="helper-text">Compatible with output type <code>{sourceType}</code></p>
+    <p class="helper-text">
+      Compatible with output type <code>{sourceType}</code>
+    </p>
 
     <label for="connected-node-type">Node type</label>
     <select
@@ -79,7 +76,6 @@
     />
 
     <div class="button-container">
-      <Button variant="default" onclick={onCancel}>Cancel</Button>
       <Button variant="action" onclick={handleCreate}>Create</Button>
     </div>
   </div>

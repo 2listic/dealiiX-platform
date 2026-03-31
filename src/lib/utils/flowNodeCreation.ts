@@ -1,13 +1,16 @@
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
   HIDDEN_SIDEBAR_NODE_TYPES,
-  NodeType,
   SELF,
   Type,
   type NetworkNodeOfTypeNetwork,
   type NodeData,
 } from '../types/nodeTypes'
 
+// TODO: consider to move types to a separate file as already done with nodeTypes.ts
+// Consider if CanvasNodeTemplate can be replaced or moved to nodeTypes.ts
+// Consider also that NodeData | NetworkNodeOfTypeNetwork signature is already used in other files like:
+// Sidebar.svelte and dragAndDrop.svelte
 export type CanvasNodeTemplate = NodeData | NetworkNodeOfTypeNetwork
 
 export type CompatibleNodeOption = {
@@ -17,7 +20,22 @@ export type CompatibleNodeOption = {
   defaultNodeName: string
 }
 
-const cloneTemplateData = (template: CanvasNodeTemplate): CanvasNodeTemplate => {
+export type ConnectStartParams = {
+  nodeId: string
+  handleId: string
+  handleType: 'source' | 'target'
+}
+
+export type ConnectedNodeDraft = {
+  options: CompatibleNodeOption[]
+  sourceType: string
+  position: XYPosition
+  connectStartParams: ConnectStartParams
+}
+
+const cloneTemplateData = (
+  template: CanvasNodeTemplate
+): CanvasNodeTemplate => {
   const cloned = {
     ...template,
     arguments: template.arguments.map((argument) => ({ ...argument })),
@@ -71,12 +89,18 @@ export const createCustomEdge = (params: {
   targetHandle: params.targetHandle,
 })
 
+// TODO: centralize all the features relative to nodes' data so that we have a unique source of truth.
+// For example here we are providing node's handlers type having input/output index.
+// We have similar logics providing data of a node starting from some other data in files UnifiedNode.svelte,
+// connectionsValidation.js. graphParser.ts, networkNodes.ts
+// Perhaps this new logic may be placed in nodes.svelte.ts file and reused in all the places
 export const getOutputMetadata = (
   sourceNode: Node,
   sourceHandle: string
 ): { sourceType: string; connectionName: string } | null => {
   const handleIndex = Number.parseInt(sourceHandle.split('-')[1], 10)
   if (Number.isNaN(handleIndex)) {
+    // TODO: add console warnings for every early return
     return null
   }
 
@@ -109,34 +133,32 @@ export const findCompatibleNodeOptions = (
   templates: CanvasNodeTemplate[],
   sourceType: string,
   excludedTemplateType?: string
-): CompatibleNodeOption[] =>
-  templates
-    .filter(
-      (template) =>
-        !HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type) &&
-        template.type !== excludedTemplateType
-    )
-    .flatMap((template) =>
-      template.inputs.flatMap((argumentIndex, handleIndex) => {
-        const argument = template.arguments?.[argumentIndex]
-        if (!argument) {
-          return []
-        }
-
-        if (argument.type !== Type.ANY && argument.type !== sourceType) {
-          return []
-        }
-
-        return [
-          {
-            template,
-            handleId: `input-${handleIndex}`,
-            argumentName: argument.name,
-            defaultNodeName: getDefaultTemplateNodeName(template),
-          },
-        ]
+): CompatibleNodeOption[] => {
+  const options: CompatibleNodeOption[] = []
+  for (const template of templates) {
+    // TODO: consider to include nodes of type NodeType.NETWORK
+    if (HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type)) continue
+    if (template.type === excludedTemplateType) continue
+    for (
+      let handleIndex = 0;
+      handleIndex < template.inputs.length;
+      handleIndex++
+    ) {
+      // TODO: consider to centralize this: from handler index, we get the corresponding argument
+      const argumentIndex = template.inputs[handleIndex]
+      const argument = template.arguments?.[argumentIndex]
+      if (!argument) continue
+      if (argument.type !== Type.ANY && argument.type !== sourceType) continue
+      options.push({
+        template,
+        handleId: `input-${handleIndex}`,
+        argumentName: argument.name,
+        defaultNodeName: getDefaultTemplateNodeName(template),
       })
-    )
+    }
+  }
+  return options
+}
 
 export const getInputMetadata = (
   targetNode: Node,
@@ -176,60 +198,99 @@ export const getDefaultTemplateNodeName = (
   template: CanvasNodeTemplate
 ): string => formatSuggestedNodeName(template.name ?? template.type)
 
-export const getSuggestedCreatedNodeName = (params: {
-  connectionName: string
-  startHandleType: 'source' | 'target'
-  startNodeType: string
-  firstCompatibleDefaultName?: string
-}): string => {
-  const formattedConnectionName = formatSuggestedNodeName(params.connectionName)
-
-  if (
-    params.startHandleType === 'source' &&
-    params.startNodeType === NodeType.ELEMENTARY_CONSTRUCTOR
-  ) {
-    return params.firstCompatibleDefaultName ?? formattedConnectionName
-  }
-
-  return formattedConnectionName
-}
-
 export const findCompatibleSourceNodeOptions = (
   templates: CanvasNodeTemplate[],
   expectedInputType: string,
   excludedTemplateType?: string
-): CompatibleNodeOption[] =>
-  templates
-    .filter(
-      (template) =>
-        !HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type) &&
-        template.type !== excludedTemplateType
-    )
-    .flatMap((template) =>
-      template.outputs.flatMap((argumentIndex, handleIndex) => {
-        const outputType =
+): CompatibleNodeOption[] => {
+  const options: CompatibleNodeOption[] = []
+  for (const template of templates) {
+    // TODO: consider to include nodes of type NodeType.NETWORK
+    if (HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type)) continue
+    if (template.type === excludedTemplateType) continue
+    for (
+      let handleIndex = 0;
+      handleIndex < template.outputs.length;
+      handleIndex++
+    ) {
+      // TODO: consider to centralize this too: get node output type
+      const argumentIndex = template.outputs[handleIndex]
+      const outputType =
+        argumentIndex === SELF
+          ? (('base' in template ? template.base : undefined) ?? template.type)
+          : template.arguments?.[argumentIndex]?.type
+      if (!outputType) continue
+      if (expectedInputType !== Type.ANY && outputType !== expectedInputType)
+        continue
+      options.push({
+        template,
+        handleId: `output-${handleIndex}`,
+        argumentName:
           argumentIndex === SELF
-            ? template.base ?? template.type
-            : template.arguments?.[argumentIndex]?.type
-
-        if (!outputType) {
-          return []
-        }
-
-        if (expectedInputType !== Type.ANY && outputType !== expectedInputType) {
-          return []
-        }
-
-        return [
-          {
-            template,
-            handleId: `output-${handleIndex}`,
-            argumentName:
-              argumentIndex === SELF
-                ? template.name ?? template.type
-                : template.arguments?.[argumentIndex]?.name ?? template.type,
-            defaultNodeName: getDefaultTemplateNodeName(template),
-          },
-        ]
+            ? (template.name ?? template.type)
+            : (template.arguments?.[argumentIndex]?.name ?? template.type),
+        defaultNodeName: getDefaultTemplateNodeName(template),
       })
-    )
+    }
+  }
+  return options
+}
+
+export const resolveConnectionContext = (
+  node: Node,
+  handleType: 'source' | 'target',
+  handleId: string,
+  templates: CanvasNodeTemplate[]
+): {
+  compatibleOptions: CompatibleNodeOption[]
+  connectionName: string
+  connectionType: string
+} | null => {
+  if (handleType === 'source') {
+    const metadata = getOutputMetadata(node, handleId)
+    if (!metadata) return null
+    return {
+      compatibleOptions: findCompatibleNodeOptions(
+        templates,
+        metadata.sourceType,
+        (node.data as NodeData).type
+      ),
+      connectionName: metadata.connectionName,
+      connectionType: metadata.sourceType,
+    }
+  } else {
+    const metadata = getInputMetadata(node, handleId)
+    if (!metadata) return null
+    return {
+      compatibleOptions: findCompatibleSourceNodeOptions(
+        templates,
+        metadata.expectedInputType,
+        (node.data as NodeData).type
+      ),
+      connectionName: metadata.connectionName,
+      connectionType: metadata.expectedInputType,
+    }
+  }
+}
+
+export const buildEdgeForNewNode = (
+  connectStartParams: ConnectStartParams,
+  newNodeId: string,
+  newNodeHandleId: string
+): Edge => {
+  if (connectStartParams.handleType === 'source') {
+    return createCustomEdge({
+      source: connectStartParams.nodeId,
+      sourceHandle: connectStartParams.handleId,
+      target: newNodeId,
+      targetHandle: newNodeHandleId,
+    })
+  } else {
+    return createCustomEdge({
+      source: newNodeId,
+      sourceHandle: newNodeHandleId,
+      target: connectStartParams.nodeId,
+      targetHandle: connectStartParams.handleId,
+    })
+  }
+}

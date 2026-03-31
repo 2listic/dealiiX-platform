@@ -20,8 +20,13 @@
   import {
     getNodes,
     getEdges,
+    getEdgesSnapshot,
     setNodes,
     setEdges,
+    addEdge,
+    getAvailableNodes,
+    getNextNodeId,
+    getStoredNetworkNodes,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
@@ -35,50 +40,25 @@
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
   import {
-    getAvailableNodes,
-    getNextNodeId,
-    getStoredNetworkNodes,
-  } from '../stores/nodes.svelte'
-  import {
     createCanvasNode,
-    createCustomEdge,
-    findCompatibleNodeOptions,
-    findCompatibleSourceNodeOptions,
-    getSuggestedCreatedNodeName,
-    getInputMetadata,
-    getOutputMetadata,
+    buildEdgeForNewNode,
+    resolveConnectionContext,
+    formatSuggestedNodeName,
     type CompatibleNodeOption,
+    type ConnectedNodeDraft,
+    type ConnectStartParams,
   } from '../utils/flowNodeCreation'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
 
-  const { screenToFlowPosition, getNode, getIntersectingNodes } = useSvelteFlow()
+  const { screenToFlowPosition, getNode, getIntersectingNodes } =
+    useSvelteFlow()
   const createConnectedNodeModalId = 'create-connected-node'
 
   let canvasElement = $state<HTMLDivElement>()
-  let createConnectedNodeOptions = $state<CompatibleNodeOption[]>([])
-  let createConnectedNodeName = $state('')
-  let createConnectedNodeSourceType = $state('')
-  let createConnectedNodePosition = $state({ x: 0, y: 0 })
-  let activeConnectionStart = $state<{
-    nodeId: string
-    handleId: string
-    handleType: 'source' | 'target'
-  } | null>(null)
-  let pendingConnection = $state<
-    | {
-        direction: 'forward'
-        source: string
-        sourceHandle: string
-      }
-    | {
-        direction: 'backward'
-        target: string
-        targetHandle: string
-      }
-    | null
-  >(null)
+  let connectStartParams: ConnectStartParams | null = null
+  let connectedNodeDraft = $state<ConnectedNodeDraft | null>(null)
 
   const nodeTypes: NodeTypes = {
     [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
@@ -116,60 +96,33 @@
     return null
   }
 
-  const resetConnectedNodeDraft = () => {
-    createConnectedNodeOptions = []
-    createConnectedNodeName = ''
-    createConnectedNodeSourceType = ''
-    pendingConnection = null
-  }
-
-  const createConnectedNode = (
-    option: CompatibleNodeOption,
-    name: string
-  ) => {
-    if (!pendingConnection) {
+  const createConnectedNode = (option: CompatibleNodeOption, name: string) => {
+    if (!connectedNodeDraft) {
       return
     }
 
     try {
       const newNode = createCanvasNode(
         option.template,
-        createConnectedNodePosition,
+        connectedNodeDraft.position,
         {
           id: getNextNodeId().toString(),
           name,
         }
       )
 
-      const nextNodes = [...getNodes(), newNode]
-      setNodes(nextNodes)
-
-      const nextEdges =
-        pendingConnection.direction === 'forward'
-          ? [
-              ...getEdges(),
-              createCustomEdge({
-                source: pendingConnection.source,
-                sourceHandle: pendingConnection.sourceHandle,
-                target: newNode.id,
-                targetHandle: option.handleId,
-              }),
-            ]
-          : [
-              ...getEdges(),
-              createCustomEdge({
-                source: newNode.id,
-                sourceHandle: option.handleId,
-                target: pendingConnection.target,
-                targetHandle: pendingConnection.targetHandle,
-              }),
-            ]
-
-      setEdges(nextEdges)
-
+      // TODO create addNode function as done with addEdge
+      setNodes([...getNodes(), newNode])
+      addEdge(
+        buildEdgeForNewNode(
+          connectedNodeDraft.connectStartParams,
+          newNode.id,
+          option.handleId
+        )
+      )
       clearConnectionCache()
 
-      pendingConnection = null
+      connectedNodeDraft = null
       getModal(createConnectedNodeModalId)?.close()
     } catch (error) {
       const message =
@@ -182,136 +135,125 @@
     }
   }
 
-  const maybeOpenConnectedNodeModal = (
-    event: MouseEvent | TouchEvent
+  const handleConnectStart = (
+    _: MouseEvent | TouchEvent,
+    params: {
+      nodeId: string | null
+      handleId: string | null
+      handleType: string | null
+    }
   ) => {
-    if (!activeConnectionStart) {
+    if (
+      (params.handleType !== 'source' && params.handleType !== 'target') ||
+      !params.nodeId ||
+      !params.handleId
+    ) {
+      connectStartParams = null
       return
     }
+    connectStartParams = {
+      nodeId: params.nodeId,
+      handleId: params.handleId,
+      handleType: params.handleType,
+    }
+  }
+
+  const isClientPositionInsideElement = (
+    clientPos: { x: number; y: number },
+    element: HTMLElement
+  ): boolean => {
+    const bounds = element.getBoundingClientRect()
+    return (
+      clientPos.x >= bounds.left &&
+      clientPos.x <= bounds.right &&
+      clientPos.y >= bounds.top &&
+      clientPos.y <= bounds.bottom
+    )
+  }
+
+  const handleConnectEnd: OnConnectEnd = (event) => {
+    if (!connectStartParams) return
 
     const clientPosition = getClientPosition(event)
-    if (!clientPosition || !canvasElement) {
-      return
-    }
+    if (!clientPosition || !canvasElement) return
 
-    const bounds = canvasElement.getBoundingClientRect()
-    const isInsideCanvas =
-      clientPosition.x >= bounds.left &&
-      clientPosition.x <= bounds.right &&
-      clientPosition.y >= bounds.top &&
-      clientPosition.y <= bounds.bottom
-
-    if (!isInsideCanvas) {
-      activeConnectionStart = null
+    if (!isClientPositionInsideElement(clientPosition, canvasElement)) {
+      connectStartParams = null
       return
     }
 
     const position = screenToFlowPosition(clientPosition)
     const overlappingNodes = getIntersectingNodes(
-      {
-        x: position.x - 1,
-        y: position.y - 1,
-        width: 2,
-        height: 2,
-      },
+      { x: position.x - 1, y: position.y - 1, width: 2, height: 2 },
       true
     )
     if (overlappingNodes.length > 0) {
-      activeConnectionStart = null
+      connectStartParams = null
+      return
+    }
+
+    const node = getNode(connectStartParams.nodeId)
+    if (!node) {
+      console.warn('onconnectend: could not find node', connectStartParams)
+      connectStartParams = null
+      return
+    }
+
+    const isTargetHandleAlreadyConnected =
+      connectStartParams.handleType === 'target' &&
+      getEdgesSnapshot().some(
+        (e) =>
+          e.target === node.id &&
+          e.targetHandle === connectStartParams?.handleId
+      )
+    if (isTargetHandleAlreadyConnected) {
+      connectStartParams = null
       return
     }
 
     const templates = [...getStoredNetworkNodes(), ...getAvailableNodes()]
-    const node = getNode(activeConnectionStart.nodeId)
-    if (!node || !activeConnectionStart.handleId) {
-      activeConnectionStart = null
+    const context = resolveConnectionContext(node, connectStartParams.handleType, connectStartParams.handleId, templates)
+
+    if (!context) {
+      connectStartParams = null
       return
     }
 
-    let compatibleOptions: CompatibleNodeOption[] = []
-    let connectionName = ''
-    let connectionType = ''
-
-    if (activeConnectionStart.handleType === 'source') {
-      const outputMetadata = getOutputMetadata(node, activeConnectionStart.handleId)
-      if (!outputMetadata) {
-        activeConnectionStart = null
-        return
-      }
-
-      connectionName = outputMetadata.connectionName
-      connectionType = outputMetadata.sourceType
-      compatibleOptions = findCompatibleNodeOptions(
-        templates,
-        outputMetadata.sourceType,
-        node.data.type
-      )
-      pendingConnection = {
-        direction: 'forward',
-        source: activeConnectionStart.nodeId,
-        sourceHandle: activeConnectionStart.handleId,
-      }
-    } else {
-      const inputMetadata = getInputMetadata(node, activeConnectionStart.handleId)
-      if (!inputMetadata) {
-        activeConnectionStart = null
-        return
-      }
-
-      connectionName = inputMetadata.connectionName
-      connectionType = inputMetadata.expectedInputType
-      compatibleOptions = findCompatibleSourceNodeOptions(
-        templates,
-        inputMetadata.expectedInputType,
-        node.data.type
-      )
-      pendingConnection = {
-        direction: 'backward',
-        target: activeConnectionStart.nodeId,
-        targetHandle: activeConnectionStart.handleId,
-      }
-    }
+    const { compatibleOptions, connectionName, connectionType } = context
 
     if (compatibleOptions.length === 0) {
+      connectStartParams = null
       toastState.add({
         message: `No compatible nodes found for type "${connectionType}"`,
         type: 'error',
       })
-      activeConnectionStart = null
-      pendingConnection = null
       return
     }
 
-    const defaultSuggestedName = getSuggestedCreatedNodeName({
-      connectionName,
-      startHandleType: activeConnectionStart.handleType,
-      startNodeType: node.data.node_type,
-      firstCompatibleDefaultName: compatibleOptions[0]?.defaultNodeName,
-    })
-
-    createConnectedNodeOptions = compatibleOptions
-    createConnectedNodeName = defaultSuggestedName
-    createConnectedNodeSourceType = connectionType
-    createConnectedNodePosition = position
-    activeConnectionStart = null
+    connectedNodeDraft = {
+      options: compatibleOptions,
+      sourceType: connectionType,
+      position,
+      connectStartParams,
+    }
+    // TODO: check if connectStartParams can be safely not nulled here and at every early return before
+    connectStartParams = null
 
     if (compatibleOptions.length === 1) {
+      const autoCreateName =
+        connectedNodeDraft.connectStartParams.handleType === 'source' &&
+        node.data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
+          ? compatibleOptions[0].defaultNodeName
+          : formatSuggestedNodeName(connectionName)
       createConnectedNode(
         compatibleOptions[0],
-        defaultSuggestedName || connectionName
+        autoCreateName || connectionName
       )
       return
     }
 
     getModal(createConnectedNodeModalId)?.open()
   }
-
-  const handleConnectEnd: OnConnectEnd = (event) => maybeOpenConnectedNodeModal(event)
-
-  const handleCreateConnectedNode = (
-    option: CompatibleNodeOption,
-    name: string
-  ) => createConnectedNode(option, name)
 </script>
 
 <div class="flow-canvas" bind:this={canvasElement}>
@@ -322,24 +264,9 @@
     {edgeTypes}
     fitView
     {isValidConnection}
-    onconnectstart={(_, params) => {
-      if (
-        (params.handleType !== 'source' && params.handleType !== 'target') ||
-        !params.nodeId ||
-        !params.handleId
-      ) {
-        activeConnectionStart = null
-        return
-      }
-
-      activeConnectionStart = {
-        nodeId: params.nodeId,
-        handleId: params.handleId,
-        handleType: params.handleType,
-      }
-    }}
+    onconnectstart={handleConnectStart}
     onconnect={() => {
-      activeConnectionStart = null
+      connectStartParams = null
     }}
     onconnectend={handleConnectEnd}
     ondragover={onDragOver}
@@ -383,11 +310,12 @@
 
 <CreateConnectedNodeModal
   modalId={createConnectedNodeModalId}
-  options={createConnectedNodeOptions}
-  initialName={createConnectedNodeName}
-  sourceType={createConnectedNodeSourceType}
-  onCreate={handleCreateConnectedNode}
-  onCancel={resetConnectedNodeDraft}
+  options={connectedNodeDraft?.options ?? []}
+  sourceType={connectedNodeDraft?.sourceType ?? ''}
+  onCreate={createConnectedNode}
+  onCancel={() => {
+    connectedNodeDraft = null
+  }}
 />
 
 <style>
