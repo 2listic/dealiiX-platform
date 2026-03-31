@@ -327,7 +327,9 @@
       </div>
     </Panel>
     <Panel position="top-right">
-      <ButtonToggleDarkMode />
+      <div class="top-right-controls">
+        <ButtonToggleDarkMode />
+      </div>
     </Panel>
     <Controls position="bottom-center" orientation="horizontal" />
     <MiniMap />
@@ -375,6 +377,13 @@
     flex-wrap: wrap;
     gap: 1vw;
     max-width: 50vw;
+  }
+
+  .top-right-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-end;
   }
 
   .custom-panel {
