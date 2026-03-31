@@ -26,6 +26,7 @@
     addEdge,
     getAvailableNodes,
     getStoredNetworkNodes,
+    addNode,
   } from '../stores/nodes.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
@@ -115,8 +116,7 @@
         { name }
       )
 
-      // TODO create addNode function as done with addEdge
-      setNodes([...getNodes(), newNode])
+      addNode(newNode)
       addEdge(
         buildEdgeForNewNode(
           connectedNodeDraft.connectStartParams,

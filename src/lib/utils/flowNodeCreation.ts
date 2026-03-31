@@ -6,7 +6,7 @@
 
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
-  HIDDEN_SIDEBAR_NODE_TYPES,
+  NodeType,
   SELF,
   Type,
   returnNodeName,
@@ -123,12 +123,18 @@ export const getOutputMetadata = (
   const data = sourceNode.data as NodeData
   const handleIndex = Number.parseInt(sourceHandle.split('-')[1], 10)
   if (Number.isNaN(handleIndex)) {
-    // TODO: add console warnings for every early return
+    console.warn('getOutputMetadata: invalid handle id', sourceHandle)
     return null
   }
 
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) {
+    console.warn(
+      'getOutputMetadata: no output at index',
+      handleIndex,
+      'for node',
+      sourceNode.id
+    )
     return null
   }
 
@@ -143,6 +149,12 @@ export const getOutputMetadata = (
 
   const argument = data.arguments?.[outputIndex]
   if (!argument) {
+    console.warn(
+      'getOutputMetadata: no argument at index',
+      outputIndex,
+      'for node',
+      sourceNode.id
+    )
     return null
   }
 
@@ -165,8 +177,7 @@ export const findCompatibleNodeOptions = (
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
   for (const template of templates) {
-    // TODO: consider to include nodes of type NodeType.NETWORK
-    if (HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type)) continue
+    if (template.node_type === NodeType.ABSTRACT) continue
     if (template.type === excludedTemplateType) continue
     for (
       let handleIndex = 0;
@@ -203,16 +214,29 @@ export const getInputMetadata = (
   const handleIndex = Number.parseInt(targetHandle.split('-')[1], 10)
   // TODO: centralize this too
   if (Number.isNaN(handleIndex)) {
+    console.warn('getInputMetadata: invalid handle id', targetHandle)
     return null
   }
 
   const inputIndex = data.inputs?.[handleIndex]
   if (inputIndex == null) {
+    console.warn(
+      'getInputMetadata: no input at index',
+      handleIndex,
+      'for node',
+      targetNode.id
+    )
     return null
   }
 
   const argument = data.arguments?.[inputIndex]
   if (!argument) {
+    console.warn(
+      'getInputMetadata: no argument at index',
+      inputIndex,
+      'for node',
+      targetNode.id
+    )
     return null
   }
 
@@ -250,8 +274,7 @@ export const findCompatibleSourceNodeOptions = (
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
   for (const template of templates) {
-    // TODO: consider to include nodes of type NodeType.NETWORK
-    if (HIDDEN_SIDEBAR_NODE_TYPES.includes(template.node_type)) continue
+    if (template.node_type === NodeType.ABSTRACT) continue
     if (template.type === excludedTemplateType) continue
     for (
       let handleIndex = 0;

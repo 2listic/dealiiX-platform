@@ -80,6 +80,14 @@ export const setEdges = (newEdges: Edge[]): void => {
 }
 
 /**
+ * Append a single node to the flow editor
+ * @param {Node} node - The node to add
+ */
+export const addNode = (node: Node): void => {
+  nodes = [...nodes, node]
+}
+
+/**
  * Append a single edge to the flow editor
  * @param {Edge} edge - The edge to add
  */

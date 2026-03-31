@@ -145,12 +145,15 @@ describe('flowNodeCreation', () => {
       'Consumer'
     )
 
-    expect(options).toHaveLength(1)
+    expect(options).toHaveLength(2)
     expect(options.map((option) => option.template.type)).toEqual([
       'WildcardConsumer',
+      TypeField.CORAL_NETWORK,
     ])
     expect(options[0].argumentName).toBe('value')
     expect(options[0].defaultNodeName).toBe('WildcardConsumer')
+    expect(options[1].argumentName).toBe('networkInput')
+    expect(options[1].defaultNodeName).toBe('Nested')
   })
 
   it('extracts input metadata from a target handle', () => {

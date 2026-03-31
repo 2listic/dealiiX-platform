@@ -1,5 +1,5 @@
 import type { XYPosition } from '@xyflow/svelte'
-import { getNodes, setNodes } from '../stores/nodes.svelte'
+import { addNode } from '../stores/nodes.svelte'
 import type { CanvasNode } from '../types/nodeTypes'
 import { createCanvasNode } from './flowNodeCreation'
 
@@ -27,6 +27,5 @@ export const onDrop = (
   })
   const newNode = createCanvasNode(draggedNodeData, position)
 
-  // TODO: use new addNode() function
-  setNodes([...getNodes(), newNode])
+  addNode(newNode)
 }
