@@ -1,4 +1,9 @@
 <script lang="ts">
+  /**
+   * Modal shown when the user drops a connection onto empty canvas space and
+   * multiple compatible node types exist. Lets the user pick the type and set
+   * the node name before confirming creation.
+   */
   import Modal from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
   import type { CompatibleNodeOption } from '../../utils/flowNodeCreation'
@@ -6,7 +11,9 @@
 
   interface Props {
     modalId: string
+    /** Compatible templates for the dangling connection. */
     options: CompatibleNodeOption[]
+    /** Type string of the originating handle, shown as a hint. */
     sourceType: string
     onCreate: (_option: CompatibleNodeOption, _name: string) => void
     onCancel: () => void
@@ -14,16 +21,21 @@
 
   let { modalId, options, sourceType, onCreate, onCancel }: Props = $props()
 
+  // Composite key used as <select> value to uniquely identify an option even
+  // when multiple templates share the same type (different handle indices).
   // eslint-disable-next-line svelte/prefer-writable-derived
   let selectedOptionId = $state('')
   let nodeName = $state('')
 
+  // Fires when `options` changes (i.e. modal opens with a new set of choices).
+  // Resets selection to the first option.
   $effect(() => {
     selectedOptionId = options[0]
       ? `${options[0].template.type}-${options[0].handleId}`
       : ''
   })
 
+  // Fires when `selectedOptionId` changes. Syncs nodeName to the option's default.
   $effect(() => {
     const selectedOption = options.find(
       (option) =>

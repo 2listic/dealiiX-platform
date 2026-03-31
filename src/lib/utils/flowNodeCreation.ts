@@ -1,3 +1,9 @@
+/**
+ * Utilities for creating and connecting nodes on the canvas.
+ * Handles the drag-to-connect flow: resolving compatible node types,
+ * building new nodes, and wiring edges.
+ */
+
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
   HIDDEN_SIDEBAR_NODE_TYPES,
@@ -13,19 +19,23 @@ import {
 // Sidebar.svelte and dragAndDrop.svelte
 export type CanvasNodeTemplate = NodeData | NetworkNodeOfTypeNetwork
 
+/** A template match that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
   template: CanvasNodeTemplate
+  /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
   argumentName: string
   defaultNodeName: string
 }
 
+/** Snapshot of the handle that initiated a connection drag. */
 export type ConnectStartParams = {
   nodeId: string
   handleId: string
   handleType: 'source' | 'target'
 }
 
+/** Pending state while the user selects a node type to place via the modal. */
 export type ConnectedNodeDraft = {
   options: CompatibleNodeOption[]
   sourceType: string
@@ -33,6 +43,10 @@ export type ConnectedNodeDraft = {
   connectStartParams: ConnectStartParams
 }
 
+/**
+ * Shallow-clones a template so canvas node mutations don't affect the registry.
+ * @param template - Registry template to clone.
+ */
 const cloneTemplateData = (
   template: CanvasNodeTemplate
 ): CanvasNodeTemplate => {
@@ -53,9 +67,16 @@ const cloneTemplateData = (
   return cloned
 }
 
+/**
+ * Creates a new @xyflow `Node` from a registry template.
+ * @param template - Source template from the sidebar registry.
+ * @param position - Canvas position for the new node.
+ * @param options - `id` (required) and optional `name` override.
+ */
 export const createCanvasNode = (
   template: CanvasNodeTemplate,
   position: XYPosition,
+  // TODO: rethink the options argument, should the id be generated internally?
   options: {
     id: string
     name?: string
@@ -76,6 +97,10 @@ export const createCanvasNode = (
   }
 }
 
+/**
+ * Builds an edge object with a deterministic ID from its endpoint handles.
+ * @param params - Source/target node and handle IDs.
+ */
 export const createCustomEdge = (params: {
   source: string
   sourceHandle: string
@@ -94,31 +119,38 @@ export const createCustomEdge = (params: {
 // We have similar logics providing data of a node starting from some other data in files UnifiedNode.svelte,
 // connectionsValidation.js. graphParser.ts, networkNodes.ts
 // Perhaps this new logic may be placed in nodes.svelte.ts file and reused in all the places
+/**
+ * Returns the output type and label for a given source handle.
+ * For `SELF` outputs the type is `base ?? type` (the node's own class).
+ * @param sourceNode - The node the connection was dragged from.
+ * @param sourceHandle - Handle ID in the form `"output-<index>"`.
+ */
 export const getOutputMetadata = (
   sourceNode: Node,
   sourceHandle: string
 ): { sourceType: string; connectionName: string } | null => {
+  const data = sourceNode.data as NodeData
   const handleIndex = Number.parseInt(sourceHandle.split('-')[1], 10)
   if (Number.isNaN(handleIndex)) {
     // TODO: add console warnings for every early return
     return null
   }
 
-  const outputIndex = sourceNode.data.outputs?.[handleIndex]
+  const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) {
     return null
   }
 
-  const defaultNodeName = sourceNode.data.name?.trim() || sourceNode.data.type
+  const defaultNodeName = data.name?.trim() || data.type
 
   if (outputIndex === SELF) {
     return {
-      sourceType: sourceNode.data?.base ?? sourceNode.data.type,
+      sourceType: data?.base ?? data.type,
       connectionName: defaultNodeName,
     }
   }
 
-  const argument = sourceNode.data.arguments?.[outputIndex]
+  const argument = data.arguments?.[outputIndex]
   if (!argument) {
     return null
   }
@@ -129,6 +161,12 @@ export const getOutputMetadata = (
   }
 }
 
+/**
+ * Finds all templates that accept `sourceType` on any input handle.
+ * @param templates - Registry templates to search.
+ * @param sourceType - Output type to match against.
+ * @param excludedTemplateType - Template type to skip (usually the source node itself).
+ */
 export const findCompatibleNodeOptions = (
   templates: CanvasNodeTemplate[],
   sourceType: string,
@@ -160,21 +198,29 @@ export const findCompatibleNodeOptions = (
   return options
 }
 
+/**
+ * Returns the expected input type and label for a given target handle.
+ * @param targetNode - The node the connection was dropped onto.
+ * @param targetHandle - Handle ID in the form `"input-<index>"`.
+ */
 export const getInputMetadata = (
   targetNode: Node,
   targetHandle: string
 ): { expectedInputType: string; connectionName: string } | null => {
+  const data = targetNode.data as NodeData
+  // TODO: centralize this too
   const handleIndex = Number.parseInt(targetHandle.split('-')[1], 10)
+  // TODO: centralize this too
   if (Number.isNaN(handleIndex)) {
     return null
   }
 
-  const inputIndex = targetNode.data.inputs?.[handleIndex]
+  const inputIndex = data.inputs?.[handleIndex]
   if (inputIndex == null) {
     return null
   }
 
-  const argument = targetNode.data.arguments?.[inputIndex]
+  const argument = data.arguments?.[inputIndex]
   if (!argument) {
     return null
   }
@@ -185,6 +231,11 @@ export const getInputMetadata = (
   }
 }
 
+/**
+ * Converts a snake_case or raw identifier into a title-cased display name.
+ * @param name - Raw name string (e.g. `"my_node_name"`).
+ * @returns Display name (e.g. `"My node name"`), or `""` if input is blank.
+ */
 export const formatSuggestedNodeName = (name: string): string => {
   const normalized = name.replaceAll('_', ' ').trim()
   if (!normalized) {
@@ -194,10 +245,19 @@ export const formatSuggestedNodeName = (name: string): string => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
 
+/** Returns the formatted display name for a template, preferring `name` over `type`. */
+// TODO: consider to extract this function and merge with returnNodeNmae at nodeTypes.ts
 export const getDefaultTemplateNodeName = (
   template: CanvasNodeTemplate
 ): string => formatSuggestedNodeName(template.name ?? template.type)
 
+/**
+ * Finds all templates that produce `expectedInputType` on any output handle.
+ * Mirror of {@link findCompatibleNodeOptions} for the reverse drag direction (from a target handle).
+ * @param templates - Registry templates to search.
+ * @param expectedInputType - Input type to match against.
+ * @param excludedTemplateType - Template type to skip (usually the target node itself).
+ */
 export const findCompatibleSourceNodeOptions = (
   templates: CanvasNodeTemplate[],
   expectedInputType: string,
@@ -236,6 +296,15 @@ export const findCompatibleSourceNodeOptions = (
   return options
 }
 
+/**
+ * Entry point for the drag-to-connect flow.
+ * Reads the originating handle metadata and returns compatible template options
+ * along with the connection label and type string.
+ * @param node - Node the drag started from.
+ * @param handleType - Whether the drag originated from a source or target handle.
+ * @param handleId - Handle ID in the form `"output-<n>"` or `"input-<n>"`.
+ * @param templates - All available registry templates.
+ */
 export const resolveConnectionContext = (
   node: Node,
   handleType: 'source' | 'target',
@@ -273,6 +342,13 @@ export const resolveConnectionContext = (
   }
 }
 
+/**
+ * Builds the edge that wires a newly created node back to the originating handle.
+ * Source/target order is swapped depending on which direction the drag started.
+ * @param connectStartParams - Params from the XYFlow OnConnectStart callback function.
+ * @param newNodeId - ID of the newly created canvas node.
+ * @param newNodeHandleId - Handle ID on the new node to connect to.
+ */
 export const buildEdgeForNewNode = (
   connectStartParams: ConnectStartParams,
   newNodeId: string,

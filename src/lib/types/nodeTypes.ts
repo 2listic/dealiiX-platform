@@ -210,18 +210,12 @@ export const isNetworkNodeOfTypeNetwork = (
 /**
  * Returns the name property -or method_name or type if not present- formatted with
  * spaces instead of underscores.
- * TODO: simplify and remove backward compatibility for method_name
  * @param node
  * @returns
  */
 export const returnNodeName = (
   node: NodeData | NetworkNodeOfTypeNetwork
 ): string => {
-  let nodeName =
-    'name' in node
-      ? node.name
-      : 'method_name' in node
-        ? node.method_name
-        : node.type
+  let nodeName = 'name' in node ? node.name : node.type
   return nodeName.replaceAll('_', ' ')
 }

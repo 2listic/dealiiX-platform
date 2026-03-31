@@ -77,6 +77,8 @@
     'custom-edge': CustomEdge,
   }
 
+  // Clear the validation cache whenever edges are deleted so stale type-check
+  // results don't prevent new valid connections from being made.
   const ondelete = ({ edges: deletedEdges }) => {
     if (deletedEdges && deletedEdges.length > 0) {
       clearConnectionCache()
@@ -96,6 +98,12 @@
     return null
   }
 
+  /**
+   * Creates a new canvas node and wires it to the originating handle.
+   * Called either automatically (single compatible option) or from the modal.
+   * @param option - The chosen compatible template option.
+   * @param name - Display name for the new node.
+   */
   const createConnectedNode = (option: CompatibleNodeOption, name: string) => {
     if (!connectedNodeDraft) {
       return
@@ -135,6 +143,8 @@
     }
   }
 
+  // Records which handle the user started dragging from so it is available
+  // when the drag ends on empty canvas space.
   const handleConnectStart = (
     _: MouseEvent | TouchEvent,
     params: {
@@ -171,18 +181,28 @@
     )
   }
 
+  /**
+   * Handles a connection drag release on empty canvas space.
+   * Uses `event` for drop coordinates and module-level `connectStartParams` for the
+   * originating handle. Resolves compatible templates, then either auto-creates a node
+   * (single match) or opens the selection modal (multiple matches).
+   * @see https://svelteflow.dev/api-reference/types/on-connect-end
+   * @param event - The `MouseEvent | TouchEvent` that ended the connection drag.
+   */
   const handleConnectEnd: OnConnectEnd = (event) => {
     if (!connectStartParams) return
 
     const clientPosition = getClientPosition(event)
     if (!clientPosition || !canvasElement) return
 
+    // Guard: drop must land inside the canvas element (not on a UI panel).
     if (!isClientPositionInsideElement(clientPosition, canvasElement)) {
       connectStartParams = null
       return
     }
 
     const position = screenToFlowPosition(clientPosition)
+    // Guard: drop must land on empty space, not on an existing node.
     const overlappingNodes = getIntersectingNodes(
       { x: position.x - 1, y: position.y - 1, width: 2, height: 2 },
       true
@@ -199,6 +219,7 @@
       return
     }
 
+    // Guard: target handles only accept one incoming edge (no multiple edges to the same target handle).
     const isTargetHandleAlreadyConnected =
       connectStartParams.handleType === 'target' &&
       getEdgesSnapshot().some(
@@ -211,8 +232,14 @@
       return
     }
 
+    // Resolve compatible templates for the originating handle type and index.
     const templates = [...getStoredNetworkNodes(), ...getAvailableNodes()]
-    const context = resolveConnectionContext(node, connectStartParams.handleType, connectStartParams.handleId, templates)
+    const context = resolveConnectionContext(
+      node,
+      connectStartParams.handleType,
+      connectStartParams.handleId,
+      templates
+    )
 
     if (!context) {
       connectStartParams = null
@@ -236,10 +263,13 @@
       position,
       connectStartParams,
     }
-    // TODO: check if connectStartParams can be safely not nulled here and at every early return before
+    // Params are now captured in connectedNodeDraft; null the module-level ref so
+    // a re-entrant call to handleConnectEnd doesn't act on stale state.
     connectStartParams = null
 
     if (compatibleOptions.length === 1) {
+      // For ELEMENTARY_CONSTRUCTOR source handles use the template default name
+      // instead of the connection/argument name (which would be confusing).
       const autoCreateName =
         connectedNodeDraft.connectStartParams.handleType === 'source' &&
         node.data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
@@ -252,6 +282,7 @@
       return
     }
 
+    // Multiple compatible options: let the user choose via the modal.
     getModal(createConnectedNodeModalId)?.open()
   }
 </script>
