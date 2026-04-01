@@ -34,6 +34,7 @@
   import {
     clearConnectionCache,
     isValidConnection,
+    isTargetHandleConnected,
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
   import {
@@ -46,7 +47,7 @@
   import {
     createCanvasNode,
     buildEdgeForNewNode,
-    resolveConnectionContext,
+    resolveConnectionAndCompatibleNodes,
     formatSuggestedNodeName,
     type CompatibleNodeOption,
     type ConnectedNodeDraft,
@@ -220,33 +221,37 @@
     }
 
     // Guard: target handles only accept one incoming edge (no multiple edges to the same target handle).
-    const isTargetHandleAlreadyConnected =
+    if (
       connectStartParams.handleType === 'target' &&
-      getEdgesSnapshot().some(
-        (e) =>
-          e.target === node.id &&
-          e.targetHandle === connectStartParams?.handleId
+      isTargetHandleConnected(
+        getEdgesSnapshot(),
+        node.id,
+        connectStartParams.handleId as string
       )
-    if (isTargetHandleAlreadyConnected) {
+    ) {
+      console.warn(
+        `Handle ${connectStartParams.handleId} on node ${node.id} already connected`
+      )
       connectStartParams = null
       return
     }
 
-    // Resolve compatible templates for the originating handle type and index.
+    // Resolve connection type and name plus compatible nodes for the originating handle.
     const templates = [...getStoredNetworkNodes(), ...getAvailableNodes()]
-    const context = resolveConnectionContext(
+    const resolved = resolveConnectionAndCompatibleNodes(
+      connectStartParams,
       node,
-      connectStartParams.handleType,
-      connectStartParams.handleId,
       templates
     )
-
-    if (!context) {
+    if (!resolved) {
+      console.warn(
+        'handleConnectEnd: could not resolve handle metadata',
+        connectStartParams
+      )
       connectStartParams = null
       return
     }
-
-    const { compatibleOptions, connectionName, connectionType } = context
+    const { connectionType, connectionName, compatibleOptions } = resolved
 
     if (compatibleOptions.length === 0) {
       connectStartParams = null
@@ -275,10 +280,7 @@
         node.data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
           ? returnNodeName(compatibleOptions[0].template)
           : formatSuggestedNodeName(connectionName)
-      createConnectedNode(
-        compatibleOptions[0],
-        autoCreateName || connectionName
-      )
+      createConnectedNode(compatibleOptions[0], autoCreateName)
       return
     }
 

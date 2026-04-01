@@ -27,13 +27,14 @@ const isValidConnection = (connection: Connection): boolean => {
   console.log('edges', edges)
 
   // Check if the target handle is already connected
-  const isHandleAlreadyConnected = edges.some(
-    (edge) =>
-      edge?.target === connection.target &&
-      edge?.targetHandle === connection.targetHandle
-  )
-  if (isHandleAlreadyConnected) {
-    console.error(
+  if (
+    isTargetHandleConnected(
+      edges,
+      connection.target,
+      connection.targetHandle as string
+    )
+  ) {
+    console.warn(
       `Handle ${connection.targetHandle} on node ${connection.target} already connected`
     )
     connectionCache.set(cacheKey, false) // Cache the result
@@ -43,7 +44,7 @@ const isValidConnection = (connection: Connection): boolean => {
   // Check if the source node value is valid
   const sourceNode = nodes.find((node) => node.id === connection.source)
   if (!sourceNode?.data.is_valid) {
-    console.error(`Source node ${connection.source} is not valid`)
+    console.warn(`Source node ${connection.source} is not valid`)
     connectionCache.set(cacheKey, false)
     return false
   }
@@ -78,4 +79,11 @@ const isValidConnection = (connection: Connection): boolean => {
 
 const clearConnectionCache = () => connectionCache.clear()
 
-export { isValidConnection, clearConnectionCache }
+const isTargetHandleConnected = (
+  edges: Edge[],
+  nodeId: string,
+  handleId: string
+): boolean =>
+  edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
+
+export { isValidConnection, clearConnectionCache, isTargetHandleConnected }

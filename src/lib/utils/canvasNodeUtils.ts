@@ -41,6 +41,7 @@ export type ConnectedNodeDraft = {
 /**
  * Shallow-clones a template so canvas node mutations don't affect the registry.
  * @param template - Registry template to clone.
+ * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
  */
 const cloneTemplateData = (template: CanvasNode): CanvasNode => {
   const cloned = {
@@ -66,6 +67,7 @@ const cloneTemplateData = (template: CanvasNode): CanvasNode => {
  * @param template - Source template from the sidebar registry.
  * @param position - Canvas position for the new node.
  * @param options - Optional `name` override for the new node.
+ * @returns A new XYFlow `Node` ready to be placed on the canvas.
  */
 export const createCanvasNode = (
   template: CanvasNode,
@@ -90,6 +92,7 @@ export const createCanvasNode = (
 /**
  * Builds an edge object with a deterministic ID from its endpoint handles.
  * @param params - Source/target node and handle IDs.
+ * @returns An `Edge` with a deterministic ID derived from the endpoint handles.
  */
 export const createCustomEdge = (params: {
   source: string
@@ -109,22 +112,23 @@ export const createCustomEdge = (params: {
  * For `SELF` outputs the type is `base ?? type` (the node's own class).
  * @param sourceNode - The node the connection was dragged from.
  * @param sourceHandle - Handle ID in the form `"output-<index>"`.
+ * @returns The `connectionType` and `connectionName` for the handle, or `null` if the handle is invalid.
  */
-export const getOutputMetadata = (
+export const getOutputTypeAndName = (
   sourceNode: Node,
   sourceHandle: string
-): { sourceType: string; connectionName: string } | null => {
+): { connectionType: string; connectionName: string } | null => {
   const data = sourceNode.data as NodeData
   const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
-    console.warn('getOutputMetadata: invalid handle id', sourceHandle)
+    console.warn('getOutputTypeAndName: invalid handle id', sourceHandle)
     return null
   }
 
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) {
     console.warn(
-      'getOutputMetadata: no output at index',
+      'getOutputTypeAndName: no output at index',
       handleIndex,
       'for node',
       sourceNode.id
@@ -136,7 +140,7 @@ export const getOutputMetadata = (
 
   if (outputIndex === SELF) {
     return {
-      sourceType: data?.base ?? data.type,
+      connectionType: data?.base ?? data.type,
       connectionName: defaultNodeName,
     }
   }
@@ -144,7 +148,7 @@ export const getOutputMetadata = (
   const argument = data.arguments?.[outputIndex]
   if (!argument) {
     console.warn(
-      'getOutputMetadata: no argument at index',
+      'getOutputTypeAndName: no argument at index',
       outputIndex,
       'for node',
       sourceNode.id
@@ -153,7 +157,7 @@ export const getOutputMetadata = (
   }
 
   return {
-    sourceType: argument.type,
+    connectionType: argument.type,
     connectionName: argument.name,
   }
 }
@@ -163,8 +167,9 @@ export const getOutputMetadata = (
  * @param templates - Registry templates to search.
  * @param sourceType - Output type to match against.
  * @param excludedTemplateType - Template type to skip (usually the source node itself).
+ * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all templates.
  */
-export const findCompatibleNodeOptions = (
+export const findCompatibleTargetNodesAsOptions = (
   templates: CanvasNode[],
   sourceType: string,
   excludedTemplateType?: string
@@ -195,22 +200,23 @@ export const findCompatibleNodeOptions = (
  * Returns the expected input type and label for a given target handle.
  * @param targetNode - The node the connection was dropped onto.
  * @param targetHandle - Handle ID in the form `"input-<index>"`.
+ * @returns The `connectionType` and `connectionName` for the handle, or `null` if the handle is invalid.
  */
-export const getInputMetadata = (
+export const getInputTypeAndName = (
   targetNode: Node,
   targetHandle: string
-): { expectedInputType: string; connectionName: string } | null => {
+): { connectionType: string; connectionName: string } | null => {
   const data = targetNode.data as NodeData
   const handleIndex = handleIdToIndex(targetHandle)
   if (Number.isNaN(handleIndex)) {
-    console.warn('getInputMetadata: invalid handle id', targetHandle)
+    console.warn('getInputTypeAndName: invalid handle id', targetHandle)
     return null
   }
 
   const argument = resolveInputArgument(data, handleIndex)
   if (!argument) {
     console.warn(
-      'getInputMetadata: no argument for input handle',
+      'getInputTypeAndName: no argument for input handle',
       handleIndex,
       'for node',
       targetNode.id
@@ -219,7 +225,7 @@ export const getInputMetadata = (
   }
 
   return {
-    expectedInputType: argument.type,
+    connectionType: argument.type,
     connectionName: argument.name,
   }
 }
@@ -240,12 +246,13 @@ export const formatSuggestedNodeName = (name: string): string => {
 
 /**
  * Finds all templates that produce `expectedInputType` on any output handle.
- * Mirror of {@link findCompatibleNodeOptions} for the reverse drag direction (from a target handle).
+ * Mirror of {@link findCompatibleTargetNodesAsOptions} for the reverse drag direction (from a target handle).
  * @param templates - Registry templates to search.
  * @param expectedInputType - Input type to match against.
  * @param excludedTemplateType - Template type to skip (usually the target node itself).
+ * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all templates.
  */
-export const findCompatibleSourceNodeOptions = (
+export const findCompatibleSourceNodesAsOptions = (
   templates: CanvasNode[],
   expectedInputType: string,
   excludedTemplateType?: string
@@ -274,49 +281,36 @@ export const findCompatibleSourceNodeOptions = (
 }
 
 /**
- * Entry point for the drag-to-connect flow.
- * Reads the originating handle metadata and returns compatible template options
- * along with the connection label and type string.
- * @param node - Node the drag started from.
- * @param handleType - Whether the drag originated from a source or target handle.
- * @param handleId - Handle ID in the form `"output-<n>"` or `"input-<n>"`.
- * @param templates - All available registry templates.
+ * Resolves handle metadata and compatible node templates for a drag-to-connect drop.
+ * @param connectStartParams - The handle that initiated the connection drag.
+ * @param node - The node that owns the originating handle.
+ * @param templates - Full list of registry templates to search.
+ * @returns `{ connectionType, connectionName, compatibleOptions }`, or `null` if the handle
+ *   metadata cannot be resolved (e.g. invalid handle id).
  */
-export const resolveConnectionContext = (
+export const resolveConnectionAndCompatibleNodes = (
+  connectStartParams: ConnectStartParams,
   node: Node,
-  handleType: 'source' | 'target',
-  handleId: string,
   templates: CanvasNode[]
 ): {
-  compatibleOptions: CompatibleNodeOption[]
-  connectionName: string
   connectionType: string
+  connectionName: string
+  compatibleOptions: CompatibleNodeOption[]
 } | null => {
-  if (handleType === 'source') {
-    const metadata = getOutputMetadata(node, handleId)
-    if (!metadata) return null
-    return {
-      compatibleOptions: findCompatibleNodeOptions(
-        templates,
-        metadata.sourceType,
-        (node.data as NodeData).type
-      ),
-      connectionName: metadata.connectionName,
-      connectionType: metadata.sourceType,
-    }
-  } else {
-    const metadata = getInputMetadata(node, handleId)
-    if (!metadata) return null
-    return {
-      compatibleOptions: findCompatibleSourceNodeOptions(
-        templates,
-        metadata.expectedInputType,
-        (node.data as NodeData).type
-      ),
-      connectionName: metadata.connectionName,
-      connectionType: metadata.expectedInputType,
-    }
-  }
+  const connectionInfo =
+    connectStartParams.handleType === 'source'
+      ? getOutputTypeAndName(node, connectStartParams.handleId) // 'source'
+      : getInputTypeAndName(node, connectStartParams.handleId) // 'target'
+  if (!connectionInfo) return null
+
+  const { connectionType, connectionName } = connectionInfo
+  const nodeType = (node.data as NodeData).type
+  const compatibleOptions =
+    connectStartParams.handleType === 'source'
+      ? findCompatibleTargetNodesAsOptions(templates, connectionType, nodeType) // 'source'
+      : findCompatibleSourceNodesAsOptions(templates, connectionType, nodeType) // 'target'
+
+  return { connectionType, connectionName, compatibleOptions }
 }
 
 /**
@@ -325,6 +319,7 @@ export const resolveConnectionContext = (
  * @param connectStartParams - Params from the XYFlow OnConnectStart callback function.
  * @param newNodeId - ID of the newly created canvas node.
  * @param newNodeHandleId - Handle ID on the new node to connect to.
+ * @returns An `Edge` connecting the originating handle to the new node.
  */
 export const buildEdgeForNewNode = (
   connectStartParams: ConnectStartParams,

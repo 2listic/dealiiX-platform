@@ -12,11 +12,11 @@ import {
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
-  findCompatibleSourceNodeOptions,
-  findCompatibleNodeOptions,
+  findCompatibleSourceNodesAsOptions,
+  findCompatibleTargetNodesAsOptions,
   formatSuggestedNodeName,
-  getInputMetadata,
-  getOutputMetadata,
+  getInputTypeAndName,
+  getOutputTypeAndName,
 } from './canvasNodeUtils'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
@@ -34,8 +34,8 @@ describe('canvasNodeUtils', () => {
       ),
     }
 
-    expect(getOutputMetadata(sourceNode, 'output-0')).toEqual({
-      sourceType: 'dealii::Triangulation<2, 2>',
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'dealii::Triangulation<2, 2>',
       connectionName: 'triangulation',
     })
   })
@@ -52,8 +52,8 @@ describe('canvasNodeUtils', () => {
       },
     }
 
-    expect(getOutputMetadata(sourceNode, 'output-0')).toEqual({
-      sourceType: 'dealii::FiniteElement<2, 2>',
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'dealii::FiniteElement<2, 2>',
       connectionName: 'my_fe',
     })
   })
@@ -67,8 +67,8 @@ describe('canvasNodeUtils', () => {
       data: { ...structuredClone(registry['int']), name: 'my_integer' },
     }
 
-    expect(getOutputMetadata(sourceNode, 'output-0')).toEqual({
-      sourceType: 'int',
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'int',
       connectionName: 'my_integer',
     })
   })
@@ -83,7 +83,7 @@ describe('canvasNodeUtils', () => {
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
-    const options = findCompatibleNodeOptions(
+    const options = findCompatibleTargetNodesAsOptions(
       templates,
       Type.STRING,
       'LaplaceProblem::run<1,2>'
@@ -103,7 +103,7 @@ describe('canvasNodeUtils', () => {
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
-    const options = findCompatibleNodeOptions(templates, Type.STRING)
+    const options = findCompatibleTargetNodesAsOptions(templates, Type.STRING)
 
     expect(options).toHaveLength(3)
     expect(options.map((o) => o.template.type)).toEqual([
@@ -122,8 +122,8 @@ describe('canvasNodeUtils', () => {
       data: structuredClone(registry['dealii::FE_Q<2, 2>']),
     }
 
-    expect(getInputMetadata(targetNode, 'input-0')).toEqual({
-      expectedInputType: Type.UNSIGNED_INT,
+    expect(getInputTypeAndName(targetNode, 'input-0')).toEqual({
+      connectionType: Type.UNSIGNED_INT,
       connectionName: 'fe_degree',
     })
   })
@@ -137,7 +137,7 @@ describe('canvasNodeUtils', () => {
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
-    const options = findCompatibleSourceNodeOptions(
+    const options = findCompatibleSourceNodesAsOptions(
       templates,
       Type.UNSIGNED_INT,
       'unsigned int'
