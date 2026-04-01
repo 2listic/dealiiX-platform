@@ -4,6 +4,22 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Canvas-graph
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Create-on-connect flow: dragging a connection handle onto an empty canvas area now finds compatible node types, creates the node immediately if only one option exists, or opens a selection modal when multiple options are available.
+
+### Project-Structure
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) `connectionsValidation.js` migrated to TypeScript. Node ID counter extracted to its own store (`nodeIdCounter.svelte.ts`). New modal `CreateConnectedNodeModal.svelte` added to handle node type selection when multiple compatible options exist. `canvasNodeUtils.ts` with new helpers to create nodes dynamically.
+
+### Testing
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Unit tests for create-on-connect utilities.
+
+### CI/CD
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Husky pre-push hook added: runs `svelte-check` (type check) and the full test suite on every push, blocking on failure.
+
 ### UI/UX
 
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
