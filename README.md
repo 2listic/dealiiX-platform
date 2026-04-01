@@ -38,11 +38,12 @@ Eslint is used for linting. Run the following to lint
 Prettier is used for formatting. Run the following to format the code or use your IDE  
 `npm run format`
 
-### Automatic linting and formatting on commit
+### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) is used to run linting and formatting at commit time.  
-If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
-Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at two points:
+
+- **On commit** ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
+- **On push** ([.husky/pre-push](.husky/pre-push)): Svelte type checking (`npm run check`) and unit tests (`npm run test`) run; either failing aborts the push.
 
 ## Testing
 
