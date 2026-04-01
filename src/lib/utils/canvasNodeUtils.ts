@@ -9,7 +9,7 @@ import {
   NodeType,
   SELF,
   Type,
-  returnNodeName,
+  type Argument,
   type CanvasNode,
   type NodeData,
 } from '../types/nodeTypes'
@@ -21,7 +21,6 @@ export type CompatibleNodeOption = {
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
   argumentName: string
-  defaultNodeName: string
 }
 
 /** Snapshot of the handle that initiated a connection drag. */
@@ -105,11 +104,6 @@ export const createCustomEdge = (params: {
   targetHandle: params.targetHandle,
 })
 
-// TODO: centralize all the features relative to nodes' data so that we have a unique source of truth.
-// For example here we are providing node's handlers type having input/output index.
-// We have similar logics providing data of a node starting from some other data in files UnifiedNode.svelte,
-// connectionsValidation.js. graphParser.ts, networkNodes.ts
-// Perhaps this new logic may be placed in nodes.svelte.ts file and reused in all the places
 /**
  * Returns the output type and label for a given source handle.
  * For `SELF` outputs the type is `base ?? type` (the node's own class).
@@ -121,7 +115,7 @@ export const getOutputMetadata = (
   sourceHandle: string
 ): { sourceType: string; connectionName: string } | null => {
   const data = sourceNode.data as NodeData
-  const handleIndex = Number.parseInt(sourceHandle.split('-')[1], 10)
+  const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getOutputMetadata: invalid handle id', sourceHandle)
     return null
@@ -184,16 +178,13 @@ export const findCompatibleNodeOptions = (
       handleIndex < template.inputs.length;
       handleIndex++
     ) {
-      // TODO: consider to centralize this: from handler index, we get the corresponding argument
-      const argumentIndex = template.inputs[handleIndex]
-      const argument = template.arguments?.[argumentIndex]
+      const argument = resolveInputArgument(template, handleIndex)
       if (!argument) continue
       if (argument.type !== Type.ANY && argument.type !== sourceType) continue
       options.push({
         template,
         handleId: `input-${handleIndex}`,
         argumentName: argument.name,
-        defaultNodeName: returnNodeName(template),
       })
     }
   }
@@ -210,30 +201,17 @@ export const getInputMetadata = (
   targetHandle: string
 ): { expectedInputType: string; connectionName: string } | null => {
   const data = targetNode.data as NodeData
-  // TODO: centralize this too
-  const handleIndex = Number.parseInt(targetHandle.split('-')[1], 10)
-  // TODO: centralize this too
+  const handleIndex = handleIdToIndex(targetHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getInputMetadata: invalid handle id', targetHandle)
     return null
   }
 
-  const inputIndex = data.inputs?.[handleIndex]
-  if (inputIndex == null) {
-    console.warn(
-      'getInputMetadata: no input at index',
-      handleIndex,
-      'for node',
-      targetNode.id
-    )
-    return null
-  }
-
-  const argument = data.arguments?.[inputIndex]
+  const argument = resolveInputArgument(data, handleIndex)
   if (!argument) {
     console.warn(
-      'getInputMetadata: no argument at index',
-      inputIndex,
+      'getInputMetadata: no argument for input handle',
+      handleIndex,
       'for node',
       targetNode.id
     )
@@ -281,23 +259,14 @@ export const findCompatibleSourceNodeOptions = (
       handleIndex < template.outputs.length;
       handleIndex++
     ) {
-      // TODO: consider to centralize this too: get node output type
-      const argumentIndex = template.outputs[handleIndex]
-      const outputType =
-        argumentIndex === SELF
-          ? (('base' in template ? template.base : undefined) ?? template.type)
-          : template.arguments?.[argumentIndex]?.type
+      const outputType = resolveOutputType(template, handleIndex)
       if (!outputType) continue
       if (expectedInputType !== Type.ANY && outputType !== expectedInputType)
         continue
       options.push({
         template,
         handleId: `output-${handleIndex}`,
-        argumentName:
-          argumentIndex === SELF
-            ? (template.name ?? template.type)
-            : (template.arguments?.[argumentIndex]?.name ?? template.type),
-        defaultNodeName: returnNodeName(template),
+        argumentName: resolveOutputName(template, handleIndex),
       })
     }
   }
@@ -377,4 +346,67 @@ export const buildEdgeForNewNode = (
       targetHandle: connectStartParams.handleId,
     })
   }
+}
+
+/**
+ * Parses a handle ID string to its numeric index.
+ * @param {string} handleId - XYFlow handle ID in the form `"input-<n>"` or `"output-<n>"`
+ *   (as found in `sourceHandle` / `targetHandle` of XYFlow edges and connection events).
+ * @returns The numeric index, or NaN if the string is malformed.
+ */
+export const handleIdToIndex = (handleId: string): number =>
+  Number.parseInt(handleId.split('-')[1], 10)
+
+/**
+ * Resolves the argument corresponding to an input handle index on a node.
+ * Follows the indirection: `inputs[handleIndex]` → `arguments[argumentIndex]`.
+ * @param {CanvasNode} data - The node data containing `inputs` and `arguments` arrays.
+ * @param {number} handleIndex - Zero-based index into the node's `inputs` array,
+ *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
+ * @returns The argument, or null if the index is out of range.
+ */
+export const resolveInputArgument = (
+  data: CanvasNode,
+  handleIndex: number
+): Argument | null => {
+  const argumentIndex = data.inputs?.[handleIndex]
+  if (argumentIndex == null) return null
+  return data.arguments?.[argumentIndex] ?? null
+}
+
+/**
+ * Resolves the output type string for an output handle index on a node.
+ * Handles the SELF case (`outputs[-1]`) by returning `base ?? type`.
+ * @param {CanvasNode} data - The node data containing `outputs`, `arguments`, `type`, and optional `base`.
+ * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
+ *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
+ * @returns The type string, or null if the index is out of range.
+ */
+export const resolveOutputType = (
+  data: CanvasNode,
+  handleIndex: number
+): string | null => {
+  const outputIndex = data.outputs?.[handleIndex]
+  if (outputIndex == null) return null
+  if (outputIndex === SELF) return (data as NodeData).base ?? data.type
+  return data.arguments?.[outputIndex]?.type ?? null
+}
+
+/**
+ * Resolves the display name for an output handle index on a node.
+ * For the SELF case (`outputs[-1]`) no real argument exists, so the name is built
+ * from `node.name` falling back to `node.type`.
+ * @param {CanvasNode} data - The node data containing `outputs`, `arguments`, `type`, and optional `name`.
+ * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
+ *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
+ * @returns The display name, or null if the index is out of range.
+ */
+export const resolveOutputName = (
+  data: CanvasNode,
+  handleIndex: number
+): string | null => {
+  const outputIndex = data.outputs?.[handleIndex]
+  if (outputIndex == null) return null
+  if (outputIndex === SELF) return data.name?.trim() || data.type
+  return data.arguments?.[outputIndex]?.name ?? null
 }

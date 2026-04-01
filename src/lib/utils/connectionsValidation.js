@@ -1,5 +1,10 @@
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
-import { SELF, Type } from '../types/nodeTypes'
+import {
+  handleIdToIndex,
+  resolveInputArgument,
+  resolveOutputType,
+} from './canvasNodeUtils'
+import { Type } from '../types/nodeTypes'
 
 let connectionCache = new Map()
 
@@ -43,9 +48,12 @@ const isValidConnection = (connection) => {
 
   // If the expected input type is 'any', allow any connection
   const targetNode = nodes.find((node) => node.id === connection.target)
-  const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const targetIndexInput = targetNode.data.inputs[handleIndexInput]
-  const expectedInputType = targetNode.data.arguments[targetIndexInput].type
+  const handleIndexInput = handleIdToIndex(connection.targetHandle)
+  // TODO: Consider migrating this file to .ts to use proper type assertions.
+  const expectedInputType = resolveInputArgument(
+    targetNode.data,
+    handleIndexInput
+  )?.type
   if (expectedInputType === Type.ANY) {
     console.log(`Handle ${connection.targetHandle} accepts any type`)
     connectionCache.set(cacheKey, true)
@@ -53,16 +61,9 @@ const isValidConnection = (connection) => {
   }
 
   // Check if the source type matches the target handle type
-  const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
-  const sourceIndexOutput = sourceNode.data.outputs[handleIndexOutput]
-  let sourceType
-  if (sourceIndexOutput === SELF) {
-    // Check if node is derived by an abstract class to pick the right output type
-    const baseClassType = sourceNode.data?.base ?? false
-    sourceType = baseClassType ? baseClassType : sourceNode.data.type
-  } else {
-    sourceType = sourceNode.data.arguments[sourceIndexOutput].type
-  }
+  const handleIndexOutput = handleIdToIndex(connection.sourceHandle)
+  // TODO: Consider migrating this file to .ts to use proper type assertions.
+  const sourceType = resolveOutputType(sourceNode.data, handleIndexOutput)
 
   console.log(
     `Handle ${

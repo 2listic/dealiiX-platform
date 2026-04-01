@@ -6,7 +6,7 @@
    */
   import Modal from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
-  import type { CompatibleNodeOption } from '../../utils/flowNodeCreation'
+  import type { CompatibleNodeOption } from '../../utils/canvasNodeUtils'
   import { returnNodeName } from '../../types/nodeTypes'
 
   interface Props {
@@ -42,7 +42,7 @@
         `${option.template.type}-${option.handleId}` === selectedOptionId
     )
     if (selectedOption) {
-      nodeName = selectedOption.defaultNodeName
+      nodeName = returnNodeName(selectedOption.template)
     }
   })
 
@@ -54,7 +54,7 @@
     if (!selectedOption) {
       return
     }
-    onCreate(selectedOption, nodeName.trim() || selectedOption.defaultNodeName)
+    onCreate(selectedOption, nodeName.trim())
   }
 </script>
 

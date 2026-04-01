@@ -13,9 +13,9 @@ import {
   formatSuggestedNodeName,
   getInputMetadata,
   getOutputMetadata,
-} from './flowNodeCreation'
+} from './canvasNodeUtils'
 
-describe('flowNodeCreation', () => {
+describe('canvasNodeUtils', () => {
   it('extracts source type and connection name from a regular output', () => {
     const sourceNode = {
       id: '1',
@@ -151,9 +151,7 @@ describe('flowNodeCreation', () => {
       TypeField.CORAL_NETWORK,
     ])
     expect(options[0].argumentName).toBe('value')
-    expect(options[0].defaultNodeName).toBe('WildcardConsumer')
     expect(options[1].argumentName).toBe('networkInput')
-    expect(options[1].defaultNodeName).toBe('Nested')
   })
 
   it('extracts input metadata from a target handle', () => {

@@ -14,7 +14,7 @@ export enum ConnectionType {
   PASSTHROUGH = 'pass_through',
 }
 
-type Argument = {
+export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type

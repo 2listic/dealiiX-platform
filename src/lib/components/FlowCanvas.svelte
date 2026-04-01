@@ -36,7 +36,11 @@
     isValidConnection,
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
-  import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
+  import {
+    NodeType,
+    NodeTypePyBackend,
+    returnNodeName,
+  } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
   import {
@@ -47,7 +51,7 @@
     type CompatibleNodeOption,
     type ConnectedNodeDraft,
     type ConnectStartParams,
-  } from '../utils/flowNodeCreation'
+  } from '../utils/canvasNodeUtils'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
@@ -269,7 +273,7 @@
       const autoCreateName =
         connectedNodeDraft.connectStartParams.handleType === 'source' &&
         node.data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
-          ? compatibleOptions[0].defaultNodeName
+          ? returnNodeName(compatibleOptions[0].template)
           : formatSuggestedNodeName(connectionName)
       createConnectedNode(
         compatibleOptions[0],

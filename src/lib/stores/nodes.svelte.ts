@@ -136,7 +136,7 @@ let registry = $state<RegisteredNodes>({})
 
 // Load registry from electron-store
 const loadRegistry = async () => {
-  if (window.electron?.store) {
+  if (globalThis.window?.electron?.store) {
     registry = sortRegistry(
       await window.electron.store.get('registered_nodes', defaultNodes)
     )
@@ -207,7 +207,7 @@ let networkNodes = $state<RegisteredNetworkNodes>({})
 
 // Load network nodes from electron-store
 const loadNetworkNodes = async () => {
-  if (window.electron?.store) {
+  if (globalThis.window?.electron?.store) {
     networkNodes = await window.electron.store.get(
       'registered_network_nodes',
       defaultNetworkNodes

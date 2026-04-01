@@ -1,7 +1,7 @@
 import type { XYPosition } from '@xyflow/svelte'
 import { addNode } from '../stores/nodes.svelte'
 import type { CanvasNode } from '../types/nodeTypes'
-import { createCanvasNode } from './flowNodeCreation'
+import { createCanvasNode } from './canvasNodeUtils'
 
 export const onDragOver = (event: DragEvent) => {
   event.preventDefault()

@@ -6,6 +6,7 @@ import {
   setNodes,
   updateLastNodeId,
 } from '../stores/nodes.svelte'
+import { handleIdToIndex } from './canvasNodeUtils'
 import {
   isNetworkNodeOfTypeNetwork,
   SELF,
@@ -320,8 +321,8 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: parseInt(obj.sourceHandle.split('-')[1]),
-      target_input: parseInt(obj.targetHandle.split('-')[1]),
+      source_output: handleIdToIndex(obj.sourceHandle),
+      target_input: handleIdToIndex(obj.targetHandle),
     }
     return acc
   }, {})
