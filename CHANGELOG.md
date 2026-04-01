@@ -31,11 +31,12 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
-- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Coral-Visualizer updated in order to be able to test new feature volume cells MaterialID tagging.
+- [#177](https://github.com/2listic/dealiiX-platform/pull/177) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
 
 ### Protocol
 
-- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Updated registry JSON file with available nodes to include new `read_grid` node.
+- [#177](https://github.com/2listic/dealiiX-platform/pull/177) Updated registry JSON file with available nodes to include new `read_grid` node.
 
 ## [1.3.0] - 2026-03-23
 
