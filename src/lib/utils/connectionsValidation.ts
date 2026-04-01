@@ -1,3 +1,4 @@
+import type { Connection, Edge, Node } from '@xyflow/svelte'
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import {
   handleIdToIndex,
@@ -5,22 +6,23 @@ import {
   resolveOutputType,
 } from './canvasNodeUtils'
 import { Type } from '../types/nodeTypes'
+import type { CanvasNode } from '../types/nodeTypes'
 
-let connectionCache = new Map()
+let connectionCache = new Map<string, boolean>()
 
-const isValidConnection = (connection) => {
+const isValidConnection = (connection: Connection): boolean => {
   // Create a cache key from the connection
   const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available
   if (connectionCache.has(cacheKey)) {
     console.log('cache hit')
-    return connectionCache.get(cacheKey)
+    return connectionCache.get(cacheKey) as boolean
   }
   console.log('connection', connection)
 
   // Get the current nodes and edges
-  const nodes = getNodesSnapshot()
-  const edges = getEdgesSnapshot()
+  const nodes = getNodesSnapshot() as Node<CanvasNode>[]
+  const edges = getEdgesSnapshot() as Edge[]
   console.log('nodes', nodes)
   console.log('edges', edges)
 
@@ -40,7 +42,7 @@ const isValidConnection = (connection) => {
 
   // Check if the source node value is valid
   const sourceNode = nodes.find((node) => node.id === connection.source)
-  if (!sourceNode.data.is_valid) {
+  if (!sourceNode?.data.is_valid) {
     console.error(`Source node ${connection.source} is not valid`)
     connectionCache.set(cacheKey, false)
     return false
@@ -48,10 +50,9 @@ const isValidConnection = (connection) => {
 
   // If the expected input type is 'any', allow any connection
   const targetNode = nodes.find((node) => node.id === connection.target)
-  const handleIndexInput = handleIdToIndex(connection.targetHandle)
-  // TODO: Consider migrating this file to .ts to use proper type assertions.
+  const handleIndexInput = handleIdToIndex(connection.targetHandle as string)
   const expectedInputType = resolveInputArgument(
-    targetNode.data,
+    targetNode!.data,
     handleIndexInput
   )?.type
   if (expectedInputType === Type.ANY) {
@@ -61,14 +62,13 @@ const isValidConnection = (connection) => {
   }
 
   // Check if the source type matches the target handle type
-  const handleIndexOutput = handleIdToIndex(connection.sourceHandle)
-  // TODO: Consider migrating this file to .ts to use proper type assertions.
+  const handleIndexOutput = handleIdToIndex(connection.sourceHandle as string)
   const sourceType = resolveOutputType(sourceNode.data, handleIndexOutput)
 
   console.log(
     `Handle ${
       connection.targetHandle
-    } expects ${expectedInputType.toString()}, source provides ${sourceType.toString()}`
+    } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
   const isValid = expectedInputType === sourceType
   console.log('connection is valid?', isValid)
