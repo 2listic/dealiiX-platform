@@ -41,7 +41,7 @@ The application uses two JSON protocols to communicate with CORAL:
 
 Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
-- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types.
+- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredSubGraphNodes` / `SubGraphNodeDefinition` types.
 - `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`, `setLastNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
 - `auth.svelte.js` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
 - `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.

@@ -3,9 +3,9 @@ import {
   ConnectionType,
   NodeType,
   type Type,
-  type NodeData,
+  type StandardNodeDefinition,
   TypeField,
-  type NetworkNodeOfTypeNetwork,
+  type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
 
@@ -16,14 +16,14 @@ import { parseGraphToProtocol } from './graphParser'
  * @param {string} name - The custom name for the network node
  * @param {Node[]} currentNodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} currentEdges - Array of edges (must be snapshots, not reactive)
- * @returns {NetworkNodeOfTypeNetwork} A complete network node definition ready to be added to the networkNodes store
+ * @returns {SubGraphNodeDefinition} A complete network node definition ready to be added to the networkNodes store
  * @throws {Error} If the graph is empty (no nodes)
  */
 export const createNewNetworkNode = (
   name: string,
   currentNodes: Node[],
   currentEdges: Edge[]
-): NetworkNodeOfTypeNetwork => {
+): SubGraphNodeDefinition => {
   // Step 1: Validate there are nodes
   if (currentNodes.length === 0) {
     throw new Error('Cannot create network node from empty graph')
@@ -33,7 +33,7 @@ export const createNewNetworkNode = (
   // We'll collect them with their node ID for sorting
   interface FreeConnection {
     nodeId: string
-    argument: NodeData['arguments'][number]
+    argument: StandardNodeDefinition['arguments'][number]
     isFreeInput: boolean
     isFreeOutput: boolean
   }
@@ -46,7 +46,7 @@ export const createNewNetworkNode = (
   )
 
   for (const node of sortedNodes) {
-    const nodeData = node.data as NodeData
+    const nodeData = node.data as StandardNodeDefinition
 
     // Check for free inputs
     if (nodeData.inputs && Array.isArray(nodeData.inputs)) {
@@ -139,7 +139,7 @@ export const createNewNetworkNode = (
     (a, b) => parseInt(a.nodeId) - parseInt(b.nodeId)
   )
 
-  const argumentsArray: NodeData['arguments'] = []
+  const argumentsArray: StandardNodeDefinition['arguments'] = []
   const inputsArray: number[] = []
   const outputsArray: number[] = []
 
@@ -182,7 +182,7 @@ export const createNewNetworkNode = (
   const graphData = parseGraphToProtocol(currentNodes, currentEdges)
   const value = graphData
 
-  // Step 6: Construct the final NodeData object
+  // Step 6: Construct the final SubGraphNodeDefinition object
   return {
     type: TypeField.CORAL_NETWORK,
     node_type: NodeType.NETWORK,

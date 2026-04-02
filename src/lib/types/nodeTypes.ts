@@ -101,7 +101,12 @@ export const isNumericType = (type: string): boolean => {
   return NUMERIC_TYPES.includes(type as Type)
 }
 
-export type NodeData = {
+/**
+ * Full definition of a standard (non-subgraph) node from the CORAL registry.
+ * Contains complete metadata for rendering and wiring the node on the canvas.
+ * Stored in {@link RegisteredNodes}, keyed by node type identifier.
+ */
+export type StandardNodeDefinition = {
   type: string
   arguments: Argument[]
   inputs: InputIndex[]
@@ -116,11 +121,14 @@ export type NodeData = {
 }
 
 export type RegisteredNodes = {
-  [key: string]: NodeData
+  [key: string]: StandardNodeDefinition
 }
 
-export type RegisteredNetworkNodes = {
-  [key: string]: NetworkNodeOfTypeNetwork
+/**
+ * Dictionary of stored subgraph node definitions, keyed by node name.
+ */
+export type RegisteredSubGraphNodes = {
+  [key: string]: SubGraphNodeDefinition
 }
 
 export type NetworkEdge = {
@@ -134,7 +142,13 @@ export type NetworkEdges = {
   [id: string]: NetworkEdge
 }
 
-export type NetworkNode = {
+/**
+ * Lean (protocol-level) representation of a standard node as it appears
+ * in the serialized {@link Network} JSON. Contains only the fields needed
+ * for serialization, not the full registry metadata.
+ * For subgraph nodes in the protocol, use {@link SubGraphNodeDefinition}.
+ */
+export type LeanStandardNode = {
   type: string
   base?: string
   derived?: string[]
@@ -143,7 +157,14 @@ export type NetworkNode = {
   position?: { x: number; y: number }
 }
 
-export type NetworkNodeOfTypeNetwork = {
+/**
+ * Full definition of a subgraph node — an encapsulated computational graph
+ * that can be reused as a single node on the canvas.
+ * Always has `type === TypeField.CORAL_NETWORK` and carries the embedded
+ * sub-network in its `value` field.
+ * Stored in {@link RegisteredSubGraphNodes}, keyed by node name.
+ */
+export type SubGraphNodeDefinition = {
   type: TypeField.CORAL_NETWORK
   node_type: NodeType.NETWORK
   value: Network
@@ -155,13 +176,19 @@ export type NetworkNodeOfTypeNetwork = {
   is_valid?: boolean
 }
 
-/** A node that can be placed on the canvas — either a registry node or a stored network node. */
-// TODO: use this around the codebase
-// TODO: rename NodeData and/or NetworkNodeOfTypeNetwork to something more descriptive
-export type CanvasNode = NodeData | NetworkNodeOfTypeNetwork
+/**
+ * Union of all node definition types that can be placed on the canvas —
+ * either a registry node or a stored subgraph node.
+ */
+export type NodeDefinitions = StandardNodeDefinition | SubGraphNodeDefinition
 
-export type NetworkNodes = {
-  [id: string]: NetworkNode | NetworkNodeOfTypeNetwork
+/**
+ * Record of all lean protocol nodes in a serialized network.
+ * Values are either {@link LeanStandardNode} (regular nodes) or
+ * {@link SubGraphNodeDefinition} (subgraph nodes).
+ */
+export type LeanNodes = {
+  [id: string]: LeanStandardNode | SubGraphNodeDefinition
 }
 
 /**
@@ -175,36 +202,41 @@ export type Network = {
   version: number
   workflow: {
     edges: NetworkEdges
-    nodes: NetworkNodes
+    nodes: LeanNodes
   }
 }
 
-/**
- * Types for networks with qualified ids that includes the ancestor ids if any
- */
-export type QualifiedNetworkNode = NetworkNode & { qualified_id: string }
-export type QualifiedNetworkNodeOfTypeNetwork = Omit<
-  NetworkNodeOfTypeNetwork,
+/** Protocol node with a `qualified_id` encoding its position in the nesting hierarchy (e.g. `"12_3"`). */
+export type QualifiedLeanStandardNode = LeanStandardNode & {
+  qualified_id: string
+}
+
+/** Subgraph definition with a `qualified_id` and a recursively qualified embedded network. */
+export type QualifiedSubGraphNodeDefinition = Omit<
+  SubGraphNodeDefinition,
   'value'
 > & {
   qualified_id: string
   value: QualifiedNetwork
 }
-export type QualifiedNetworkNodes = {
-  [id: string]: QualifiedNetworkNode | QualifiedNetworkNodeOfTypeNetwork
+
+/** Record of qualified protocol nodes, used for export and execution. */
+export type QualifiedLeanNodes = {
+  [id: string]: QualifiedLeanStandardNode | QualifiedSubGraphNodeDefinition
 }
+
 export type QualifiedNetwork = Omit<Network, 'workflow'> & {
-  workflow: { edges: NetworkEdges; nodes: QualifiedNetworkNodes }
+  workflow: { edges: NetworkEdges; nodes: QualifiedLeanNodes }
 }
 
 /**
- * Type guard to check if a network node is of type NetworkNodeOfTypeNetwork
+ * Type guard to check if a protocol node is a {@link SubGraphNodeDefinition}.
  * @param node - The node to check
  * @returns True if the node is a coral::Network node with all required fields
  */
-export const isNetworkNodeOfTypeNetwork = (
-  node: NetworkNodes[string]
-): node is NetworkNodeOfTypeNetwork => {
+export const isSubGraphNodeDefinition = (
+  node: LeanNodes[string]
+): node is SubGraphNodeDefinition => {
   return (
     node.type === TypeField.CORAL_NETWORK &&
     'node_type' in node &&
@@ -215,9 +247,9 @@ export const isNetworkNodeOfTypeNetwork = (
 /**
  * Returns the display name for a node template: prefers `name` over `type`,
  * replaces underscores with spaces, and capitalizes the first letter.
- * @param node - Registry node or stored network node.
+ * @param node - Registry node or stored subgraph node.
  */
-export const returnNodeName = (node: CanvasNode): string => {
+export const returnNodeName = (node: NodeDefinitions): string => {
   const normalized = (node.name ?? node.type).replaceAll('_', ' ').trim()
   if (!normalized) return ''
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)

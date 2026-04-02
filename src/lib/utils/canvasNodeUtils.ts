@@ -10,14 +10,14 @@ import {
   SELF,
   Type,
   type Argument,
-  type CanvasNode,
-  type NodeData,
+  type NodeDefinitions,
+  type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
-  nodeDefinition: CanvasNode
+  nodeDefinition: NodeDefinitions
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
   argumentName: string
@@ -43,19 +43,19 @@ export type ConnectedNodeDraft = {
  * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
  */
-const cloneNodeDefinition = (nodeDefinition: CanvasNode): CanvasNode => {
+const cloneNodeDefinition = (nodeDefinition: NodeDefinitions): NodeDefinitions => {
   const cloned = {
     ...nodeDefinition,
     arguments: nodeDefinition.arguments.map((argument) => ({ ...argument })),
     inputs: [...nodeDefinition.inputs],
     outputs: [...nodeDefinition.outputs],
-  } as CanvasNode
+  } as NodeDefinitions
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
     // Stored network nodes keep an embedded graph that is not needed on-canvas.
     // eslint-disable-next-line no-unused-vars
     const { value, ...dataWithoutValue } = cloned
-    return dataWithoutValue as CanvasNode
+    return dataWithoutValue as NodeDefinitions
   }
 
   return cloned
@@ -70,7 +70,7 @@ const cloneNodeDefinition = (nodeDefinition: CanvasNode): CanvasNode => {
  * @returns A new XYFlow `Node` ready to be placed on the canvas.
  */
 export const createCanvasNode = (
-  nodeDefinition: CanvasNode,
+  nodeDefinition: NodeDefinitions,
   position: XYPosition,
   options?: { name?: string }
 ): Node => {
@@ -118,7 +118,7 @@ export const getOutputTypeAndName = (
   sourceNode: Node,
   sourceHandle: string
 ): { connectionType: string; connectionName: string } | null => {
-  const data = sourceNode.data as NodeData
+  const data = sourceNode.data as StandardNodeDefinition
   const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getOutputTypeAndName: invalid handle id', sourceHandle)
@@ -170,7 +170,7 @@ export const getOutputTypeAndName = (
  * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all available nodes.
  */
 export const findCompatibleTargetNodesAsOptions = (
-  availableNodes: CanvasNode[],
+  availableNodes: NodeDefinitions[],
   sourceType: string,
   excludedNodeType?: string
 ): CompatibleNodeOption[] => {
@@ -206,7 +206,7 @@ export const getInputTypeAndName = (
   targetNode: Node,
   targetHandle: string
 ): { connectionType: string; connectionName: string } | null => {
-  const data = targetNode.data as NodeData
+  const data = targetNode.data as StandardNodeDefinition
   const handleIndex = handleIdToIndex(targetHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getInputTypeAndName: invalid handle id', targetHandle)
@@ -253,7 +253,7 @@ export const formatSuggestedNodeName = (name: string): string => {
  * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all available nodes.
  */
 export const findCompatibleSourceNodesAsOptions = (
-  availableNodes: CanvasNode[],
+  availableNodes: NodeDefinitions[],
   expectedInputType: string,
   excludedNodeType?: string
 ): CompatibleNodeOption[] => {
@@ -291,7 +291,7 @@ export const findCompatibleSourceNodesAsOptions = (
 export const resolveConnectionAndCompatibleNodes = (
   connectStartParams: ConnectStartParams,
   node: Node,
-  availableNodes: CanvasNode[]
+  availableNodes: NodeDefinitions[]
 ): {
   connectionType: string
   connectionName: string
@@ -304,7 +304,7 @@ export const resolveConnectionAndCompatibleNodes = (
   if (!connectionInfo) return null
 
   const { connectionType, connectionName } = connectionInfo
-  const nodeType = (node.data as NodeData).type
+  const nodeType = (node.data as StandardNodeDefinition).type
   const compatibleOptions =
     connectStartParams.handleType === 'source'
       ? findCompatibleTargetNodesAsOptions(
@@ -363,13 +363,13 @@ export const handleIdToIndex = (handleId: string): number =>
 /**
  * Resolves the argument corresponding to an input handle index on a node.
  * Follows the indirection: `inputs[handleIndex]` → `arguments[argumentIndex]`.
- * @param {CanvasNode} data - The node data containing `inputs` and `arguments` arrays.
+ * @param {NodeDefinitions} data - The node data containing `inputs` and `arguments` arrays.
  * @param {number} handleIndex - Zero-based index into the node's `inputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The argument, or null if the index is out of range.
  */
 export const resolveInputArgument = (
-  data: CanvasNode,
+  data: NodeDefinitions,
   handleIndex: number
 ): Argument | null => {
   const argumentIndex = data.inputs?.[handleIndex]
@@ -380,18 +380,18 @@ export const resolveInputArgument = (
 /**
  * Resolves the output type string for an output handle index on a node.
  * Handles the SELF case (`outputs[-1]`) by returning `base ?? type`.
- * @param {CanvasNode} data - The node data containing `outputs`, `arguments`, `type`, and optional `base`.
+ * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `base`.
  * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The type string, or null if the index is out of range.
  */
 export const resolveOutputType = (
-  data: CanvasNode,
+  data: NodeDefinitions,
   handleIndex: number
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF) return (data as NodeData).base ?? data.type
+  if (outputIndex === SELF) return (data as StandardNodeDefinition).base ?? data.type
   return data.arguments?.[outputIndex]?.type ?? null
 }
 
@@ -399,13 +399,13 @@ export const resolveOutputType = (
  * Resolves the display name for an output handle index on a node.
  * For the SELF case (`outputs[-1]`) no real argument exists, so the name is built
  * from `node.name` falling back to `node.type`.
- * @param {CanvasNode} data - The node data containing `outputs`, `arguments`, `type`, and optional `name`.
+ * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `name`.
  * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The display name, or null if the index is out of range.
  */
 export const resolveOutputName = (
-  data: CanvasNode,
+  data: NodeDefinitions,
   handleIndex: number
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]

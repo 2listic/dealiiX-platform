@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
   Network,
-  NetworkNodeOfTypeNetwork,
-  NodeData,
+  SubGraphNodeDefinition,
+  StandardNodeDefinition,
   RegisteredNodes,
-  RegisteredNetworkNodes,
+  RegisteredSubGraphNodes,
 } from '../types/nodeTypes'
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
@@ -13,10 +13,10 @@ import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
 // Mock registries data populated per-test
 let mockRegistry = defaultRegistry as RegisteredNodes
-let mockNetworkNodes = defaultNetworkNodes as RegisteredNetworkNodes
+let mockNetworkNodes = defaultNetworkNodes as RegisteredSubGraphNodes
 
 vi.mock('../stores/nodes.svelte', () => ({
-  getNodeData: vi.fn((type: string): NodeData => {
+  getNodeData: vi.fn((type: string): StandardNodeDefinition => {
     if (!(type in mockRegistry)) {
       throw new Error(
         `Node type '${type}' was not found in the available nodes.`
@@ -24,7 +24,7 @@ vi.mock('../stores/nodes.svelte', () => ({
     }
     return { ...mockRegistry[type] } // Return a copy
   }),
-  getNetworkNodeData: vi.fn((name: string): NetworkNodeOfTypeNetwork => {
+  getNetworkNodeData: vi.fn((name: string): SubGraphNodeDefinition => {
     if (!(name in mockNetworkNodes)) {
       throw new Error(
         `Sub-graph node '${name}' not found in networkNodes store`

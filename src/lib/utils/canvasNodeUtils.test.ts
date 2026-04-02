@@ -6,9 +6,9 @@ import {
   TypeField,
   Type,
   returnNodeName,
-  type CanvasNode,
+  type NodeDefinitions,
   type RegisteredNodes,
-  type RegisteredNetworkNodes,
+  type RegisteredSubGraphNodes,
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
@@ -20,7 +20,7 @@ import {
 } from './canvasNodeUtils'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
-const networkNodes = defaultNetworkNodes as unknown as RegisteredNetworkNodes
+const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes
 
 describe('canvasNodeUtils', () => {
   it('extracts source type and connection name from a regular output', () => {
@@ -81,7 +81,7 @@ describe('canvasNodeUtils', () => {
       registry['LaplaceProblem::run<2>'],
       registry['LaplaceProblem::run<1,2>'],
       registry['dealii::FE_Q<2, 2>'],
-    ] as CanvasNode[]
+    ] as NodeDefinitions[]
 
     const options = findCompatibleTargetNodesAsOptions(
       availableNodes,
@@ -101,7 +101,7 @@ describe('canvasNodeUtils', () => {
     const availableNodes = [
       networkNodes['step1 triangulation input free'],
       registry['dealii::FE_Q<2, 2>'],
-    ] as CanvasNode[]
+    ] as NodeDefinitions[]
 
     const options = findCompatibleTargetNodesAsOptions(
       availableNodes,
@@ -138,7 +138,7 @@ describe('canvasNodeUtils', () => {
     const availableNodes = [
       registry['unsigned int'],
       registry['dealii::FE_Q<2, 2>'],
-    ] as CanvasNode[]
+    ] as NodeDefinitions[]
 
     const options = findCompatibleSourceNodesAsOptions(
       availableNodes,
@@ -168,7 +168,7 @@ describe('canvasNodeUtils', () => {
   })
 
   it('clones created nodes and applies the requested name', () => {
-    const nodeDefinition = registry['LaplaceProblem::run<2>'] as CanvasNode
+    const nodeDefinition = registry['LaplaceProblem::run<2>'] as NodeDefinitions
 
     const node = createCanvasNode(
       nodeDefinition,

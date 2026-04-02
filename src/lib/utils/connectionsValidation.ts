@@ -6,7 +6,7 @@ import {
   resolveOutputType,
 } from './canvasNodeUtils'
 import { Type } from '../types/nodeTypes'
-import type { CanvasNode } from '../types/nodeTypes'
+import type { NodeDefinitions } from '../types/nodeTypes'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -21,7 +21,7 @@ const isValidConnection = (connection: Connection): boolean => {
   console.log('connection', connection)
 
   // Get the current nodes and edges
-  const nodes = getNodesSnapshot() as Node<CanvasNode>[]
+  const nodes = getNodesSnapshot() as Node<NodeDefinitions>[]
   const edges = getEdgesSnapshot() as Edge[]
   console.log('nodes', nodes)
   console.log('edges', edges)
