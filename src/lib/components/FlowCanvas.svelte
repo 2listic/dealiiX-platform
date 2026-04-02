@@ -82,70 +82,29 @@
     'custom-edge': CustomEdge,
   }
 
-  // Clear the validation cache whenever edges are deleted so stale type-check
-  // results don't prevent new valid connections from being made.
+  /**
+   * Handles node/edge deletion events from @xyflow/svelte.
+   * Clears the connection validation cache for any deleted edges so that
+   * subsequent connection attempts don't get blocked by stale type-check
+   * results referencing handles that no longer exist.
+   * @param deletedEdges - The edges that were removed from the canvas.
+   */
   const ondelete = ({ edges: deletedEdges }) => {
     if (deletedEdges && deletedEdges.length > 0) {
       clearConnectionCache()
     }
   }
 
-  const getClientPosition = (event: MouseEvent | TouchEvent) => {
-    if ('changedTouches' in event && event.changedTouches.length > 0) {
-      const touch = event.changedTouches[0]
-      return { x: touch.clientX, y: touch.clientY }
-    }
-
-    if ('clientX' in event) {
-      return { x: event.clientX, y: event.clientY }
-    }
-
-    return null
-  }
-
   /**
-   * Creates a new canvas node and wires it to the originating handle.
-   * Called either automatically (single compatible option) or from the modal.
-   * @param option - The chosen compatible node option.
-   * @param name - Display name for the new node.
+   * Captures the originating handle when the user begins dragging a connection.
+   * Stores the node ID, handle ID, and handle type in module-level
+   * `connectStartParams` so that `handleConnectEnd` can identify the source of
+   * the drag when it fires. Resets to `null` for any invalid drag (unknown
+   * handle type, missing node/handle ID) so `handleConnectEnd` can safely
+   * bail out early.
+   * @param _ - The mouse or touch event that initiated the drag (unused).
+   * @param params - Handle metadata provided by @xyflow/svelte.
    */
-  const createConnectedNode = (option: CompatibleNodeOption, name: string) => {
-    if (!connectedNodeDraft) {
-      return
-    }
-
-    try {
-      const newNode = createCanvasNode(
-        option.nodeDefinition,
-        connectedNodeDraft.position,
-        { name }
-      )
-
-      addNode(newNode)
-      addEdge(
-        buildEdgeForNewNode(
-          connectedNodeDraft.connectStartParams,
-          newNode.id,
-          option.handleId
-        )
-      )
-      clearConnectionCache()
-
-      connectedNodeDraft = null
-      getModal(createConnectedNodeModalId)?.close()
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'unknown create-node error'
-      console.error('Create connected node failed:', error)
-      toastState.add({
-        message: `Create connected node failed: ${message}`,
-        type: 'error',
-      })
-    }
-  }
-
-  // Records which handle the user started dragging from so it is available
-  // when the drag ends on empty canvas space.
   const handleConnectStart = (
     _: MouseEvent | TouchEvent,
     params: {
@@ -167,19 +126,6 @@
       handleId: params.handleId,
       handleType: params.handleType,
     }
-  }
-
-  const isClientPositionInsideElement = (
-    clientPos: { x: number; y: number },
-    element: HTMLElement
-  ): boolean => {
-    const bounds = element.getBoundingClientRect()
-    return (
-      clientPos.x >= bounds.left &&
-      clientPos.x <= bounds.right &&
-      clientPos.y >= bounds.top &&
-      clientPos.y <= bounds.bottom
-    )
   }
 
   /**
@@ -286,6 +232,73 @@
 
     // Multiple compatible options: let the user choose via the modal.
     getModal(createConnectedNodeModalId)?.open()
+  }
+
+  /**
+   * Creates a new canvas node and wires it to the originating handle.
+   * Called either automatically (single compatible option) or from the modal.
+   * @param option - The chosen compatible node option.
+   * @param name - Display name for the new node.
+   */
+  const createConnectedNode = (option: CompatibleNodeOption, name: string) => {
+    if (!connectedNodeDraft) {
+      return
+    }
+
+    try {
+      const newNode = createCanvasNode(
+        option.nodeDefinition,
+        connectedNodeDraft.position,
+        { name }
+      )
+
+      addNode(newNode)
+      addEdge(
+        buildEdgeForNewNode(
+          connectedNodeDraft.connectStartParams,
+          newNode.id,
+          option.handleId
+        )
+      )
+      clearConnectionCache()
+
+      connectedNodeDraft = null
+      getModal(createConnectedNodeModalId)?.close()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'unknown create-node error'
+      console.error('Create connected node failed:', error)
+      toastState.add({
+        message: `Create connected node failed: ${message}`,
+        type: 'error',
+      })
+    }
+  }
+
+  const getClientPosition = (event: MouseEvent | TouchEvent) => {
+    if ('changedTouches' in event && event.changedTouches.length > 0) {
+      const touch = event.changedTouches[0]
+      return { x: touch.clientX, y: touch.clientY }
+    }
+
+    if ('clientX' in event) {
+      return { x: event.clientX, y: event.clientY }
+    }
+
+    return null
+  }
+
+  const isClientPositionInsideElement = (
+    clientPos: { x: number; y: number },
+    element: HTMLElement
+  ): boolean => {
+    const bounds = element.getBoundingClientRect()
+    return (
+      clientPos.x >= bounds.left &&
+      clientPos.x <= bounds.right &&
+      clientPos.y >= bounds.top &&
+      clientPos.y <= bounds.bottom
+    )
   }
 </script>
 
