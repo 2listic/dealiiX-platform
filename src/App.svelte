@@ -14,14 +14,16 @@
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem
   let sidebarPositionHolderElem
-  var style = window.getComputedStyle(document.body)
-  const sidebarWrapperWidth = style.getPropertyValue('--sidebar-wrapper-width')
+  let sidebarWrapperWidth = '3vw'
 
   onMount(() => {
     sidebarWrapperElem = document.getElementById('sidebar-wrapper')
     sidebarPositionHolderElem = document.getElementById(
       'sidebar-position-holder'
     )
+    const style = window.getComputedStyle(document.body)
+    sidebarWrapperWidth =
+      style.getPropertyValue('--sidebar-wrapper-width') || sidebarWrapperWidth
   })
   $effect(() => {
     if (isExpanded && sidebarWrapperElem && sidebarPositionHolderElem) {

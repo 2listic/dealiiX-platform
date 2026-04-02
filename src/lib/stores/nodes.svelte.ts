@@ -134,6 +134,14 @@ const sortRegistry = (nodes: RegisteredNodes): RegisteredNodes => {
  */
 let registry = $state<RegisteredNodes>({})
 
+const persistStoreValue = async (key: string, value: unknown) => {
+  if (window.electron?.store) {
+    await window.electron.store.set(key, value)
+  } else {
+    console.warn(`Electron store not available while persisting '${key}'`)
+  }
+}
+
 // Load registry from electron-store
 const loadRegistry = async () => {
   if (globalThis.window?.electron?.store) {
@@ -159,7 +167,7 @@ export const setRegistry = async (
   const [filtered, skipped] = filterValidNodes(data)
   registry = sortRegistry(filtered)
   console.log('Imported registry', $state.snapshot(registry))
-  await window.electron.store.set('registered_nodes', $state.snapshot(registry))
+  await persistStoreValue('registered_nodes', $state.snapshot(registry))
   return skipped
 }
 
@@ -226,7 +234,7 @@ loadNetworkNodes()
 export const setNetworkNodes = async (data: RegisteredSubGraphNodes) => {
   networkNodes = data
   console.log('Imported network nodes', $state.snapshot(networkNodes))
-  await window.electron.store.set(
+  await persistStoreValue(
     'registered_network_nodes',
     $state.snapshot(networkNodes)
   )
@@ -243,7 +251,7 @@ export const addNetworkNode = async (
 ) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
-  await window.electron.store.set(
+  await persistStoreValue(
     'registered_network_nodes',
     $state.snapshot(networkNodes)
   )
@@ -257,7 +265,7 @@ export const addNetworkNode = async (
 export const removeNetworkNode = async (name: string) => {
   if (isNodeInNetworkNodes(name)) {
     delete networkNodes[name]
-    await window.electron.store.set(
+    await persistStoreValue(
       'registered_network_nodes',
       $state.snapshot(networkNodes)
     )
@@ -282,7 +290,9 @@ export const getStoredNetworkNodes = (): SubGraphNodeDefinition[] => {
  * @returns {SubGraphNodeDefinition} A snapshot (non-reactive copy) of the node definition for the given network node
  * @throws {Error} If the network node name is not found in the networkNodes store
  */
-export const getNetworkNodeDefinition = (name: string): SubGraphNodeDefinition => {
+export const getNetworkNodeDefinition = (
+  name: string
+): SubGraphNodeDefinition => {
   if (!isNodeInNetworkNodes(name)) {
     console.error(`Sub-graph node '${name}' not found in networkNodes store`)
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)

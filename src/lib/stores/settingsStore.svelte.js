@@ -1,5 +1,13 @@
 let settings = $state({})
 
+const persistSettings = async () => {
+  if (window.electron?.store) {
+    await window.electron.store.set('settings', $state.snapshot(settings))
+  } else {
+    console.warn("Electron store not available while persisting 'settings'")
+  }
+}
+
 // Load initial settings from electron-store
 const loadSettings = async () => {
   if (window.electron?.store) {
@@ -22,6 +30,6 @@ export const settingsState = {
   async setKey(key, value) {
     if (!settings) settings = {}
     settings[key] = value
-    await window.electron.store.set('settings', $state.snapshot(settings))
+    await persistSettings()
   },
 }

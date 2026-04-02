@@ -6,6 +6,22 @@
 let token = $state(null)
 let username = $state(null)
 
+const persistAuthValue = async (key, value) => {
+  if (window.electron?.store) {
+    await window.electron.store.set(key, value)
+  } else {
+    console.warn(`Electron store not available while persisting '${key}'`)
+  }
+}
+
+const removeAuthValue = async (key) => {
+  if (window.electron?.store) {
+    await window.electron.store.remove(key)
+  } else {
+    console.warn(`Electron store not available while removing '${key}'`)
+  }
+}
+
 // Load initial values from electron-store
 const loadAuth = async () => {
   if (window.electron?.store) {
@@ -28,16 +44,16 @@ export const auth = {
   },
   async setToken(newToken) {
     token = newToken
-    await window.electron.store.set('access_token', newToken)
+    await persistAuthValue('access_token', newToken)
   },
   async setUsername(newUsername) {
     username = newUsername
-    await window.electron.store.set('username', newUsername)
+    await persistAuthValue('username', newUsername)
   },
   async clearToken() {
     token = null
     username = null
-    await window.electron.store.remove('access_token')
-    await window.electron.store.remove('username')
+    await removeAuthValue('access_token')
+    await removeAuthValue('username')
   },
 }

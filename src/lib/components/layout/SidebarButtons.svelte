@@ -4,6 +4,7 @@
     getEdgesSnapshot,
     getNodes,
     getNodesSnapshot,
+    setNodes,
     setRegistry,
   } from '../../stores/nodes.svelte'
   import {
@@ -38,17 +39,17 @@
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
-  import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import JobConfigModal from '../JobConfigModal.svelte'
+  import { graphNavigationState } from '../../stores/graphNavigation.svelte'
+  import RefreshIcon from '../icons/RefreshIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
-  const createNetworkNodeModalId = 'create-network-node-modal'
   const JobConfigModalId = 'job-config-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -104,6 +105,7 @@
       return
     }
     try {
+      graphNavigationState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const [validEdges, invalidEdges] = validateGraphData(importedGraph)
@@ -205,8 +207,29 @@
     getModal(saveProjectModalId)?.open()
   }
 
-  const handleCreateNetworkNode = () => {
-    getModal(createNetworkNodeModalId)?.open()
+  const handleAutoLayout = async (direction: 'LR' | 'TB') => {
+    try {
+      const { applyAutoLayout } = await import('../../utils/autoLayout')
+      const layoutedNodes = applyAutoLayout(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        direction
+      )
+      setNodes(layoutedNodes)
+      toastState.add({
+        message:
+          direction === 'LR'
+            ? 'Horizontal graph layout updated'
+            : 'Vertical graph layout updated',
+        timeout: 2200,
+      })
+    } catch (error) {
+      console.error('Failed to auto-layout graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to auto-layout graph',
+        type: 'error',
+      })
+    }
   }
 
   const handleGraphDownload = () => {
@@ -355,6 +378,23 @@
     <span class="button-text">Visualiz.</span>
   </div>
 
+  <!-- Auto Layout group -->
+  <SidebarGroupButton title="Layout">
+    {#snippet icon()}
+      <RefreshIcon width="28px" height="28px" rotation={0} />
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Horizontal"
+        onclick={() => handleAutoLayout('LR')}
+      />
+      <SidebarGroupButtonItem
+        label="Vertical"
+        onclick={() => handleAutoLayout('TB')}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+
   <!-- Import group -->
   <SidebarGroupButton title="Import">
     {#snippet icon()}
@@ -368,10 +408,6 @@
       <SidebarGroupButtonItem
         label="Import Nodes"
         onclick={() => importNodesInput?.click()}
-      />
-      <SidebarGroupButtonItem
-        label="Create Sub-Graph"
-        onclick={handleCreateNetworkNode}
       />
     {/snippet}
   </SidebarGroupButton>
@@ -391,9 +427,6 @@
     accept=".json"
     style="display: none"
   />
-
-  <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />
-
   <!-- Settings (standalone) -->
   <div class="button-container">
     <label for="settings-button" class="element-label" title="Settings">

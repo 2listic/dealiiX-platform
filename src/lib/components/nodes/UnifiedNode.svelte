@@ -1,21 +1,38 @@
-<script module>
+<script module lang="ts">
+  import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
     StandardNodeDefinition,
+    NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
   // unused exports
-  export type ElementaryConstructor = Node<
+  export type ElementaryConstructor = FlowNode<
     StandardNodeDefinition,
-    NodeType.ELEMENTARY_CONSTRUCTOR
+    FlowNodeType.ELEMENTARY_CONSTRUCTOR
   >
-  export type EmptyConstructor = Node<StandardNodeDefinition, NodeType.EMPTY_CONSTRUCTOR>
-  export type Constructor = Node<StandardNodeDefinition, NodeType.CONSTRUCTOR>
-  export type Abstract = Node<StandardNodeDefinition, NodeType.ABSTRACT>
-  export type VoidMethod = Node<StandardNodeDefinition, NodeType.VOID_METHOD>
-  export type VoidConstMethod = Node<StandardNodeDefinition, NodeType.VOID_CONST_METHOD>
-  export type VoidFunction = Node<StandardNodeDefinition, NodeType.VOID_FUNCTION>
-  export type Function = Node<StandardNodeDefinition, NodeType.FUNCTION>
-  export type Network = Node<SubGraphNodeDefinition, NodeType.NETWORK>
+  export type EmptyConstructor = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.EMPTY_CONSTRUCTOR
+  >
+  export type Constructor = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.CONSTRUCTOR
+  >
+  export type Abstract = FlowNode<StandardNodeDefinition, FlowNodeType.ABSTRACT>
+  export type VoidMethod = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.VOID_METHOD
+  >
+  export type VoidConstMethod = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.VOID_CONST_METHOD
+  >
+  export type VoidFunction = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.VOID_FUNCTION
+  >
+  export type Function = FlowNode<StandardNodeDefinition, FlowNodeType.FUNCTION>
+  export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor
@@ -25,6 +42,7 @@
     | VoidConstMethod
     | VoidFunction
     | Function
+    | Network
 </script>
 
 <script lang="ts">
@@ -33,7 +51,6 @@
     Position,
     useSvelteFlow,
     type NodeProps,
-    type Node,
   } from '@xyflow/svelte'
   import { getModal } from '../layout/Modal.svelte'
   import {
@@ -42,13 +59,29 @@
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
-  import { removeNode } from '../../stores/nodes.svelte'
+  import {
+    getEdgesSnapshot,
+    getNextNodeId,
+    getNodesSnapshot,
+    removeNode,
+    setEdges,
+    setNodes,
+  } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
+  import CubeIcon from '../icons/CubeIcon.svelte'
+  import { graphNavigationState } from '../../stores/graphNavigation.svelte'
+  import { expandNetworkNodeInGraph } from '../../utils/networkNode'
+  import { toastState } from '../../stores/toastsStore.svelte'
 
-  let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
+  let {
+    id,
+    data,
+    type,
+    selected = false,
+  }: NodeProps<UnifiedNodeType> = $props()
 
   // data.is_valid = true
   let isValid = $derived(data?.is_valid ?? true)
@@ -107,9 +140,40 @@
   //   console.log(nodes.current)
   //   console.log(data)
   // })
+
+  const handleExpandSubnetwork = () => {
+    try {
+      const expanded = expandNetworkNodeInGraph(
+        id,
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        getNextNodeId
+      )
+      setNodes(expanded.nodes)
+      setEdges(expanded.edges)
+      clearConnectionCache()
+      toastState.add({
+        message: `Expanded subnetwork "${data.name ?? data.type}"`,
+        timeout: 2200,
+      })
+    } catch (error) {
+      console.error('Failed to expand subnetwork:', error)
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to expand subnetwork',
+        type: 'error',
+      })
+    }
+  }
 </script>
 
-<div class="custom-node" style="--border-color: {color}">
+<div
+  class:selected-node={selected}
+  class="custom-node"
+  style="--border-color: {color}"
+>
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
@@ -122,7 +186,24 @@
       {/if}
     </div>
     <div class="node-buttons">
-      {#if !isNetworkNode}
+      {#if isNetworkNode}
+        {#if selected}
+          <button
+            class="node-button expand-button"
+            title="Expand subnetwork"
+            onclick={handleExpandSubnetwork}
+          >
+            Expand
+          </button>
+        {/if}
+        <button
+          class="node-button"
+          title="Open subnetwork"
+          onclick={() => graphNavigationState.enterSubnetwork(id)}
+        >
+          <CubeIcon width="20px" height="20px" />
+        </button>
+      {:else}
         <button
           class="node-button"
           onclick={() => getModal(editNodeModalId)?.open()}
@@ -228,6 +309,18 @@
     background: var(--primary-color);
     border: 2px solid var(--border-color);
     min-width: 200px;
+    transition:
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      filter 0.18s ease;
+  }
+
+  .selected-node {
+    border-color: var(--border-color-hover);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--border-color) 28%, transparent),
+      0 10px 24px rgba(0, 0, 0, 0.14);
+    filter: saturate(1.06);
   }
 
   .node-header {
@@ -266,6 +359,12 @@
     display: flex;
     align-items: center;
     align-self: flex-start;
+  }
+
+  .expand-button {
+    padding: 0.1rem 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 600;
   }
 
   .node-button:hover {

@@ -95,7 +95,13 @@
 </script>
 
 <Modal id={modalId} closeOnBackdrop={true} size="sm">
-  <div class="share-modal">
+  <form
+    class="share-modal"
+    onsubmit={(event) => {
+      event.preventDefault()
+      handleShare()
+    }}
+  >
     <h3>Share Project: {projectName}</h3>
 
     {#if loadingUsers}
@@ -130,18 +136,19 @@
       </div>
 
       <div class="modal-actions">
-        <Button size="small" onclick={handleCancel}>Cancel</Button>
+        <Button type="button" size="small" onclick={handleCancel}>Cancel</Button
+        >
         <Button
+          type="submit"
           variant="action"
           size="small"
-          onclick={handleShare}
           disabled={!selectedUserId}
         >
           Share Project
         </Button>
       </div>
     {/if}
-  </div>
+  </form>
 </Modal>
 
 <style>

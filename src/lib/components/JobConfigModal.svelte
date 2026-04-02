@@ -43,7 +43,15 @@
 </script>
 
 <Modal id={modalId} size="sm">
-  <div class="job-config">
+  <form
+    class="job-config"
+    onsubmit={(event) => {
+      event.preventDefault()
+      if (!timeLimitError) {
+        handleConfirm()
+      }
+    }}
+  >
     <h2>Job Configuration</h2>
     <div class="inputs-container">
       {#if showMpiFields}
@@ -110,16 +118,17 @@
       </label>
     </div>
     <div class="button-container">
-      <Button onclick={handleCancel}>Cancel</Button>
+      <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button
+        type="submit"
         variant="action"
-        onclick={handleConfirm}
+        size="small"
         disabled={!!timeLimitError}
       >
         Execute
       </Button>
     </div>
-  </div>
+  </form>
 </Modal>
 
 <style>

@@ -13,24 +13,36 @@
 
   interface Props {
     modalId: string
+    title?: string
+    submitText?: string
+    onCreate?: (_name: string) => Promise<void> | void
   }
 
-  let { modalId }: Props = $props()
+  let {
+    modalId,
+    title = 'Create Network Node',
+    submitText = 'Create',
+    onCreate,
+  }: Props = $props()
 
   let networkNodeName = $state('')
   const confirmModalId = 'confirm-override-network-node'
 
-  const createNetworkNode = async (name: string) => {
+  const createNetworkNode = async () => {
     try {
-      const newNetworkNode = createNewNetworkNode(
-        name,
-        getNodesSnapshot(),
-        getEdgesSnapshot()
-      )
-      await addNetworkNode(name, newNetworkNode)
+      if (onCreate) {
+        await onCreate(networkNodeName.trim())
+      } else {
+        const newNetworkNode = createNewNetworkNode(
+          networkNodeName.trim(),
+          getNodesSnapshot(),
+          getEdgesSnapshot()
+        )
+        await addNetworkNode(networkNodeName.trim(), newNetworkNode)
+      }
 
       toastState.add({
-        message: `Network node "${name}" created successfully`,
+        message: `Network node "${networkNodeName.trim()}" created successfully`,
         type: 'success',
       })
 
@@ -61,11 +73,11 @@
       getModal(confirmModalId)?.open()
       return
     }
-    createNetworkNode(name)
+    createNetworkNode()
   }
 
   const handleConfirmOverride = () => {
-    createNetworkNode(networkNodeName)
+    createNetworkNode()
   }
 
   const handleCancel = () => {
@@ -75,8 +87,14 @@
 </script>
 
 <Modal id={modalId} size="sm">
-  <div class="create-network-node-form">
-    <h2>Create Network Node</h2>
+  <form
+    class="create-network-node-form"
+    onsubmit={(event) => {
+      event.preventDefault()
+      handleCreate()
+    }}
+  >
+    <h2>{title}</h2>
     <label for="network-node-name-input">Network node name</label>
     <input
       id="network-node-name-input"
@@ -86,10 +104,12 @@
       class="input-field"
     />
     <div class="button-container">
-      <Button variant="default" onclick={handleCancel}>Cancel</Button>
-      <Button variant="action" onclick={handleCreate}>Create</Button>
+      <Button type="button" variant="default" onclick={handleCancel}
+        >Cancel</Button
+      >
+      <Button type="submit" variant="action">{submitText}</Button>
     </div>
-  </div>
+  </form>
 </Modal>
 
 <ConfirmationModal

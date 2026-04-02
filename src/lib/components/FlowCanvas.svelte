@@ -7,7 +7,6 @@
     SvelteFlow,
     Background,
     MiniMap,
-    type EdgeTypes,
     type NodeTypes,
     Controls,
     Panel,
@@ -16,11 +15,13 @@
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
-  import CustomEdge from './edges/CustomEdge.svelte'
   import {
+    getEdgesSnapshot,
     getNodes,
     getEdges,
-    getEdgesSnapshot,
+    getNextNodeId,
+    getNodesSnapshot,
+    addNetworkNode,
     setNodes,
     setEdges,
     addEdge,
@@ -31,6 +32,7 @@
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
+  import { graphNavigationState } from '../stores/graphNavigation.svelte'
   import {
     clearConnectionCache,
     isValidConnection,
@@ -44,6 +46,15 @@
   } from '../types/nodeTypes'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
+  import EditIcon from './icons/EditIcon.svelte'
+  import Button from './layout/Button.svelte'
+  import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
+  import { toastState } from '../stores/toastsStore.svelte'
+  import { getModal } from './layout/Modal.svelte'
+  import {
+    createNetworkNodeWithBindings,
+    flattenSelectedSubgraphs,
+  } from '../utils/networkNode'
   import {
     createCanvasNode,
     buildEdgeForNewNode,
@@ -53,17 +64,21 @@
     type ConnectedNodeDraft,
     type ConnectStartParams,
   } from '../utils/canvasNodeUtils'
-  import { toastState } from '../stores/toastsStore.svelte'
-  import { getModal } from './layout/Modal.svelte'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
 
   const { screenToFlowPosition, getNode, getIntersectingNodes } =
     useSvelteFlow()
-  const createConnectedNodeModalId = 'create-connected-node'
 
+  let isEditingBreadcrumb = $state(false)
+  let breadcrumbNameDraft = $state('')
   let canvasElement = $state<HTMLDivElement>()
   let connectStartParams: ConnectStartParams | null = null
   let connectedNodeDraft = $state<ConnectedNodeDraft | null>(null)
+  type SelectionSubgraphMode = 'create' | 'merge'
+  let selectionSubgraphMode = $state<SelectionSubgraphMode>('create')
+
+  const createSelectionNetworkNodeModalId = 'create-selection-network-node'
+  const createConnectedNodeModalId = 'create-connected-node'
 
   const nodeTypes: NodeTypes = {
     [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
@@ -78,9 +93,12 @@
     [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
     [NodeTypePyBackend.METHOD]: UnifiedNode,
   }
-  const edgeTypes: EdgeTypes = {
-    'custom-edge': CustomEdge,
-  }
+
+  let selectedNodes = $derived(getNodes().filter((node) => node.selected))
+  let canCreateSubnetworkFromSelection = $derived(selectedNodes.length > 1)
+  let canMergeSubgraphsFromSelection = $derived(
+    selectedNodes.some((node) => node.data.node_type === NodeType.NETWORK)
+  )
 
   /**
    * Handles node/edge deletion events from @xyflow/svelte.
@@ -95,16 +113,190 @@
     }
   }
 
-  /**
-   * Captures the originating handle when the user begins dragging a connection.
-   * Stores the node ID, handle ID, and handle type in module-level
-   * `connectStartParams` so that `handleConnectEnd` can identify the source of
-   * the drag when it fires. Resets to `null` for any invalid drag (unknown
-   * handle type, missing node/handle ID) so `handleConnectEnd` can safely
-   * bail out early.
-   * @param _ - The mouse or touch event that initiated the drag (unused).
-   * @param params - Handle metadata provided by @xyflow/svelte.
-   */
+  $effect(() => {
+    if (!graphNavigationState.canGoBack) {
+      isEditingBreadcrumb = false
+      breadcrumbNameDraft = ''
+    }
+  })
+
+  const startEditingBreadcrumb = () => {
+    breadcrumbNameDraft = graphNavigationState.currentLabel
+    isEditingBreadcrumb = true
+  }
+
+  const cancelEditingBreadcrumb = () => {
+    isEditingBreadcrumb = false
+    breadcrumbNameDraft = graphNavigationState.currentLabel
+  }
+
+  const submitBreadcrumbRename = async () => {
+    try {
+      await graphNavigationState.renameCurrentSubnetwork(breadcrumbNameDraft)
+      isEditingBreadcrumb = false
+      toastState.add({
+        message: `Renamed subnetwork to "${graphNavigationState.currentLabel}"`,
+        timeout: 2000,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to rename subnetwork',
+        type: 'error',
+      })
+    }
+  }
+
+  const openCreateSelectionNetworkModal = (
+    mode: SelectionSubgraphMode = 'create'
+  ) => {
+    selectionSubgraphMode = mode
+    getModal(createSelectionNetworkNodeModalId)?.open()
+  }
+
+  const createSubnetworkFromSelection = async (
+    name: string,
+    mode: SelectionSubgraphMode = 'create'
+  ) => {
+    const allNodes = getNodesSnapshot()
+    const allEdges = getEdgesSnapshot()
+    const selectedNodeIds = new Set(
+      allNodes.filter((node) => node.selected).map((node) => node.id)
+    )
+
+    if (selectedNodeIds.size <= 1) {
+      throw new Error('Select at least two nodes to create a subnetwork.')
+    }
+
+    const selectedCanvasNodes = allNodes.filter((node) =>
+      selectedNodeIds.has(node.id)
+    )
+    const selectedInternalEdges = allEdges.filter(
+      (edge) =>
+        selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
+    )
+
+    const {
+      nodes: selectedNodesForSubgraph,
+      edges: internalEdgesForSubgraph,
+      aliasedInputTargetByOriginal,
+      aliasedOutputSourceByOriginal,
+    } = mode === 'merge'
+      ? flattenSelectedSubgraphs(
+          selectedCanvasNodes,
+          selectedInternalEdges,
+          getNextNodeId
+        )
+      : {
+          nodes: selectedCanvasNodes,
+          edges: selectedInternalEdges,
+          aliasedInputTargetByOriginal: {},
+          aliasedOutputSourceByOriginal: {},
+        }
+
+    const { networkNode, inputHandleByTarget, outputHandleBySource } =
+      createNetworkNodeWithBindings(
+        name,
+        selectedNodesForSubgraph,
+        internalEdgesForSubgraph
+      )
+
+    await addNetworkNode(networkNode.name, networkNode)
+
+    const newNodeId = String(getNextNodeId())
+    const selectionCenter = selectedCanvasNodes.reduce(
+      (acc, node) => ({
+        x: acc.x + node.position.x,
+        y: acc.y + node.position.y,
+      }),
+      { x: 0, y: 0 }
+    )
+    const centerPosition = {
+      x: selectionCenter.x / selectedCanvasNodes.length,
+      y: selectionCenter.y / selectedCanvasNodes.length,
+    }
+
+    const collapsedNode = {
+      id: newNodeId,
+      type: NodeType.NETWORK,
+      position: centerPosition,
+      selected: true,
+      data: {
+        ...networkNode,
+      },
+    }
+
+    const survivingNodes = allNodes
+      .filter((node) => !selectedNodeIds.has(node.id))
+      .map((node) => ({ ...node, selected: false }))
+
+    const incomingEdges = allEdges.filter(
+      (edge) =>
+        !selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
+    )
+    const outgoingEdges = allEdges.filter(
+      (edge) =>
+        selectedNodeIds.has(edge.source) && !selectedNodeIds.has(edge.target)
+    )
+    const untouchedEdges = allEdges.filter(
+      (edge) =>
+        !selectedNodeIds.has(edge.source) && !selectedNodeIds.has(edge.target)
+    )
+
+    const rewiredIncomingEdges = incomingEdges
+      .map((edge) => {
+        const targetKey =
+          aliasedInputTargetByOriginal[
+            `${edge.target}::${edge.targetHandle}`
+          ] ?? `${edge.target}::${edge.targetHandle}`
+        const inputHandleIndex = inputHandleByTarget[targetKey]
+        if (inputHandleIndex === undefined) {
+          return null
+        }
+
+        return {
+          ...edge,
+          id: `xy-edge__${edge.source}${edge.sourceHandle}-${newNodeId}input-${inputHandleIndex}`,
+          target: newNodeId,
+          targetHandle: `input-${inputHandleIndex}`,
+          selected: false,
+        }
+      })
+      .filter((edge) => edge !== null)
+
+    const rewiredOutgoingEdges = outgoingEdges
+      .map((edge) => {
+        const sourceKey =
+          aliasedOutputSourceByOriginal[
+            `${edge.source}::${edge.sourceHandle}`
+          ] ?? `${edge.source}::${edge.sourceHandle}`
+        const outputHandleIndex = outputHandleBySource[sourceKey]
+        if (outputHandleIndex === undefined) {
+          return null
+        }
+
+        return {
+          ...edge,
+          id: `xy-edge__${newNodeId}output-${outputHandleIndex}-${edge.target}${edge.targetHandle}`,
+          source: newNodeId,
+          sourceHandle: `output-${outputHandleIndex}`,
+          selected: false,
+        }
+      })
+      .filter((edge) => edge !== null)
+
+    setNodes([...survivingNodes, collapsedNode])
+    setEdges([
+      ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
+      ...rewiredIncomingEdges,
+      ...rewiredOutgoingEdges,
+    ])
+  }
+
+  // Records which handle the user started dragging from so it is available
+  // when the drag ends on empty canvas space.
   const handleConnectStart = (
     _: MouseEvent | TouchEvent,
     params: {
@@ -166,7 +358,7 @@
       return
     }
 
-    // Guard: target handles only accept one incoming edge (no multiple edges to the same target handle).
+    // Guard: target handles only accept one incoming edge.
     if (
       connectStartParams.handleType === 'target' &&
       isTargetHandleConnected(
@@ -214,8 +406,6 @@
       position,
       connectStartParams,
     }
-    // Params are now captured in connectedNodeDraft; null the module-level ref so
-    // a re-entrant call to handleConnectEnd doesn't act on stale state.
     connectStartParams = null
 
     if (compatibleOptions.length === 1) {
@@ -230,7 +420,6 @@
       return
     }
 
-    // Multiple compatible options: let the user choose via the modal.
     getModal(createConnectedNodeModalId)?.open()
   }
 
@@ -307,7 +496,6 @@
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}
     {nodeTypes}
-    {edgeTypes}
     fitView
     {isValidConnection}
     onconnectstart={handleConnectStart}
@@ -327,15 +515,94 @@
   >
     <Panel position="top-left">
       <div class="project-info">
+        {#if graphNavigationState.canGoBack}
+          <div class="graph-nav">
+            <button
+              class="nav-button"
+              onclick={() => graphNavigationState.goBack()}
+            >
+              Back
+            </button>
+            <div class="graph-breadcrumbs">
+              <span
+                >{graphNavigationState.breadcrumbs
+                  .slice(0, -1)
+                  .join(' / ')}</span
+              >
+              <span>/</span>
+              {#if isEditingBreadcrumb}
+                <input
+                  class="breadcrumb-input"
+                  bind:value={breadcrumbNameDraft}
+                  onkeydown={(event) => {
+                    if (event.key === 'Enter') {
+                      submitBreadcrumbRename()
+                    } else if (event.key === 'Escape') {
+                      cancelEditingBreadcrumb()
+                    }
+                  }}
+                />
+                <button
+                  class="breadcrumb-action"
+                  onclick={submitBreadcrumbRename}
+                >
+                  Save
+                </button>
+                <button
+                  class="breadcrumb-action"
+                  onclick={cancelEditingBreadcrumb}
+                >
+                  Cancel
+                </button>
+              {:else}
+                <span class="current-crumb"
+                  >{graphNavigationState.currentLabel}</span
+                >
+                <button
+                  class="breadcrumb-icon-button"
+                  title="Rename subnetwork"
+                  onclick={startEditingBreadcrumb}
+                >
+                  <EditIcon width="14px" height="14px" />
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
         {#if currentProjectState.id}
           <span class="project-main">{currentProjectState.name}</span>
           <span class="project-secondary">ID: {currentProjectState.id}</span>
         {:else}
           <span class="project-secondary">Unsaved Project</span>
         {/if}
+        <span class="project-secondary">
+          Editing: {graphNavigationState.currentLabel}
+        </span>
       </div>
       <JobsTable />
     </Panel>
+    {#if canCreateSubnetworkFromSelection}
+      <Panel position="top-center">
+        <div class="selection-actions">
+          <Button
+            variant="action"
+            size="small"
+            onclick={() => openCreateSelectionNetworkModal('create')}
+          >
+            Create Subnetwork
+          </Button>
+          {#if canMergeSubgraphsFromSelection}
+            <Button
+              variant="default"
+              size="small"
+              onclick={() => openCreateSelectionNetworkModal('merge')}
+            >
+              Merge Subgraphs
+            </Button>
+          {/if}
+        </div>
+      </Panel>
+    {/if}
     <Panel position="bottom-left">
       <div class="export-button-container">
         <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
@@ -366,6 +633,16 @@
   }}
 />
 
+<CreateNetworkNodeModal
+  modalId={createSelectionNetworkNodeModalId}
+  title={selectionSubgraphMode === 'merge'
+    ? 'Merge Subgraphs'
+    : 'Create Subgraph'}
+  submitText={selectionSubgraphMode === 'merge' ? 'Merge' : 'Create'}
+  onCreate={(name) =>
+    createSubnetworkFromSelection(name, selectionSubgraphMode)}
+/>
+
 <style>
   .flow-canvas {
     width: 100%;
@@ -387,10 +664,58 @@
     /* font-size: 1.1rem; */
   }
 
+  .graph-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .nav-button {
+    border: 1px solid var(--ternary-color);
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    background: var(--secondary-color);
+    cursor: pointer;
+  }
+
+  .graph-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+
+  .current-crumb {
+    font-weight: 600;
+  }
+
+  .breadcrumb-input {
+    min-width: 14rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 999px;
+    background: var(--secondary-color);
+  }
+
+  .breadcrumb-action,
+  .breadcrumb-icon-button {
+    border: 1px solid var(--ternary-color);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    background: var(--secondary-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .project-secondary {
     /* font-size: 0.8rem; */
     opacity: 0.7;
   }
+
   .export-button-container {
     display: flex;
     flex-wrap: wrap;
@@ -412,5 +737,12 @@
     margin-bottom: 1vh;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     background-color: var(--primary-color);
+  }
+
+  .selection-actions {
+    padding: 0.5rem 0.75rem;
+    background: var(--primary-color);
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   }
 </style>
