@@ -40,10 +40,7 @@ Prettier is used for formatting. Run the following to format the code or use you
 
 ### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) runs automatic checks at two points:
-
-- **On commit** ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
-- **On push** ([.husky/pre-push](.husky/pre-push)): Svelte type checking (`npm run check`) and unit tests (`npm run test`) run; either failing aborts the push.
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
 
 ## Testing
 
@@ -177,7 +174,7 @@ Only works on macOS systems
 
 ### GitHub Actions
 
-The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory.
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory. On pull requests and pushes to `main`, CI runs type checking (`npm run check`) and unit tests (`npm run test`) — either failing blocks the merge.
 
 ### Creating a Release
 

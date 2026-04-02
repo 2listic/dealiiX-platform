@@ -18,7 +18,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
-- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Husky pre-push hook added: runs `svelte-check` (type check) and the full test suite on every push, blocking on failure.
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI workflows now run `svelte-check` (type check) -a part from the full test suite as already done before- on pull requests and pushes to `main`, blocking on failure.
 
 ### UI/UX
 
