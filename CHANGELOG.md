@@ -18,7 +18,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
-- [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI workflows now run `svelte-check` (type check) -a part from the full test suite as already done before- on pull requests and pushes to `main`, blocking on failure.
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI/CD workflows restructured: new `ci.yml` runs type check (`svelte-check`) and tests on every push/PR to `main` (ubuntu only, no duplicate macOS run); `create_deb.yml` and `create-macos.yml` renamed to `release-linux.yml` and `release-macos.yml` trigger now only on tags.
 
 ### UI/UX
 

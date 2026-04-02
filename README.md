@@ -174,7 +174,10 @@ Only works on macOS systems
 
 ### GitHub Actions
 
-The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory. On pull requests and pushes to `main`, CI runs type checking (`npm run check`) and unit tests (`npm run test`) — either failing blocks the merge.
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
+
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — type checking (`npm run check`) and unit tests (`npm run test`), either failing blocks the merge.
+- **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release
 
