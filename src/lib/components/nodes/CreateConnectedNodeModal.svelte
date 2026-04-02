@@ -11,7 +11,7 @@
 
   interface Props {
     modalId: string
-    /** Compatible templates for the dangling connection. */
+    /** Compatible node options for the dangling connection. */
     options: CompatibleNodeOption[]
     /** Type string of the originating handle, shown as a hint. */
     sourceType: string
@@ -22,7 +22,7 @@
   let { modalId, options, sourceType, onCreate, onCancel }: Props = $props()
 
   // Composite key used as <select> value to uniquely identify an option even
-  // when multiple templates share the same type (different handle indices).
+  // when multiple node definitions share the same type (different handle indices).
   // eslint-disable-next-line svelte/prefer-writable-derived
   let selectedOptionId = $state('')
   let nodeName = $state('')
@@ -31,7 +31,7 @@
   // Resets selection to the first option.
   $effect(() => {
     selectedOptionId = options[0]
-      ? `${options[0].template.type}-${options[0].handleId}`
+      ? `${options[0].nodeDefinition.type}-${options[0].handleId}`
       : ''
   })
 
@@ -39,17 +39,17 @@
   $effect(() => {
     const selectedOption = options.find(
       (option) =>
-        `${option.template.type}-${option.handleId}` === selectedOptionId
+        `${option.nodeDefinition.type}-${option.handleId}` === selectedOptionId
     )
     if (selectedOption) {
-      nodeName = returnNodeName(selectedOption.template)
+      nodeName = returnNodeName(selectedOption.nodeDefinition)
     }
   })
 
   const handleCreate = () => {
     const selectedOption = options.find(
       (option) =>
-        `${option.template.type}-${option.handleId}` === selectedOptionId
+        `${option.nodeDefinition.type}-${option.handleId}` === selectedOptionId
     )
     if (!selectedOption) {
       return
@@ -71,9 +71,9 @@
       bind:value={selectedOptionId}
       class="input-field"
     >
-      {#each options as option (`${option.template.type}-${option.handleId}`)}
-        <option value={`${option.template.type}-${option.handleId}`}>
-          {returnNodeName(option.template)} ({option.argumentName})
+      {#each options as option (`${option.nodeDefinition.type}-${option.handleId}`)}
+        <option value={`${option.nodeDefinition.type}-${option.handleId}`}>
+          {returnNodeName(option.nodeDefinition)} ({option.argumentName})
         </option>
       {/each}
     </select>

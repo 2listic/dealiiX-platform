@@ -73,24 +73,24 @@ describe('canvasNodeUtils', () => {
     })
   })
 
-  it('finds compatible templates by matching source type, excluding the source node', () => {
+  it('finds compatible nodes by matching source type, excluding the source node', () => {
     // LaplaceProblem::run<2>: inputs=[0,1], arguments[1]='std::string' → match at handle-1
     // LaplaceProblem::run<1,2>: same structure → EXCLUDED
     // dealii::FE_Q<2, 2>: inputs=[0], arguments[0]='unsigned int' → no match
-    const templates = [
+    const availableNodes = [
       registry['LaplaceProblem::run<2>'],
       registry['LaplaceProblem::run<1,2>'],
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
     const options = findCompatibleTargetNodesAsOptions(
-      templates,
+      availableNodes,
       Type.STRING,
       'LaplaceProblem::run<1,2>'
     )
 
     expect(options).toHaveLength(1)
-    expect(options[0].template.type).toBe('LaplaceProblem::run<2>')
+    expect(options[0].nodeDefinition.type).toBe('LaplaceProblem::run<2>')
     expect(options[0].handleId).toBe('input-1')
     expect(options[0].argumentName).toBe('output_dir')
   })
@@ -98,15 +98,18 @@ describe('canvasNodeUtils', () => {
   it('includes network nodes in compatibility results', () => {
     // step1 triangulation input free: string inputs at handles 1, 2, 4
     // dealii::FE_Q<2, 2>: uint input → no match
-    const templates = [
+    const availableNodes = [
       networkNodes['step1 triangulation input free'],
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
-    const options = findCompatibleTargetNodesAsOptions(templates, Type.STRING)
+    const options = findCompatibleTargetNodesAsOptions(
+      availableNodes,
+      Type.STRING
+    )
 
     expect(options).toHaveLength(3)
-    expect(options.map((o) => o.template.type)).toEqual([
+    expect(options.map((o) => o.nodeDefinition.type)).toEqual([
       TypeField.CORAL_NETWORK,
       TypeField.CORAL_NETWORK,
       TypeField.CORAL_NETWORK,
@@ -128,17 +131,17 @@ describe('canvasNodeUtils', () => {
     })
   })
 
-  it('finds compatible producer templates for a target input, excluding the target type', () => {
+  it('finds compatible producer nodes for a target input, excluding the target type', () => {
     // Looking for nodes that output 'unsigned int'
     // 'unsigned int' elementary constructor: SELF output type 'unsigned int' → EXCLUDED
     // dealii::FE_Q<2, 2>: SELF with base 'dealii::FiniteElement<2, 2>' → wrong output type
-    const templates = [
+    const availableNodes = [
       registry['unsigned int'],
       registry['dealii::FE_Q<2, 2>'],
     ] as CanvasNode[]
 
     const options = findCompatibleSourceNodesAsOptions(
-      templates,
+      availableNodes,
       Type.UNSIGNED_INT,
       'unsigned int'
     )
@@ -152,7 +155,7 @@ describe('canvasNodeUtils', () => {
     )
   })
 
-  it('builds default node names from the template type', () => {
+  it('builds default node names from the node definition type', () => {
     expect(
       returnNodeName({
         type: 'target_node_type',
@@ -165,15 +168,15 @@ describe('canvasNodeUtils', () => {
   })
 
   it('clones created nodes and applies the requested name', () => {
-    const template = registry['LaplaceProblem::run<2>'] as CanvasNode
+    const nodeDefinition = registry['LaplaceProblem::run<2>'] as CanvasNode
 
     const node = createCanvasNode(
-      template,
+      nodeDefinition,
       { x: 10, y: 20 },
       { name: 'my_run' }
     )
 
-    expect(node.data).not.toBe(template)
+    expect(node.data).not.toBe(nodeDefinition)
     expect(node.data.name).toBe('my_run')
   })
 })

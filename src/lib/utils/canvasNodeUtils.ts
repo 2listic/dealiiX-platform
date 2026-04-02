@@ -15,9 +15,9 @@ import {
 } from '../types/nodeTypes'
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 
-/** A template match that can be placed as a new connected node. */
+/** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
-  template: CanvasNode
+  nodeDefinition: CanvasNode
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
   argumentName: string
@@ -39,16 +39,16 @@ export type ConnectedNodeDraft = {
 }
 
 /**
- * Shallow-clones a template so canvas node mutations don't affect the registry.
- * @param template - Registry template to clone.
+ * Shallow-clones a node definition so canvas node mutations don't affect the registry.
+ * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
  */
-const cloneTemplateData = (template: CanvasNode): CanvasNode => {
+const cloneNodeDefinition = (nodeDefinition: CanvasNode): CanvasNode => {
   const cloned = {
-    ...template,
-    arguments: template.arguments.map((argument) => ({ ...argument })),
-    inputs: [...template.inputs],
-    outputs: [...template.outputs],
+    ...nodeDefinition,
+    arguments: nodeDefinition.arguments.map((argument) => ({ ...argument })),
+    inputs: [...nodeDefinition.inputs],
+    outputs: [...nodeDefinition.outputs],
   } as CanvasNode
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
@@ -62,19 +62,19 @@ const cloneTemplateData = (template: CanvasNode): CanvasNode => {
 }
 
 /**
- * Creates a new @xyflow `Node` from a registry template.
+ * Creates a new @xyflow `Node` from a node definition.
  * The node ID is generated automatically from the store counter.
- * @param template - Source template from the sidebar registry.
+ * @param nodeDefinition - Source node definition from the registry or network nodes store.
  * @param position - Canvas position for the new node.
  * @param options - Optional `name` override for the new node.
  * @returns A new XYFlow `Node` ready to be placed on the canvas.
  */
 export const createCanvasNode = (
-  template: CanvasNode,
+  nodeDefinition: CanvasNode,
   position: XYPosition,
   options?: { name?: string }
 ): Node => {
-  const data = cloneTemplateData(template)
+  const data = cloneNodeDefinition(nodeDefinition)
 
   if (options?.name) {
     data.name = options.name
@@ -163,31 +163,31 @@ export const getOutputTypeAndName = (
 }
 
 /**
- * Finds all templates that accept `sourceType` on any input handle.
- * @param templates - Registry templates to search.
+ * Finds all available nodes that accept `sourceType` on any input handle.
+ * @param availableNodes - All available node definitions to search.
  * @param sourceType - Output type to match against.
- * @param excludedTemplateType - Template type to skip (usually the source node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all templates.
+ * @param excludedNodeType - Node type to skip (usually the source node itself).
+ * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all available nodes.
  */
 export const findCompatibleTargetNodesAsOptions = (
-  templates: CanvasNode[],
+  availableNodes: CanvasNode[],
   sourceType: string,
-  excludedTemplateType?: string
+  excludedNodeType?: string
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
-  for (const template of templates) {
-    if (template.node_type === NodeType.ABSTRACT) continue
-    if (template.type === excludedTemplateType) continue
+  for (const nodeDefinition of availableNodes) {
+    if (nodeDefinition.node_type === NodeType.ABSTRACT) continue
+    if (nodeDefinition.type === excludedNodeType) continue
     for (
       let handleIndex = 0;
-      handleIndex < template.inputs.length;
+      handleIndex < nodeDefinition.inputs.length;
       handleIndex++
     ) {
-      const argument = resolveInputArgument(template, handleIndex)
+      const argument = resolveInputArgument(nodeDefinition, handleIndex)
       if (!argument) continue
       if (argument.type !== Type.ANY && argument.type !== sourceType) continue
       options.push({
-        template,
+        nodeDefinition,
         handleId: `input-${handleIndex}`,
         argumentName: argument.name,
       })
@@ -245,35 +245,35 @@ export const formatSuggestedNodeName = (name: string): string => {
 }
 
 /**
- * Finds all templates that produce `expectedInputType` on any output handle.
+ * Finds all available nodes that produce `expectedInputType` on any output handle.
  * Mirror of {@link findCompatibleTargetNodesAsOptions} for the reverse drag direction (from a target handle).
- * @param templates - Registry templates to search.
+ * @param availableNodes - All available node definitions to search.
  * @param expectedInputType - Input type to match against.
- * @param excludedTemplateType - Template type to skip (usually the target node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all templates.
+ * @param excludedNodeType - Node type to skip (usually the target node itself).
+ * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all available nodes.
  */
 export const findCompatibleSourceNodesAsOptions = (
-  templates: CanvasNode[],
+  availableNodes: CanvasNode[],
   expectedInputType: string,
-  excludedTemplateType?: string
+  excludedNodeType?: string
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
-  for (const template of templates) {
-    if (template.node_type === NodeType.ABSTRACT) continue
-    if (template.type === excludedTemplateType) continue
+  for (const nodeDefinition of availableNodes) {
+    if (nodeDefinition.node_type === NodeType.ABSTRACT) continue
+    if (nodeDefinition.type === excludedNodeType) continue
     for (
       let handleIndex = 0;
-      handleIndex < template.outputs.length;
+      handleIndex < nodeDefinition.outputs.length;
       handleIndex++
     ) {
-      const outputType = resolveOutputType(template, handleIndex)
+      const outputType = resolveOutputType(nodeDefinition, handleIndex)
       if (!outputType) continue
       if (expectedInputType !== Type.ANY && outputType !== expectedInputType)
         continue
       options.push({
-        template,
+        nodeDefinition,
         handleId: `output-${handleIndex}`,
-        argumentName: resolveOutputName(template, handleIndex),
+        argumentName: resolveOutputName(nodeDefinition, handleIndex),
       })
     }
   }
@@ -281,17 +281,17 @@ export const findCompatibleSourceNodesAsOptions = (
 }
 
 /**
- * Resolves handle metadata and compatible node templates for a drag-to-connect drop.
+ * Resolves handle metadata and compatible node definitions for a drag-to-connect drop.
  * @param connectStartParams - The handle that initiated the connection drag.
  * @param node - The node that owns the originating handle.
- * @param templates - Full list of registry templates to search.
+ * @param availableNodes - All available node definitions to search for compatible matches.
  * @returns `{ connectionType, connectionName, compatibleOptions }`, or `null` if the handle
  *   metadata cannot be resolved (e.g. invalid handle id).
  */
 export const resolveConnectionAndCompatibleNodes = (
   connectStartParams: ConnectStartParams,
   node: Node,
-  templates: CanvasNode[]
+  availableNodes: CanvasNode[]
 ): {
   connectionType: string
   connectionName: string
@@ -307,8 +307,16 @@ export const resolveConnectionAndCompatibleNodes = (
   const nodeType = (node.data as NodeData).type
   const compatibleOptions =
     connectStartParams.handleType === 'source'
-      ? findCompatibleTargetNodesAsOptions(templates, connectionType, nodeType) // 'source'
-      : findCompatibleSourceNodesAsOptions(templates, connectionType, nodeType) // 'target'
+      ? findCompatibleTargetNodesAsOptions(
+          availableNodes,
+          connectionType,
+          nodeType
+        ) // 'source'
+      : findCompatibleSourceNodesAsOptions(
+          availableNodes,
+          connectionType,
+          nodeType
+        ) // 'target'
 
   return { connectionType, connectionName, compatibleOptions }
 }

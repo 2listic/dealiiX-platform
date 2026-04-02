@@ -106,7 +106,7 @@
   /**
    * Creates a new canvas node and wires it to the originating handle.
    * Called either automatically (single compatible option) or from the modal.
-   * @param option - The chosen compatible template option.
+   * @param option - The chosen compatible node option.
    * @param name - Display name for the new node.
    */
   const createConnectedNode = (option: CompatibleNodeOption, name: string) => {
@@ -116,7 +116,7 @@
 
     try {
       const newNode = createCanvasNode(
-        option.template,
+        option.nodeDefinition,
         connectedNodeDraft.position,
         { name }
       )
@@ -185,7 +185,7 @@
   /**
    * Handles a connection drag release on empty canvas space.
    * Uses `event` for drop coordinates and module-level `connectStartParams` for the
-   * originating handle. Resolves compatible templates, then either auto-creates a node
+   * originating handle. Resolves compatible node options, then either auto-creates a node
    * (single match) or opens the selection modal (multiple matches).
    * @see https://svelteflow.dev/api-reference/types/on-connect-end
    * @param event - The `MouseEvent | TouchEvent` that ended the connection drag.
@@ -237,11 +237,11 @@
     }
 
     // Resolve connection type and name plus compatible nodes for the originating handle.
-    const templates = [...getStoredNetworkNodes(), ...getAvailableNodes()]
+    const availableNodes = [...getStoredNetworkNodes(), ...getAvailableNodes()]
     const resolved = resolveConnectionAndCompatibleNodes(
       connectStartParams,
       node,
-      templates
+      availableNodes
     )
     if (!resolved) {
       console.warn(
@@ -273,12 +273,12 @@
     connectStartParams = null
 
     if (compatibleOptions.length === 1) {
-      // For ELEMENTARY_CONSTRUCTOR source handles use the template default name
+      // For ELEMENTARY_CONSTRUCTOR source handles use the node definition's default name
       // instead of the connection/argument name (which would be confusing).
       const autoCreateName =
         connectedNodeDraft.connectStartParams.handleType === 'source' &&
         node.data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
-          ? returnNodeName(compatibleOptions[0].template)
+          ? returnNodeName(compatibleOptions[0].nodeDefinition)
           : formatSuggestedNodeName(connectionName)
       createConnectedNode(compatibleOptions[0], autoCreateName)
       return
