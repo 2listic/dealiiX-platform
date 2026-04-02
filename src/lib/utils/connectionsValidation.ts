@@ -1,32 +1,40 @@
+import type { Connection, Edge, Node } from '@xyflow/svelte'
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
-import { SELF, Type } from '../types/nodeTypes'
+import {
+  handleIdToIndex,
+  resolveInputArgument,
+  resolveOutputType,
+} from './canvasNodeUtils'
+import { Type } from '../types/nodeTypes'
+import type { NodeDefinitions } from '../types/nodeTypes'
 
-let connectionCache = new Map()
+let connectionCache = new Map<string, boolean>()
 
-const isValidConnection = (connection) => {
+const isValidConnection = (connection: Connection): boolean => {
   // Create a cache key from the connection
   const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available
   if (connectionCache.has(cacheKey)) {
     console.log('cache hit')
-    return connectionCache.get(cacheKey)
+    return connectionCache.get(cacheKey) as boolean
   }
   console.log('connection', connection)
 
   // Get the current nodes and edges
-  const nodes = getNodesSnapshot()
-  const edges = getEdgesSnapshot()
+  const nodes = getNodesSnapshot() as Node<NodeDefinitions>[]
+  const edges = getEdgesSnapshot() as Edge[]
   console.log('nodes', nodes)
   console.log('edges', edges)
 
   // Check if the target handle is already connected
-  const isHandleAlreadyConnected = edges.some(
-    (edge) =>
-      edge?.target === connection.target &&
-      edge?.targetHandle === connection.targetHandle
-  )
-  if (isHandleAlreadyConnected) {
-    console.error(
+  if (
+    isTargetHandleConnected(
+      edges,
+      connection.target,
+      connection.targetHandle as string
+    )
+  ) {
+    console.warn(
       `Handle ${connection.targetHandle} on node ${connection.target} already connected`
     )
     connectionCache.set(cacheKey, false) // Cache the result
@@ -35,17 +43,19 @@ const isValidConnection = (connection) => {
 
   // Check if the source node value is valid
   const sourceNode = nodes.find((node) => node.id === connection.source)
-  if (!sourceNode.data.is_valid) {
-    console.error(`Source node ${connection.source} is not valid`)
+  if (!sourceNode?.data.is_valid) {
+    console.warn(`Source node ${connection.source} is not valid`)
     connectionCache.set(cacheKey, false)
     return false
   }
 
   // If the expected input type is 'any', allow any connection
   const targetNode = nodes.find((node) => node.id === connection.target)
-  const handleIndexInput = parseInt(connection.targetHandle.split('-')[1])
-  const targetIndexInput = targetNode.data.inputs[handleIndexInput]
-  const expectedInputType = targetNode.data.arguments[targetIndexInput].type
+  const handleIndexInput = handleIdToIndex(connection.targetHandle as string)
+  const expectedInputType = resolveInputArgument(
+    targetNode!.data,
+    handleIndexInput
+  )?.type
   if (expectedInputType === Type.ANY) {
     console.log(`Handle ${connection.targetHandle} accepts any type`)
     connectionCache.set(cacheKey, true)
@@ -53,21 +63,13 @@ const isValidConnection = (connection) => {
   }
 
   // Check if the source type matches the target handle type
-  const handleIndexOutput = parseInt(connection.sourceHandle.split('-')[1])
-  const sourceIndexOutput = sourceNode.data.outputs[handleIndexOutput]
-  let sourceType
-  if (sourceIndexOutput === SELF) {
-    // Check if node is derived by an abstract class to pick the right output type
-    const baseClassType = sourceNode.data?.base ?? false
-    sourceType = baseClassType ? baseClassType : sourceNode.data.type
-  } else {
-    sourceType = sourceNode.data.arguments[sourceIndexOutput].type
-  }
+  const handleIndexOutput = handleIdToIndex(connection.sourceHandle as string)
+  const sourceType = resolveOutputType(sourceNode.data, handleIndexOutput)
 
   console.log(
     `Handle ${
       connection.targetHandle
-    } expects ${expectedInputType.toString()}, source provides ${sourceType.toString()}`
+    } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
   const isValid = expectedInputType === sourceType
   console.log('connection is valid?', isValid)
@@ -77,4 +79,11 @@ const isValidConnection = (connection) => {
 
 const clearConnectionCache = () => connectionCache.clear()
 
-export { isValidConnection, clearConnectionCache }
+const isTargetHandleConnected = (
+  edges: Edge[],
+  nodeId: string,
+  handleId: string
+): boolean =>
+  edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
+
+export { isValidConnection, clearConnectionCache, isTargetHandleConnected }

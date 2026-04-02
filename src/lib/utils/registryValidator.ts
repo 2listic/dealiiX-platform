@@ -1,4 +1,4 @@
-import type { NodeData, RegisteredNodes } from '../types/nodeTypes'
+import type { StandardNodeDefinition, RegisteredNodes } from '../types/nodeTypes'
 
 /**
  * Filters a registry object, separating valid nodes from non-compliant ones.
@@ -23,7 +23,7 @@ export const filterValidNodes = (
       skipped.push(key)
       continue
     }
-    filtered[key] = value as NodeData
+    filtered[key] = value as StandardNodeDefinition
   }
   return [filtered, skipped]
 }

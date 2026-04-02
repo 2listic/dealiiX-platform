@@ -1,11 +1,13 @@
 import { initialNodes, initialEdges } from '../data/flowData'
 import {
   type RegisteredNodes,
-  type NodeData,
-  type NetworkNodeOfTypeNetwork,
-  type RegisteredNetworkNodes,
+  type StandardNodeDefinition,
+  type SubGraphNodeDefinition,
+  type RegisteredSubGraphNodes,
   NodeType,
 } from '../types/nodeTypes'
+import { setLastNodeId, getNextNodeId } from './nodeIdCounter.svelte'
+export { getNextNodeId }
 import type { Node, Edge } from '@xyflow/svelte'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
@@ -78,28 +80,31 @@ export const setEdges = (newEdges: Edge[]): void => {
 }
 
 /**
- * Node ID management
+ * Append a single node to the flow editor
+ * @param {Node} node - The node to add
  */
-let lastNodeId = $state<number>(0)
+export const addNode = (node: Node): void => {
+  nodes = [...nodes, node]
+}
 
 /**
- * Update the last used node ID based on current nodes
- * Scans all nodes to find the highest ID value
+ * Append a single edge to the flow editor
+ * @param {Edge} edge - The edge to add
+ */
+export const addEdge = (edge: Edge): void => {
+  edges = [...edges, edge]
+}
+
+/**
+ * Sync the ID counter to the highest node ID in the current graph.
+ * Call this after loading a graph so new nodes don't collide with existing ones.
  */
 export const updateLastNodeId = (): void => {
-  lastNodeId = nodes.reduce((max, node) => Math.max(max, parseInt(node.id)), -1)
+  setLastNodeId(
+    nodes.reduce((max, node) => Math.max(max, parseInt(node.id)), -1)
+  )
 }
-updateLastNodeId() // Initialize lastNodeId
-
-/**
- * Get the next available node ID
- * Increments the internal counter and returns the new ID
- * @returns {number} The next available node ID
- */
-export const getNextNodeId = (): number => {
-  lastNodeId++
-  return lastNodeId
-}
+updateLastNodeId() // Initialize counter from current nodes
 
 // ================= Registered nodes (sidebar) ========================
 
@@ -112,8 +117,8 @@ const defaultNodes = defaultNodesJson as RegisteredNodes
  * @returns {RegisteredNodes} A new registry with ELEMENTARY_CONSTRUCTOR nodes first
  */
 const sortRegistry = (nodes: RegisteredNodes): RegisteredNodes => {
-  const elementary: [string, NodeData][] = []
-  const rest: [string, NodeData][] = []
+  const elementary: [string, StandardNodeDefinition][] = []
+  const rest: [string, StandardNodeDefinition][] = []
   for (const entry of Object.entries(nodes)) {
     if (entry[1].node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
       elementary.push(entry)
@@ -131,7 +136,7 @@ let registry = $state<RegisteredNodes>({})
 
 // Load registry from electron-store
 const loadRegistry = async () => {
-  if (window.electron?.store) {
+  if (globalThis.window?.electron?.store) {
     registry = sortRegistry(
       await window.electron.store.get('registered_nodes', defaultNodes)
     )
@@ -144,7 +149,7 @@ loadRegistry()
 
 /**
  * Set the application registry for the available nodes.
- * Filters out entries that are not valid NodeData objects
+ * Filters out entries that are not valid StandardNodeDefinition objects
  * @param  data - Dictionary of node data to register
  * @returns List of keys that were skipped due to invalid structure
  */
@@ -161,20 +166,20 @@ export const setRegistry = async (
 /**
  * Get all the available nodes from the registry
  * @remarks Returns reactive state - changes will trigger UI updates
- * @returns {NodeData[]}
+ * @returns {StandardNodeDefinition[]}
  */
-export const getAvailableNodes = (): NodeData[] => {
+export const getAvailableNodes = (): StandardNodeDefinition[] => {
   const nodes = Object.values(registry)
   return nodes
 }
 
 /**
- * Get node data from the registry by type (snapshot for validation)
+ * Get node definition from the registry by type (snapshot for validation)
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
- * @returns {NodeData} A snapshot (non-reactive copy) of the node data for the given type
+ * @returns {StandardNodeDefinition} A snapshot (non-reactive copy) of the node definition for the given type
  * @throws {Error} If the node type is not found in the registry
  */
-export const getNodeData = (type: string): NodeData => {
+export const getNodeData = (type: string): StandardNodeDefinition => {
   if (!isNodeInRegistry(type)) {
     console.error(`Node type '${type}' was not found in the available nodes.`)
     throw new Error(`Node type '${type}' was not found in the available nodes.`)
@@ -193,16 +198,16 @@ export const isNodeInRegistry = (type: string): boolean => {
 
 // ============ Registered network nodes section (sidebar) ======================
 
-const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredNetworkNodes
+const defaultNetworkNodes = defaultNetworkNodesJson as RegisteredSubGraphNodes
 
 /**
- * Store containing all the registered network nodes
+ * Store containing all the registered subgraph node definitions
  */
-let networkNodes = $state<RegisteredNetworkNodes>({})
+let networkNodes = $state<RegisteredSubGraphNodes>({})
 
 // Load network nodes from electron-store
 const loadNetworkNodes = async () => {
-  if (window.electron?.store) {
+  if (globalThis.window?.electron?.store) {
     networkNodes = await window.electron.store.get(
       'registered_network_nodes',
       defaultNetworkNodes
@@ -216,9 +221,9 @@ loadNetworkNodes()
 
 /**
  * Set the application store for the available network nodes and persist changes
- * @param {RegisteredNetworkNodes} data - Dictionary of node data to register
+ * @param {RegisteredSubGraphNodes} data - Dictionary of node data to register
  */
-export const setNetworkNodes = async (data: RegisteredNetworkNodes) => {
+export const setNetworkNodes = async (data: RegisteredSubGraphNodes) => {
   networkNodes = data
   console.log('Imported network nodes', $state.snapshot(networkNodes))
   await window.electron.store.set(
@@ -230,11 +235,11 @@ export const setNetworkNodes = async (data: RegisteredNetworkNodes) => {
 /**
  * Add or update a single network node in the relative store and persist changes
  * @param {string} key - The unique identifier for the network node
- * @param {NetworkNodeOfTypeNetwork} nodeData - The node data to add or update
+ * @param {SubGraphNodeDefinition} nodeData - The node definition to add or update
  */
 export const addNetworkNode = async (
   key: string,
-  nodeData: NetworkNodeOfTypeNetwork
+  nodeData: SubGraphNodeDefinition
 ) => {
   networkNodes = { ...networkNodes, [key]: nodeData }
   console.log(`Network node '${key}' added/updated`, $state.snapshot(nodeData))
@@ -264,20 +269,20 @@ export const removeNetworkNode = async (name: string) => {
 /**
  * Get all the stored network nodes
  * @remarks Returns reactive state - changes will trigger UI updates
- * @returns {NetworkNodeOfTypeNetwork[]}
+ * @returns {SubGraphNodeDefinition[]}
  */
-export const getStoredNetworkNodes = (): NetworkNodeOfTypeNetwork[] => {
+export const getStoredNetworkNodes = (): SubGraphNodeDefinition[] => {
   const nodes = Object.values(networkNodes)
   return nodes
 }
 
 /**
- * Get network node data from the networkNodes store by name (snapshot for validation)
+ * Get subgraph node definition from the networkNodes store by name (snapshot for validation)
  * @param {string} name - The network node name identifier (unique key for the network node)
- * @returns {NetworkNodeOfTypeNetwork} A snapshot (non-reactive copy) of the node data for the given network node
+ * @returns {SubGraphNodeDefinition} A snapshot (non-reactive copy) of the node definition for the given network node
  * @throws {Error} If the network node name is not found in the networkNodes store
  */
-export const getNetworkNodeData = (name: string): NetworkNodeOfTypeNetwork => {
+export const getNetworkNodeDefinition = (name: string): SubGraphNodeDefinition => {
   if (!isNodeInNetworkNodes(name)) {
     console.error(`Sub-graph node '${name}' not found in networkNodes store`)
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)

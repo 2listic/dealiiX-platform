@@ -38,11 +38,9 @@ Eslint is used for linting. Run the following to lint
 Prettier is used for formatting. Run the following to format the code or use your IDE  
 `npm run format`
 
-### Automatic linting and formatting on commit
+### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) is used to run linting and formatting at commit time.  
-If something is not correct with Eslint, the commit will be aborted. Then Prettier will format the code but a new commit will be needed to include the formatting changes. This gives more control over the modifications made during the commit process.  
-Automatic scripts executed prior commit are defined in [.husky/pre-commit](.husky/pre-commit).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
 
 ## Testing
 
@@ -176,7 +174,10 @@ Only works on macOS systems
 
 ### GitHub Actions
 
-The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory.
+The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
+
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — type checking (`npm run check`) and unit tests (`npm run test`), either failing blocks the merge.
+- **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release
 

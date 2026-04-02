@@ -41,11 +41,14 @@ The application uses two JSON protocols to communicate with CORAL:
 
 Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
-- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredNetworkNodes` / `NetworkNodeOfTypeNetwork` types.
-- `auth.svelte.js` - JWT token for coral-remote-server API
+- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredSubGraphNodes` / `SubGraphNodeDefinition` types.
+- `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`, `setLastNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
+- `auth.svelte.js` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
 - `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
-- `currentProjectStore.svelte.js` - Current project metadata
-- `jobsStore.svelte.js` - Slurm job tracking
+- `currentProjectStore.svelte.js` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`.
+- `jobsStore.svelte.js` - Slurm job tracking. `jobsState` has `isEmpty`/`oneOrLess` getters, `update()` refreshes from SSH. `jobIdMapState` maps Slurm scheduler IDs → internal incremental job IDs (used in touch-dir paths).
+- `toastsStore.svelte.js` - Toast notifications. Use `toastState.add({ message, type })` to show a toast. Supports `'error'`/`'success'` types with auto-dismissal.
+- `dndStore.svelte.js` - Drag-and-drop state (`dndNodeDataState.current`) for tracking which sidebar node is being dragged onto the canvas.
 
 ### Node Type System
 
@@ -202,8 +205,11 @@ npm run format       # Prettier format
 ### Unit Tests
 
 ```bash
-npm run test         # Run unit tests
+npm run test                                          # Run all unit tests
+npx vitest run src/lib/utils/graphParser.test.ts      # Run a single test file
 ```
+
+Test files follow the pattern `src/**/*.test.{js,ts}`. Tests run in a Node environment with Svelte plugin and `browser` resolve conditions (no globals — use explicit imports from `vitest`).
 
 ### Docker (SSH + Slurm testing)
 
@@ -222,9 +228,13 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 ## Key Technical Details
 
 - **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts.
-- **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`
-- **Pre-commit hooks**: Husky runs `npm run lint` then Prettier; lint failures abort commit
-- **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token
+- **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`, `upload-file-ssh`, `store:get`, `store:set`, `store:remove`
+- **Electron storage keys** (`electron/utils/storage.js`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
+- **Git hooks (Husky)**: On commit — `npm run lint` (failures abort), then Prettier auto-formats.
+- **CI (GitHub Actions)**: Both workflows run `npm run check` (svelte-check) and `npm test` on pull requests and pushes to `main`. Workflow files: `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
+- **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token. Throws `ApiError` (with `.status` and `.data`) on non-2xx responses. Project CRUD ops are in `src/lib/requests/projects.js`.
+- **Canvas node creation**: `createCanvasNode(template, position, options?)` in `src/lib/utils/canvasNodeUtils.ts` creates a new @xyflow Node from a registry template. `getOutputTypeAndName(sourceNode, sourceHandle)` resolves the type/name for a source handle during drag-to-connect.
+- **Key type enums** (`src/lib/types/`): `ConnectionType` (INPUT/OUTPUT/PASSTHROUGH), `ExecNodeStatus` (FAILED/SUCCEEDED/RUNNING), `JobStatus` (COMPLETED/FAILED/PENDING/RUNNING), `nodeColors` (maps node types to CSS colors), `HIDDEN_SIDEBAR_NODE_TYPES` (excludes ABSTRACT and NETWORK from sidebar listing).
 - **Slurm batch templates**: Two templates in `src/lib/templates/` — `sbatch.template.sh` (non-MPI) and `sbatch-mpi.template.sh` (MPI via `mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1}`). Imported at build time via Vite's `?raw` suffix. `sshMessages.ts` selects between them based on the `USE_MPI` setting. Both templates expose `{{INTERNAL_JOB_ID}}` (used for `--touch-dir nodes-exec-status/<id>`) and `{{TIME_LIMIT}}`. The MPI template additionally exposes `{{NODES}}` and `{{NTASKS_PER_NODE}}`, filled at runtime from `JobConfig` (defaults: 1 node, 4 tasks/node, 01:00:00 time limit). Clicking Execute always opens `JobConfigModal.svelte` (renamed from `MpiConfigModal.svelte`) — it shows MPI-specific fields (nodes, tasks/node) only when MPI is enabled, and always shows the time limit field.
 - **MPI graph payload**: When MPI is enabled, `buildGraphPayload()` in `sshMessages.ts` injects a `plugin: { MPI: { enabled: true, max_num_threads: 1 } }` block at the top of the exported network JSON, as required by CORAL for MPI initialization.
 - **Node execution status**: `getNodesExecutionStatus(jobIdInternal)` reads files from `/app/shared-data/nodes-exec-status/<internalJobId>/` on the remote server, returning a `Map<qualifiedNodeId, string[]>` of status sequences (e.g. `'running'`, `'succeeded'`, `'failed'`).

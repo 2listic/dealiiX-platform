@@ -10,8 +10,8 @@
     HIDDEN_SIDEBAR_NODE_TYPES,
     nodeColors,
     returnNodeName,
-    type NetworkNodeOfTypeNetwork,
-    type NodeData,
+    type SubGraphNodeDefinition,
+    type StandardNodeDefinition,
   } from '../../types/nodeTypes'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
@@ -34,7 +34,7 @@
 
   const onDragStart = (
     event: DragEvent,
-    node: NodeData | NetworkNodeOfTypeNetwork
+    node: StandardNodeDefinition | SubGraphNodeDefinition
   ) => {
     if (!event.dataTransfer) {
       return null
@@ -74,7 +74,7 @@
           >Network Nodes</span
         >
       {/if}
-      {#each storedNetworkNodes as Array<NetworkNodeOfTypeNetwork> as node (node)}
+      {#each storedNetworkNodes as Array<SubGraphNodeDefinition> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           style="--borderColor: {returnNodeColor(node.node_type)}"
@@ -114,7 +114,7 @@
           transition:fade|global={{ duration: 250 }}
         />
       {/if}
-      {#each filteredAvailableNodes as Array<NodeData> as node (node)}
+      {#each filteredAvailableNodes as Array<StandardNodeDefinition> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           style="--borderColor: {returnNodeColor(node.node_type)}"

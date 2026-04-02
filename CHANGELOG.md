@@ -4,6 +4,22 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Canvas-graph
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Create-on-connect flow: dragging a connection handle onto an empty canvas area now finds compatible node types, creates the node immediately if only one option exists, or opens a selection modal when multiple options are available.
+
+### Project-Structure
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) `connectionsValidation.js` migrated to TypeScript. Node ID counter extracted to its own store (`nodeIdCounter.svelte.ts`). New modal `CreateConnectedNodeModal.svelte` added to handle node type selection when multiple compatible options exist. `canvasNodeUtils.ts` with new helpers to create nodes dynamically.
+
+### Testing
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Unit tests for create-on-connect utilities.
+
+### CI/CD
+
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI/CD workflows restructured: new `ci.yml` runs type check (`svelte-check`) and tests on every push/PR to `main` (ubuntu only, no duplicate macOS run); `create_deb.yml` and `create-macos.yml` renamed to `release-linux.yml` and `release-macos.yml` trigger now only on tags.
+
 ### UI/UX
 
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
@@ -15,11 +31,12 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
-- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
+- [#173](https://github.com/2listic/dealiiX-platform/pull/173) Coral-Visualizer updated in order to be able to test new feature volume cells MaterialID tagging.
+- [#177](https://github.com/2listic/dealiiX-platform/pull/177) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
 
 ### Protocol
 
-- [#177](https://github.com/2listic/dealiiX-platform/pull/17) Updated registry JSON file with available nodes to include new `read_grid` node.
+- [#177](https://github.com/2listic/dealiiX-platform/pull/177) Updated registry JSON file with available nodes to include new `read_grid` node.
 
 ## [1.3.0] - 2026-03-23
 

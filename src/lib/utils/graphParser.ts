@@ -1,22 +1,23 @@
 import {
   addNetworkNode,
-  getNetworkNodeData,
+  getNetworkNodeDefinition,
   getNodeData,
   setEdges,
   setNodes,
   updateLastNodeId,
 } from '../stores/nodes.svelte'
+import { handleIdToIndex } from './canvasNodeUtils'
 import {
-  isNetworkNodeOfTypeNetwork,
+  isSubGraphNodeDefinition,
   SELF,
   TypeField,
   type Network,
   type NetworkEdge,
   type NetworkEdges,
-  type NetworkNode,
-  type NetworkNodeOfTypeNetwork,
-  type NetworkNodes,
-  type QualifiedNetworkNodes,
+  type LeanStandardNode,
+  type SubGraphNodeDefinition,
+  type LeanNodes,
+  type QualifiedLeanNodes,
   type QualifiedNetwork,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
@@ -25,12 +26,12 @@ import { type Node, type Edge, Position } from '@xyflow/svelte'
 /**
  * Load a graph into the flow editor. Converts protocol format to flow format
  * and updates both nodes and edges in the editor
- * @param {NetworkNodes} nodes - The nodes to load
+ * @param {LeanNodes} nodes - The nodes to load
  * @param {NetworkEdges} edges - The edges to load
  * @returns {Promise<string[]>} Network node names that were registered or updated
  */
 export const loadGraphFromProtocol = async (
-  nodes: NetworkNodes,
+  nodes: LeanNodes,
   edges: NetworkEdges
 ): Promise<string[]> => {
   const networkNodes = await addNetworkNodesFromGraph(nodes)
@@ -52,15 +53,15 @@ export const loadGraphFromProtocol = async (
  * Register or update network nodes from a graph in protocol format into the internal store.
  * Each network node is added or updated only if it has the required fields.
  * TODO: generate network node arguments, inputs and ouptuts if not already present
- * @param {NetworkNodes} nodes - The nodes to check and register
+ * @param {LeanNodes} nodes - The nodes to check and register
  * @returns {Promise<string[]>} Network node names that were registered or updated
  */
 const addNetworkNodesFromGraph = async (
-  nodes: NetworkNodes
+  nodes: LeanNodes
 ): Promise<string[]> => {
   const networkNodes: string[] = []
   for (const node of Object.values(nodes)) {
-    if (isNetworkNodeOfTypeNetwork(node)) {
+    if (isSubGraphNodeDefinition(node)) {
       await addNetworkNode(node.name, node)
       networkNodes.push(node.name)
     }
@@ -73,10 +74,10 @@ const addNetworkNodesFromGraph = async (
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
  * xyflow-compatible node objects with positions and merged data.
- * @param {NetworkNodes} nodes - Dictionary of nodes from network protocol
+ * @param {LeanNodes} nodes - Dictionary of nodes from network protocol
  * @returns {Node[]} Array of nodes formatted for the flow editor
  */
-export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
+export const nodesFromProtocolToFlow = (nodes: LeanNodes): Node[] => {
   console.log('nodesFromProtocolToFlow', nodes)
   const arrNodeIds = Object.keys(nodes)
   const xyFlowNodes = arrNodeIds.map((id, index) => {
@@ -100,13 +101,13 @@ export const nodesFromProtocolToFlow = (nodes: NetworkNodes): Node[] => {
 
 /**
  * Gets snapshot from store and merges it with instance-specific data.
- * @param {NetworkNodes[string]} protocolNode - Node data from network protocol
- * @returns {NodeData} Merged node data for xyflow
+ * @param {LeanNodes[string]} protocolNode - Node data from network protocol
+ * @returns Merged node data for xyflow
  */
-const mergeNodeData = (protocolNode: NetworkNodes[string]) => {
+const mergeNodeData = (protocolNode: LeanNodes[string]) => {
   if (protocolNode.type === TypeField.CORAL_NETWORK) {
     // Network nodes: fetch by name, remove value, copy position
-    const storeNodeData = getNetworkNodeData(protocolNode.name)
+    const storeNodeData = getNetworkNodeDefinition((protocolNode as SubGraphNodeDefinition).name)
     const { value, ...storeNodeDataWithoutValue } = storeNodeData
     return {
       ...storeNodeDataWithoutValue,
@@ -190,10 +191,10 @@ export const validateGraphData = (
     }
 
     // Get source and target node definition (from registry or networkNodes)
-    const sourceNodeData = isNetworkNodeOfTypeNetwork(sourceNode)
+    const sourceNodeData = isSubGraphNodeDefinition(sourceNode)
       ? sourceNode
       : getNodeData(sourceNode.type)
-    const targetNodeData = isNetworkNodeOfTypeNetwork(targetNode)
+    const targetNodeData = isSubGraphNodeDefinition(targetNode)
       ? targetNode
       : getNodeData(targetNode.type)
 
@@ -254,15 +255,14 @@ export const validateGraphData = (
 export const removeQualifiedIds = (
   network: Network | QualifiedNetwork
 ): Network => {
-  const cleanedNodes: NetworkNodes = {}
+  const cleanedNodes: LeanNodes = {}
 
   for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
     const { qualified_id, ...rest } = node as typeof node & {
       qualified_id?: string
     }
 
-    if (isNetworkNodeOfTypeNetwork(rest)) {
-      // TODO add backward compatibility for stringified JSON values
+    if (isSubGraphNodeDefinition(rest)) {
       const cleanedValue = removeQualifiedIds(rest.value)
       cleanedNodes[nodeId] = { ...rest, value: cleanedValue }
     } else {
@@ -286,11 +286,11 @@ export const removeQualifiedIds = (
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
   const nodesGraph = nodes.reduce((acc, obj) => {
-    const data = obj.data as NetworkNode | NetworkNodeOfTypeNetwork
+    const data = obj.data as LeanStandardNode | SubGraphNodeDefinition
 
-    if (isNetworkNodeOfTypeNetwork(data)) {
+    if (isSubGraphNodeDefinition(data)) {
       // Network nodes: get position, data fields + 'value' from registred node
-      const networkNodeData = getNetworkNodeData(data.name)
+      const networkNodeData = getNetworkNodeDefinition(data.name)
       acc[obj.id] = {
         type: data.type,
         node_type: data.node_type,
@@ -303,7 +303,7 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       }
     } else {
       // Regular nodes: only keep relevant fields not already present in the registry
-      const node: NetworkNode = {
+      const node: LeanStandardNode = {
         type: data.type,
         position: obj.position,
       }
@@ -320,8 +320,8 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: parseInt(obj.sourceHandle.split('-')[1]),
-      target_input: parseInt(obj.targetHandle.split('-')[1]),
+      source_output: handleIdToIndex(obj.sourceHandle),
+      target_input: handleIdToIndex(obj.targetHandle),
     }
     return acc
   }, {})
@@ -349,14 +349,14 @@ export const addQualifiedIds = (
   network: Network,
   parentQualifiedId: string = ''
 ): QualifiedNetwork => {
-  const transformedNodes: QualifiedNetworkNodes = {}
+  const transformedNodes: QualifiedLeanNodes = {}
 
   for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
     const qualifiedId = parentQualifiedId
       ? `${parentQualifiedId}_${nodeId}`
       : nodeId
 
-    if (isNetworkNodeOfTypeNetwork(node)) {
+    if (isSubGraphNodeDefinition(node)) {
       const transformedValue = addQualifiedIds(node.value, qualifiedId)
       transformedNodes[nodeId] = {
         ...node,
