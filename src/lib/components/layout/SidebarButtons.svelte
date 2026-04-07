@@ -43,7 +43,7 @@
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import JobConfigModal from '../JobConfigModal.svelte'
   import { graphNavigationState } from '../../stores/graphNavigation.svelte'
-  import RefreshIcon from '../icons/RefreshIcon.svelte'
+  import GridIcon from '../icons/GridIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -209,6 +209,7 @@
 
   const handleAutoLayout = async (direction: 'LR' | 'TB') => {
     try {
+      // lazy import keeps dagre out of the initial bundle; loaded only on first use
       const { applyAutoLayout } = await import('../../utils/autoLayout')
       const layoutedNodes = applyAutoLayout(
         getNodesSnapshot(),
@@ -381,7 +382,7 @@
   <!-- Auto Layout group -->
   <SidebarGroupButton title="Layout">
     {#snippet icon()}
-      <RefreshIcon width="28px" height="28px" rotation={0} />
+      <GridIcon width="28px" height="28px" />
     {/snippet}
     {#snippet items()}
       <SidebarGroupButtonItem

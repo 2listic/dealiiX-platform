@@ -41,7 +41,13 @@
     <span class="button-text">{title}</span>
   </div>
   {#if isOpen}
-    <div class="popover">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="popover"
+      role="menu"
+      tabindex="-1"
+      onclick={() => (isOpen = false)}
+    >
       {@render items()}
     </div>
   {/if}
