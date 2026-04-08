@@ -52,7 +52,8 @@
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
   import {
-    createNetworkNodeWithBindings,
+    analyzeNetworkBoundary,
+    createNetworkNodeDefinition,
     flattenSelectedSubgraphs,
   } from '../utils/networkNode'
   import {
@@ -196,14 +197,15 @@
           aliasedOutputSourceByOriginal: {},
         }
 
-    const { networkNode, inputHandleByTarget, outputHandleBySource } =
-      createNetworkNodeWithBindings(
-        name,
-        selectedNodesForSubgraph,
-        internalEdgesForSubgraph
-      )
+    const networkNodeDefinition = createNetworkNodeDefinition(
+      name,
+      selectedNodesForSubgraph,
+      internalEdgesForSubgraph
+    )
+    const { inputHandleByTarget, outputHandleBySource } =
+      analyzeNetworkBoundary(selectedNodesForSubgraph, internalEdgesForSubgraph)
 
-    await addNetworkNode(networkNode.name, networkNode)
+    await addNetworkNode(networkNodeDefinition.name, networkNodeDefinition)
 
     const newNodeId = String(getNextNodeId())
     const selectionCenter = selectedCanvasNodes.reduce(
@@ -218,17 +220,17 @@
       y: selectionCenter.y / selectedCanvasNodes.length,
     }
 
-    const collapsedNode = {
+    const flowNetworkNode = {
       id: newNodeId,
       type: NodeType.NETWORK,
       position: centerPosition,
       selected: true,
       data: {
-        ...networkNode,
+        ...networkNodeDefinition,
       },
     }
 
-    const survivingNodes = allNodes
+    const unselectedNodes = allNodes
       .filter((node) => !selectedNodeIds.has(node.id))
       .map((node) => ({ ...node, selected: false }))
 
@@ -287,7 +289,7 @@
       })
       .filter((edge) => edge !== null)
 
-    setNodes([...survivingNodes, collapsedNode])
+    setNodes([...unselectedNodes, flowNetworkNode])
     setEdges([
       ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
       ...rewiredIncomingEdges,

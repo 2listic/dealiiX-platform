@@ -11,7 +11,7 @@ import {
   setNodes,
   updateLastNodeId,
 } from './nodes.svelte'
-import { createNewNetworkNode } from '../utils/networkNode'
+import { createNetworkNodeDefinition } from '../utils/networkNode'
 import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
@@ -133,7 +133,7 @@ export const graphNavigationState = {
       return
     }
 
-    const updatedNetworkNode = createNewNetworkNode(
+    const updatedNetworkNode = createNetworkNodeDefinition(
       trimmedName,
       refreshedCurrentContext.nodes,
       refreshedCurrentContext.edges
@@ -271,7 +271,7 @@ export const graphNavigationState = {
         return
       }
 
-      const updatedNetworkNode = createNewNetworkNode(
+      const updatedNetworkNode = createNetworkNodeDefinition(
         currentContext.label,
         currentContext.nodes,
         currentContext.edges

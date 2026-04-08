@@ -33,8 +33,8 @@ vi.mock('../stores/nodes.svelte', () => ({
 }))
 
 import {
-  createNewNetworkNode,
-  createNetworkNodeWithBindings,
+  createNetworkNodeDefinition,
+  analyzeNetworkBoundary,
   expandNetworkNodeInGraph,
   flattenSelectedSubgraphs,
 } from './networkNode'
@@ -148,7 +148,7 @@ describe('networkNode utilities', () => {
   })
 
   it('rejects creating a network node from an empty graph', () => {
-    expect(() => createNewNetworkNode('Empty', [], [])).toThrow(
+    expect(() => createNetworkNodeDefinition('Empty', [], [])).toThrow(
       'Cannot create network node from empty graph'
     )
   })
@@ -164,8 +164,13 @@ describe('networkNode utilities', () => {
       }
     )
 
-    const { networkNode, inputHandleByTarget, outputHandleBySource } =
-      createNetworkNodeWithBindings('Selection', [passthroughNode], [])
+    const networkNode = createNetworkNodeDefinition(
+      'Selection',
+      [passthroughNode],
+      []
+    )
+    const { inputHandleByTarget, outputHandleBySource } =
+      analyzeNetworkBoundary([passthroughNode], [])
 
     expect(networkNode.arguments).toEqual([
       {
@@ -186,7 +191,7 @@ describe('networkNode utilities', () => {
       y: 40,
     })
 
-    const networkNode = createNewNetworkNode('TriOnly', [triNode], [])
+    const networkNode = createNetworkNodeDefinition('TriOnly', [triNode], [])
 
     expect(networkNode.arguments).toEqual([
       {

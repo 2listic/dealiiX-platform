@@ -9,7 +9,7 @@
     isNodeInNetworkNodes,
   } from '../../stores/nodes.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
-  import { createNewNetworkNode } from '../../utils/networkNode'
+  import { createNetworkNodeDefinition } from '../../utils/networkNode'
 
   interface Props {
     modalId: string
@@ -28,12 +28,12 @@
   let networkNodeName = $state('')
   const confirmModalId = 'confirm-override-network-node'
 
-  const createNetworkNode = async () => {
+  const submitCreate = async () => {
     try {
       if (onCreate) {
         await onCreate(networkNodeName.trim())
       } else {
-        const newNetworkNode = createNewNetworkNode(
+        const newNetworkNode = createNetworkNodeDefinition(
           networkNodeName.trim(),
           getNodesSnapshot(),
           getEdgesSnapshot()
@@ -73,11 +73,11 @@
       getModal(confirmModalId)?.open()
       return
     }
-    createNetworkNode()
+    submitCreate()
   }
 
   const handleConfirmOverride = () => {
-    createNetworkNode()
+    submitCreate()
   }
 
   const handleCancel = () => {

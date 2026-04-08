@@ -21,7 +21,7 @@ const mockState = vi.hoisted(() => ({
     mockState.currentEdges = structuredClone(edges)
   }),
   updateLastNodeId: vi.fn(),
-  createNewNetworkNode: vi.fn(),
+  createNetworkNodeDefinition: vi.fn(),
   toastAdd: vi.fn(),
 }))
 
@@ -53,7 +53,7 @@ vi.mock('./nodes.svelte', () => ({
 }))
 
 vi.mock('../utils/networkNode', () => ({
-  createNewNetworkNode: mockState.createNewNetworkNode,
+  createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
 }))
 
 vi.mock('../utils/graphParser', () => ({
@@ -111,7 +111,7 @@ describe('graphNavigationState', () => {
     mockState.setNodes.mockClear()
     mockState.setEdges.mockClear()
     mockState.updateLastNodeId.mockClear()
-    mockState.createNewNetworkNode.mockReset()
+    mockState.createNetworkNodeDefinition.mockReset()
     mockState.toastAdd.mockReset()
   })
 
@@ -171,7 +171,7 @@ describe('graphNavigationState', () => {
       },
     ]
     mockState.protocolEdges = []
-    mockState.createNewNetworkNode.mockReturnValue({
+    mockState.createNetworkNodeDefinition.mockReturnValue({
       type: TypeField.CORAL_NETWORK,
       node_type: NodeType.NETWORK,
       name: 'Renamed',
@@ -221,7 +221,7 @@ describe('graphNavigationState', () => {
       },
     ]
     mockState.protocolEdges = []
-    mockState.createNewNetworkNode.mockReturnValue({
+    mockState.createNetworkNodeDefinition.mockReturnValue({
       type: TypeField.CORAL_NETWORK,
       node_type: NodeType.NETWORK,
       name: 'Sub',

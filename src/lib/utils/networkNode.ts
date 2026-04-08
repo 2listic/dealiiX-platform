@@ -13,15 +13,14 @@ import { parseGraphToProtocol } from './graphParser'
 import { handleIdToIndex } from './canvasNodeUtils'
 import { getNetworkNodeDefinition, getNodeData } from '../stores/nodes.svelte'
 
-type SelectionPortBindings = {
-  networkNode: SubGraphNodeDefinition
+type HandleMaps = {
   inputHandleByTarget: Record<string, number>
   outputHandleBySource: Record<string, number>
   targetByInputHandle: Record<number, { nodeId: string; handleId: string }>
   sourceByOutputHandle: Record<number, { nodeId: string; handleId: string }>
 }
 
-type BoundaryAnalysis = Omit<SelectionPortBindings, 'networkNode'> & {
+type BoundaryAnalysis = HandleMaps & {
   argumentsArray: StandardNodeDefinition['arguments']
   inputsArray: number[]
   outputsArray: number[]
@@ -42,7 +41,7 @@ type FlattenedSelectedSubgraphs = {
 }
 
 /**
- * Creates a new network node from the provided graph by identifying free (unconnected)
+ * Creates a new network node definition from the provided graph by identifying free (unconnected)
  * inputs and outputs and encapsulating the entire graph structure.
  *
  * @param {string} name - The custom name for the network node
@@ -51,45 +50,26 @@ type FlattenedSelectedSubgraphs = {
  * @returns {SubGraphNodeDefinition} A complete network node definition ready to be added to the networkNodes store
  * @throws {Error} If the graph is empty (no nodes)
  */
-export const createNewNetworkNode = (
+export const createNetworkNodeDefinition = (
   name: string,
   currentNodes: Node[],
   currentEdges: Edge[]
 ): SubGraphNodeDefinition => {
-  return createNetworkNodeWithBindings(name, currentNodes, currentEdges)
-    .networkNode
-}
-
-export const createNetworkNodeWithBindings = (
-  name: string,
-  currentNodes: Node[],
-  currentEdges: Edge[]
-): SelectionPortBindings => {
   const boundary = analyzeNetworkBoundary(currentNodes, currentEdges)
-
-  // Step 5: Serialize the graph to the value field
-  const graphData = parseGraphToProtocol(currentNodes, currentEdges)
-  const value = graphData
-
-  // Step 6: Construct the final node definition object
-  const networkNode: SubGraphNodeDefinition = {
+  const value = parseGraphToProtocol(currentNodes, currentEdges)
+  return {
     type: TypeField.CORAL_NETWORK,
     node_type: NodeType.NETWORK,
-    name: name,
+    name,
     arguments: boundary.argumentsArray,
     inputs: boundary.inputsArray,
     outputs: boundary.outputsArray,
-    value: value,
+    value,
     is_valid: true,
-  }
-
-  return {
-    networkNode,
-    ...boundary,
   }
 }
 
-const analyzeNetworkBoundary = (
+export const analyzeNetworkBoundary = (
   currentNodes: Node[],
   currentEdges: Edge[]
 ): BoundaryAnalysis => {
@@ -588,12 +568,12 @@ export const expandNetworkNodeInGraph = (
     })
     .filter((edge) => edge !== null)
 
-  const survivingNodes = allNodes
+  const unselectedNodes = allNodes
     .filter((node) => node.id !== nodeId)
     .map((node) => ({ ...node, selected: false }))
 
   return {
-    nodes: [...survivingNodes, ...expandedNodes],
+    nodes: [...unselectedNodes, ...expandedNodes],
     edges: [
       ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
       ...expandedInternalEdges,
