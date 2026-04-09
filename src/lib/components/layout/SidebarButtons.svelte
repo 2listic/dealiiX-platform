@@ -42,7 +42,7 @@
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import JobConfigModal from '../JobConfigModal.svelte'
-  import { graphNavigationState } from '../../stores/graphNavigation.svelte'
+  import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
 
   const loginModalId = 'login-modal'
@@ -105,7 +105,7 @@
       return
     }
     try {
-      graphNavigationState.reset()
+      graphStackState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const [validEdges, invalidEdges] = validateGraphData(importedGraph)

@@ -29,7 +29,11 @@
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
-  import { graphNavigationState } from '../stores/graphNavigation.svelte'
+  import { graphStackState } from '../stores/graphStack.svelte'
+  import {
+    loadParentGraph,
+    renameCurrentSubnetwork,
+  } from '../stores/graphNavigation.svelte'
   import {
     clearConnectionCache,
     isValidConnection,
@@ -108,28 +112,28 @@
   }
 
   $effect(() => {
-    if (!graphNavigationState.canGoBack) {
+    if (!graphStackState.canGoBack) {
       isEditingBreadcrumb = false
       breadcrumbNameDraft = ''
     }
   })
 
   const startEditingBreadcrumb = () => {
-    breadcrumbNameDraft = graphNavigationState.currentLabel
+    breadcrumbNameDraft = graphStackState.currentLabel
     isEditingBreadcrumb = true
   }
 
   const cancelEditingBreadcrumb = () => {
     isEditingBreadcrumb = false
-    breadcrumbNameDraft = graphNavigationState.currentLabel
+    breadcrumbNameDraft = graphStackState.currentLabel
   }
 
   const submitBreadcrumbRename = async () => {
     try {
-      await graphNavigationState.renameCurrentSubnetwork(breadcrumbNameDraft)
+      await renameCurrentSubnetwork(breadcrumbNameDraft)
       isEditingBreadcrumb = false
       toastState.add({
-        message: `Renamed subnetwork to "${graphNavigationState.currentLabel}"`,
+        message: `Renamed subnetwork to "${graphStackState.currentLabel}"`,
         timeout: 2000,
       })
     } catch (error) {
@@ -382,19 +386,13 @@
   >
     <Panel position="top-left">
       <div class="project-info">
-        {#if graphNavigationState.canGoBack}
+        {#if graphStackState.canGoBack}
           <div class="graph-nav">
-            <button
-              class="nav-button"
-              onclick={() => graphNavigationState.goBack()}
-            >
+            <button class="nav-button" onclick={() => loadParentGraph()}>
               Back
             </button>
             <div class="graph-breadcrumbs">
-              <span
-                >{graphNavigationState.breadcrumbs
-                  .slice(0, -1)
-                  .join(' / ')}</span
+              <span>{graphStackState.breadcrumbs.slice(0, -1).join(' / ')}</span
               >
               <span>/</span>
               {#if isEditingBreadcrumb}
@@ -422,8 +420,7 @@
                   Cancel
                 </button>
               {:else}
-                <span class="current-crumb"
-                  >{graphNavigationState.currentLabel}</span
+                <span class="current-crumb">{graphStackState.currentLabel}</span
                 >
                 <button
                   class="breadcrumb-icon-button"
@@ -443,7 +440,7 @@
           <span class="project-secondary">Unsaved Project</span>
         {/if}
         <span class="project-secondary">
-          Editing: {graphNavigationState.currentLabel}
+          Editing: {graphStackState.currentLabel}
         </span>
       </div>
       <JobsTable />

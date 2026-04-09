@@ -72,7 +72,7 @@
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
-  import { graphNavigationState } from '../../stores/graphNavigation.svelte'
+  import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
   import { expandNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
 
@@ -199,19 +199,20 @@
         <button
           class="node-button"
           title="Open subnetwork"
-          onclick={() => graphNavigationState.enterSubnetwork(id)}
+          onclick={() => enterSubnetwork(id)}
         >
           <CubeIcon width="20px" height="20px" />
         </button>
       {:else}
         <button
           class="node-button"
+          title="Edit name"
           onclick={() => getModal(editNodeModalId)?.open()}
         >
           <EditIcon width="20px" height="20px" />
         </button>
       {/if}
-      <button class="node-button" onclick={() => removeNode(id)}>
+      <button class="node-button" title="Delete" onclick={() => removeNode(id)}>
         <TrashIcon width="20px" height="20px" />
       </button>
     </div>

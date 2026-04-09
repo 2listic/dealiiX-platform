@@ -52,9 +52,15 @@ vi.mock('./nodes.svelte', () => ({
   updateLastNodeId: mockState.updateLastNodeId,
 }))
 
-vi.mock('../utils/networkNode', () => ({
-  createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
-}))
+vi.mock('../utils/networkNode', async () => {
+  const actual = await vi.importActual<typeof import('../utils/networkNode')>(
+    '../utils/networkNode'
+  )
+  return {
+    createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
+    isNetworkCanvasNode: actual.isNetworkCanvasNode,
+  }
+})
 
 vi.mock('../utils/graphParser', () => ({
   nodesFromProtocolToFlow: vi.fn(() =>
@@ -140,10 +146,13 @@ describe('graphNavigationState', () => {
     mockState.protocolNodes = []
     mockState.protocolEdges = []
 
-    const { graphNavigationState } = await import('./graphNavigation.svelte')
+    const { enterSubnetwork, loadParentGraph } = await import(
+      './graphNavigation.svelte'
+    )
+    const { graphStackState } = await import('./graphStack.svelte')
 
-    await graphNavigationState.enterSubnetwork('5')
-    await graphNavigationState.goBack()
+    await enterSubnetwork('5')
+    await loadParentGraph()
 
     expect(mockState.removeNetworkNode).toHaveBeenCalledWith('Sub')
     expect(mockState.currentNodes.map((node) => node.id)).toEqual(['1'])
@@ -153,7 +162,7 @@ describe('graphNavigationState', () => {
         message: 'Removed empty subnetwork "Sub"',
       })
     )
-    expect(graphNavigationState.canGoBack).toBe(false)
+    expect(graphStackState.canGoBack).toBe(false)
   })
 
   it('renames the current subnetwork and updates the parent node metadata immediately', async () => {
@@ -193,17 +202,20 @@ describe('graphNavigationState', () => {
       is_valid: true,
     })
 
-    const { graphNavigationState } = await import('./graphNavigation.svelte')
+    const { enterSubnetwork, renameCurrentSubnetwork } = await import(
+      './graphNavigation.svelte'
+    )
+    const { graphStackState } = await import('./graphStack.svelte')
 
-    await graphNavigationState.enterSubnetwork('5')
-    await graphNavigationState.renameCurrentSubnetwork('Renamed')
+    await enterSubnetwork('5')
+    await renameCurrentSubnetwork('Renamed')
 
     expect(mockState.removeNetworkNode).toHaveBeenCalledWith('OldName')
     expect(mockState.addNetworkNode).toHaveBeenCalledWith(
       'Renamed',
       expect.objectContaining({ name: 'Renamed' })
     )
-    expect(graphNavigationState.currentLabel).toBe('Renamed')
+    expect(graphStackState.currentLabel).toBe('Renamed')
   })
 
   it('saves a non-empty subnetwork back into the parent graph', async () => {
@@ -243,10 +255,13 @@ describe('graphNavigationState', () => {
       is_valid: true,
     })
 
-    const { graphNavigationState } = await import('./graphNavigation.svelte')
+    const { enterSubnetwork, loadParentGraph } = await import(
+      './graphNavigation.svelte'
+    )
+    const { graphStackState } = await import('./graphStack.svelte')
 
-    await graphNavigationState.enterSubnetwork('5')
-    await graphNavigationState.goBack()
+    await enterSubnetwork('5')
+    await loadParentGraph()
 
     expect(mockState.addNetworkNode).toHaveBeenCalledWith(
       'Sub',
@@ -264,6 +279,6 @@ describe('graphNavigationState', () => {
         message: 'Saved changes to subnetwork "Sub"',
       })
     )
-    expect(graphNavigationState.canGoBack).toBe(false)
+    expect(graphStackState.canGoBack).toBe(false)
   })
 })
