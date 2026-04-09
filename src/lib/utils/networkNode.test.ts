@@ -35,9 +35,11 @@ vi.mock('../stores/nodes.svelte', () => ({
 import {
   createNetworkNodeDefinition,
   analyzeNetworkBoundary,
+} from './networkNode'
+import {
   expandNetworkNodeInGraph,
   flattenSelectedSubgraphs,
-} from './networkNode'
+} from './networkNodeCanvas'
 
 const stringSourceData: StandardNodeDefinition = {
   type: Type.STRING,
@@ -169,7 +171,7 @@ describe('networkNode utilities', () => {
       [passthroughNode],
       []
     )
-    const { inputHandleByTarget, outputHandleBySource } =
+    const { internalHandleToNetworkInput, internalHandleToNetworkOutput } =
       analyzeNetworkBoundary([passthroughNode], [])
 
     expect(networkNode.arguments).toEqual([
@@ -181,8 +183,8 @@ describe('networkNode utilities', () => {
     ])
     expect(networkNode.inputs).toEqual([0])
     expect(networkNode.outputs).toEqual([0])
-    expect(inputHandleByTarget).toEqual({ '2::input-0': 0 })
-    expect(outputHandleBySource).toEqual({ '2::output-0': 0 })
+    expect(internalHandleToNetworkInput).toEqual({ '2::input-0': 0 })
+    expect(internalHandleToNetworkOutput).toEqual({ '2::output-0': 0 })
   })
 
   it('exposes dangling SELF outputs as network outputs', () => {

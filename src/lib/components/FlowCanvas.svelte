@@ -19,9 +19,6 @@
     getEdgesSnapshot,
     getNodes,
     getEdges,
-    getNextNodeId,
-    getNodesSnapshot,
-    addNetworkNode,
     setNodes,
     setEdges,
     addEdge,
@@ -51,11 +48,7 @@
   import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
-  import {
-    analyzeNetworkBoundary,
-    createNetworkNodeDefinition,
-    flattenSelectedSubgraphs,
-  } from '../utils/networkNode'
+  import { collapseSelectionToSubnetwork } from '../utils/networkNodeCanvas'
   import {
     createCanvasNode,
     buildEdgeForNewNode,
@@ -78,7 +71,7 @@
   type SelectionSubgraphMode = 'create' | 'merge'
   let selectionSubgraphMode = $state<SelectionSubgraphMode>('create')
 
-  const createSelectionNetworkNodeModalId = 'create-selection-network-node'
+  const createNetworkNodeModalId = 'create-network-node'
   const createConnectedNodeModalId = 'create-connected-node'
 
   const nodeTypes: NodeTypes = {
@@ -154,147 +147,19 @@
     mode: SelectionSubgraphMode = 'create'
   ) => {
     selectionSubgraphMode = mode
-    getModal(createSelectionNetworkNodeModalId)?.open()
+    getModal(createNetworkNodeModalId)?.open()
   }
 
   const createSubnetworkFromSelection = async (
     name: string,
     mode: SelectionSubgraphMode = 'create'
   ) => {
-    const allNodes = getNodesSnapshot()
-    const allEdges = getEdgesSnapshot()
-    const selectedNodeIds = new Set(
-      allNodes.filter((node) => node.selected).map((node) => node.id)
-    )
-
-    if (selectedNodeIds.size <= 1) {
-      throw new Error('Select at least two nodes to create a subnetwork.')
-    }
-
-    const selectedCanvasNodes = allNodes.filter((node) =>
-      selectedNodeIds.has(node.id)
-    )
-    const selectedInternalEdges = allEdges.filter(
-      (edge) =>
-        selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
-    )
-
-    const {
-      nodes: selectedNodesForSubgraph,
-      edges: internalEdgesForSubgraph,
-      aliasedInputTargetByOriginal,
-      aliasedOutputSourceByOriginal,
-    } = mode === 'merge'
-      ? flattenSelectedSubgraphs(
-          selectedCanvasNodes,
-          selectedInternalEdges,
-          getNextNodeId
-        )
-      : {
-          nodes: selectedCanvasNodes,
-          edges: selectedInternalEdges,
-          aliasedInputTargetByOriginal: {},
-          aliasedOutputSourceByOriginal: {},
-        }
-
-    const networkNodeDefinition = createNetworkNodeDefinition(
+    const { newNodes, newEdges } = await collapseSelectionToSubnetwork(
       name,
-      selectedNodesForSubgraph,
-      internalEdgesForSubgraph
+      mode
     )
-    const { inputHandleByTarget, outputHandleBySource } =
-      analyzeNetworkBoundary(selectedNodesForSubgraph, internalEdgesForSubgraph)
-
-    await addNetworkNode(networkNodeDefinition.name, networkNodeDefinition)
-
-    const newNodeId = String(getNextNodeId())
-    const selectionCenter = selectedCanvasNodes.reduce(
-      (acc, node) => ({
-        x: acc.x + node.position.x,
-        y: acc.y + node.position.y,
-      }),
-      { x: 0, y: 0 }
-    )
-    const centerPosition = {
-      x: selectionCenter.x / selectedCanvasNodes.length,
-      y: selectionCenter.y / selectedCanvasNodes.length,
-    }
-
-    const flowNetworkNode = {
-      id: newNodeId,
-      type: NodeType.NETWORK,
-      position: centerPosition,
-      selected: true,
-      data: {
-        ...networkNodeDefinition,
-      },
-    }
-
-    const unselectedNodes = allNodes
-      .filter((node) => !selectedNodeIds.has(node.id))
-      .map((node) => ({ ...node, selected: false }))
-
-    const incomingEdges = allEdges.filter(
-      (edge) =>
-        !selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
-    )
-    const outgoingEdges = allEdges.filter(
-      (edge) =>
-        selectedNodeIds.has(edge.source) && !selectedNodeIds.has(edge.target)
-    )
-    const untouchedEdges = allEdges.filter(
-      (edge) =>
-        !selectedNodeIds.has(edge.source) && !selectedNodeIds.has(edge.target)
-    )
-
-    const rewiredIncomingEdges = incomingEdges
-      .map((edge) => {
-        const targetKey =
-          aliasedInputTargetByOriginal[
-            `${edge.target}::${edge.targetHandle}`
-          ] ?? `${edge.target}::${edge.targetHandle}`
-        const inputHandleIndex = inputHandleByTarget[targetKey]
-        if (inputHandleIndex === undefined) {
-          return null
-        }
-
-        return {
-          ...edge,
-          id: `xy-edge__${edge.source}${edge.sourceHandle}-${newNodeId}input-${inputHandleIndex}`,
-          target: newNodeId,
-          targetHandle: `input-${inputHandleIndex}`,
-          selected: false,
-        }
-      })
-      .filter((edge) => edge !== null)
-
-    const rewiredOutgoingEdges = outgoingEdges
-      .map((edge) => {
-        const sourceKey =
-          aliasedOutputSourceByOriginal[
-            `${edge.source}::${edge.sourceHandle}`
-          ] ?? `${edge.source}::${edge.sourceHandle}`
-        const outputHandleIndex = outputHandleBySource[sourceKey]
-        if (outputHandleIndex === undefined) {
-          return null
-        }
-
-        return {
-          ...edge,
-          id: `xy-edge__${newNodeId}output-${outputHandleIndex}-${edge.target}${edge.targetHandle}`,
-          source: newNodeId,
-          sourceHandle: `output-${outputHandleIndex}`,
-          selected: false,
-        }
-      })
-      .filter((edge) => edge !== null)
-
-    setNodes([...unselectedNodes, flowNetworkNode])
-    setEdges([
-      ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
-      ...rewiredIncomingEdges,
-      ...rewiredOutgoingEdges,
-    ])
+    setNodes(newNodes)
+    setEdges(newEdges)
   }
 
   // Records which handle the user started dragging from so it is available
@@ -636,7 +501,7 @@
 />
 
 <CreateNetworkNodeModal
-  modalId={createSelectionNetworkNodeModalId}
+  modalId={createNetworkNodeModalId}
   title={selectionSubgraphMode === 'merge'
     ? 'Merge Subgraphs'
     : 'Create Subgraph'}

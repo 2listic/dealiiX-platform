@@ -6,38 +6,40 @@ import {
   type StandardNodeDefinition,
   TypeField,
   type SubGraphNodeDefinition,
-  type LeanStandardNode,
-  isSubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
-import { handleIdToIndex } from './canvasNodeUtils'
-import { getNetworkNodeDefinition, getNodeData } from '../stores/nodes.svelte'
 
-type HandleMaps = {
-  inputHandleByTarget: Record<string, number>
-  outputHandleBySource: Record<string, number>
-  targetByInputHandle: Record<number, { nodeId: string; handleId: string }>
-  sourceByOutputHandle: Record<number, { nodeId: string; handleId: string }>
+/**
+ * Bidirectional handle maps for routing edges between an internal subgraph and
+ * the network node that wraps it.
+ *
+ * - `internalHandleToNetworkInput`: `"nodeId::handleId"` → network input handle index
+ * - `internalHandleToNetworkOutput`: `"nodeId::handleId"` → network output handle index
+ * - `networkInputToInternalHandle`: network input handle index → internal node's target handle
+ * - `networkOutputToInternalHandle`: network output handle index → internal node's source handle
+ */
+export type HandleMaps = {
+  internalHandleToNetworkInput: Record<string, number>
+  internalHandleToNetworkOutput: Record<string, number>
+  networkInputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  >
+  networkOutputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  >
 }
 
-type BoundaryAnalysis = HandleMaps & {
+/**
+ * Full result of {@link analyzeNetworkBoundary}: the `arguments`, `inputs`, and `outputs`
+ * arrays for the network node definition, plus the bidirectional {@link HandleMaps} needed
+ * to rewire edges when collapsing or expanding subgraphs.
+ */
+export type BoundaryAnalysis = HandleMaps & {
   argumentsArray: StandardNodeDefinition['arguments']
   inputsArray: number[]
   outputsArray: number[]
-}
-
-type ExpandedSubgraphSelection = {
-  expandedNodes: Node[]
-  expandedInternalEdges: Edge[]
-  targetByInputHandle: Record<number, { nodeId: string; handleId: string }>
-  sourceByOutputHandle: Record<number, { nodeId: string; handleId: string }>
-}
-
-type FlattenedSelectedSubgraphs = {
-  nodes: Node[]
-  edges: Edge[]
-  aliasedInputTargetByOriginal: Record<string, string>
-  aliasedOutputSourceByOriginal: Record<string, string>
 }
 
 /**
@@ -69,6 +71,16 @@ export const createNetworkNodeDefinition = (
   }
 }
 
+/**
+ * Analyzes the boundary of a subgraph by identifying free (unconnected) inputs and outputs,
+ * then builds the arguments, inputs, outputs arrays and handle-to-index maps needed to
+ * represent the subgraph as a network node.
+ *
+ * @param {Node[]} currentNodes - Array of nodes in the subgraph (must be snapshots, not reactive)
+ * @param {Edge[]} currentEdges - Array of edges in the subgraph (must be snapshots, not reactive)
+ * @returns {BoundaryAnalysis} The arguments/inputs/outputs arrays and bidirectional handle maps
+ * @throws {Error} If the graph is empty (no nodes)
+ */
 export const analyzeNetworkBoundary = (
   currentNodes: Node[],
   currentEdges: Edge[]
@@ -203,13 +215,13 @@ export const analyzeNetworkBoundary = (
   const argumentsArray: StandardNodeDefinition['arguments'] = []
   const inputsArray: number[] = []
   const outputsArray: number[] = []
-  const inputHandleByTarget: Record<string, number> = {}
-  const outputHandleBySource: Record<string, number> = {}
-  const targetByInputHandle: Record<
+  const internalHandleToNetworkInput: Record<string, number> = {}
+  const internalHandleToNetworkOutput: Record<string, number> = {}
+  const networkInputToInternalHandle: Record<
     number,
     { nodeId: string; handleId: string }
   > = {}
-  const sourceByOutputHandle: Record<
+  const networkOutputToInternalHandle: Record<
     number,
     { nodeId: string; handleId: string }
   > = {}
@@ -242,13 +254,13 @@ export const analyzeNetworkBoundary = (
       const networkInputHandleIndex = inputsArray.length - 1
       const firstInputHandle = conn.inputHandles[0]
       if (firstInputHandle) {
-        targetByInputHandle[networkInputHandleIndex] = {
+        networkInputToInternalHandle[networkInputHandleIndex] = {
           nodeId: conn.nodeId,
           handleId: firstInputHandle,
         }
       }
       conn.inputHandles.forEach((handle) => {
-        inputHandleByTarget[`${conn.nodeId}::${handle}`] =
+        internalHandleToNetworkInput[`${conn.nodeId}::${handle}`] =
           networkInputHandleIndex
       })
     }
@@ -261,13 +273,13 @@ export const analyzeNetworkBoundary = (
       const networkOutputHandleIndex = outputsArray.length - 1
       const firstOutputHandle = conn.outputHandles[0]
       if (firstOutputHandle) {
-        sourceByOutputHandle[networkOutputHandleIndex] = {
+        networkOutputToInternalHandle[networkOutputHandleIndex] = {
           nodeId: conn.nodeId,
           handleId: firstOutputHandle,
         }
       }
       conn.outputHandles.forEach((handle) => {
-        outputHandleBySource[`${conn.nodeId}::${handle}`] =
+        internalHandleToNetworkOutput[`${conn.nodeId}::${handle}`] =
           networkOutputHandleIndex
       })
     }
@@ -277,308 +289,9 @@ export const analyzeNetworkBoundary = (
     argumentsArray,
     inputsArray,
     outputsArray,
-    inputHandleByTarget,
-    outputHandleBySource,
-    targetByInputHandle,
-    sourceByOutputHandle,
-  }
-}
-
-const resolveNetworkNodeValue = (node: Node): SubGraphNodeDefinition => {
-  const data = node.data as Record<string, unknown>
-  if (!isSubGraphNodeDefinition(data as SubGraphNodeDefinition)) {
-    throw new Error(`Node '${node.id}' is not a subnetwork`)
-  }
-
-  if ('value' in data) {
-    return data as SubGraphNodeDefinition
-  }
-
-  return getNetworkNodeDefinition((data as SubGraphNodeDefinition).name)
-}
-
-const createEdgeId = (
-  source: string,
-  sourceHandle: string,
-  target: string,
-  targetHandle: string
-): string => {
-  return `xy-edge__${source}${sourceHandle}-${target}${targetHandle}`
-}
-
-const toCanvasNodeFromProtocol = (
-  protocolNode: LeanStandardNode | SubGraphNodeDefinition,
-  nodeId: string,
-  positionOffset: { x: number; y: number },
-  index: number
-): Node => {
-  const position = {
-    x: (protocolNode.position?.x ?? index * 100) + positionOffset.x,
-    y: (protocolNode.position?.y ?? index * 100) + positionOffset.y,
-  }
-
-  if (isSubGraphNodeDefinition(protocolNode)) {
-    return {
-      id: nodeId,
-      type: protocolNode.node_type,
-      position,
-      selected: true,
-      data: {
-        ...protocolNode,
-        position,
-      },
-    }
-  }
-
-  const storeNodeData = getNodeData(protocolNode.type)
-  return {
-    id: nodeId,
-    type: storeNodeData.node_type,
-    position,
-    selected: true,
-    data: {
-      ...storeNodeData,
-      position,
-      ...(protocolNode.name && { name: protocolNode.name }),
-      ...(protocolNode.value !== undefined && { value: protocolNode.value }),
-      ...(protocolNode.base && { base: protocolNode.base }),
-    },
-  }
-}
-
-const expandSubgraphNodeSelection = (
-  networkCanvasNode: Node,
-  getNextId: () => number
-): ExpandedSubgraphSelection => {
-  const networkNodeData = resolveNetworkNodeValue(networkCanvasNode)
-  const protocolNodes = Object.entries(networkNodeData.value.workflow.nodes)
-  const protocolEdges = Object.values(networkNodeData.value.workflow.edges)
-
-  if (protocolNodes.length === 0) {
-    throw new Error('Cannot merge an empty subnetwork.')
-  }
-
-  const internalCentroid = protocolNodes.reduce(
-    (acc, [, node], index) => ({
-      x: acc.x + (node.position?.x ?? index * 100),
-      y: acc.y + (node.position?.y ?? index * 100),
-    }),
-    { x: 0, y: 0 }
-  )
-
-  const positionOffset = {
-    x: networkCanvasNode.position.x - internalCentroid.x / protocolNodes.length,
-    y: networkCanvasNode.position.y - internalCentroid.y / protocolNodes.length,
-  }
-
-  const oldToNewNodeId: Record<string, string> = {}
-  protocolNodes.forEach(([oldId]) => {
-    oldToNewNodeId[oldId] = String(getNextId())
-  })
-
-  const expandedNodes = protocolNodes.map(([oldId, node], index) =>
-    toCanvasNodeFromProtocol(node, oldToNewNodeId[oldId], positionOffset, index)
-  )
-  const expandedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
-    id: createEdgeId(
-      oldToNewNodeId[String(edge.source)],
-      `output-${edge.source_output}`,
-      oldToNewNodeId[String(edge.target)],
-      `input-${edge.target_input}`
-    ),
-    source: oldToNewNodeId[String(edge.source)],
-    target: oldToNewNodeId[String(edge.target)],
-    sourceHandle: `output-${edge.source_output}`,
-    targetHandle: `input-${edge.target_input}`,
-    selected: false,
-  }))
-
-  const boundary = analyzeNetworkBoundary(expandedNodes, expandedInternalEdges)
-
-  return {
-    expandedNodes,
-    expandedInternalEdges,
-    targetByInputHandle: boundary.targetByInputHandle,
-    sourceByOutputHandle: boundary.sourceByOutputHandle,
-  }
-}
-
-export const flattenSelectedSubgraphs = (
-  selectedNodes: Node[],
-  selectedEdges: Edge[],
-  getNextId: () => number
-): FlattenedSelectedSubgraphs => {
-  let workingNodes: Node[] = selectedNodes.map((node) => ({
-    ...node,
-    selected: true,
-  }))
-  let workingEdges: Edge[] = selectedEdges.map((edge) => ({
-    ...edge,
-    selected: false,
-  }))
-
-  const aliasedInputTargetByOriginal: Record<string, string> = {}
-  const aliasedOutputSourceByOriginal: Record<string, string> = {}
-
-  const selectedSubgraphIds = selectedNodes
-    .filter((node) =>
-      isSubGraphNodeDefinition(
-        node.data as StandardNodeDefinition | SubGraphNodeDefinition
-      )
-    )
-    .map((node) => node.id)
-
-  for (const subgraphNodeId of selectedSubgraphIds) {
-    const subgraphNode = workingNodes.find((node) => node.id === subgraphNodeId)
-    if (!subgraphNode) {
-      continue
-    }
-
-    const expansion = expandSubgraphNodeSelection(subgraphNode, getNextId)
-
-    Object.entries(expansion.targetByInputHandle).forEach(
-      ([handleIndex, binding]) => {
-        aliasedInputTargetByOriginal[
-          `${subgraphNodeId}::input-${handleIndex}`
-        ] = `${binding.nodeId}::${binding.handleId}`
-      }
-    )
-
-    Object.entries(expansion.sourceByOutputHandle).forEach(
-      ([handleIndex, binding]) => {
-        aliasedOutputSourceByOriginal[
-          `${subgraphNodeId}::output-${handleIndex}`
-        ] = `${binding.nodeId}::${binding.handleId}`
-      }
-    )
-
-    const rewiredSelectionEdges = workingEdges
-      .map((edge) => {
-        let source = edge.source
-        let sourceHandle = edge.sourceHandle
-        let target = edge.target
-        let targetHandle = edge.targetHandle
-
-        if (edge.source === subgraphNodeId) {
-          const binding =
-            expansion.sourceByOutputHandle[handleIdToIndex(edge.sourceHandle)]
-          if (!binding) {
-            return null
-          }
-          source = binding.nodeId
-          sourceHandle = binding.handleId
-        }
-
-        if (edge.target === subgraphNodeId) {
-          const binding =
-            expansion.targetByInputHandle[handleIdToIndex(edge.targetHandle)]
-          if (!binding) {
-            return null
-          }
-          target = binding.nodeId
-          targetHandle = binding.handleId
-        }
-
-        return {
-          ...edge,
-          id: createEdgeId(source, sourceHandle, target, targetHandle),
-          source,
-          sourceHandle,
-          target,
-          targetHandle,
-          selected: false,
-        }
-      })
-      .filter((edge) => edge !== null)
-
-    workingNodes = [
-      ...workingNodes.filter((node) => node.id !== subgraphNodeId),
-      ...expansion.expandedNodes,
-    ]
-    workingEdges = [
-      ...rewiredSelectionEdges,
-      ...expansion.expandedInternalEdges,
-    ]
-  }
-
-  return {
-    nodes: workingNodes,
-    edges: workingEdges,
-    aliasedInputTargetByOriginal,
-    aliasedOutputSourceByOriginal,
-  }
-}
-
-export const expandNetworkNodeInGraph = (
-  nodeId: string,
-  allNodes: Node[],
-  allEdges: Edge[],
-  getNextId: () => number
-): { nodes: Node[]; edges: Edge[] } => {
-  const networkCanvasNode = allNodes.find((node) => node.id === nodeId)
-  if (!networkCanvasNode) {
-    throw new Error(`Node '${nodeId}' was not found.`)
-  }
-
-  const { expandedNodes, expandedInternalEdges } = expandSubgraphNodeSelection(
-    networkCanvasNode,
-    getNextId
-  )
-
-  const boundary = analyzeNetworkBoundary(expandedNodes, expandedInternalEdges)
-  const incomingEdges = allEdges.filter((edge) => edge.target === nodeId)
-  const outgoingEdges = allEdges.filter((edge) => edge.source === nodeId)
-  const untouchedEdges = allEdges.filter(
-    (edge) => edge.source !== nodeId && edge.target !== nodeId
-  )
-
-  const rewiredIncomingEdges = incomingEdges
-    .map((edge) => {
-      const handleIndex = Number.parseInt(edge.targetHandle.split('-')[1], 10)
-      const binding = boundary.targetByInputHandle[handleIndex]
-      if (!binding) {
-        return null
-      }
-
-      return {
-        ...edge,
-        id: `xy-edge__${edge.source}${edge.sourceHandle}-${binding.nodeId}${binding.handleId}`,
-        target: binding.nodeId,
-        targetHandle: binding.handleId,
-        selected: false,
-      }
-    })
-    .filter((edge) => edge !== null)
-
-  const rewiredOutgoingEdges = outgoingEdges
-    .map((edge) => {
-      const handleIndex = Number.parseInt(edge.sourceHandle.split('-')[1], 10)
-      const binding = boundary.sourceByOutputHandle[handleIndex]
-      if (!binding) {
-        return null
-      }
-
-      return {
-        ...edge,
-        id: `xy-edge__${binding.nodeId}${binding.handleId}-${edge.target}${edge.targetHandle}`,
-        source: binding.nodeId,
-        sourceHandle: binding.handleId,
-        selected: false,
-      }
-    })
-    .filter((edge) => edge !== null)
-
-  const unselectedNodes = allNodes
-    .filter((node) => node.id !== nodeId)
-    .map((node) => ({ ...node, selected: false }))
-
-  return {
-    nodes: [...unselectedNodes, ...expandedNodes],
-    edges: [
-      ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
-      ...expandedInternalEdges,
-      ...rewiredIncomingEdges,
-      ...rewiredOutgoingEdges,
-    ],
+    internalHandleToNetworkInput,
+    internalHandleToNetworkOutput,
+    networkInputToInternalHandle,
+    networkOutputToInternalHandle,
   }
 }

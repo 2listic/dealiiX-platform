@@ -2,20 +2,14 @@
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
   import ConfirmationModal from '../layout/ConfirmationModal.svelte'
-  import {
-    addNetworkNode,
-    getNodesSnapshot,
-    getEdgesSnapshot,
-    isNodeInNetworkNodes,
-  } from '../../stores/nodes.svelte'
+  import { isNodeInNetworkNodes } from '../../stores/nodes.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
-  import { createNetworkNodeDefinition } from '../../utils/networkNode'
 
   interface Props {
     modalId: string
     title?: string
     submitText?: string
-    onCreate?: (_name: string) => Promise<void> | void
+    onCreate: (_name: string) => Promise<void> | void
   }
 
   let {
@@ -30,16 +24,7 @@
 
   const submitCreate = async () => {
     try {
-      if (onCreate) {
-        await onCreate(networkNodeName.trim())
-      } else {
-        const newNetworkNode = createNetworkNodeDefinition(
-          networkNodeName.trim(),
-          getNodesSnapshot(),
-          getEdgesSnapshot()
-        )
-        await addNetworkNode(networkNodeName.trim(), newNetworkNode)
-      }
+      await onCreate(networkNodeName.trim())
 
       toastState.add({
         message: `Network node "${networkNodeName.trim()}" created successfully`,

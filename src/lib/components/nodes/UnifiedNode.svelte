@@ -73,7 +73,7 @@
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
   import { graphNavigationState } from '../../stores/graphNavigation.svelte'
-  import { expandNetworkNodeInGraph } from '../../utils/networkNode'
+  import { expandNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
 
   let {
