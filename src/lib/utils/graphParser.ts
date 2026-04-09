@@ -1,11 +1,9 @@
+import { setEdges, setNodes, updateLastNodeId } from '../stores/nodes.svelte'
 import {
   addNetworkNode,
   getNetworkNodeDefinition,
   getNodeData,
-  setEdges,
-  setNodes,
-  updateLastNodeId,
-} from '../stores/nodes.svelte'
+} from '../stores/registryStore.svelte'
 import { handleIdToIndex } from './canvasNodeUtils'
 import {
   isSubGraphNodeDefinition,

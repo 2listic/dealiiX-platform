@@ -5,8 +5,8 @@
     getNodes,
     getNodesSnapshot,
     setNodes,
-    setRegistry,
   } from '../../stores/nodes.svelte'
+  import { setRegistry } from '../../stores/registryStore.svelte'
   import {
     loadGraphFromProtocol,
     removeQualifiedIds,

@@ -1,14 +1,16 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import {
-  addNetworkNode,
-  getNetworkNodeDefinition,
   getNodesSnapshot,
-  isNodeInNetworkNodes,
-  removeNetworkNode,
   setEdges,
   setNodes,
   updateLastNodeId,
 } from './nodes.svelte'
+import {
+  addNetworkNode,
+  getNetworkNodeDefinition,
+  isNodeInNetworkNodes,
+  removeNetworkNode,
+} from './registryStore.svelte'
 import {
   createNetworkNodeDefinition,
   isNetworkCanvasNode,

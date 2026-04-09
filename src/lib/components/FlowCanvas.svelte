@@ -22,10 +22,12 @@
     setNodes,
     setEdges,
     addEdge,
-    getAvailableNodes,
-    getStoredNetworkNodes,
     addNode,
   } from '../stores/nodes.svelte'
+  import {
+    getAvailableNodes,
+    getStoredNetworkNodes,
+  } from '../stores/registryStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
@@ -40,11 +42,8 @@
     isTargetHandleConnected,
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
-  import {
-    NodeType,
-    NodeTypePyBackend,
-    returnNodeName,
-  } from '../types/nodeTypes'
+  import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
+  import { returnNodeName } from '../utils/canvasNodeUtils'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
   import EditIcon from './icons/EditIcon.svelte'

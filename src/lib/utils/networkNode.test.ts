@@ -15,7 +15,7 @@ const mockStore = vi.hoisted(() => ({
   networkNodeDataByName: {} as Record<string, SubGraphNodeDefinition>,
 }))
 
-vi.mock('../stores/nodes.svelte', () => ({
+vi.mock('../stores/registryStore.svelte', () => ({
   getNodeData: vi.fn((type: string) => {
     const node = mockStore.nodeDataByType[type]
     if (!node) {

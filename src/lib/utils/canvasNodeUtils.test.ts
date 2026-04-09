@@ -5,7 +5,6 @@ import {
   NodeType,
   TypeField,
   Type,
-  returnNodeName,
   type NodeDefinitions,
   type RegisteredNodes,
   type RegisteredSubGraphNodes,
@@ -17,6 +16,7 @@ import {
   formatSuggestedNodeName,
   getInputTypeAndName,
   getOutputTypeAndName,
+  returnNodeName,
 } from './canvasNodeUtils'
 
 const registry = defaultRegistry as unknown as RegisteredNodes

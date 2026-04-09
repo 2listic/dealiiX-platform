@@ -37,19 +37,22 @@ vi.mock('./currentProjectStore.svelte.js', () => ({
 }))
 
 vi.mock('./nodes.svelte', () => ({
-  addNetworkNode: mockState.addNetworkNode,
   getEdgesSnapshot: vi.fn(() => structuredClone(mockState.currentEdges)),
+  getNodesSnapshot: vi.fn(() => structuredClone(mockState.currentNodes)),
+  setEdges: mockState.setEdges,
+  setNodes: mockState.setNodes,
+  updateLastNodeId: mockState.updateLastNodeId,
+}))
+
+vi.mock('./registryStore.svelte', () => ({
+  addNetworkNode: mockState.addNetworkNode,
   getNetworkNodeDefinition: vi.fn(
     (name: string) => mockState.networkNodeData[name]
   ),
-  getNodesSnapshot: vi.fn(() => structuredClone(mockState.currentNodes)),
   isNodeInNetworkNodes: vi.fn((name: string) =>
     mockState.networkNodes.has(name)
   ),
   removeNetworkNode: mockState.removeNetworkNode,
-  setEdges: mockState.setEdges,
-  setNodes: mockState.setNodes,
-  updateLastNodeId: mockState.updateLastNodeId,
 }))
 
 vi.mock('../utils/networkNode', async () => {

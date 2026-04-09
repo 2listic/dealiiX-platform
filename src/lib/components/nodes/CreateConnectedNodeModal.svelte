@@ -6,8 +6,10 @@
    */
   import Modal from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
-  import type { CompatibleNodeOption } from '../../utils/canvasNodeUtils'
-  import { returnNodeName } from '../../types/nodeTypes'
+  import {
+    type CompatibleNodeOption,
+    returnNodeName,
+  } from '../../utils/canvasNodeUtils'
 
   interface Props {
     modalId: string

@@ -2,7 +2,7 @@
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
   import ConfirmationModal from '../layout/ConfirmationModal.svelte'
-  import { isNodeInNetworkNodes } from '../../stores/nodes.svelte'
+  import { isNodeInNetworkNodes } from '../../stores/registryStore.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
 
   interface Props {

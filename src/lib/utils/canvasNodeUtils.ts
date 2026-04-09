@@ -247,6 +247,15 @@ export const formatSuggestedNodeName = (name: string): string => {
 }
 
 /**
+ * Returns the display name for a node definition: prefers `name` over `type`,
+ * replaces underscores with spaces, and capitalizes the first letter.
+ * @param node - Registry node or stored subgraph node.
+ * @returns Display name, or `""` if both `name` and `type` are blank.
+ */
+export const returnNodeName = (node: NodeDefinitions): string =>
+  formatSuggestedNodeName(node.name ?? node.type)
+
+/**
  * Finds all available nodes that produce `expectedInputType` on any output handle.
  * Mirror of {@link findCompatibleTargetNodesAsOptions} for the reverse drag direction (from a target handle).
  * @param availableNodes - All available node definitions to search.

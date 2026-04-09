@@ -8,13 +8,15 @@ import {
 } from '../types/nodeTypes'
 import { handleIdToIndex } from './canvasNodeUtils'
 import {
-  addNetworkNode,
   getEdgesSnapshot,
-  getNetworkNodeDefinition,
   getNextNodeId,
-  getNodeData,
   getNodesSnapshot,
 } from '../stores/nodes.svelte'
+import {
+  addNetworkNode,
+  getNetworkNodeDefinition,
+  getNodeData,
+} from '../stores/registryStore.svelte'
 import {
   analyzeNetworkBoundary,
   createNetworkNodeDefinition,
