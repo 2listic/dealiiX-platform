@@ -1,4 +1,5 @@
 import { app, BrowserWindow, nativeTheme, ipcMain } from 'electron/main'
+import { dialog } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -99,6 +100,18 @@ ipcMain.handle(
     return await probeAndSyncExecutionSettings(executionSettings)
   }
 )
+
+ipcMain.handle('pick-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
+})
 
 ipcMain.handle('open-external-url', async (event, url) => {
   // Option 1: Open in system default browser (recommended for external URLs)

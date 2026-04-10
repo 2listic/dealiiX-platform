@@ -25,7 +25,9 @@
   let isEditingLocalCoralBinaryPath = $state(false)
   let isEditingLocalCoralPluginPath = $state(false)
   let localExecutableFiles = $state()
+  let localWorkingDirectoryFiles = $state()
   let isEditingLocalExecutablePath = $state(false)
+  let isEditingLocalWorkingDirectory = $state(false)
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $state(settingsState.getKey(URL_REMOTE_SERVER))
@@ -72,6 +74,7 @@
       isEditingLocalCoralBinaryPath = false
       isEditingLocalCoralPluginPath = false
       isEditingLocalExecutablePath = false
+      isEditingLocalWorkingDirectory = false
       const currentSettings = settingsState.current
       executionLocation = currentSettings.execution.location
       backendKind = currentSettings.execution.backendKind
@@ -97,11 +100,21 @@
     toastState.add({ message: 'SSH key absolute path updated' })
   }
 
+  const cancelSshPathEdit = () => {
+    isEditingSshPath = false
+    sshFiles = undefined
+  }
+
   const handleOnChangeLocalCoralBinaryFile = () => {
     isEditingLocalCoralBinaryPath = false
     const file = localCoralBinaryFiles?.[0]
     if (!file) return
     localCoralBinaryPath = window.electron.getFilePath(file)
+  }
+
+  const cancelLocalCoralBinaryPathEdit = () => {
+    isEditingLocalCoralBinaryPath = false
+    localCoralBinaryFiles = undefined
   }
 
   const handleOnChangeLocalCoralPluginFile = () => {
@@ -111,11 +124,38 @@
     localCoralPluginPath = window.electron.getFilePath(file)
   }
 
+  const cancelLocalCoralPluginPathEdit = () => {
+    isEditingLocalCoralPluginPath = false
+    localCoralPluginFiles = undefined
+  }
+
   const handleOnChangeLocalExecutableFile = () => {
     isEditingLocalExecutablePath = false
     const file = localExecutableFiles?.[0]
     if (!file) return
     localExecutablePath = window.electron.getFilePath(file)
+  }
+
+  const cancelLocalExecutablePathEdit = () => {
+    isEditingLocalExecutablePath = false
+    localExecutableFiles = undefined
+  }
+
+  const extractDirectoryPath = (file) => {
+    const filePath = window.electron.getFilePath(file)
+    return filePath.replace(/[/\\][^/\\]+$/, '')
+  }
+
+  const handleOnChangeLocalWorkingDirectory = () => {
+    const file = localWorkingDirectoryFiles?.[0]
+    isEditingLocalWorkingDirectory = false
+    if (!file) return
+    localWorkingDirectory = extractDirectoryPath(file)
+  }
+
+  const cancelLocalWorkingDirectoryEdit = () => {
+    isEditingLocalWorkingDirectory = false
+    localWorkingDirectoryFiles = undefined
   }
 
   const saveVisualizerUrl = async () => {
@@ -294,14 +334,6 @@
                 type="text"
               />
             </label>
-            <label class="field">
-              <span>Working directory</span>
-              <input
-                bind:value={remoteWorkingDirectory}
-                class="input-field"
-                type="text"
-              />
-            </label>
           </div>
           <div class="field">
             <span style="font-weight: bold">Path to private SSH key</span>
@@ -310,9 +342,7 @@
               {#if !isEditingSshPath}
                 <Button onclick={() => (isEditingSshPath = true)}>Edit</Button>
               {:else}
-                <Button onclick={() => (isEditingSshPath = false)}
-                  >Cancel</Button
-                >
+                <Button onclick={cancelSshPathEdit}>Cancel</Button>
               {/if}
             </div>
             {#if isEditingSshPath}
@@ -331,8 +361,8 @@
       {#if showCoralSettings}
         <div class="subsection">
           <div class="subsection-title">Coral backend</div>
-          <div class="execution-grid">
-            <label class="field">
+          <div class="stacked-fields">
+            <div class="field">
               <span>Working directory</span>
               {#if showRemoteSettings}
                 <input
@@ -341,14 +371,30 @@
                   type="text"
                 />
               {:else}
-                <input
-                  bind:value={localWorkingDirectory}
-                  class="input-field"
-                  type="text"
-                />
+                <div class="input-line-save">
+                  <div>{localWorkingDirectory || 'No directory selected'}</div>
+                  {#if !isEditingLocalWorkingDirectory}
+                    <Button onclick={() => (isEditingLocalWorkingDirectory = true)}
+                      >Edit</Button
+                    >
+                  {:else}
+                    <Button onclick={cancelLocalWorkingDirectoryEdit}
+                      >Cancel</Button
+                    >
+                  {/if}
+                </div>
+                {#if isEditingLocalWorkingDirectory}
+                  <input
+                    type="file"
+                    webkitdirectory
+                    bind:files={localWorkingDirectoryFiles}
+                    onchange={handleOnChangeLocalWorkingDirectory}
+                    placeholder="Working directory"
+                  />
+                {/if}
               {/if}
-            </label>
-            <label class="field">
+            </div>
+            <div class="field">
               <span>Coral binary path</span>
               {#if showRemoteSettings}
                 <input
@@ -365,8 +411,7 @@
                       >Edit</Button
                     >
                   {:else}
-                    <Button
-                      onclick={() => (isEditingLocalCoralBinaryPath = false)}
+                    <Button onclick={cancelLocalCoralBinaryPathEdit}
                       >Cancel</Button
                     >
                   {/if}
@@ -380,8 +425,8 @@
                   />
                 {/if}
               {/if}
-            </label>
-            <label class="field">
+            </div>
+            <div class="field">
               <span>Coral plugin path</span>
               {#if showRemoteSettings}
                 <input
@@ -398,8 +443,7 @@
                       >Edit</Button
                     >
                   {:else}
-                    <Button
-                      onclick={() => (isEditingLocalCoralPluginPath = false)}
+                    <Button onclick={cancelLocalCoralPluginPathEdit}
                       >Cancel</Button
                     >
                   {/if}
@@ -413,7 +457,7 @@
                   />
                 {/if}
               {/if}
-            </label>
+            </div>
           </div>
         </div>
       {/if}
@@ -423,15 +467,31 @@
           <div class="subsection-title">Custom executable</div>
           <div class="execution-grid">
             {#if !showRemoteSettings}
-              <label class="field">
+              <div class="field">
                 <span>Working directory</span>
-                <input
-                  bind:value={localWorkingDirectory}
-                  class="input-field"
-                  type="text"
-                />
-              </label>
-              <label class="field">
+                <div class="input-line-save">
+                  <div>{localWorkingDirectory || 'No directory selected'}</div>
+                  {#if !isEditingLocalWorkingDirectory}
+                    <Button onclick={() => (isEditingLocalWorkingDirectory = true)}
+                      >Edit</Button
+                    >
+                  {:else}
+                    <Button onclick={cancelLocalWorkingDirectoryEdit}
+                      >Cancel</Button
+                    >
+                  {/if}
+                </div>
+                {#if isEditingLocalWorkingDirectory}
+                  <input
+                    type="file"
+                    webkitdirectory
+                    bind:files={localWorkingDirectoryFiles}
+                    onchange={handleOnChangeLocalWorkingDirectory}
+                    placeholder="Working directory"
+                  />
+                {/if}
+              </div>
+              <div class="field">
                 <span>Executable path</span>
                 <div class="input-line-save">
                   <div>{localExecutablePath || 'No file selected'}</div>
@@ -441,8 +501,7 @@
                       >Edit</Button
                     >
                   {:else}
-                    <Button
-                      onclick={() => (isEditingLocalExecutablePath = false)}
+                    <Button onclick={cancelLocalExecutablePathEdit}
                       >Cancel</Button
                     >
                   {/if}
@@ -455,7 +514,7 @@
                     placeholder="Executable path"
                   />
                 {/if}
-              </label>
+              </div>
             {:else}
               <div class="probe-subtle">
                 Remote executable fields will be added in the next incremental
@@ -562,6 +621,12 @@
   .execution-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1vh;
+  }
+
+  .stacked-fields {
+    display: flex;
+    flex-direction: column;
     gap: 1vh;
   }
 
