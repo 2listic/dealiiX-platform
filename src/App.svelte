@@ -5,7 +5,6 @@
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
   import { sideBarState } from './lib/stores/sidebar.svelte'
-  import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
   import { settingsState } from './lib/stores/settingsStore.svelte'
@@ -14,18 +13,18 @@
   let executableMode = $derived(settingsState.isExecutableMode())
 
   let isExpanded = $derived(sideBarState.isExpanded)
-  let sidebarWrapperElem
-  let sidebarPositionHolderElem
+  let sidebarWrapperElem = $state<HTMLDivElement>()
+  let sidebarPositionHolderElem = $state<HTMLDivElement>()
   var style = window.getComputedStyle(document.body)
   const sidebarWrapperWidth = style.getPropertyValue('--sidebar-wrapper-width')
-
-  onMount(() => {
-    sidebarWrapperElem = document.getElementById('sidebar-wrapper')
-    sidebarPositionHolderElem = document.getElementById(
-      'sidebar-position-holder'
-    )
-  })
   $effect(() => {
+    if (executableMode && sidebarWrapperElem && sidebarPositionHolderElem) {
+      sidebarWrapperElem.style.position = 'absolute'
+      sidebarWrapperElem.style.width = '0px'
+      sidebarPositionHolderElem.style.display = 'none'
+      return
+    }
+
     if (isExpanded && sidebarWrapperElem && sidebarPositionHolderElem) {
       sidebarWrapperElem.style.position = 'static'
       sidebarWrapperElem.style.width = '25vw'
@@ -42,13 +41,23 @@
   <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
-      {#if !executableMode}
+      <div class:hidden-menu={executableMode}>
         <ButtonToggleMenu />
-        <div id="sidebar-wrapper">
+      </div>
+      <div
+        id="sidebar-wrapper"
+        bind:this={sidebarWrapperElem}
+        class:hidden-sidebar={executableMode}
+      >
+        {#if !executableMode}
           <Sidebar />
-        </div>
-        <div id="sidebar-position-holder"></div>
-      {/if}
+        {/if}
+      </div>
+      <div
+        id="sidebar-position-holder"
+        bind:this={sidebarPositionHolderElem}
+        class:hidden-sidebar={executableMode}
+      ></div>
       <div id="sidebar-buttons-wrapper">
         <SidebarButtons />
       </div>
@@ -110,9 +119,18 @@
     width: 25vw !important; /* Set important to override the inline style */
   }
 
+  #sidebar-wrapper.hidden-sidebar {
+    overflow: hidden;
+    pointer-events: none;
+  }
+
   #sidebar-buttons-wrapper {
     flex: 0 0 auto; /* Don't grow, don't shrink, use element's intrinsic width (fit-content) as starting size */
     width: fit-content;
+  }
+
+  .hidden-menu {
+    display: none;
   }
 
   .main-content {
