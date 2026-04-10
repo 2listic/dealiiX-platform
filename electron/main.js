@@ -1,5 +1,6 @@
 import { app, BrowserWindow, nativeTheme, ipcMain } from 'electron/main'
 import { dialog } from 'electron'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -15,6 +16,7 @@ import {
   getLocalRunState,
   listLocalRuns,
   startLocalCoralRun,
+  startLocalExecutableRun,
 } from './utils/localCoralRuns.js'
 import store from './utils/storage.js'
 
@@ -120,8 +122,30 @@ ipcMain.handle('pick-directory', async () => {
   return result.filePaths[0]
 })
 
+ipcMain.handle(
+  'save-json-file',
+  async (event, { defaultPath, content, title = 'Save Parameters File' }) => {
+    const result = await dialog.showSaveDialog({
+      title,
+      defaultPath,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+
+    if (result.canceled || !result.filePath) {
+      return { canceled: true, filePath: null }
+    }
+
+    await fs.promises.writeFile(result.filePath, content, 'utf8')
+    return { canceled: false, filePath: result.filePath }
+  }
+)
+
 ipcMain.handle('start-local-coral-run', async (event, payload) => {
   return await startLocalCoralRun(payload)
+})
+
+ipcMain.handle('start-local-executable-run', async (event, payload) => {
+  return await startLocalExecutableRun(payload)
 })
 
 ipcMain.handle('list-local-runs', async (event, { numDays }) => {
@@ -132,9 +156,12 @@ ipcMain.handle('get-local-run-log', async (event, { jobId }) => {
   return await getLocalRunLog(jobId)
 })
 
-ipcMain.handle('get-local-node-status-files', async (event, { jobIdInternal }) => {
-  return await getLocalNodeStatusFiles(jobIdInternal)
-})
+ipcMain.handle(
+  'get-local-node-status-files',
+  async (event, { jobIdInternal }) => {
+    return await getLocalNodeStatusFiles(jobIdInternal)
+  }
+)
 
 ipcMain.handle('get-local-run-state', async (event, { jobId }) => {
   return getLocalRunState(jobId)

@@ -119,6 +119,65 @@ export const startLocalCoralRun = async ({
   return { jobId }
 }
 
+export const startLocalExecutableRun = async ({
+  executablePath,
+  workingDirectory,
+  parametersPayload,
+  parametersFileName,
+  internalJobId,
+}) => {
+  const jobId = String(internalJobId)
+  const parametersPath = path.join(
+    workingDirectory,
+    parametersFileName || `template_parameters-${jobId}.json`
+  )
+  const logPath = path.join(workingDirectory, `local-${jobId}.out`)
+
+  await ensureDir(workingDirectory)
+  await fs.promises.writeFile(
+    parametersPath,
+    JSON.stringify(parametersPayload, null, 2)
+  )
+
+  const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
+  const child = spawn(executablePath, [parametersPath], {
+    cwd: workingDirectory,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  child.stdout.pipe(stdoutStream)
+  child.stderr.pipe(stdoutStream)
+
+  localRuns.set(jobId, {
+    jobId,
+    state: 'RUNNING',
+    start: new Date().toISOString(),
+    end: '',
+    logPath,
+    touchDir: '',
+  })
+  persistLocalRuns()
+
+  child.on('error', (error) => {
+    stdoutStream.write(`\nProcess error: ${error.message}\n`)
+    stdoutStream.end()
+    updateRun(jobId, {
+      state: 'FAILED',
+      end: new Date().toISOString(),
+    })
+  })
+
+  child.on('close', (code) => {
+    stdoutStream.end()
+    updateRun(jobId, {
+      state: code === 0 ? 'COMPLETED' : 'FAILED',
+      end: new Date().toISOString(),
+    })
+  })
+
+  return { jobId }
+}
+
 export const listLocalRuns = (numDays) => {
   const minTime = Date.now() - numDays * 24 * 60 * 60 * 1000
   const headers = ['JobID', 'State', 'Start', 'End']

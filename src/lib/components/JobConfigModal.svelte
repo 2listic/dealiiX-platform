@@ -3,6 +3,7 @@
   import Button from './layout/Button.svelte'
   import type { JobConfig } from '../utils/sshMessages'
   import { parametersState } from '../stores/parametersStore.svelte'
+  import { settingsState } from '../stores/settingsStore.svelte'
 
   interface Props {
     modalId: string
@@ -19,6 +20,11 @@
   let uploadGraph = $state(true)
   let uploadParameters = $state(false)
   let hasParameters = $derived(parametersState.value !== null)
+  let execution = $derived(settingsState.current.execution)
+  let isExecutableMode = $derived(execution.backendKind === 'executable')
+  let isRemoteExecution = $derived(execution.location === 'remote')
+  let showSchedulerFields = $derived(isRemoteExecution)
+  let showEffectiveMpiFields = $derived(showMpiFields && !isExecutableMode)
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
@@ -33,7 +39,13 @@
   )
 
   const handleConfirm = () => {
-    onConfirm({ nodes, tasksPerNode, timeLimit, uploadGraph, uploadParameters })
+    onConfirm({
+      nodes,
+      tasksPerNode,
+      timeLimit,
+      uploadGraph: isExecutableMode ? false : uploadGraph,
+      uploadParameters: isExecutableMode ? true : uploadParameters,
+    })
     getModal(modalId).close()
   }
 
@@ -46,7 +58,7 @@
   <div class="job-config">
     <h2>Job Configuration</h2>
     <div class="inputs-container">
-      {#if showMpiFields}
+      {#if showEffectiveMpiFields}
         <div class="inputs-row">
           <div class="input-container">
             <label for="mpi-nodes">Nodes</label>
@@ -74,47 +86,65 @@
           </div>
         </div>
       {/if}
-      <div class="inputs-row">
-        <div class="input-container time-limit">
-          <label for="job-time-limit">Time limit</label>
-          <input
-            id="job-time-limit"
-            type="text"
-            placeholder="e.g. 01:00:00"
-            bind:value={timeLimit}
-            class="input-field"
-            class:input-field--error={timeLimitError}
-          />
-          <span class="hint-message" class:hint-message--error={timeLimitError}>
-            {timeLimitError || 'Use 0 for no time limit'}
-          </span>
+      {#if showSchedulerFields}
+        <div class="inputs-row">
+          <div class="input-container time-limit">
+            <label for="job-time-limit">Time limit</label>
+            <input
+              id="job-time-limit"
+              type="text"
+              placeholder="e.g. 01:00:00"
+              bind:value={timeLimit}
+              class="input-field"
+              class:input-field--error={timeLimitError}
+            />
+            <span
+              class="hint-message"
+              class:hint-message--error={timeLimitError}
+            >
+              {timeLimitError || 'Use 0 for no time limit'}
+            </span>
+          </div>
         </div>
-      </div>
+      {/if}
     </div>
     <hr />
     <div class="toggle-container">
-      <label class="toggle-label">
-        <input type="checkbox" bind:checked={uploadGraph} />
-        <span>Upload Graph</span>
-      </label>
-      <label class="toggle-label">
-        <input
-          type="checkbox"
-          bind:checked={uploadParameters}
-          disabled={!hasParameters}
-          title={hasParameters
-            ? 'Upload parameters file'
-            : 'Load a parameters file first'}
-        />
-        <span class:disabled={!hasParameters}>Upload Parameters</span>
-      </label>
+      {#if isExecutableMode}
+        <div class="hint-message">
+          The executable will run with the current parameters file. Graph upload
+          is disabled in this mode.
+        </div>
+        {#if !hasParameters}
+          <div class="hint-message hint-message--error">
+            Synchronize the executable settings first to generate a parameters
+            template.
+          </div>
+        {/if}
+      {:else}
+        <label class="toggle-label">
+          <input type="checkbox" bind:checked={uploadGraph} />
+          <span>Upload Graph</span>
+        </label>
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            bind:checked={uploadParameters}
+            disabled={!hasParameters}
+            title={hasParameters
+              ? 'Upload parameters file'
+              : 'Load a parameters file first'}
+          />
+          <span class:disabled={!hasParameters}>Upload Parameters</span>
+        </label>
+      {/if}
     </div>
     <div class="button-container">
       <Button onclick={handleCancel}>Cancel</Button>
       <Button
         variant="action"
         onclick={handleConfirm}
-        disabled={!!timeLimitError}
+        disabled={!!timeLimitError || (isExecutableMode && !hasParameters)}
       >
         Execute
       </Button>

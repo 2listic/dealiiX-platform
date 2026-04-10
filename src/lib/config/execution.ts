@@ -31,6 +31,7 @@ export type ExecutionTargetSettings = {
   coralBinaryPath: string
   coralPluginPath: string
   executablePath: string
+  parametersFileName: string
   workingDirectory: string
 }
 
@@ -68,6 +69,7 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
   coralBinaryPath: '',
   coralPluginPath: '',
   executablePath: '',
+  parametersFileName: 'parameters.json',
   workingDirectory: '',
 })
 
@@ -151,6 +153,10 @@ export const normalizeSettings = (value: unknown): AppSettings => {
             local?.executablePath,
             defaults.execution.local.executablePath
           ),
+          parametersFileName: asString(
+            local?.parametersFileName,
+            defaults.execution.local.parametersFileName
+          ),
           workingDirectory: asString(
             local?.workingDirectory,
             defaults.execution.local.workingDirectory
@@ -178,6 +184,10 @@ export const normalizeSettings = (value: unknown): AppSettings => {
           executablePath: asString(
             remote?.executablePath,
             defaults.execution.remote.executablePath
+          ),
+          parametersFileName: asString(
+            remote?.parametersFileName,
+            defaults.execution.remote.parametersFileName
           ),
           workingDirectory: asString(
             remote?.workingDirectory,

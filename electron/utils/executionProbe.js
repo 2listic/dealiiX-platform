@@ -30,6 +30,10 @@ const resolveWorkingDirectory = (target, backendKind) => {
   return ''
 }
 
+const getExecutableParametersFileName = (target) => {
+  return target.parametersFileName || 'parameters.json'
+}
+
 const validateExecutionSettings = (execution) => {
   const target = execution?.[execution.location]
   if (!target) {
@@ -119,12 +123,21 @@ const getExecutableTemplateMetadataLocal = async (execution) => {
   const tempDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'dealiix-exec-probe-')
   )
-  const paramsPath = path.join(tempDir, 'parameters.json')
+  const paramsPath = path.join(
+    tempDir,
+    getExecutableParametersFileName(execution.local)
+  )
 
   try {
-    await execFileAsync(execution.local.executablePath, [paramsPath], {
-      cwd: execution.local.workingDirectory,
-    })
+    try {
+      await execFileAsync(execution.local.executablePath, [paramsPath], {
+        cwd: execution.local.workingDirectory,
+      })
+    } catch (error) {
+      if (!fs.existsSync(paramsPath)) {
+        throw error
+      }
+    }
 
     const parametersRaw = await fs.promises.readFile(paramsPath, 'utf8')
     return {
@@ -156,6 +169,23 @@ const getCoralRegistryMetadataRemote = async (execution) => {
   }
 }
 
+const getExecutableTemplateMetadataRemote = async (execution) => {
+  const paramsFile = `dealiix-probe-${Date.now()}-${getExecutableParametersFileName(execution.remote)}`
+  const command = `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(paramsFile)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(paramsFile)} > /dev/null 2>&1; probe_status=$?; if [ -f ${shellEscape(paramsFile)} ]; then cat ${shellEscape(paramsFile)}; rm -f ${shellEscape(paramsFile)}; exit 0; fi; exit $probe_status`
+
+  const parametersRaw = await connectToSSHWithKey(command, {
+    host: execution.remote.host,
+    port: execution.remote.port,
+    username: execution.remote.username,
+    pathToSsh: execution.remote.sshKeyPath,
+  })
+
+  return {
+    kind: 'parametersTemplate',
+    data: JSON.parse(parametersRaw),
+  }
+}
+
 const buildWarnings = (execution) => {
   const warnings = []
   if (execution.location === 'remote') {
@@ -179,17 +209,17 @@ export const probeAndSyncExecutionSettings = async (execution) => {
       execution.location === 'local'
         ? await getCoralRegistryMetadataLocal(execution)
         : await getCoralRegistryMetadataRemote(execution)
-  } else if (
-    execution.location === 'local' &&
-    execution.backendKind === 'executable'
-  ) {
-    metadata = await getExecutableTemplateMetadataLocal(execution)
+  } else if (execution.backendKind === 'executable') {
+    metadata =
+      execution.location === 'local'
+        ? await getExecutableTemplateMetadataLocal(execution)
+        : await getExecutableTemplateMetadataRemote(execution)
   }
 
   const warnings = buildWarnings(execution).filter((warning) => {
     if (
       warning.includes('Remote probe is currently limited') &&
-      execution.backendKind === 'coral'
+      ['coral', 'executable'].includes(execution.backendKind)
     ) {
       return false
     }

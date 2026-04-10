@@ -72,16 +72,22 @@ export const exportAndEvalGraph = async (
   config?: JobConfig
 ): Promise<void> => {
   const execution = settingsState.current.execution
-  if (execution.backendKind !== 'coral') {
-    throw new Error('Only Coral execution is supported in the current run path')
-  }
+  if (execution.backendKind === 'coral') {
+    if (execution.location === 'local') {
+      await exportAndEvalGraphLocal(nodes, edges, config)
+      return
+    }
 
-  if (execution.location === 'local') {
-    await exportAndEvalGraphLocal(nodes, edges, config)
+    await exportAndEvalGraphRemote(nodes, edges, config)
     return
   }
 
-  await exportAndEvalGraphRemote(nodes, edges, config)
+  if (execution.location === 'local') {
+    await exportAndEvalExecutableLocal(config)
+    return
+  }
+
+  await exportAndEvalExecutableRemote(config)
 }
 
 const exportAndEvalGraphRemote = async (
@@ -166,12 +172,84 @@ const exportAndEvalGraphLocal = async (
   await jobIdMapState.add(Number(jobId), internalJobId)
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
-  const finalState = await localJobPolling(
-    jobId,
-    1000,
-    24 * 60 * 60 * 1000
-  )
+  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
   await jobsState.update()
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+const getExecutableParametersPayload = () => {
+  const parametersPayload = parametersState.snapshot
+  if (!parametersPayload) {
+    throw new Error(
+      'Executable backend requires a synchronized parameters template before execution'
+    )
+  }
+  return parametersPayload
+}
+
+const exportAndEvalExecutableLocal = async (
+  config?: JobConfig
+): Promise<void> => {
+  const internalJobId = jobIdMapState.getNextKey()
+  const localSettings = settingsState.current.execution.local
+  const resultExecute = await window.electron.invoke('start-local-executable-run', {
+    executablePath: localSettings.executablePath,
+    workingDirectory: localSettings.workingDirectory,
+    parametersPayload: getExecutableParametersPayload(),
+    parametersFileName: localSettings.parametersFileName,
+    internalJobId,
+    uploadParameters: config?.uploadParameters ?? true,
+  })
+
+  const jobId = String(resultExecute.jobId)
+  await jobIdMapState.add(Number(jobId), internalJobId)
+  toastState.add({ message: `Started local executable run ${jobId}` })
+
+  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
+  await jobsState.update()
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+const exportAndEvalExecutableRemote = async (
+  config?: JobConfig
+): Promise<void> => {
+  const remoteSettings = settingsState.current.execution.remote
+  const internalJobId = jobIdMapState.getNextKey()
+  const parametersPayload = getExecutableParametersPayload()
+  const parametersFileName = remoteSettings.parametersFileName || 'parameters.json'
+  const parametersRemotePath = `${remoteSettings.workingDirectory}/${parametersFileName}`
+  const jobScriptRemotePath = `${remoteSettings.workingDirectory}/job.sh`
+
+  await uploadFileSsh(
+    JSON.stringify(parametersPayload, null, 2),
+    parametersRemotePath
+  )
+
+  const batchScript = buildExecutableBatchScript(
+    internalJobId,
+    remoteSettings.workingDirectory,
+    remoteSettings.executablePath,
+    parametersFileName,
+    config
+  )
+  await uploadFileSsh(batchScript, jobScriptRemotePath)
+
+  const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
+    command: `sbatch ${shellEscape(jobScriptRemotePath)}`,
+  })
+  toastState.add({ message: resultExecute })
+
+  const jobId = resultExecute.match(/\d+/)?.[0]
+  if (!jobId) throw new Error('Job ID not found')
+  await jobIdMapState.add(Number(jobId), internalJobId)
+
+  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
@@ -228,6 +306,34 @@ const buildBatchScript = (
   console.log('Generated script:', script)
 
   return script
+}
+
+const shellQuoteForScript = (value: string): string => {
+  return `"${String(value).replaceAll('"', '\\"')}"`
+}
+
+const shellEscape = (value: string): string => {
+  return `'${String(value).replaceAll("'", `'\\''`)}'`
+}
+
+const buildExecutableBatchScript = (
+  internalJobId: number,
+  workingDirectory: string,
+  executablePath: string,
+  parametersFileName: string,
+  config?: JobConfig
+): string => {
+  const timeLimit = config?.timeLimit ?? '01:00:00'
+  const parametersPath = `${workingDirectory}/${parametersFileName}`
+
+  return `#!/bin/bash
+#SBATCH --chdir=${workingDirectory}
+#SBATCH --output=${workingDirectory}/slurm-%j.out
+#SBATCH --job-name=executable-${internalJobId}
+#SBATCH --time=${timeLimit}
+
+${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersPath)}
+`
 }
 
 /** Uploads a string as a file to the remote server via SSH. */
@@ -338,7 +444,7 @@ export const JOB_LIST_DAYS = 7
  */
 export const getJobsState = async (numDays: number): Promise<string[][]> => {
   const execution = settingsState.current.execution
-  if (execution.backendKind === 'coral' && execution.location === 'local') {
+  if (execution.location === 'local') {
     return await window.electron.invoke('list-local-runs', { numDays })
   }
 
@@ -374,11 +480,15 @@ export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
   const execution = settingsState.current.execution
-  if (execution.backendKind === 'coral' && execution.location === 'local') {
+  if (execution.location === 'local') {
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
-  const command = `cat /app/shared-data/slurm-${jobId}.out`
+  const outputDirectory =
+    execution.backendKind === 'executable'
+      ? execution.remote.workingDirectory
+      : '/app/shared-data'
+  const command = `cat ${shellEscape(`${outputDirectory}/slurm-${jobId}.out`)}`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
   })
@@ -397,9 +507,12 @@ export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
   const execution = settingsState.current.execution
+  if (execution.backendKind === 'executable') {
+    return new Map<string, string[]>()
+  }
   // define the command to list the files in the touch-dir
   const output =
-    execution.backendKind === 'coral' && execution.location === 'local'
+    execution.location === 'local'
       ? await window.electron.invoke('get-local-node-status-files', {
           jobIdInternal,
         })

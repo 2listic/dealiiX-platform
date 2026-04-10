@@ -59,6 +59,15 @@
   let localExecutablePath = $state(
     settingsState.current.execution.local.executablePath
   )
+  let localExecutableParametersFileName = $state(
+    settingsState.current.execution.local.parametersFileName
+  )
+  let remoteExecutablePath = $state(
+    settingsState.current.execution.remote.executablePath
+  )
+  let remoteExecutableParametersFileName = $state(
+    settingsState.current.execution.remote.parametersFileName
+  )
   let isSavingExecution = $derived(settingsState.saving)
   let showRemoteSettings = $derived(executionLocation === 'remote')
   let showCoralSettings = $derived(backendKind === 'coral')
@@ -88,6 +97,11 @@
       localCoralBinaryPath = currentSettings.execution.local.coralBinaryPath
       localCoralPluginPath = currentSettings.execution.local.coralPluginPath
       localExecutablePath = currentSettings.execution.local.executablePath
+      localExecutableParametersFileName =
+        currentSettings.execution.local.parametersFileName
+      remoteExecutablePath = currentSettings.execution.remote.executablePath
+      remoteExecutableParametersFileName =
+        currentSettings.execution.remote.parametersFileName
     }
   })
 
@@ -188,11 +202,16 @@
     draft.execution.remote.workingDirectory = remoteWorkingDirectory
     draft.execution.remote.coralBinaryPath = remoteCoralBinaryPath
     draft.execution.remote.coralPluginPath = remoteCoralPluginPath
+    draft.execution.remote.executablePath = remoteExecutablePath
+    draft.execution.remote.parametersFileName =
+      remoteExecutableParametersFileName
     draft.execution.remote.sshKeyPath = sshPath
     draft.execution.local.workingDirectory = localWorkingDirectory
     draft.execution.local.coralBinaryPath = localCoralBinaryPath
     draft.execution.local.coralPluginPath = localCoralPluginPath
     draft.execution.local.executablePath = localExecutablePath
+    draft.execution.local.parametersFileName =
+      localExecutableParametersFileName
     draft.urlVisualizer = urlVisualizer
     draft.urlRemoteServer = urlRemoteServer
     draft.useMpi = useMpi
@@ -466,8 +485,34 @@
       {#if showExecutableSettings}
         <div class="subsection">
           <div class="subsection-title">Custom executable</div>
-          <div class="execution-grid">
-            {#if !showRemoteSettings}
+          <div class="stacked-fields">
+            {#if showRemoteSettings}
+              <label class="field">
+                <span>Working directory</span>
+                <input
+                  bind:value={remoteWorkingDirectory}
+                  class="input-field"
+                  type="text"
+                />
+              </label>
+              <label class="field">
+                <span>Executable path</span>
+                <input
+                  bind:value={remoteExecutablePath}
+                  class="input-field"
+                  type="text"
+                />
+              </label>
+              <label class="field">
+                <span>Parameters file name</span>
+                <input
+                  bind:value={remoteExecutableParametersFileName}
+                  class="input-field"
+                  type="text"
+                  placeholder="parameters.json"
+                />
+              </label>
+            {:else}
               <div class="field">
                 <span>Working directory</span>
                 <div class="input-line-save">
@@ -517,11 +562,15 @@
                   />
                 {/if}
               </div>
-            {:else}
-              <div class="probe-subtle">
-                Remote executable fields will be added in the next incremental
-                step.
-              </div>
+              <label class="field">
+                <span>Parameters file name</span>
+                <input
+                  bind:value={localExecutableParametersFileName}
+                  class="input-field"
+                  type="text"
+                  placeholder="parameters.json"
+                />
+              </label>
             {/if}
           </div>
         </div>
