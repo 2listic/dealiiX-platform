@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from './layout/Button.svelte'
+  import Modal, { getModal } from './layout/Modal.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
@@ -25,6 +26,11 @@
   let fileInput: HTMLInputElement = $state(null)
   let executableMode = $derived(settingsState.isExecutableMode())
   let lastParametersFilePath = $state('')
+  let expandedSections = $state<Record<string, boolean>>({})
+  let duplicateModalName = $state('')
+  let duplicateModalKey = $state('')
+  let duplicateModalPath = $state<string[]>([])
+  const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
   function isLeaf(obj: unknown): obj is ParameterLeaf {
     return (
@@ -80,6 +86,126 @@
     }
 
     return coerceUploadedLeaf(node)
+  }
+
+  function cloneNodeAsExtra(node: ParameterNode): ParameterNode {
+    if (isLeaf(node)) {
+      return { ...node, __extra: true }
+    }
+
+    const entries = Object.entries(node)
+      .filter(([key]) => key !== '__extra')
+      .map(([key, value]) => {
+        if (typeof value === 'object' && value !== null) {
+          return [key, cloneNodeAsExtra(value as ParameterNode)]
+        }
+        return [key, value]
+      })
+
+    return {
+      __extra: true,
+      ...Object.fromEntries(entries),
+    } as ParameterTree
+  }
+
+  function getTreeAtPath(
+    root: ParameterTree,
+    path: string[]
+  ): ParameterTree | null {
+    let current: ParameterTree = root
+    for (const segment of path) {
+      const next = current[segment]
+      if (!isTree(next)) {
+        return null
+      }
+      current = next
+    }
+    return current
+  }
+
+  function getSectionPathKey(path: string[], key: string): string {
+    return [...path, key].join('.')
+  }
+
+  function isSectionOpen(path: string[], key: string, depth: number): boolean {
+    const sectionPath = getSectionPathKey(path, key)
+    return expandedSections[sectionPath] ?? depth < 1
+  }
+
+  function toggleSection(path: string[], key: string, depth: number) {
+    const sectionPath = getSectionPathKey(path, key)
+    expandedSections = {
+      ...expandedSections,
+      [sectionPath]: !isSectionOpen(path, key, depth),
+    }
+  }
+
+  function duplicateSection(path: string[], key: string) {
+    if (!parametersState.value) return
+
+    const suggestedName = `${key}_copy`
+    duplicateModalPath = path
+    duplicateModalKey = key
+    duplicateModalName = suggestedName
+    getModal(duplicateSectionModalId)?.open()
+  }
+
+  function confirmDuplicateSection() {
+    if (!parametersState.value || !duplicateModalKey) return
+
+    const nextParameters = JSON.parse(
+      JSON.stringify(parametersState.value)
+    ) as ParameterTree
+    const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
+    const sourceNode = parentTree?.[duplicateModalKey]
+    if (!parentTree || !isTree(sourceNode)) {
+      toastState.add({
+        message: `Section ${duplicateModalKey} could not be duplicated`,
+        type: 'error',
+      })
+      return
+    }
+
+    const newName = duplicateModalName.trim()
+    if (!newName) {
+      return
+    }
+    if (newName in parentTree) {
+      toastState.add({
+        message: `A section named ${newName} already exists`,
+        type: 'error',
+      })
+      return
+    }
+
+    parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
+    parametersState.value = nextParameters
+    expandedSections = {
+      ...expandedSections,
+      [getSectionPathKey(duplicateModalPath, newName)]: true,
+    }
+    toastState.add({
+      message: `Section ${duplicateModalKey} duplicated as ${newName}`,
+      type: 'success',
+    })
+    resetDuplicateSectionModal()
+    getModal(duplicateSectionModalId)?.close()
+  }
+
+  function handleSectionContextMenu(
+    event: MouseEvent,
+    path: string[],
+    key: string
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    duplicateSection(path, key)
+  }
+
+  function resetDuplicateSectionModal() {
+    duplicateModalName = ''
+    duplicateModalKey = ''
+    duplicateModalPath = []
   }
 
   function mergeParametersTemplate(
@@ -321,7 +447,7 @@
       <Button size="small" onclick={saveParameters}>Save</Button>
     </div>
     <div class="tree">
-      {#snippet renderTree(tree: ParameterTree, depth: number)}
+      {#snippet renderTree(tree: ParameterTree, depth: number, path: string[])}
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
           {#if isLeaf(val)}
             {@const inputType = parsePatternType(val.pattern_description)}
@@ -379,20 +505,68 @@
               </label>
             </div>
           {:else}
-            <details open={depth < 1}>
-              <summary class:extra={isExtraNode(val)}>{key}</summary>
-              <div class="section-content">
-                {@render renderTree(val as ParameterTree, depth + 1)}
-              </div>
-            </details>
+            <div class="section-block">
+              <button
+                type="button"
+                class="section-header"
+                class:extra={isExtraNode(val)}
+                onclick={() => toggleSection(path, key, depth)}
+                oncontextmenu={(event) => handleSectionContextMenu(event, path, key)}
+              >
+                <span class="section-chevron">
+                  {#if isSectionOpen(path, key, depth)}
+                    ▾
+                  {:else}
+                    ▸
+                  {/if}
+                </span>
+                <span>{key}</span>
+              </button>
+              {#if isSectionOpen(path, key, depth)}
+                <div class="section-content">
+                  {@render renderTree(val as ParameterTree, depth + 1, [...path, key])}
+                </div>
+              {/if}
+            </div>
           {/if}
         {/each}
       {/snippet}
 
-      {@render renderTree(parameters, 0)}
+      {@render renderTree(parameters, 0, [])}
     </div>
   {/if}
 </div>
+
+<Modal
+  id={duplicateSectionModalId}
+  size="sm"
+  onClose={resetDuplicateSectionModal}
+>
+  <div class="duplicate-modal">
+    <h2>Duplicate Section</h2>
+    <label class="duplicate-field">
+      <span>New section name</span>
+      <input
+        type="text"
+        class="duplicate-input"
+        bind:value={duplicateModalName}
+        placeholder="section_copy"
+      />
+    </label>
+    <div class="duplicate-actions">
+      <Button onclick={() => getModal(duplicateSectionModalId)?.close()}
+        >Cancel</Button
+      >
+      <Button
+        variant="action"
+        onclick={confirmDuplicateSection}
+        disabled={!duplicateModalName.trim()}
+      >
+        Duplicate
+      </Button>
+    </div>
+  </div>
+</Modal>
 
 <style>
   .parameters-view {
@@ -430,20 +604,35 @@
     padding: 0.5rem 1rem;
   }
 
-  details {
+  .section-block {
     margin: 0.25rem 0;
   }
 
-  summary {
+  .section-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     cursor: pointer;
     font-weight: 600;
     padding: 0.4rem 0.25rem;
     border-radius: 3px;
     user-select: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font: inherit;
   }
 
-  summary:hover {
+  .section-header:hover {
     background: var(--background-color-secondary);
+  }
+
+  .section-chevron {
+    width: 1rem;
+    text-align: center;
+    flex: 0 0 auto;
   }
 
   .section-content {
@@ -452,7 +641,7 @@
     margin-left: 0.5rem;
   }
 
-  summary.extra,
+  .section-header.extra,
   .param-name.extra,
   .param-doc.extra {
     color: #1f6feb;
@@ -466,8 +655,7 @@
       column-gap: 1.5rem;
     }
 
-    .section-content :global(details) {
-      /* :global() needed because <details> is in a snippet */
+    .section-content :global(.section-block) {
       grid-column: 1 / -1; /* make <details> span from column 1 to the last column */
     }
   }
@@ -523,5 +711,39 @@
     border: 1px solid var(--xy-edge-stroke, #555);
     font-size: 0.7rem;
     /* cursor: help; */
+  }
+
+  .duplicate-modal {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .duplicate-modal h2 {
+    margin: 0;
+    text-align: center;
+  }
+
+  .duplicate-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+
+  .duplicate-input {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    background: var(--secondary-color);
+    color: var(--ternary-color);
+    font: inherit;
+  }
+
+  .duplicate-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
   }
 </style>
