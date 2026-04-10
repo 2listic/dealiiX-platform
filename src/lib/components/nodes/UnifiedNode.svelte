@@ -71,10 +71,11 @@
   import EditIcon from '../icons/EditIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
-  import CubeIcon from '../icons/CubeIcon.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
-  import { expandNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
+  import { explodeNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
+  import OpenIcon from '../icons/OpenIcon.svelte'
+  import ExplosionIcon from '../icons/ExplosionIcon.svelte'
 
   let {
     id,
@@ -141,28 +142,28 @@
   //   console.log(data)
   // })
 
-  const handleExpandSubnetwork = () => {
+  const handleExplodeSubnetwork = () => {
     try {
-      const expanded = expandNetworkNodeInGraph(
+      const exploded = explodeNetworkNodeInGraph(
         id,
         getNodesSnapshot(),
         getEdgesSnapshot(),
         getNextNodeId
       )
-      setNodes(expanded.nodes)
-      setEdges(expanded.edges)
+      setNodes(exploded.nodes)
+      setEdges(exploded.edges)
       clearConnectionCache()
       toastState.add({
-        message: `Expanded subnetwork "${data.name ?? data.type}"`,
+        message: `Exploded subnetwork "${data.name ?? data.type}"`,
         timeout: 2200,
       })
     } catch (error) {
-      console.error('Failed to expand subnetwork:', error)
+      console.error('Failed to explode subnetwork:', error)
       toastState.add({
         message:
           error instanceof Error
             ? error.message
-            : 'Failed to expand subnetwork',
+            : 'Failed to explode subnetwork',
         type: 'error',
       })
     }
@@ -187,21 +188,19 @@
     </div>
     <div class="node-buttons">
       {#if isNetworkNode}
-        {#if selected}
-          <button
-            class="node-button expand-button"
-            title="Expand subnetwork"
-            onclick={handleExpandSubnetwork}
-          >
-            Expand
-          </button>
-        {/if}
         <button
           class="node-button"
           title="Open subnetwork"
           onclick={() => enterSubnetwork(id)}
         >
-          <CubeIcon width="20px" height="20px" />
+          <OpenIcon width="20px" height="20px" />
+        </button>
+        <button
+          class="node-button"
+          title="Explode subnetwork"
+          onclick={handleExplodeSubnetwork}
+        >
+          <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
         <button
@@ -319,8 +318,8 @@
   .selected-node {
     border-color: var(--border-color-hover);
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--border-color) 28%, transparent),
-      0 10px 24px rgba(0, 0, 0, 0.14);
+      0 0 0 3px color-mix(in srgb, var(--border-color) 28%, transparent),
+      0 10px 24px color-mix(in srgb, var(--ternary-color) 14%, transparent);
     filter: saturate(1.06);
   }
 
@@ -349,7 +348,7 @@
 
   .node-buttons {
     display: flex;
-    gap: 0.3vw;
+    gap: 0.4vw;
   }
 
   .node-button {
@@ -360,12 +359,6 @@
     display: flex;
     align-items: center;
     align-self: flex-start;
-  }
-
-  .expand-button {
-    padding: 0.1rem 0.45rem;
-    font-size: 0.78rem;
-    font-weight: 600;
   }
 
   .node-button:hover {

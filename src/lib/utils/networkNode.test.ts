@@ -37,7 +37,7 @@ import {
   analyzeNetworkBoundary,
 } from './networkNode'
 import {
-  expandNetworkNodeInGraph,
+  explodeNetworkNodeInGraph,
   flattenSelectedSubgraphs,
 } from './networkNodeCanvas'
 
@@ -262,7 +262,7 @@ describe('networkNode utilities', () => {
     ]
 
     let nextId = 99
-    const expanded = expandNetworkNodeInGraph(
+    const expanded = explodeNetworkNodeInGraph(
       '20',
       outerNodes,
       outerEdges,

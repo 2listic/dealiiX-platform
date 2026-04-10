@@ -501,7 +501,7 @@
 
   .nav-button {
     border: 1px solid var(--ternary-color);
-    border-radius: 999px;
+    border-radius: 62rem;
     padding: 0.2rem 0.75rem;
     background: var(--secondary-color);
     cursor: pointer;
@@ -521,14 +521,14 @@
     min-width: 14rem;
     padding: 0.2rem 0.5rem;
     border: 1px solid var(--ternary-color);
-    border-radius: 999px;
+    border-radius: 62rem;
     background: var(--secondary-color);
   }
 
   .breadcrumb-action,
   .breadcrumb-icon-button {
     border: 1px solid var(--ternary-color);
-    border-radius: 999px;
+    border-radius: 62rem;
     padding: 0.15rem 0.5rem;
     background: var(--secondary-color);
     cursor: pointer;

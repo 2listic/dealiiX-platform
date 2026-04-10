@@ -22,9 +22,9 @@ import {
   createNetworkNodeDefinition,
 } from './networkNode'
 
-type ExpandedSubgraphSelection = {
-  expandedNodes: Node[]
-  expandedInternalEdges: Edge[]
+type ExplodedSubgraphSelection = {
+  explodedNodes: Node[]
+  explodedInternalEdges: Edge[]
   networkInputToInternalHandle: Record<
     number,
     { nodeId: string; handleId: string }
@@ -105,10 +105,10 @@ const toCanvasNodeFromProtocol = (
   }
 }
 
-const expandSubgraphNodeSelection = (
+const explodeSubgraphNodeSelection = (
   networkCanvasNode: Node,
   getNextId: () => number
-): ExpandedSubgraphSelection => {
+): ExplodedSubgraphSelection => {
   const networkNodeData = resolveNetworkNodeValue(networkCanvasNode)
   const protocolNodes = Object.entries(networkNodeData.value.workflow.nodes)
   const protocolEdges = Object.values(networkNodeData.value.workflow.edges)
@@ -135,10 +135,10 @@ const expandSubgraphNodeSelection = (
     oldToNewNodeId[oldId] = String(getNextId())
   })
 
-  const expandedNodes = protocolNodes.map(([oldId, node], index) =>
+  const explodedNodes = protocolNodes.map(([oldId, node], index) =>
     toCanvasNodeFromProtocol(node, oldToNewNodeId[oldId], positionOffset, index)
   )
-  const expandedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
+  const explodedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
     id: createEdgeId(
       oldToNewNodeId[String(edge.source)],
       `output-${edge.source_output}`,
@@ -152,11 +152,11 @@ const expandSubgraphNodeSelection = (
     selected: false,
   }))
 
-  const boundary = analyzeNetworkBoundary(expandedNodes, expandedInternalEdges)
+  const boundary = analyzeNetworkBoundary(explodedNodes, explodedInternalEdges)
 
   return {
-    expandedNodes,
-    expandedInternalEdges,
+    explodedNodes,
+    explodedInternalEdges,
     networkInputToInternalHandle: boundary.networkInputToInternalHandle,
     networkOutputToInternalHandle: boundary.networkOutputToInternalHandle,
   }
@@ -193,9 +193,9 @@ export const flattenSelectedSubgraphs = (
       continue
     }
 
-    const expansion = expandSubgraphNodeSelection(subgraphNode, getNextId)
+    const explosion = explodeSubgraphNodeSelection(subgraphNode, getNextId)
 
-    Object.entries(expansion.networkInputToInternalHandle).forEach(
+    Object.entries(explosion.networkInputToInternalHandle).forEach(
       ([handleIndex, binding]) => {
         aliasedInputTargetByOriginal[
           `${subgraphNodeId}::input-${handleIndex}`
@@ -203,7 +203,7 @@ export const flattenSelectedSubgraphs = (
       }
     )
 
-    Object.entries(expansion.networkOutputToInternalHandle).forEach(
+    Object.entries(explosion.networkOutputToInternalHandle).forEach(
       ([handleIndex, binding]) => {
         aliasedOutputSourceByOriginal[
           `${subgraphNodeId}::output-${handleIndex}`
@@ -220,7 +220,7 @@ export const flattenSelectedSubgraphs = (
 
         if (edge.source === subgraphNodeId) {
           const binding =
-            expansion.networkOutputToInternalHandle[
+            explosion.networkOutputToInternalHandle[
               handleIdToIndex(edge.sourceHandle)
             ]
           if (!binding) {
@@ -232,7 +232,7 @@ export const flattenSelectedSubgraphs = (
 
         if (edge.target === subgraphNodeId) {
           const binding =
-            expansion.networkInputToInternalHandle[
+            explosion.networkInputToInternalHandle[
               handleIdToIndex(edge.targetHandle)
             ]
           if (!binding) {
@@ -256,11 +256,11 @@ export const flattenSelectedSubgraphs = (
 
     workingNodes = [
       ...workingNodes.filter((node) => node.id !== subgraphNodeId),
-      ...expansion.expandedNodes,
+      ...explosion.explodedNodes,
     ]
     workingEdges = [
       ...rewiredSelectionEdges,
-      ...expansion.expandedInternalEdges,
+      ...explosion.explodedInternalEdges,
     ]
   }
 
@@ -272,7 +272,7 @@ export const flattenSelectedSubgraphs = (
   }
 }
 
-export const expandNetworkNodeInGraph = (
+export const explodeNetworkNodeInGraph = (
   nodeId: string,
   allNodes: Node[],
   allEdges: Edge[],
@@ -283,12 +283,12 @@ export const expandNetworkNodeInGraph = (
     throw new Error(`Node '${nodeId}' was not found.`)
   }
 
-  const { expandedNodes, expandedInternalEdges } = expandSubgraphNodeSelection(
+  const { explodedNodes, explodedInternalEdges } = explodeSubgraphNodeSelection(
     networkCanvasNode,
     getNextId
   )
 
-  const boundary = analyzeNetworkBoundary(expandedNodes, expandedInternalEdges)
+  const boundary = analyzeNetworkBoundary(explodedNodes, explodedInternalEdges)
   const incomingEdges = allEdges.filter((edge) => edge.target === nodeId)
   const outgoingEdges = allEdges.filter((edge) => edge.source === nodeId)
   const untouchedEdges = allEdges.filter(
@@ -336,10 +336,10 @@ export const expandNetworkNodeInGraph = (
     .map((node) => ({ ...node, selected: false }))
 
   return {
-    nodes: [...unselectedNodes, ...expandedNodes],
+    nodes: [...unselectedNodes, ...explodedNodes],
     edges: [
       ...untouchedEdges.map((edge) => ({ ...edge, selected: false })),
-      ...expandedInternalEdges,
+      ...explodedInternalEdges,
       ...rewiredIncomingEdges,
       ...rewiredOutgoingEdges,
     ],
