@@ -511,7 +511,8 @@
                 class="section-header"
                 class:extra={isExtraNode(val)}
                 onclick={() => toggleSection(path, key, depth)}
-                oncontextmenu={(event) => handleSectionContextMenu(event, path, key)}
+                oncontextmenu={(event) =>
+                  handleSectionContextMenu(event, path, key)}
               >
                 <span class="section-chevron">
                   {#if isSectionOpen(path, key, depth)}
@@ -524,7 +525,10 @@
               </button>
               {#if isSectionOpen(path, key, depth)}
                 <div class="section-content">
-                  {@render renderTree(val as ParameterTree, depth + 1, [...path, key])}
+                  {@render renderTree(val as ParameterTree, depth + 1, [
+                    ...path,
+                    key,
+                  ])}
                 </div>
               {/if}
             </div>
