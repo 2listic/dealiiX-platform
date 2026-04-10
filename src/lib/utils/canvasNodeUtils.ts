@@ -20,7 +20,7 @@ export type CompatibleNodeOption = {
   nodeDefinition: NodeDefinitions
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
-  argumentName: string
+  argumentName: string | null
 }
 
 /** Snapshot of the handle that initiated a connection drag. */

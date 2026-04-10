@@ -10,6 +10,7 @@
     type CompatibleNodeOption,
     returnNodeName,
   } from '../../utils/canvasNodeUtils'
+  import { NodeType } from '../../types/nodeTypes'
 
   interface Props {
     modalId: string
@@ -29,19 +30,24 @@
   let selectedOptionId = $state('')
   let nodeName = $state('')
 
+  // Network nodes share type === 'coral::Network', so use their unique name as identifier.
+  // Standard nodes use type, which is their unique identifier.
+  const optionId = (option: CompatibleNodeOption) =>
+    option.nodeDefinition.node_type === NodeType.NETWORK
+      ? `${option.nodeDefinition.name}-${option.handleId}`
+      : `${option.nodeDefinition.type}-${option.handleId}`
+
   // Fires when `options` changes (i.e. modal opens with a new set of choices).
   // Resets selection to the first option.
+  // The ternary guards against an empty array.
   $effect(() => {
-    selectedOptionId = options[0]
-      ? `${options[0].nodeDefinition.type}-${options[0].handleId}`
-      : ''
+    selectedOptionId = options[0] ? optionId(options[0]) : ''
   })
 
   // Fires when `selectedOptionId` changes. Syncs nodeName to the option's default.
   $effect(() => {
     const selectedOption = options.find(
-      (option) =>
-        `${option.nodeDefinition.type}-${option.handleId}` === selectedOptionId
+      (option) => optionId(option) === selectedOptionId
     )
     if (selectedOption) {
       nodeName = returnNodeName(selectedOption.nodeDefinition)
@@ -50,8 +56,7 @@
 
   const handleCreate = () => {
     const selectedOption = options.find(
-      (option) =>
-        `${option.nodeDefinition.type}-${option.handleId}` === selectedOptionId
+      (option) => optionId(option) === selectedOptionId
     )
     if (!selectedOption) {
       return
@@ -73,8 +78,8 @@
       bind:value={selectedOptionId}
       class="input-field"
     >
-      {#each options as option (`${option.nodeDefinition.type}-${option.handleId}`)}
-        <option value={`${option.nodeDefinition.type}-${option.handleId}`}>
+      {#each options as option (optionId(option))}
+        <option value={optionId(option)}>
           {returnNodeName(option.nodeDefinition)} ({option.argumentName})
         </option>
       {/each}
