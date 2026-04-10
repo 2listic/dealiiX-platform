@@ -2,24 +2,34 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { currentProjectState } from './currentProjectStore.svelte.js'
 import { getEdgesSnapshot, getNodesSnapshot } from './nodes.svelte'
 
+/** One entry per navigation level, from root graph down to the currently open subnetwork. */
 export type GraphContext = {
+  /** Display name shown in the breadcrumb trail. */
   label: string
+  /** Original name of the subnetwork node before any in-session rename, or null for the root. */
   originalName: string | null
+  /** ID of the network node on the parent canvas that was double-clicked to enter this level, or null for the root. */
   parentNodeId: string | null
+  /** Snapshot of the canvas nodes at this level, saved before navigating away. */
   nodes: Node[]
+  /** Snapshot of the canvas edges at this level, saved before navigating away. */
   edges: Edge[]
 }
 
+/** The navigation stack — empty until the first navigation action initializes it. */
 let graphStack = $state<GraphContext[]>([])
 
+/** Deep-copies nodes via $state.snapshot so mutations on the canvas don't affect saved contexts. */
 const cloneNodes = (nodes: Node[]): Node[] =>
   $state.snapshot(nodes) as unknown as Node[]
 
+/** Deep-copies edges via $state.snapshot so mutations on the canvas don't affect saved contexts. */
 const cloneEdges = (edges: Edge[]): Edge[] =>
   $state.snapshot(edges) as unknown as Edge[]
 
+/** Label for the root graph: the loaded project name, or 'Unsaved Project' when project is not yet loaded or saved. */
 const rootLabel = (): string =>
-  currentProjectState.id ? currentProjectState.name : 'Main Graph'
+  currentProjectState.id ? currentProjectState.name : 'Unsaved Project'
 
 const isInitialized = (): boolean => graphStack.length > 0
 
@@ -73,27 +83,27 @@ export const persistActiveCanvas = () => {
   }
 }
 
-/**
- * Reactive state object for the context stack.
- *
- * All members exclusively read from or write to `graphStack` — nothing
- * that touches the canvas or other stores. That boundary keeps this object
- * a pure store and makes its behaviour easy to reason about in isolation.
- */
+/** Reactive state object for the context stack. */
 export const graphStackState = {
   // ---- Reactive getters ----
 
+  /** Labels for every level of the navigation stack, from root to current.
+   *  Falls back to `[rootLabel()]` when the stack is uninitialized.
+   */
   get breadcrumbs(): string[] {
-    safelyInitGraphStack()
+    if (graphStack.length === 0) return [rootLabel()]
     return graphStack.map((context) => context.label)
   },
 
+  /** True when there is at least one parent graph to navigate back to. */
   get canGoBack(): boolean {
     return graphStack.length > 1
   },
 
+  /** Display name of the graph currently being edited.
+   *  Returns `rootLabel()` directly when the stack is uninitialized.
+   */
   get currentLabel(): string {
-    safelyInitGraphStack()
     return graphStack.at(-1)?.label ?? rootLabel()
   },
 

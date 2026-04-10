@@ -3,7 +3,6 @@ import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
-import { setPanelContent } from './panelContent.js'
 import { JobStatus } from '../types/executionStatus'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
@@ -29,7 +28,6 @@ export const executeWithPassword = async (): Promise<void> => {
     }
   )
   console.log('SSH Command Result:', result)
-  setPanelContent(result)
   toastState.add({ message: 'Command was sent' })
 }
 
@@ -44,7 +42,6 @@ export const executeWithKey = async (): Promise<void> => {
     command: 'whoami && ls -a',
   })
   console.log('SSH Connection Result:', result)
-  setPanelContent(result)
   toastState.add({ message: 'Command was sent' })
 }
 

@@ -30,7 +30,6 @@
   } from '../stores/registryStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
-  import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import { graphStackState } from '../stores/graphStack.svelte'
   import {
     loadParentGraph,
@@ -384,68 +383,60 @@
     {ondelete}
   >
     <Panel position="top-left">
-      <div class="project-info">
-        {#if graphStackState.canGoBack}
-          <div class="graph-nav">
-            <button class="nav-button" onclick={() => loadParentGraph()}>
-              Back
-            </button>
-            <div class="graph-breadcrumbs">
-              <span>{graphStackState.breadcrumbs.slice(0, -1).join(' / ')}</span
-              >
-              <span>/</span>
-              {#if isEditingBreadcrumb}
-                <input
-                  class="breadcrumb-input"
-                  bind:value={breadcrumbNameDraft}
-                  onkeydown={(event) => {
-                    if (event.key === 'Enter') {
-                      submitBreadcrumbRename()
-                    } else if (event.key === 'Escape') {
-                      cancelEditingBreadcrumb()
-                    }
-                  }}
-                />
-                <button
-                  class="breadcrumb-action"
-                  onclick={submitBreadcrumbRename}
-                >
-                  Save
-                </button>
-                <button
-                  class="breadcrumb-action"
-                  onclick={cancelEditingBreadcrumb}
-                >
-                  Cancel
-                </button>
-              {:else}
-                <span class="current-crumb">{graphStackState.currentLabel}</span
-                >
-                <button
-                  class="breadcrumb-icon-button"
-                  title="Rename subnetwork"
-                  onclick={startEditingBreadcrumb}
-                >
-                  <EditIcon width="14px" height="14px" />
-                </button>
-              {/if}
-            </div>
-          </div>
-        {/if}
-        {#if currentProjectState.id}
-          <span class="project-main">{currentProjectState.name}</span>
-          <span class="project-secondary">ID: {currentProjectState.id}</span>
-        {:else}
-          <span class="project-secondary">Unsaved Project</span>
-        {/if}
-        <span class="project-secondary">
-          Editing: {graphStackState.currentLabel}
-        </span>
-      </div>
       <JobsTable />
     </Panel>
+    <Panel position="top-right">
+      <div class="top-right-controls">
+        <ButtonToggleDarkMode />
+      </div>
+    </Panel>
+    <Panel position="bottom-left">
+      <div class="graph-nav">
+        {#if graphStackState.canGoBack}
+          <button class="nav-button" onclick={() => loadParentGraph()}>
+            Back
+          </button>
+        {/if}
+        <div class="graph-breadcrumbs">
+          {#if graphStackState.canGoBack}
+            <span>{graphStackState.breadcrumbs.slice(0, -1).join(' / ')}</span>
+            <span>/</span>
+          {/if}
+          {#if isEditingBreadcrumb}
+            <input
+              class="breadcrumb-input"
+              bind:value={breadcrumbNameDraft}
+              onkeydown={(event) => {
+                if (event.key === 'Enter') {
+                  submitBreadcrumbRename()
+                } else if (event.key === 'Escape') {
+                  cancelEditingBreadcrumb()
+                }
+              }}
+            />
+            <button class="breadcrumb-action" onclick={submitBreadcrumbRename}>
+              Save
+            </button>
+            <button class="breadcrumb-action" onclick={cancelEditingBreadcrumb}>
+              Cancel
+            </button>
+          {:else}
+            <span class="current-crumb">{graphStackState.currentLabel}</span>
+            {#if graphStackState.canGoBack}
+              <button
+                class="breadcrumb-icon-button"
+                title="Rename subnetwork"
+                onclick={startEditingBreadcrumb}
+              >
+                <EditIcon width="14px" height="14px" />
+              </button>
+            {/if}
+          {/if}
+        </div>
+      </div>
+    </Panel>
     {#if canCreateSubnetworkFromSelection}
-      <Panel position="top-center">
+      <Panel position="bottom-center">
         <div class="selection-actions">
           <Button
             variant="action"
@@ -466,20 +457,6 @@
         </div>
       </Panel>
     {/if}
-    <Panel position="bottom-left">
-      <div class="export-button-container">
-        <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
-        <!-- <button onclick={executeWithKey}>Execute with key</button> -->
-      </div>
-      <div id="custom-panel-logs" class="custom-panel" style="margin-top: 1vh;">
-        -
-      </div>
-    </Panel>
-    <Panel position="top-right">
-      <div class="top-right-controls">
-        <ButtonToggleDarkMode />
-      </div>
-    </Panel>
     <Controls position="bottom-center" orientation="horizontal" />
     <MiniMap />
     <Background />
@@ -512,26 +489,14 @@
     height: 100%;
   }
 
-  .project-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.5rem 1rem;
-    background-color: var(--primary-color);
-    border-radius: 5px;
-    margin-bottom: 1vh;
-  }
-
-  .project-main {
-    font-weight: bold;
-    /* font-size: 1.1rem; */
-  }
-
   .graph-nav {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 0.25rem;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    font-weight: bold;
   }
 
   .nav-button {
@@ -546,8 +511,6 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.85rem;
-    opacity: 0.85;
   }
 
   .current-crumb {
@@ -574,18 +537,6 @@
     justify-content: center;
   }
 
-  .project-secondary {
-    /* font-size: 0.8rem; */
-    opacity: 0.7;
-  }
-
-  .export-button-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1vw;
-    max-width: 50vw;
-  }
-
   .top-right-controls {
     display: flex;
     flex-direction: column;
@@ -593,19 +544,15 @@
     align-items: flex-end;
   }
 
-  .custom-panel {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 1vh;
-    margin-bottom: 1vh;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    background-color: var(--primary-color);
-  }
-
   .selection-actions {
     padding: 0.5rem 0.75rem;
     background: var(--primary-color);
-    border-radius: 999px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border-radius: 62rem;
+    box-shadow: 0 0.2rem 0.8rem
+      color-mix(in srgb, var(--ternary-color) 8%, transparent);
+    /* Lift visually above the Controls bar (26px tall + 15px margin = ~43px from bottom).
+       transform does not affect layout so the panel's empty area below stays transparent
+       and pointer events on the Controls pass through unobstructed. */
+    transform: translateY(-44px);
   }
 </style>
