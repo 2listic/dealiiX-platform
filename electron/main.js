@@ -9,6 +9,13 @@ import {
   connectToSSHWithPassword,
 } from './utils/sshConnections.js'
 import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
+import {
+  getLocalNodeStatusFiles,
+  getLocalRunLog,
+  getLocalRunState,
+  listLocalRuns,
+  startLocalCoralRun,
+} from './utils/localCoralRuns.js'
 import store from './utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -111,6 +118,26 @@ ipcMain.handle('pick-directory', async () => {
   }
 
   return result.filePaths[0]
+})
+
+ipcMain.handle('start-local-coral-run', async (event, payload) => {
+  return await startLocalCoralRun(payload)
+})
+
+ipcMain.handle('list-local-runs', async (event, { numDays }) => {
+  return listLocalRuns(numDays)
+})
+
+ipcMain.handle('get-local-run-log', async (event, { jobId }) => {
+  return await getLocalRunLog(jobId)
+})
+
+ipcMain.handle('get-local-node-status-files', async (event, { jobIdInternal }) => {
+  return await getLocalNodeStatusFiles(jobIdInternal)
+})
+
+ipcMain.handle('get-local-run-state', async (event, { jobId }) => {
+  return getLocalRunState(jobId)
 })
 
 ipcMain.handle('open-external-url', async (event, url) => {

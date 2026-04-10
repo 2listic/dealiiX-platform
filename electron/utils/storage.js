@@ -17,6 +17,7 @@ const store = new Store({
     registered_network_nodes: { type: 'object' },
     jobs: { type: 'array', default: [] },
     jobIdMap: { type: 'object', default: {} },
+    localRuns: { type: 'array', default: [] },
   },
 })
 

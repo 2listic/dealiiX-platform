@@ -374,7 +374,8 @@
                 <div class="input-line-save">
                   <div>{localWorkingDirectory || 'No directory selected'}</div>
                   {#if !isEditingLocalWorkingDirectory}
-                    <Button onclick={() => (isEditingLocalWorkingDirectory = true)}
+                    <Button
+                      onclick={() => (isEditingLocalWorkingDirectory = true)}
                       >Edit</Button
                     >
                   {:else}
@@ -472,7 +473,8 @@
                 <div class="input-line-save">
                   <div>{localWorkingDirectory || 'No directory selected'}</div>
                   {#if !isEditingLocalWorkingDirectory}
-                    <Button onclick={() => (isEditingLocalWorkingDirectory = true)}
+                    <Button
+                      onclick={() => (isEditingLocalWorkingDirectory = true)}
                       >Edit</Button
                     >
                   {:else}

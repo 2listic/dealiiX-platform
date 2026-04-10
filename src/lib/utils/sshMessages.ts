@@ -71,6 +71,24 @@ export const exportAndEvalGraph = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
+  const execution = settingsState.current.execution
+  if (execution.backendKind !== 'coral') {
+    throw new Error('Only Coral execution is supported in the current run path')
+  }
+
+  if (execution.location === 'local') {
+    await exportAndEvalGraphLocal(nodes, edges, config)
+    return
+  }
+
+  await exportAndEvalGraphRemote(nodes, edges, config)
+}
+
+const exportAndEvalGraphRemote = async (
+  nodes: Node[],
+  edges: Edge[],
+  config?: JobConfig
+): Promise<void> => {
   const useMpi = settingsState.getKey(USE_MPI) ?? false
   const uploadGraph = config?.uploadGraph ?? true
   const uploadParameters = config?.uploadParameters ?? false
@@ -114,6 +132,46 @@ export const exportAndEvalGraph = async (
 
   // poll every 10 secs for 1 day, finally display final status
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+const exportAndEvalGraphLocal = async (
+  nodes: Node[],
+  edges: Edge[],
+  config?: JobConfig
+): Promise<void> => {
+  const useMpi = settingsState.getKey(USE_MPI) ?? false
+  const uploadGraph = config?.uploadGraph ?? true
+  const uploadParameters = config?.uploadParameters ?? false
+  const internalJobId = jobIdMapState.getNextKey()
+  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  const parametersPayload = uploadParameters ? parametersState.snapshot : null
+  const localSettings = settingsState.current.execution.local
+
+  const resultExecute = await window.electron.invoke('start-local-coral-run', {
+    coralBinaryPath: localSettings.coralBinaryPath,
+    coralPluginPath: localSettings.coralPluginPath,
+    workingDirectory: localSettings.workingDirectory,
+    graphPayload,
+    parametersPayload,
+    internalJobId,
+    uploadGraph,
+    uploadParameters,
+  })
+
+  const jobId = String(resultExecute.jobId)
+  await jobIdMapState.add(Number(jobId), internalJobId)
+  toastState.add({ message: `Started local Coral run ${jobId}` })
+
+  const finalState = await localJobPolling(
+    jobId,
+    1000,
+    24 * 60 * 60 * 1000
+  )
+  await jobsState.update()
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
@@ -241,6 +299,31 @@ const delay = (ms: number): Promise<void> => {
   return new Promise((res) => setTimeout(res, ms))
 }
 
+const localJobPolling = async (
+  jobId: string,
+  interval: number,
+  timeout?: number
+): Promise<string> => {
+  const start = Date.now()
+  while (true) {
+    const state = await window.electron.invoke('get-local-run-state', { jobId })
+    const cleaned = String(state || '').trim()
+    if (Object.values(JobStatus).includes(cleaned as JobStatus)) {
+      if (
+        [JobStatus.COMPLETED, JobStatus.FAILED].includes(cleaned as JobStatus)
+      ) {
+        return cleaned
+      }
+    }
+
+    const now = Date.now()
+    if (timeout && now - start > timeout) {
+      throw new Error(`Job ${jobId} polling timed out after ${timeout} ms`)
+    }
+    await delay(interval)
+  }
+}
+
 export const JOB_DATE_INDEX = [2, 3]
 export const JOB_LIST_DAYS = 7
 
@@ -254,6 +337,11 @@ export const JOB_LIST_DAYS = 7
  * // [['JobID', 'State', 'Start', 'End'], ['55', 'COMPLETED', '2026-02-09T08:20:39', '2026-02-09T08:21:40'], ...]
  */
 export const getJobsState = async (numDays: number): Promise<string[][]> => {
+  const execution = settingsState.current.execution
+  if (execution.backendKind === 'coral' && execution.location === 'local') {
+    return await window.electron.invoke('list-local-runs', { numDays })
+  }
+
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
@@ -285,6 +373,11 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
 export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
+  const execution = settingsState.current.execution
+  if (execution.backendKind === 'coral' && execution.location === 'local') {
+    return await window.electron.invoke('get-local-run-log', { jobId })
+  }
+
   const command = `cat /app/shared-data/slurm-${jobId}.out`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
@@ -303,13 +396,16 @@ export const getOutFileContent = async (
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
+  const execution = settingsState.current.execution
   // define the command to list the files in the touch-dir
-  const command = `ls -tr /app/shared-data/nodes-exec-status/${jobIdInternal}`
-
-  // get the raw output string with lines in format "nodeId.status"
-  const output = await window.electron.invoke('execute-ssh-with-key', {
-    command: command,
-  })
+  const output =
+    execution.backendKind === 'coral' && execution.location === 'local'
+      ? await window.electron.invoke('get-local-node-status-files', {
+          jobIdInternal,
+        })
+      : await window.electron.invoke('execute-ssh-with-key', {
+          command: `ls -tr /app/shared-data/nodes-exec-status/${jobIdInternal}`,
+        })
 
   // parse output into a Map where key is node ID and value is array of status strings
   const result = new Map<string, string[]>()
