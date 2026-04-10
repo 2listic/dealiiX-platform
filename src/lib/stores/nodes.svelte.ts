@@ -282,7 +282,9 @@ export const getStoredNetworkNodes = (): SubGraphNodeDefinition[] => {
  * @returns {SubGraphNodeDefinition} A snapshot (non-reactive copy) of the node definition for the given network node
  * @throws {Error} If the network node name is not found in the networkNodes store
  */
-export const getNetworkNodeDefinition = (name: string): SubGraphNodeDefinition => {
+export const getNetworkNodeDefinition = (
+  name: string
+): SubGraphNodeDefinition => {
   if (!isNodeInNetworkNodes(name)) {
     console.error(`Sub-graph node '${name}' not found in networkNodes store`)
     throw new Error(`Sub-graph node '${name}' not found in networkNodes store`)

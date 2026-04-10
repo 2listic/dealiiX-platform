@@ -8,12 +8,21 @@
     StandardNodeDefinition,
     NodeType.ELEMENTARY_CONSTRUCTOR
   >
-  export type EmptyConstructor = Node<StandardNodeDefinition, NodeType.EMPTY_CONSTRUCTOR>
+  export type EmptyConstructor = Node<
+    StandardNodeDefinition,
+    NodeType.EMPTY_CONSTRUCTOR
+  >
   export type Constructor = Node<StandardNodeDefinition, NodeType.CONSTRUCTOR>
   export type Abstract = Node<StandardNodeDefinition, NodeType.ABSTRACT>
   export type VoidMethod = Node<StandardNodeDefinition, NodeType.VOID_METHOD>
-  export type VoidConstMethod = Node<StandardNodeDefinition, NodeType.VOID_CONST_METHOD>
-  export type VoidFunction = Node<StandardNodeDefinition, NodeType.VOID_FUNCTION>
+  export type VoidConstMethod = Node<
+    StandardNodeDefinition,
+    NodeType.VOID_CONST_METHOD
+  >
+  export type VoidFunction = Node<
+    StandardNodeDefinition,
+    NodeType.VOID_FUNCTION
+  >
   export type Function = Node<StandardNodeDefinition, NodeType.FUNCTION>
   export type Network = Node<SubGraphNodeDefinition, NodeType.NETWORK>
   export type UnifiedNodeType =

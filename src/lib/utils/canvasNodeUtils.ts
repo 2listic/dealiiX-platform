@@ -43,7 +43,9 @@ export type ConnectedNodeDraft = {
  * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
  */
-const cloneNodeDefinition = (nodeDefinition: NodeDefinitions): NodeDefinitions => {
+const cloneNodeDefinition = (
+  nodeDefinition: NodeDefinitions
+): NodeDefinitions => {
   const cloned = {
     ...nodeDefinition,
     arguments: nodeDefinition.arguments.map((argument) => ({ ...argument })),
@@ -391,7 +393,8 @@ export const resolveOutputType = (
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF) return (data as StandardNodeDefinition).base ?? data.type
+  if (outputIndex === SELF)
+    return (data as StandardNodeDefinition).base ?? data.type
   return data.arguments?.[outputIndex]?.type ?? null
 }
 

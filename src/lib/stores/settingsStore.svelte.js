@@ -86,13 +86,19 @@ const persistSettings = async (nextSettings) => {
   settings = normalizeSettings(nextSettings)
   draftSettings = cloneSettings(settings)
   await window.electron.store.set('settings', $state.snapshot(settings))
-  await window.electron.store.set('settingsDraft', $state.snapshot(draftSettings))
+  await window.electron.store.set(
+    'settingsDraft',
+    $state.snapshot(draftSettings)
+  )
 }
 
 const persistDraftSettings = async (nextDraft) => {
   draftSettings = normalizeSettings(nextDraft)
   if (!window.electron?.store) return
-  await window.electron.store.set('settingsDraft', $state.snapshot(draftSettings))
+  await window.electron.store.set(
+    'settingsDraft',
+    $state.snapshot(draftSettings)
+  )
 }
 
 export const settingsState = {

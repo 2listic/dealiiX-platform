@@ -96,7 +96,10 @@ const probeLocalPaths = (execution) => {
 }
 
 const getCoralRegistryMetadataLocal = async (execution) => {
-  const registryPath = path.join(execution.local.workingDirectory, 'node_types.json')
+  const registryPath = path.join(
+    execution.local.workingDirectory,
+    'node_types.json'
+  )
   await execFileAsync(
     execution.local.coralBinaryPath,
     ['-p', execution.local.coralPluginPath, 'register'],

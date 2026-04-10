@@ -107,7 +107,9 @@ export const nodesFromProtocolToFlow = (nodes: LeanNodes): Node[] => {
 const mergeNodeData = (protocolNode: LeanNodes[string]) => {
   if (protocolNode.type === TypeField.CORAL_NETWORK) {
     // Network nodes: fetch by name, remove value, copy position
-    const storeNodeData = getNetworkNodeDefinition((protocolNode as SubGraphNodeDefinition).name)
+    const storeNodeData = getNetworkNodeDefinition(
+      (protocolNode as SubGraphNodeDefinition).name
+    )
     const { value, ...storeNodeDataWithoutValue } = storeNodeData
     return {
       ...storeNodeDataWithoutValue,

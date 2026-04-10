@@ -115,7 +115,8 @@
           onchange={loadFile}
           hidden
         />
-        <Button size="small" onclick={() => fileInput.click()}>Load File</Button>
+        <Button size="small" onclick={() => fileInput.click()}>Load File</Button
+        >
       {/if}
       <Button size="small" onclick={downloadParameters}>Download</Button>
     </div>

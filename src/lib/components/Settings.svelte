@@ -310,7 +310,9 @@
               {#if !isEditingSshPath}
                 <Button onclick={() => (isEditingSshPath = true)}>Edit</Button>
               {:else}
-                <Button onclick={() => (isEditingSshPath = false)}>Cancel</Button>
+                <Button onclick={() => (isEditingSshPath = false)}
+                  >Cancel</Button
+                >
               {/if}
             </div>
             {#if isEditingSshPath}
@@ -358,7 +360,8 @@
                 <div class="input-line-save">
                   <div>{localCoralBinaryPath || 'No file selected'}</div>
                   {#if !isEditingLocalCoralBinaryPath}
-                    <Button onclick={() => (isEditingLocalCoralBinaryPath = true)}
+                    <Button
+                      onclick={() => (isEditingLocalCoralBinaryPath = true)}
                       >Edit</Button
                     >
                   {:else}
@@ -390,7 +393,8 @@
                 <div class="input-line-save">
                   <div>{localCoralPluginPath || 'No file selected'}</div>
                   {#if !isEditingLocalCoralPluginPath}
-                    <Button onclick={() => (isEditingLocalCoralPluginPath = true)}
+                    <Button
+                      onclick={() => (isEditingLocalCoralPluginPath = true)}
                       >Edit</Button
                     >
                   {:else}
@@ -432,11 +436,13 @@
                 <div class="input-line-save">
                   <div>{localExecutablePath || 'No file selected'}</div>
                   {#if !isEditingLocalExecutablePath}
-                    <Button onclick={() => (isEditingLocalExecutablePath = true)}
+                    <Button
+                      onclick={() => (isEditingLocalExecutablePath = true)}
                       >Edit</Button
                     >
                   {:else}
-                    <Button onclick={() => (isEditingLocalExecutablePath = false)}
+                    <Button
+                      onclick={() => (isEditingLocalExecutablePath = false)}
                       >Cancel</Button
                     >
                   {/if}
@@ -461,7 +467,8 @@
       {/if}
       <div class="probe-info">
         <div>
-          {settingsState.current.lastProbe?.message || 'No successful probe yet'}
+          {settingsState.current.lastProbe?.message ||
+            'No successful probe yet'}
         </div>
         {#if settingsState.current.lastProbe?.syncedAt}
           <div class="probe-subtle">

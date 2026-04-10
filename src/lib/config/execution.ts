@@ -131,7 +131,9 @@ export const normalizeSettings = (value: unknown): AppSettings => {
       useMpi: asBoolean(maybeSettings.useMpi, defaults.useMpi),
       execution: {
         location:
-          execution?.location === 'local' ? 'local' : defaults.execution.location,
+          execution?.location === 'local'
+            ? 'local'
+            : defaults.execution.location,
         backendKind:
           execution?.backendKind === 'executable'
             ? 'executable'
@@ -188,8 +190,8 @@ export const normalizeSettings = (value: unknown): AppSettings => {
             ok: asBoolean(lastProbe.ok, false),
             message: asString(lastProbe.message),
             warnings: Array.isArray(lastProbe.warnings)
-              ? lastProbe.warnings.filter((item): item is string =>
-                  typeof item === 'string'
+              ? lastProbe.warnings.filter(
+                  (item): item is string => typeof item === 'string'
                 )
               : [],
             metadataKind:

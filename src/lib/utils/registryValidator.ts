@@ -1,4 +1,7 @@
-import type { StandardNodeDefinition, RegisteredNodes } from '../types/nodeTypes'
+import type {
+  StandardNodeDefinition,
+  RegisteredNodes,
+} from '../types/nodeTypes'
 
 /**
  * Filters a registry object, separating valid nodes from non-compliant ones.
