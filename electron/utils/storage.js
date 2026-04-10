@@ -11,6 +11,7 @@ const store = new Store({
     access_token: { type: 'string' },
     username: { type: 'string' },
     settings: { type: 'object' },
+    settingsDraft: { type: 'object' },
     colorMode: { type: 'string', default: 'light' },
     registered_nodes: { type: 'object' },
     registered_network_nodes: { type: 'object' },

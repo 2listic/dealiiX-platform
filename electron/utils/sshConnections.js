@@ -40,7 +40,26 @@ function connectToSSHWithPassword(host, username, password, command) {
   })
 }
 
-function connectToSSHWithKey(command, pathToSsh) {
+const normalizeKeyConnection = (connectionOrPath) => {
+  if (typeof connectionOrPath === 'string') {
+    return {
+      host: 'localhost',
+      port: 2222,
+      username: 'root',
+      pathToSsh: connectionOrPath,
+    }
+  }
+
+  return {
+    host: connectionOrPath.host ?? 'localhost',
+    port: connectionOrPath.port ?? 2222,
+    username: connectionOrPath.username ?? 'root',
+    pathToSsh: connectionOrPath.pathToSsh,
+  }
+}
+
+function connectToSSHWithKey(command, connectionOrPath) {
+  const connection = normalizeKeyConnection(connectionOrPath)
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -72,10 +91,10 @@ function connectToSSHWithKey(command, pathToSsh) {
         reject(err)
       })
       .connect({
-        host: 'localhost',
-        port: 2222,
-        username: 'root',
-        privateKey: fs.readFileSync(pathToSsh),
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        privateKey: fs.readFileSync(connection.pathToSsh),
         debug: console.log,
         // hostVerifier: (keyHash) => {  // consider hashing the private key
         //   return true
@@ -86,7 +105,8 @@ function connectToSSHWithKey(command, pathToSsh) {
   })
 }
 
-function uploadFileViaSftp(content, remotePath, pathToSsh) {
+function uploadFileViaSftp(content, remotePath, connectionOrPath) {
+  const connection = normalizeKeyConnection(connectionOrPath)
   return new Promise((resolve, reject) => {
     console.log('uploadFileViaSftp called')
     const conn = new Client()
@@ -111,10 +131,10 @@ function uploadFileViaSftp(content, remotePath, pathToSsh) {
         reject(err)
       })
       .connect({
-        host: 'localhost',
-        port: 2222,
-        username: 'root',
-        privateKey: fs.readFileSync(pathToSsh),
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        privateKey: fs.readFileSync(connection.pathToSsh),
         debug: console.log,
       })
   })

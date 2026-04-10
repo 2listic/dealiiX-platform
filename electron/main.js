@@ -7,6 +7,7 @@ import {
   connectToSSHWithKey,
   connectToSSHWithPassword,
 } from './utils/sshConnections.js'
+import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import store from './utils/storage.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -30,6 +31,25 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   mainWindow.webContents.openDevTools() // open devTools by default
+}
+
+const getRemoteConnectionSettings = (settings) => {
+  const execution = settings.execution
+  if (execution?.remote) {
+    return {
+      host: execution.remote.host,
+      port: execution.remote.port,
+      username: execution.remote.username,
+      pathToSsh: execution.remote.sshKeyPath,
+    }
+  }
+
+  return {
+    host: 'localhost',
+    port: 2222,
+    username: 'root',
+    pathToSsh: settings.sshPathKey,
+  }
 }
 
 app.whenReady().then(() => {
@@ -57,21 +77,28 @@ ipcMain.handle(
 // Listen for messages from the renderer process
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   const settings = store.get('settings', {})
-  const pathToSsh = settings.sshPathKey
-  if (!pathToSsh) {
+  const connectionSettings = getRemoteConnectionSettings(settings)
+  if (!connectionSettings.pathToSsh) {
     throw new Error('SSH key path not configured in settings')
   }
-  return await connectToSSHWithKey(command, pathToSsh)
+  return await connectToSSHWithKey(command, connectionSettings)
 })
 
 ipcMain.handle('upload-file-ssh', async (event, { content, remotePath }) => {
   const settings = store.get('settings', {})
-  const pathToSsh = settings.sshPathKey
-  if (!pathToSsh) {
+  const connectionSettings = getRemoteConnectionSettings(settings)
+  if (!connectionSettings.pathToSsh) {
     throw new Error('SSH key path not configured in settings')
   }
-  return await uploadFileViaSftp(content, remotePath, pathToSsh)
+  return await uploadFileViaSftp(content, remotePath, connectionSettings)
 })
+
+ipcMain.handle(
+  'probe-sync-execution-settings',
+  async (event, executionSettings) => {
+    return await probeAndSyncExecutionSettings(executionSettings)
+  }
+)
 
 ipcMain.handle('open-external-url', async (event, url) => {
   // Option 1: Open in system default browser (recommended for external URLs)

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from './layout/Button.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
+  import { settingsState } from '../stores/settingsStore.svelte'
 
   type ParameterLeaf = {
     value: string
@@ -17,6 +18,7 @@
 
   let parameters = $derived(parametersState.value)
   let fileInput: HTMLInputElement = $state(null)
+  let executableMode = $derived(settingsState.isExecutableMode())
 
   function isLeaf(obj: unknown): obj is ParameterLeaf {
     return (
@@ -28,6 +30,7 @@
   }
 
   function loadFile(event: Event) {
+    if (executableMode) return
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return
@@ -83,25 +86,37 @@
 <div class="parameters-view">
   {#if !parameters}
     <div class="empty-state">
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept=".json"
-        onchange={loadFile}
-        hidden
-      />
-      <Button onclick={() => fileInput.click()}>Load Parameters File</Button>
+      {#if executableMode}
+        <div class="empty-state-copy">
+          <strong>No backend template synced yet</strong>
+          <span>
+            Save the executable configuration from Settings to probe the backend
+            and load its parameters template.
+          </span>
+        </div>
+      {:else}
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept=".json"
+          onchange={loadFile}
+          hidden
+        />
+        <Button onclick={() => fileInput.click()}>Load Parameters File</Button>
+      {/if}
     </div>
   {:else}
     <div class="toolbar">
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept=".json"
-        onchange={loadFile}
-        hidden
-      />
-      <Button size="small" onclick={() => fileInput.click()}>Load File</Button>
+      {#if !executableMode}
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept=".json"
+          onchange={loadFile}
+          hidden
+        />
+        <Button size="small" onclick={() => fileInput.click()}>Load File</Button>
+      {/if}
       <Button size="small" onclick={downloadParameters}>Download</Button>
     </div>
     <div class="tree">
@@ -188,6 +203,15 @@
     align-items: center;
     justify-content: center;
     height: 100%;
+  }
+
+  .empty-state-copy {
+    max-width: 28rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 1rem;
   }
 
   .toolbar {

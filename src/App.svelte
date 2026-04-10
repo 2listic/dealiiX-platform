@@ -8,8 +8,10 @@
   import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
+  import { settingsState } from './lib/stores/settingsStore.svelte'
 
   let parametersOpen = $state(false)
+  let executableMode = $derived(settingsState.isExecutableMode())
 
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem
@@ -34,6 +36,12 @@
       sidebarPositionHolderElem.style.display = 'block'
     }
   })
+
+  $effect(() => {
+    if (executableMode) {
+      parametersOpen = true
+    }
+  })
 </script>
 
 <main>
@@ -51,13 +59,29 @@
       <div class="main-content">
         <div class="flow-wrapper">
           <FlowCanvas />
+          {#if executableMode}
+            <div class="canvas-overlay">
+              <div class="canvas-overlay-card">
+                <strong>Canvas disabled</strong>
+                <span>
+                  The active backend is a custom executable. Parameters are the
+                  primary interface in this mode.
+                </span>
+              </div>
+            </div>
+          {/if}
         </div>
         <div class="parameters-panel" class:open={parametersOpen}>
           <button
             class="parameters-tab"
-            onclick={() => (parametersOpen = !parametersOpen)}
+            onclick={() => {
+              if (!executableMode) parametersOpen = !parametersOpen
+            }}
+            disabled={executableMode}
             title={parametersOpen
-              ? 'Close parameters panel'
+              ? executableMode
+                ? 'Parameters are always active for executable backends'
+                : 'Close parameters panel'
               : 'Open parameters panel'}
           >
             <span>Parameters</span>
@@ -121,6 +145,7 @@
   .flow-wrapper {
     width: 100%;
     height: 100%;
+    position: relative;
   }
 
   .parameters-panel {
@@ -179,9 +204,38 @@
     letter-spacing: 0.04em;
   }
 
+  .parameters-tab:disabled {
+    cursor: default;
+    opacity: 0.9;
+  }
+
   .parameters-panel.open {
     /* Remove the translation */
     transform: translateX(0);
     pointer-events: auto;
+  }
+
+  .canvas-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+    background: color-mix(in srgb, var(--background-color) 82%, transparent);
+    z-index: 20;
+  }
+
+  .canvas-overlay-card {
+    max-width: 26rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--xy-edge-stroke, #ccc);
+    background: var(--primary-color);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+    text-align: center;
   }
 </style>
