@@ -36,7 +36,6 @@
       sidebarPositionHolderElem.style.display = 'block'
     }
   })
-
 </script>
 
 <main>
@@ -197,5 +196,4 @@
     transform: translateX(0);
     pointer-events: auto;
   }
-
 </style>

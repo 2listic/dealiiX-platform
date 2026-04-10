@@ -124,7 +124,9 @@
         }
 
         const nestedUploaded =
-          uploadedValue && typeof uploadedValue === 'object' ? uploadedValue : {}
+          uploadedValue && typeof uploadedValue === 'object'
+            ? uploadedValue
+            : {}
         const nested = mergeParametersTemplate(
           templateValue as ParameterTree,
           nestedUploaded,
@@ -141,7 +143,9 @@
       })
 
     if (uploaded && typeof uploaded === 'object') {
-      for (const [key, value] of Object.entries(uploaded as Record<string, unknown>)) {
+      for (const [key, value] of Object.entries(
+        uploaded as Record<string, unknown>
+      )) {
         if (key === '__extra') continue
         if (!(key in template)) {
           extraPaths.push(currentPath ? `${currentPath}.${key}` : key)
@@ -185,9 +189,7 @@
         if (extraPaths.length > 0) {
           const preview = extraPaths.slice(0, 5).join(', ')
           const suffix =
-            extraPaths.length > 5
-              ? `, and ${extraPaths.length - 5} more`
-              : ''
+            extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
           const includeExtras = window.confirm(
             `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
           )
@@ -205,7 +207,8 @@
             })
           } else {
             toastState.add({
-              message: 'Extra sections were ignored and only template entries were loaded',
+              message:
+                'Extra sections were ignored and only template entries were loaded',
               type: 'info',
               timeout: 8000,
             })
@@ -269,7 +272,8 @@
     const a = document.createElement('a')
     a.href = url
     a.download = lastParametersFilePath
-      ? lastParametersFilePath.split(/[/\\]/).pop() || 'template_parameters.json'
+      ? lastParametersFilePath.split(/[/\\]/).pop() ||
+        'template_parameters.json'
       : 'template_parameters.json'
     a.click()
     URL.revokeObjectURL(url)
@@ -323,7 +327,11 @@
             {@const inputType = parsePatternType(val.pattern_description)}
             <div class="param-leaf">
               {#if val.documentation}
-                <span class="param-doc" class:extra={val.__extra} title={val.documentation}>i</span>
+                <span
+                  class="param-doc"
+                  class:extra={val.__extra}
+                  title={val.documentation}>i</span
+                >
               {/if}
               <label title={val.documentation || undefined}>
                 <span class="param-name" class:extra={val.__extra}>{key}</span>

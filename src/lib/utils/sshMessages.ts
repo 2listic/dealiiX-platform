@@ -195,14 +195,17 @@ const exportAndEvalExecutableLocal = async (
 ): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
   const localSettings = settingsState.current.execution.local
-  const resultExecute = await window.electron.invoke('start-local-executable-run', {
-    executablePath: localSettings.executablePath,
-    workingDirectory: localSettings.workingDirectory,
-    parametersPayload: getExecutableParametersPayload(),
-    parametersFileName: localSettings.parametersFileName,
-    internalJobId,
-    uploadParameters: config?.uploadParameters ?? true,
-  })
+  const resultExecute = await window.electron.invoke(
+    'start-local-executable-run',
+    {
+      executablePath: localSettings.executablePath,
+      workingDirectory: localSettings.workingDirectory,
+      parametersPayload: getExecutableParametersPayload(),
+      parametersFileName: localSettings.parametersFileName,
+      internalJobId,
+      uploadParameters: config?.uploadParameters ?? true,
+    }
+  )
 
   const jobId = String(resultExecute.jobId)
   await jobIdMapState.add(Number(jobId), internalJobId)
@@ -222,7 +225,8 @@ const exportAndEvalExecutableRemote = async (
   const remoteSettings = settingsState.current.execution.remote
   const internalJobId = jobIdMapState.getNextKey()
   const parametersPayload = getExecutableParametersPayload()
-  const parametersFileName = remoteSettings.parametersFileName || 'parameters.json'
+  const parametersFileName =
+    remoteSettings.parametersFileName || 'parameters.json'
   const parametersRemotePath = `${remoteSettings.workingDirectory}/${parametersFileName}`
   const jobScriptRemotePath = `${remoteSettings.workingDirectory}/job.sh`
 

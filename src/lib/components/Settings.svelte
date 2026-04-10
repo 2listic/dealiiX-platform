@@ -210,8 +210,7 @@
     draft.execution.local.coralBinaryPath = localCoralBinaryPath
     draft.execution.local.coralPluginPath = localCoralPluginPath
     draft.execution.local.executablePath = localExecutablePath
-    draft.execution.local.parametersFileName =
-      localExecutableParametersFileName
+    draft.execution.local.parametersFileName = localExecutableParametersFileName
     draft.urlVisualizer = urlVisualizer
     draft.urlRemoteServer = urlRemoteServer
     draft.useMpi = useMpi
