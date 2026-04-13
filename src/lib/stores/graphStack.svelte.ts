@@ -8,7 +8,7 @@ export type GraphContext = {
   label: string
   /** Original name of the subnetwork node before any in-session rename, or null for the root. */
   originalName: string | null
-  /** ID of the network node on the parent canvas that was double-clicked to enter this level, or null for the root. */
+  /** ID of the network node on the parent canvas that was clicked to enter this level, or null for the root. */
   parentNodeId: string | null
   /** Snapshot of the canvas nodes at this level, saved before navigating away. */
   nodes: Node[]

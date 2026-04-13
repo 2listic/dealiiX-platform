@@ -15,10 +15,13 @@ import {
   getNetworkNodeDefinition,
   getNodeData,
 } from '../stores/registryStore.svelte'
-import { handleIdToIndex } from './canvasNodeUtils'
+import {
+  handleIdToIndex,
+  resolveInputArgument,
+  resolveOutputType,
+} from './canvasNodeUtils'
 import {
   isSubGraphNodeDefinition,
-  SELF,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -209,31 +212,22 @@ export const validateGraphData = (
       ? targetNode
       : getNodeData(targetNode.type)
 
-    // Determine source output type
-    let sourceOutputType: string
-
-    // Check if the output is SELF (e.g., constructor or method returning this)
-    if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
-      if ('base' in sourceNodeData) {
-        // If node is derived from a base class, use the base class type
-        sourceOutputType = sourceNodeData.base
-      } else {
-        // Otherwise use its type as usual
-        sourceOutputType = sourceNodeData.type
-      }
-    } else {
-      // Regular output - get from arguments array
-      const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]
-      if (!sourceOutputArg) {
-        throw new Error(
-          `Edge ${edgeId}: Source node ${edge.source} has no argument at index ${edge.source_output}`
-        )
-      }
-      sourceOutputType = sourceOutputArg.type
+    // Determine source output type via outputs[] → arguments[] indirection
+    const sourceOutputType = resolveOutputType(
+      sourceNodeData,
+      edge.source_output
+    )
+    if (sourceOutputType == null) {
+      throw new Error(
+        `Edge ${edgeId}: Source node ${edge.source} has no output at index ${edge.source_output}`
+      )
     }
 
-    // Determine target input type from arguments array
-    const targetInputArg = targetNodeData.arguments?.[edge.target_input]
+    // Determine target input type via inputs[] → arguments[] indirection
+    const targetInputArg = resolveInputArgument(
+      targetNodeData,
+      edge.target_input
+    )
     if (!targetInputArg) {
       throw new Error(
         `Edge ${edgeId}: Target node ${edge.target} has no argument at index ${edge.target_input}`

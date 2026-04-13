@@ -17,28 +17,17 @@ import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
 } from '../utils/graphParser'
+import {
+  handleIdToIndex,
+  resolveInputArgument,
+  resolveOutputType,
+} from '../utils/canvasNodeUtils'
+import type {
+  NodeDefinitions,
+  SubGraphNodeDefinition,
+} from '../types/nodeTypes'
 import { toastState } from './toastsStore.svelte.js'
 import { graphStackState, persistActiveCanvas } from './graphStack.svelte'
-
-const cloneNodes = (nodes: Node[]): Node[] =>
-  $state.snapshot(nodes) as unknown as Node[]
-
-const cloneEdges = (edges: Edge[]): Edge[] =>
-  $state.snapshot(edges) as unknown as Edge[]
-
-const errorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
-  return fallback
-}
-
-const applyCanvasState = (nodes: Node[], edges: Edge[]) => {
-  setNodes(cloneNodes(nodes))
-  setEdges(cloneEdges(edges))
-  updateLastNodeId()
-}
 
 /**
  * Drills into a subnetwork node, replacing the canvas with its inner graph.
@@ -200,13 +189,33 @@ export const loadParentGraph = async (): Promise<void> => {
       throw new Error('Parent subnetwork node was not found.')
     }
 
-    // Pop the current context and restore the parent canvas.
-    graphStackState.collapseToParent({ ...parentContext, nodes: parentNodes })
-    applyCanvasState(parentNodes, parentContext.edges)
+    // Remove edges that became stale because the subnetwork interface changed
+    // (out-of-bounds handle indices or type mismatches after boundary rebuild).
+    const [validParentEdges, removedEdgesCount] = filterStaleParentEdges(
+      cloneEdges(parentContext.edges),
+      parentNodes,
+      currentContext.parentNodeId!,
+      updatedNetworkNode
+    )
+
+    // Pop current context and update parent context with new subnetwork definition and validated edges
+    graphStackState.collapseToParent({
+      ...parentContext,
+      nodes: parentNodes,
+      edges: validParentEdges,
+    })
+    // Restore the parent graph on canvas
+    applyCanvasState(parentNodes, validParentEdges)
     toastState.add({
       message: `Saved changes to subnetwork "${updatedNetworkNode.name}"`,
       timeout: 2500,
     })
+    if (removedEdgesCount > 0) {
+      toastState.add({
+        message: `Removed ${removedEdgesCount} edge${removedEdgesCount === 1 ? '' : 's'} — subnetwork interface changed`,
+        type: 'error',
+      })
+    }
   } catch (error) {
     console.error('Failed to leave subnetwork:', error)
     toastState.add({
@@ -304,4 +313,104 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
     label: updatedNetworkNode.name,
     originalName: updatedNetworkNode.name,
   })
+}
+
+// ── Private helpers ────────────────────────────────────────────────────────────
+
+const cloneNodes = (nodes: Node[]): Node[] =>
+  $state.snapshot(nodes) as unknown as Node[]
+
+const cloneEdges = (edges: Edge[]): Edge[] =>
+  $state.snapshot(edges) as unknown as Edge[]
+
+const errorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return fallback
+}
+
+/**
+ * Replaces the live canvas with the given nodes and edges.
+ * Clones both arrays before writing so the stack's stored context
+ * and the canvas state remain independent references.
+ * @param nodes - Nodes to load onto the canvas.
+ * @param edges - Edges to load onto the canvas.
+ */
+const applyCanvasState = (nodes: Node[], edges: Edge[]) => {
+  setNodes(cloneNodes(nodes))
+  setEdges(cloneEdges(edges))
+  updateLastNodeId()
+}
+
+/**
+ * Filters parent graph edges that became stale after a subnetwork interface changed.
+ *
+ * An edge is removed if its handle index is out of bounds on the updated subnetwork node,
+ * or if the type at that handle no longer matches the connecting node's type.
+ * Both cases arise when `analyzeNetworkBoundary` rebuilds the interface from scratch
+ * (e.g. a free port was consumed internally, or argument order shifted due to new nodes).
+ *
+ * @returns A tuple of [valid edges, number of removed edges].
+ */
+const filterStaleParentEdges = (
+  edges: Edge[],
+  parentNodes: Node[],
+  parentNodeId: string,
+  updatedNetworkNode: SubGraphNodeDefinition
+): [Edge[], number] => {
+  let removedCount = 0
+
+  const validEdges = edges.filter((edge) => {
+    if (edge.source !== parentNodeId && edge.target !== parentNodeId) {
+      return true
+    }
+
+    if (edge.target === parentNodeId) {
+      // Incoming edge: check the target handle exists and types still match.
+      const inputIndex = handleIdToIndex(edge.targetHandle as string)
+      const argIndex = updatedNetworkNode.inputs[inputIndex]
+      if (argIndex == null) {
+        removedCount++
+        return false
+      }
+      const expectedType = updatedNetworkNode.arguments[argIndex]?.type
+      const sourceNode = parentNodes.find((n) => n.id === edge.source)
+      const actualType = sourceNode
+        ? resolveOutputType(
+            sourceNode.data as NodeDefinitions,
+            handleIdToIndex(edge.sourceHandle as string)
+          )
+        : null
+      if (actualType !== expectedType) {
+        removedCount++
+        return false
+      }
+    } else {
+      // Outgoing edge: check the source handle exists and types still match.
+      const outputIndex = handleIdToIndex(edge.sourceHandle as string)
+      const argIndex = updatedNetworkNode.outputs[outputIndex]
+      if (argIndex == null) {
+        removedCount++
+        return false
+      }
+      const expectedType = updatedNetworkNode.arguments[argIndex]?.type
+      const targetNode = parentNodes.find((n) => n.id === edge.target)
+      const actualType = targetNode
+        ? resolveInputArgument(
+            targetNode.data as NodeDefinitions,
+            handleIdToIndex(edge.targetHandle as string)
+          )?.type
+        : null
+      if (actualType !== expectedType) {
+        removedCount++
+        return false
+      }
+    }
+
+    return true
+  })
+
+  return [validEdges, removedCount]
 }
