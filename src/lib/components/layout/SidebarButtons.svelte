@@ -51,6 +51,7 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
+  const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -179,6 +180,11 @@
   }
 
   const handleSaveProject = async () => {
+    // Continue only if we are at the root level of the graph
+    if (graphStackState.canGoBack) {
+      getModal(subnetworkWarningModalId).open()
+      return
+    }
     if (currentProjectState.id) {
       // Update existing project
       try {
@@ -234,6 +240,11 @@
   }
 
   const handleGraphDownload = () => {
+    // Continue only if we are at the root level of the graph
+    if (graphStackState.canGoBack) {
+      getModal(subnetworkWarningModalId).open()
+      return
+    }
     try {
       // Parse current graph to Network JSON format (MPI plugin block included)
       const useMpi = settingsState.getKey(USE_MPI) ?? false
@@ -296,6 +307,15 @@
     confirmText="Logout"
     confirmVariant="action"
     onConfirm={handleOncofirmLogout}
+  />
+
+  <ConfirmationModal
+    modalId={subnetworkWarningModalId}
+    title="Cannot save from a subnetwork"
+    message="Navigate back to the root graph before saving or downloading. Conflicts may need to be reviewed."
+    confirmText="OK"
+    cancelText="Close"
+    onConfirm={() => {}}
   />
 
   <!-- Project group -->

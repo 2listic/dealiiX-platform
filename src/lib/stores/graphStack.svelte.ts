@@ -66,9 +66,6 @@ const safelyInitGraphStack = () => {
  * is editing. This function bridges it back into the stack so that
  * `enterSubnetwork`, `loadParentGraph`, and `renameCurrentSubnetwork` always work
  * from an up-to-date snapshot rather than a stale one.
- *
- * Kept as a standalone export (not on graphStackState) because it also
- * reads from the nodes store — it is not a pure graphStack operation.
  */
 export const persistActiveCanvas = () => {
   // Guarantee a root entry exists before writing to the top of the stack.

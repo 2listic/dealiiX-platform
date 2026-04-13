@@ -1,6 +1,5 @@
 <script lang="ts">
   import {
-    addNetworkNode,
     getAvailableNodes,
     getStoredNetworkNodes,
     removeNetworkNode,
@@ -52,10 +51,10 @@
       await removeNetworkNode(networkNodeName)
     } catch (e) {
       toastState.add({
-        message: e.message || `Failed to delete node ${addNetworkNode}`,
+        message: e.message || `Failed to delete node ${networkNodeName}`,
         type: 'error',
       })
-      console.error(`Failed to delete node ${addNetworkNode}`, e.message)
+      console.error(`Failed to delete node ${networkNodeName}`, e.message)
     }
   }
 </script>
