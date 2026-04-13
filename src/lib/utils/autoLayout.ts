@@ -1,3 +1,9 @@
+/**
+ * Automatic graph layout using the dagre rank-based algorithm.
+ * Computes node positions from edge topology; call after loading or structurally
+ * modifying the graph to avoid manual placement.
+ */
+
 import dagre from '@dagrejs/dagre'
 import type { Edge, Node } from '@xyflow/svelte'
 

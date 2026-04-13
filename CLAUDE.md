@@ -41,8 +41,13 @@ The application uses two JSON protocols to communicate with CORAL:
 
 Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
-- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredSubGraphNodes` / `SubGraphNodeDefinition` types.
-- `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`, `setLastNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
+- `nodes.svelte.ts` - Central store for flow nodes/edges. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `addNode()`, `addEdge()`, `removeNode()`, `updateLastNodeId()`.
+- `registryStore.svelte.ts` - Registry for available node types (both standard and network). Exports `setRegistry()`, `getNodeData(type)`, `getAvailableNodes()`, `isNodeInRegistry(type)` for standard nodes; and `addNetworkNode(key, data)`, `removeNetworkNode(name)`, `getNetworkNodeDefinition(name)`, `getStoredNetworkNodes()`, `isNodeInNetworkNodes(name)` for subgraph nodes. Both registries are persisted in electron-store and loaded at startup.
+- `graphStack.svelte.ts` - Navigation context stack for entering/exiting subnetworks. `graphStackState` has `breadcrumbs`, `canGoBack`, `currentLabel` reactive getters, plus `pushContext()`, `collapseToParent()`, `updateTopContext()`, `updateParentContext()`, `reset()` mutators. `persistActiveCanvas()` snapshots the live canvas into the top stack entry before any navigation action.
+- `graphNavigation.svelte.ts` - High-level subnetwork navigation actions built on top of `graphStack`. Exports `enterSubnetwork(nodeId)` (drills into a subnetwork node), `loadParentGraph()` (navigates back, persisting edits), and `renameCurrentSubnetwork(name)` (renames without navigating away).
+- `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
+- `colorModeStore.svelte.ts` - Light/dark theme state. `colorModeState.value` (get/set) and `colorModeState.toggle()`. Setting automatically syncs to electron IPC (`set-theme`) and persists to electron-store under `colorMode`.
+- `parametersStore.svelte.ts` - Transient store for the CORAL parameter tree (loaded from a run). `parametersState.value` (get/set) and `parametersState.snapshot` (non-reactive copy).
 - `auth.svelte.js` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
 - `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
 - `currentProjectStore.svelte.js` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`.
@@ -154,8 +159,8 @@ When an edge connects two nodes:
 
 For network nodes (`type === "coral::Network"`):
 
-- Node definitions are stored in `networkNodes` store (not `registry`)
-- Lookup uses the node's `name` field: `getNetworkNodeData(node.name)`
+- Node definitions are stored in the `networkNodes` section of `registryStore.svelte.ts` (not the standard `registry`)
+- Lookup uses the node's `name` field: `getNetworkNodeDefinition(node.name)`
 - Regular nodes use: `getNodeData(node.type)`
 
 #### Network Nodes
@@ -171,9 +176,10 @@ Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational g
 - **Pass-through Arguments**: An argument with `connection_type: 'pass_through'` stays the same only if both input and output are free for the same internal node. On the contrary if one of internal `pass_trough` is connected, then at the netwrok node level the argument will be marked with a `connection_type: 'input'` or `output`.
 - **Value Field**: Contains the sub-graph as a `Network` object. The value is stripped from node data when on canvas and restored during export via `parseGraphToProtocol()`.
 - **Qualified IDs**: On export/save/download, `addQualifiedIds()` adds a `qualified_id` field to every node encoding its position in the nesting hierarchy (e.g., `"12_3"` for node 3 inside network node 12). Removed on import via `removeQualifiedIds()`.
-- **Creating Network Nodes**: Use `createNewNetworkNode(name, nodes, edges)` from `networkNode.ts` (takes snapshot arrays, not reactive state)
+- **Creating Network Nodes**: Use `createNetworkNodeDefinition(name, nodes, edges)` from `networkNode.ts` (takes snapshot arrays, not reactive state)
   - The function automatically identifies free inputs/outputs by checking which connections have no edges
-  - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)`
+  - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)` from `registryStore.svelte.ts`
+- **Subnetwork Navigation**: `enterSubnetwork(nodeId)` and `loadParentGraph()` from `graphNavigation.svelte.ts` handle drilling into / back out of subnetworks. The graph stack (`graphStackState` in `graphStack.svelte.ts`) holds a `GraphContext` per level (label, nodes, edges, parentNodeId). Always call `persistActiveCanvas()` before reading stack state — it syncs the live canvas into the top context.
 
 ## Common Commands
 

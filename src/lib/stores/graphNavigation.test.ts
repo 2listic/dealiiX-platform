@@ -55,12 +55,15 @@ vi.mock('./registryStore.svelte', () => ({
   removeNetworkNode: mockState.removeNetworkNode,
 }))
 
-vi.mock('../utils/networkNode', async () => {
-  const actual = await vi.importActual<typeof import('../utils/networkNode')>(
-    '../utils/networkNode'
-  )
+vi.mock('../utils/networkNode', () => ({
+  createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
+}))
+
+vi.mock('../utils/networkNodeCanvas', async () => {
+  const actual = await vi.importActual<
+    typeof import('../utils/networkNodeCanvas')
+  >('../utils/networkNodeCanvas')
   return {
-    createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
     isNetworkCanvasNode: actual.isNetworkCanvasNode,
   }
 })

@@ -1,3 +1,11 @@
+/**
+ * SSH and Slurm job orchestration for remote graph execution.
+ * Builds and uploads the graph JSON and sbatch script, submits the job,
+ * polls for completion, and reports results via toast notifications.
+ *
+ * Entry point: exportAndEvalGraph(nodes, edges, config?)
+ */
+
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'

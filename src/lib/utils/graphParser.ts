@@ -1,3 +1,14 @@
+/**
+ * Conversion layer between the CORAL network protocol and the @xyflow canvas format.
+ * All graph loading, saving, export, and validation passes through here.
+ *
+ * Key functions:
+ *   Protocol → Flow:  nodesFromProtocolToFlow(), edgesFromProtocolToFlow(), loadGraphFromProtocol()
+ *   Flow → Protocol:  parseGraphToProtocol(), parseGraphWithQualifiedIds()
+ *   Qualified IDs:    addQualifiedIds(), removeQualifiedIds()
+ *   Validation:       validateGraphData()
+ */
+
 import { setEdges, setNodes, updateLastNodeId } from '../stores/nodes.svelte'
 import {
   addNetworkNode,

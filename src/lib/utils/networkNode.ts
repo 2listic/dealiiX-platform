@@ -1,8 +1,15 @@
+/**
+ * Protocol-level utilities for subnetwork (network node) definitions.
+ * Converts a canvas subgraph into a SubGraphNodeDefinition for the registry,
+ * and computes the boundary handle maps used when collapsing or expanding subgraphs.
+ *
+ * Canvas-level operations (explode, collapse, flatten) live in networkNodeCanvas.ts.
+ */
+
 import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
   NodeType,
-  isSubGraphNodeDefinition,
   type Type,
   type StandardNodeDefinition,
   TypeField,
@@ -295,20 +302,4 @@ export const analyzeNetworkBoundary = (
     networkInputToInternalHandle,
     networkOutputToInternalHandle,
   }
-}
-
-/**
- * Type guard that checks whether a canvas node carries a `SubGraphNodeDefinition`
- * as its data — i.e. it is a network (subnetwork) node on the canvas.
- * @param node - The canvas node to test, or undefined.
- * @returns True if the node exists and its data is a `SubGraphNodeDefinition`.
- */
-export const isNetworkCanvasNode = (
-  node: Node | undefined
-): node is Node<SubGraphNodeDefinition> => {
-  if (!node) {
-    return false
-  }
-
-  return isSubGraphNodeDefinition(node.data as SubGraphNodeDefinition)
 }

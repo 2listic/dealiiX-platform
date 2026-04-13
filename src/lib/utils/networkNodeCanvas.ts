@@ -1,3 +1,12 @@
+/**
+ * Canvas-level operations on subnetwork (network) nodes.
+ * Handles exploding a network node back into its constituent nodes/edges,
+ * collapsing a selection into a new network node, and flattening nested subgraphs.
+ *
+ * Protocol-level definition building (SubGraphNodeDefinition, boundary analysis)
+ * lives in networkNode.ts.
+ */
+
 import type { Node, Edge } from '@xyflow/svelte'
 import {
   NodeType,
@@ -6,7 +15,7 @@ import {
   type SubGraphNodeDefinition,
   isSubGraphNodeDefinition,
 } from '../types/nodeTypes'
-import { handleIdToIndex } from './canvasNodeUtils'
+import { handleIdToIndex, createCustomEdge } from './canvasNodeUtils'
 import {
   getEdgesSnapshot,
   getNextNodeId,
@@ -55,16 +64,6 @@ const resolveNetworkNodeValue = (node: Node): SubGraphNodeDefinition => {
   return getNetworkNodeDefinition((data as SubGraphNodeDefinition).name)
 }
 
-const createEdgeId = (
-  source: string,
-  sourceHandle: string,
-  target: string,
-  targetHandle: string
-): string => {
-  return `xy-edge__${source}${sourceHandle}-${target}${targetHandle}`
-}
-
-// TODO: compare with createCanvasNode in cavasNodeUtils.ts
 const toCanvasNodeFromProtocol = (
   protocolNode: LeanStandardNode | SubGraphNodeDefinition,
   nodeId: string,
@@ -139,16 +138,12 @@ const explodeSubgraphNodeSelection = (
     toCanvasNodeFromProtocol(node, oldToNewNodeId[oldId], positionOffset, index)
   )
   const explodedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
-    id: createEdgeId(
-      oldToNewNodeId[String(edge.source)],
-      `output-${edge.source_output}`,
-      oldToNewNodeId[String(edge.target)],
-      `input-${edge.target_input}`
-    ),
-    source: oldToNewNodeId[String(edge.source)],
-    target: oldToNewNodeId[String(edge.target)],
-    sourceHandle: `output-${edge.source_output}`,
-    targetHandle: `input-${edge.target_input}`,
+    ...createCustomEdge({
+      source: oldToNewNodeId[String(edge.source)],
+      sourceHandle: `output-${edge.source_output}`,
+      target: oldToNewNodeId[String(edge.target)],
+      targetHandle: `input-${edge.target_input}`,
+    }),
     selected: false,
   }))
 
@@ -244,7 +239,7 @@ export const flattenSelectedSubgraphs = (
 
         return {
           ...edge,
-          id: createEdgeId(source, sourceHandle, target, targetHandle),
+          id: `xy-edge__${source}${sourceHandle}-${target}${targetHandle}`,
           source,
           sourceHandle,
           target,
@@ -474,4 +469,20 @@ export const collapseSelectionToSubnetwork = async (
       ...rewiredOutgoingEdges,
     ],
   }
+}
+
+/**
+ * Type guard that checks whether a canvas node carries a `SubGraphNodeDefinition`
+ * as its data — i.e. it is a network (subnetwork) node on the canvas.
+ * @param node - The canvas node to test, or undefined.
+ * @returns True if the node exists and its data is a `SubGraphNodeDefinition`.
+ */
+export const isNetworkCanvasNode = (
+  node: Node | undefined
+): node is Node<SubGraphNodeDefinition> => {
+  if (!node) {
+    return false
+  }
+
+  return isSubGraphNodeDefinition(node.data as SubGraphNodeDefinition)
 }

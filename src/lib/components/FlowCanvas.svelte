@@ -40,7 +40,7 @@
     isValidConnection,
     isTargetHandleConnected,
   } from '../utils/connectionsValidation'
-  import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
+  import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
   import { returnNodeName } from '../utils/canvasNodeUtils'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'

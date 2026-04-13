@@ -11,10 +11,8 @@ import {
   isNodeInNetworkNodes,
   removeNetworkNode,
 } from './registryStore.svelte'
-import {
-  createNetworkNodeDefinition,
-  isNetworkCanvasNode,
-} from '../utils/networkNode'
+import { createNetworkNodeDefinition } from '../utils/networkNode'
+import { isNetworkCanvasNode } from '../utils/networkNodeCanvas'
 import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
