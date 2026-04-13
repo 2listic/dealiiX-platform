@@ -245,6 +245,10 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **MPI graph payload**: When MPI is enabled, `buildGraphPayload()` in `sshMessages.ts` injects a `plugin: { MPI: { enabled: true, max_num_threads: 1 } }` block at the top of the exported network JSON, as required by CORAL for MPI initialization.
 - **Node execution status**: `getNodesExecutionStatus(jobIdInternal)` reads files from `/app/shared-data/nodes-exec-status/<internalJobId>/` on the remote server, returning a `Map<qualifiedNodeId, string[]>` of status sequences (e.g. `'running'`, `'succeeded'`, `'failed'`).
 
+## Code Conventions
+
+- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
+
 ## Git Workflow
 
 Clone with submodules:

@@ -216,7 +216,7 @@ export const flattenSelectedSubgraphs = (
         if (edge.source === subgraphNodeId) {
           const binding =
             explosion.networkOutputToInternalHandle[
-              handleIdToIndex(edge.sourceHandle)
+              handleIdToIndex(edge.sourceHandle as string)
             ]
           if (!binding) {
             return null
@@ -228,7 +228,7 @@ export const flattenSelectedSubgraphs = (
         if (edge.target === subgraphNodeId) {
           const binding =
             explosion.networkInputToInternalHandle[
-              handleIdToIndex(edge.targetHandle)
+              handleIdToIndex(edge.targetHandle as string)
             ]
           if (!binding) {
             return null
@@ -292,7 +292,10 @@ export const explodeNetworkNodeInGraph = (
 
   const rewiredIncomingEdges = incomingEdges
     .map((edge) => {
-      const handleIndex = Number.parseInt(edge.targetHandle.split('-')[1], 10)
+      const handleIndex = Number.parseInt(
+        (edge.targetHandle as string).split('-')[1],
+        10
+      )
       const binding = boundary.networkInputToInternalHandle[handleIndex]
       if (!binding) {
         return null
@@ -310,7 +313,10 @@ export const explodeNetworkNodeInGraph = (
 
   const rewiredOutgoingEdges = outgoingEdges
     .map((edge) => {
-      const handleIndex = Number.parseInt(edge.sourceHandle.split('-')[1], 10)
+      const handleIndex = Number.parseInt(
+        (edge.sourceHandle as string).split('-')[1],
+        10
+      )
       const binding = boundary.networkOutputToInternalHandle[handleIndex]
       if (!binding) {
         return null

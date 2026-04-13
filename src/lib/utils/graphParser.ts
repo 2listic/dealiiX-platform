@@ -290,7 +290,7 @@ export const removeQualifiedIds = (
  * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
-  const nodesGraph = nodes.reduce((acc, obj) => {
+  const nodesGraph = nodes.reduce<LeanNodes>((acc, obj) => {
     const data = obj.data as LeanStandardNode | SubGraphNodeDefinition
 
     if (isSubGraphNodeDefinition(data)) {
@@ -321,12 +321,12 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
     return acc
   }, {})
 
-  const edgesGraph = edges.reduce((acc, obj, index) => {
+  const edgesGraph = edges.reduce<NetworkEdges>((acc, obj, index) => {
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: handleIdToIndex(obj.sourceHandle),
-      target_input: handleIdToIndex(obj.targetHandle),
+      source_output: handleIdToIndex(obj.sourceHandle as string),
+      target_input: handleIdToIndex(obj.targetHandle as string),
     }
     return acc
   }, {})
