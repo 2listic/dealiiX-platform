@@ -157,11 +157,28 @@ const explodeSubgraphNodeSelection = (
   }
 }
 
+/**
+ * Expands every network (subgraph) node in a selection in-place, replacing each one
+ * with its constituent nodes and rewiring all selection edges through the exploded
+ * internals. Non-subgraph nodes in the selection pass through unchanged.
+ *
+ * Also returns alias maps (`aliasedInputTargetByOriginal` /
+ * `aliasedOutputSourceByOriginal`) that let callers translate any handle reference
+ * that pointed at a now-removed network node into the equivalent internal handle.
+ * These maps are used by {@link collapseSelectionToSubnetwork} when the flatten is
+ * a preprocessing step before collapsing a mixed selection into a new subnetwork.
+ *
+ * @param selectedNodes - Canvas nodes in the current selection (snapshots, not reactive).
+ * @param selectedEdges - Canvas edges whose both endpoints are within the selection.
+ * @param getNextId - Monotonic ID generator; called once per internal node to assign fresh canvas IDs.
+ * @returns The expanded node/edge lists plus the two alias maps.
+ */
 export const flattenSelectedSubgraphs = (
   selectedNodes: Node[],
   selectedEdges: Edge[],
   getNextId: () => number
 ): FlattenedSelectedSubgraphs => {
+  // Initialise working copies: nodes stay selected, edges deselected.
   let workingNodes: Node[] = selectedNodes.map((node) => ({
     ...node,
     selected: true,
@@ -171,9 +188,11 @@ export const flattenSelectedSubgraphs = (
     selected: false,
   }))
 
+  // Alias maps: network-node handle → internal handle, built up across all explosions.
   const aliasedInputTargetByOriginal: Record<string, string> = {}
   const aliasedOutputSourceByOriginal: Record<string, string> = {}
 
+  // Collect IDs of subgraph nodes up-front; the working list mutates each iteration.
   const selectedSubgraphIds = selectedNodes
     .filter((node) =>
       isSubGraphNodeDefinition(
@@ -188,8 +207,10 @@ export const flattenSelectedSubgraphs = (
       continue
     }
 
+    // Expand the subgraph into its constituent canvas nodes and internal edges.
     const explosion = explodeSubgraphNodeSelection(subgraphNode, getNextId)
 
+    // Record input alias: "networkNodeId::input-N" → "internalNodeId::input-M"
     Object.entries(explosion.networkInputToInternalHandle).forEach(
       ([handleIndex, binding]) => {
         aliasedInputTargetByOriginal[
@@ -198,6 +219,7 @@ export const flattenSelectedSubgraphs = (
       }
     )
 
+    // Record output alias: "networkNodeId::output-N" → "internalNodeId::output-M"
     Object.entries(explosion.networkOutputToInternalHandle).forEach(
       ([handleIndex, binding]) => {
         aliasedOutputSourceByOriginal[
@@ -206,6 +228,8 @@ export const flattenSelectedSubgraphs = (
       }
     )
 
+    // Rewire any selection edge that touches the now-exploded network node.
+    // Edges whose handle maps to nothing (dangling) are dropped.
     const rewiredSelectionEdges = workingEdges
       .map((edge) => {
         let source = edge.source
@@ -249,6 +273,7 @@ export const flattenSelectedSubgraphs = (
       })
       .filter((edge) => edge !== null)
 
+    // Replace the network node with its exploded internals for the next iteration.
     workingNodes = [
       ...workingNodes.filter((node) => node.id !== subgraphNodeId),
       ...explosion.explodedNodes,
@@ -267,12 +292,28 @@ export const flattenSelectedSubgraphs = (
   }
 }
 
+/**
+ * Removes a network node from the full canvas graph and replaces it with its
+ * constituent internal nodes and edges, rewiring all outer edges that connected
+ * to the network node's boundary handles to their corresponding internal handles.
+ *
+ * Outer edges whose handle index has no matching boundary binding (e.g. the
+ * subgraph definition is inconsistent) are silently dropped.
+ *
+ * @param nodeId - Canvas ID of the network node to explode.
+ * @param allNodes - All nodes currently on the canvas (snapshots, not reactive).
+ * @param allEdges - All edges currently on the canvas (snapshots, not reactive).
+ * @param getNextId - Monotonic ID generator; called once per internal node to assign fresh canvas IDs.
+ * @returns A new `{ nodes, edges }` pair with the network node replaced by its internals.
+ * @throws {Error} If `nodeId` is not found in `allNodes`.
+ */
 export const explodeNetworkNodeInGraph = (
   nodeId: string,
   allNodes: Node[],
   allEdges: Edge[],
   getNextId: () => number
 ): { nodes: Node[]; edges: Edge[] } => {
+  // Locate the network node and expand it into its internal canvas nodes and edges.
   const networkCanvasNode = allNodes.find((node) => node.id === nodeId)
   if (!networkCanvasNode) {
     throw new Error(`Node '${nodeId}' was not found.`)
@@ -283,13 +324,17 @@ export const explodeNetworkNodeInGraph = (
     getNextId
   )
 
+  // Re-analyse the boundary on the freshly expanded nodes to get handle maps.
   const boundary = analyzeNetworkBoundary(explodedNodes, explodedInternalEdges)
+
+  // Partition outer edges: those touching the network node vs those that do not.
   const incomingEdges = allEdges.filter((edge) => edge.target === nodeId)
   const outgoingEdges = allEdges.filter((edge) => edge.source === nodeId)
   const untouchedEdges = allEdges.filter(
     (edge) => edge.source !== nodeId && edge.target !== nodeId
   )
 
+  // Redirect each incoming edge from the network input handle to the internal target handle.
   const rewiredIncomingEdges = incomingEdges
     .map((edge) => {
       const handleIndex = Number.parseInt(
@@ -311,6 +356,7 @@ export const explodeNetworkNodeInGraph = (
     })
     .filter((edge) => edge !== null)
 
+  // Redirect each outgoing edge from the network output handle to the internal source handle.
   const rewiredOutgoingEdges = outgoingEdges
     .map((edge) => {
       const handleIndex = Number.parseInt(
@@ -332,6 +378,7 @@ export const explodeNetworkNodeInGraph = (
     })
     .filter((edge) => edge !== null)
 
+  // Deselect all surviving outer nodes and splice in the exploded internals.
   const unselectedNodes = allNodes
     .filter((node) => node.id !== nodeId)
     .map((node) => ({ ...node, selected: false }))
@@ -347,13 +394,34 @@ export const explodeNetworkNodeInGraph = (
   }
 }
 
+/**
+ * Collapses the currently selected canvas nodes into a single network node,
+ * persisting the new definition to the registry store and returning the
+ * updated node/edge lists to apply to the canvas.
+ *
+ * Two modes are supported:
+ * - `'create'`: wraps the selected nodes as-is; any nested subgraphs in the
+ *   selection remain as network nodes inside the new subnetwork.
+ * - `'merge'`: first flattens all subgraph nodes in the selection via
+ *   {@link flattenSelectedSubgraphs}, so the resulting subnetwork contains
+ *   only primitive nodes. Outer edges that previously pointed at an inner
+ *   subgraph's handles are translated through the alias maps produced by
+ *   the flatten step before being rewired to the new network node's boundary.
+ *
+ * @param name - Name for the new network node (used as registry key and display label).
+ * @param mode - `'create'` to wrap the selection as-is; `'merge'` to flatten nested subgraphs first.
+ * @returns `{ newNodes, newEdges }` — the full canvas node/edge lists after collapsing.
+ * @throws {Error} If fewer than two nodes are selected.
+ */
 export const collapseSelectionToSubnetwork = async (
   name: string,
   mode: 'create' | 'merge'
 ): Promise<{ newNodes: Node[]; newEdges: Edge[] }> => {
+  // Snapshot the live canvas so the rest of this function works on plain objects.
   const allNodes = getNodesSnapshot()
   const allEdges = getEdgesSnapshot()
 
+  // Identify the selected node IDs and guard against trivially small selections.
   const selectedNodeIds = new Set(
     allNodes.filter((node) => node.selected).map((node) => node.id)
   )
@@ -362,6 +430,7 @@ export const collapseSelectionToSubnetwork = async (
     throw new Error('Select at least two nodes to create a subnetwork.')
   }
 
+  // Separate selected nodes and their purely internal edges from the rest of the graph.
   const selectedCanvasNodes = allNodes.filter((node) =>
     selectedNodeIds.has(node.id)
   )
@@ -370,6 +439,10 @@ export const collapseSelectionToSubnetwork = async (
       selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
   )
 
+  // In 'merge' mode, flatten any nested subgraphs inside the selection so the
+  // resulting subnetwork contains only primitive nodes. The alias maps produced
+  // here are needed later to translate outer edge endpoints that used to point
+  // at a now-exploded inner network node.
   const {
     nodes: selectedNodesForSubgraph,
     edges: internalEdgesForSubgraph,
@@ -388,6 +461,7 @@ export const collapseSelectionToSubnetwork = async (
         aliasedOutputSourceByOriginal: {},
       }
 
+  // Build the SubGraphNodeDefinition and its handle maps, then register it.
   const networkNodeDefinition = createNetworkNodeDefinition(
     name,
     selectedNodesForSubgraph,
@@ -398,6 +472,7 @@ export const collapseSelectionToSubnetwork = async (
 
   await addNetworkNode(networkNodeDefinition.name, networkNodeDefinition)
 
+  // Place the new network node at the centroid of the original selection.
   const newNodeId = String(getNextNodeId())
   const selectionCenter = selectedCanvasNodes.reduce(
     (acc, node) => ({ x: acc.x + node.position.x, y: acc.y + node.position.y }),
@@ -416,10 +491,12 @@ export const collapseSelectionToSubnetwork = async (
     data: { ...networkNodeDefinition },
   }
 
+  // Deselect all nodes that are not part of the collapsed selection.
   const unselectedNodes = allNodes
     .filter((node) => !selectedNodeIds.has(node.id))
     .map((node) => ({ ...node, selected: false }))
 
+  // Partition outer edges by direction relative to the selection boundary.
   const incomingEdges = allEdges.filter(
     (edge) =>
       !selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
@@ -433,6 +510,9 @@ export const collapseSelectionToSubnetwork = async (
       !selectedNodeIds.has(edge.source) && !selectedNodeIds.has(edge.target)
   )
 
+  // Redirect incoming edges to the new network node's input handles.
+  // If the original target was an inner subgraph handle, resolve it through
+  // the alias map first before looking up the network boundary index.
   const rewiredIncomingEdges = incomingEdges
     .map((edge) => {
       const targetKey =
@@ -450,6 +530,8 @@ export const collapseSelectionToSubnetwork = async (
     })
     .filter((edge) => edge !== null)
 
+  // Redirect outgoing edges from the new network node's output handles.
+  // Same alias-map resolution applies for sources that were inner subgraph handles.
   const rewiredOutgoingEdges = outgoingEdges
     .map((edge) => {
       const sourceKey =
