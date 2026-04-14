@@ -1,15 +1,27 @@
+/**
+ * Conversion layer between the CORAL network protocol and the @xyflow canvas format.
+ * All graph loading, saving, export, and validation passes through here.
+ *
+ * Key functions:
+ *   Protocol → Flow:  nodesFromProtocolToFlow(), edgesFromProtocolToFlow(), loadGraphFromProtocol()
+ *   Flow → Protocol:  parseGraphToProtocol(), parseGraphWithQualifiedIds()
+ *   Qualified IDs:    addQualifiedIds(), removeQualifiedIds()
+ *   Validation:       validateGraphData()
+ */
+
+import { setEdges, setNodes, updateLastNodeId } from '../stores/nodes.svelte'
 import {
   addNetworkNode,
   getNetworkNodeDefinition,
   getNodeData,
-  setEdges,
-  setNodes,
-  updateLastNodeId,
-} from '../stores/nodes.svelte'
-import { handleIdToIndex } from './canvasNodeUtils'
+} from '../stores/registryStore.svelte'
+import {
+  handleIdToIndex,
+  resolveInputArgument,
+  resolveOutputType,
+} from './canvasNodeUtils'
 import {
   isSubGraphNodeDefinition,
-  SELF,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -107,7 +119,9 @@ export const nodesFromProtocolToFlow = (nodes: LeanNodes): Node[] => {
 const mergeNodeData = (protocolNode: LeanNodes[string]) => {
   if (protocolNode.type === TypeField.CORAL_NETWORK) {
     // Network nodes: fetch by name, remove value, copy position
-    const storeNodeData = getNetworkNodeDefinition((protocolNode as SubGraphNodeDefinition).name)
+    const storeNodeData = getNetworkNodeDefinition(
+      (protocolNode as SubGraphNodeDefinition).name
+    )
     const { value, ...storeNodeDataWithoutValue } = storeNodeData
     return {
       ...storeNodeDataWithoutValue,
@@ -198,31 +212,22 @@ export const validateGraphData = (
       ? targetNode
       : getNodeData(targetNode.type)
 
-    // Determine source output type
-    let sourceOutputType: string
-
-    // Check if the output is SELF (e.g., constructor or method returning this)
-    if (sourceNodeData.outputs?.[edge.source_output] === SELF) {
-      if ('base' in sourceNodeData) {
-        // If node is derived from a base class, use the base class type
-        sourceOutputType = sourceNodeData.base
-      } else {
-        // Otherwise use its type as usual
-        sourceOutputType = sourceNodeData.type
-      }
-    } else {
-      // Regular output - get from arguments array
-      const sourceOutputArg = sourceNodeData.arguments?.[edge.source_output]
-      if (!sourceOutputArg) {
-        throw new Error(
-          `Edge ${edgeId}: Source node ${edge.source} has no argument at index ${edge.source_output}`
-        )
-      }
-      sourceOutputType = sourceOutputArg.type
+    // Determine source output type via outputs[] → arguments[] indirection
+    const sourceOutputType = resolveOutputType(
+      sourceNodeData,
+      edge.source_output
+    )
+    if (sourceOutputType == null) {
+      throw new Error(
+        `Edge ${edgeId}: Source node ${edge.source} has no output at index ${edge.source_output}`
+      )
     }
 
-    // Determine target input type from arguments array
-    const targetInputArg = targetNodeData.arguments?.[edge.target_input]
+    // Determine target input type via inputs[] → arguments[] indirection
+    const targetInputArg = resolveInputArgument(
+      targetNodeData,
+      edge.target_input
+    )
     if (!targetInputArg) {
       throw new Error(
         `Edge ${edgeId}: Target node ${edge.target} has no argument at index ${edge.target_input}`
@@ -285,7 +290,7 @@ export const removeQualifiedIds = (
  * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
-  const nodesGraph = nodes.reduce((acc, obj) => {
+  const nodesGraph = nodes.reduce<LeanNodes>((acc, obj) => {
     const data = obj.data as LeanStandardNode | SubGraphNodeDefinition
 
     if (isSubGraphNodeDefinition(data)) {
@@ -316,12 +321,12 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
     return acc
   }, {})
 
-  const edgesGraph = edges.reduce((acc, obj, index) => {
+  const edgesGraph = edges.reduce<NetworkEdges>((acc, obj, index) => {
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: handleIdToIndex(obj.sourceHandle),
-      target_input: handleIdToIndex(obj.targetHandle),
+      source_output: handleIdToIndex(obj.sourceHandle as string),
+      target_input: handleIdToIndex(obj.targetHandle as string),
     }
     return acc
   }, {})

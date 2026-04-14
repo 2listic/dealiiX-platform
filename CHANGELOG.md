@@ -6,22 +6,35 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Subnetwork nodes can now be opened and edited in-place directly from the canvas. Navigation through nested graphs is handled via a breadcrumb bar with back navigation. Subnetworks can be renamed from the breadcrumb while editing. A selection of nodes can be collapsed into a new named subnetwork, and any subnetwork node can be exploded back into its constituent nodes in the parent graph. When a subnetwork is emptied while editing and the user navigates back, the corresponding subnetwork node is automatically removed from the parent graph.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Creating a subnetwork is now a contextual action triggered from a canvas selection. The old "Create Sub-Graph" entry has been removed from the Import panel.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Fixed edge validation when returning to the parent graph from an open subnetwork, and on graph import, to correctly resolve input/output indices. Fixed a crash on dynamic node creation via edge-drag when multiple network nodes are present on the canvas.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) Create-on-connect flow: dragging a connection handle onto an empty canvas area now finds compatible node types, creates the node immediately if only one option exists, or opens a selection modal when multiple options are available.
 
 ### Project-Structure
 
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Registry node stores extracted to a dedicated module. New `graphStack.svelte.ts` store added to manage the hierarchical navigation context stack (breadcrumbs, graph snapshots per level, parent node references).
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) `@dagrejs/dagre@3.0.0` added to dependencies.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Vite dev config updated to exclude `@xyflow/svelte` from dependency pre-bundling, fixing an optimization conflict in browser dev mode.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) `connectionsValidation.js` migrated to TypeScript. Node ID counter extracted to its own store (`nodeIdCounter.svelte.ts`). New modal `CreateConnectedNodeModal.svelte` added to handle node type selection when multiple compatible options exist. `canvasNodeUtils.ts` with new helpers to create nodes dynamically.
 
 ### Testing
 
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Added tests for `networkNode.ts`, `networkNodeCanvas.ts` and `graphNavigation.ts`.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Unit tests added for `autoLayout.ts`.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) Unit tests for create-on-connect utilities.
 
 ### CI/CD
 
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Fixed a race condition in the GitHub Actions pipeline causing `esbuild` version mismatches during `npm install`.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI/CD workflows restructured: new `ci.yml` runs type check (`svelte-check`) and tests on every push/PR to `main` (ubuntu only, no duplicate macOS run); `create_deb.yml` and `create-macos.yml` renamed to `release-linux.yml` and `release-macos.yml` trigger now only on tags.
 
 ### UI/UX
 
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Project name merged into the new breadcrumb bar added to the bottom-left panel. New dedicated icons for the "Open subgraph" and "Explode" actions added to the header of every network (subgraph) node.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) New auto-layout button icon added. Layout tools are now grouped under a dedicated "Layout" sidebar menu with separate Horizontal and Vertical layout options. All the sidebar button dropdowns now close automatically after selecting an option.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Selected nodes now display explicit visual selection styling on the canvas.
+- [#174](https://github.com/2listic/dealiiX-platform/pull/174) Pressing `Enter` now triggers the primary action in all main dialogs and forms.
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) "Upload Graph" and "Upload Parameters" checkboxes added to the "Job Execution" modal so users can choose what to upload before job execution.
 

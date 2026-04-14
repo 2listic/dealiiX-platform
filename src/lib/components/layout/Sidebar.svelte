@@ -1,18 +1,17 @@
 <script lang="ts">
   import {
-    addNetworkNode,
     getAvailableNodes,
     getStoredNetworkNodes,
     removeNetworkNode,
-  } from '../../stores/nodes.svelte'
+  } from '../../stores/registryStore.svelte'
   import { dndNodeDataState } from '../../stores/dndStore.svelte'
   import {
     HIDDEN_SIDEBAR_NODE_TYPES,
     nodeColors,
-    returnNodeName,
     type SubGraphNodeDefinition,
     type StandardNodeDefinition,
   } from '../../types/nodeTypes'
+  import { returnNodeName } from '../../utils/canvasNodeUtils'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -52,10 +51,10 @@
       await removeNetworkNode(networkNodeName)
     } catch (e) {
       toastState.add({
-        message: e.message || `Failed to delete node ${addNetworkNode}`,
+        message: e.message || `Failed to delete node ${networkNodeName}`,
         type: 'error',
       })
-      console.error(`Failed to delete node ${addNetworkNode}`, e.message)
+      console.error(`Failed to delete node ${networkNodeName}`, e.message)
     }
   }
 </script>

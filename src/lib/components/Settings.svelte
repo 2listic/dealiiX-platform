@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {
     settingsState,
     SSH_PATH,
@@ -13,7 +13,7 @@
   let { modalId } = $props()
 
   let sshPath = $state(settingsState.getKey(SSH_PATH))
-  let sshFiles = $state()
+  let sshFiles = $state<FileList | undefined>()
   let isEditingSshPath = $state(false)
   let urlVisualizer = $state(settingsState.getKey(URL_VISUALIZER))
   let isEditingVisualizer = $state(false)
@@ -61,6 +61,16 @@
   }
 
   const closeModal = () => getModal(modalId).close()
+
+  const submitOnEnter = (
+    event: KeyboardEvent,
+    action: () => void | Promise<void>
+  ) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      action()
+    }
+  }
 </script>
 
 <div style="padding: 0 1rem 1rem 1rem">
@@ -101,6 +111,7 @@
             class="input-field"
             bind:value={urlVisualizer}
             placeholder="Visualizer URL"
+            onkeydown={(event) => submitOnEnter(event, saveVisualizerUrl)}
           />
           <!-- </form> -->
           <Button onclick={saveVisualizerUrl}>Save</Button>
@@ -125,6 +136,7 @@
             class="input-field"
             bind:value={urlRemoteServer}
             placeholder="Remote Server URL"
+            onkeydown={(event) => submitOnEnter(event, saveRemoteUrl)}
           />
           <!-- </form> -->
           <Button onclick={saveRemoteUrl}>Save</Button>

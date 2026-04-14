@@ -20,7 +20,7 @@ export type CompatibleNodeOption = {
   nodeDefinition: NodeDefinitions
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
-  argumentName: string
+  argumentName: string | null
 }
 
 /** Snapshot of the handle that initiated a connection drag. */
@@ -43,7 +43,9 @@ export type ConnectedNodeDraft = {
  * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
  */
-const cloneNodeDefinition = (nodeDefinition: NodeDefinitions): NodeDefinitions => {
+const cloneNodeDefinition = (
+  nodeDefinition: NodeDefinitions
+): NodeDefinitions => {
   const cloned = {
     ...nodeDefinition,
     arguments: nodeDefinition.arguments.map((argument) => ({ ...argument })),
@@ -245,6 +247,15 @@ export const formatSuggestedNodeName = (name: string): string => {
 }
 
 /**
+ * Returns the display name for a node definition: prefers `name` over `type`,
+ * replaces underscores with spaces, and capitalizes the first letter.
+ * @param node - Registry node or stored subgraph node.
+ * @returns Display name, or `""` if both `name` and `type` are blank.
+ */
+export const returnNodeName = (node: NodeDefinitions): string =>
+  formatSuggestedNodeName(node.name ?? node.type)
+
+/**
  * Finds all available nodes that produce `expectedInputType` on any output handle.
  * Mirror of {@link findCompatibleTargetNodesAsOptions} for the reverse drag direction (from a target handle).
  * @param availableNodes - All available node definitions to search.
@@ -391,7 +402,8 @@ export const resolveOutputType = (
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF) return (data as StandardNodeDefinition).base ?? data.type
+  if (outputIndex === SELF)
+    return (data as StandardNodeDefinition).base ?? data.type
   return data.arguments?.[outputIndex]?.type ?? null
 }
 

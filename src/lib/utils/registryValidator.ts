@@ -1,4 +1,13 @@
-import type { StandardNodeDefinition, RegisteredNodes } from '../types/nodeTypes'
+/**
+ * Validation utilities for the CORAL node registry.
+ * Filters raw registry payloads received from CORAL or loaded from disk,
+ * separating well-formed node definitions from non-compliant entries.
+ */
+
+import type {
+  StandardNodeDefinition,
+  RegisteredNodes,
+} from '../types/nodeTypes'
 
 /**
  * Filters a registry object, separating valid nodes from non-compliant ones.

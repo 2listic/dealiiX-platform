@@ -41,8 +41,13 @@ The application uses two JSON protocols to communicate with CORAL:
 
 Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 
-- `nodes.svelte.ts` - Central store for flow nodes/edges and the registry. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `setRegistry()`. Network nodes use dedicated `RegisteredSubGraphNodes` / `SubGraphNodeDefinition` types.
-- `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`, `setLastNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
+- `nodes.svelte.ts` - Central store for flow nodes/edges. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `addNode()`, `addEdge()`, `removeNode()`, `updateLastNodeId()`.
+- `registryStore.svelte.ts` - Registry for available node types (both standard and network). Exports `setRegistry()`, `getNodeData(type)`, `getAvailableNodes()`, `isNodeInRegistry(type)` for standard nodes; and `addNetworkNode(key, data)`, `removeNetworkNode(name)`, `getNetworkNodeDefinition(name)`, `getStoredNetworkNodes()`, `isNodeInNetworkNodes(name)` for subgraph nodes. Both registries are persisted in electron-store and loaded at startup.
+- `graphStack.svelte.ts` - Navigation context stack for entering/exiting subnetworks. `graphStackState` has `breadcrumbs`, `canGoBack`, `currentLabel` reactive getters, plus `pushContext()`, `collapseToParent()`, `updateTopContext()`, `updateParentContext()`, `reset()` mutators. `persistActiveCanvas()` snapshots the live canvas into the top stack entry before any navigation action.
+- `graphNavigation.svelte.ts` - High-level subnetwork navigation actions built on top of `graphStack`. Exports `enterSubnetwork(nodeId)` (drills into a subnetwork node), `loadParentGraph()` (navigates back, persisting edits), and `renameCurrentSubnetwork(name)` (renames without navigating away).
+- `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
+- `colorModeStore.svelte.ts` - Light/dark theme state. `colorModeState.value` (get/set) and `colorModeState.toggle()`. Setting automatically syncs to electron IPC (`set-theme`) and persists to electron-store under `colorMode`.
+- `parametersStore.svelte.ts` - Transient store for the CORAL parameter tree (loaded from a run). `parametersState.value` (get/set) and `parametersState.snapshot` (non-reactive copy).
 - `auth.svelte.js` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
 - `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
 - `currentProjectStore.svelte.js` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`.
@@ -60,7 +65,7 @@ Defined in `src/lib/types/nodeTypes.ts`. Node types from CORAL:
 - `VOID_METHOD` / `VOID_CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations
 - `NETWORK` - Encapsulated computational graphs (see Network Nodes below)
 
-Connection validation (`src/lib/utils/connectionsValidation.js`) enforces type compatibility between node outputs and inputs.
+Connection validation (`src/lib/utils/connectionsValidation.ts`) enforces type compatibility between node outputs and inputs.
 
 ### How Nodes and Edges Work Together
 
@@ -154,8 +159,8 @@ When an edge connects two nodes:
 
 For network nodes (`type === "coral::Network"`):
 
-- Node definitions are stored in `networkNodes` store (not `registry`)
-- Lookup uses the node's `name` field: `getNetworkNodeData(node.name)`
+- Node definitions are stored in the `networkNodes` section of `registryStore.svelte.ts` (not the standard `registry`)
+- Lookup uses the node's `name` field: `getNetworkNodeDefinition(node.name)`
 - Regular nodes use: `getNodeData(node.type)`
 
 #### Network Nodes
@@ -171,9 +176,16 @@ Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational g
 - **Pass-through Arguments**: An argument with `connection_type: 'pass_through'` stays the same only if both input and output are free for the same internal node. On the contrary if one of internal `pass_trough` is connected, then at the netwrok node level the argument will be marked with a `connection_type: 'input'` or `output`.
 - **Value Field**: Contains the sub-graph as a `Network` object. The value is stripped from node data when on canvas and restored during export via `parseGraphToProtocol()`.
 - **Qualified IDs**: On export/save/download, `addQualifiedIds()` adds a `qualified_id` field to every node encoding its position in the nesting hierarchy (e.g., `"12_3"` for node 3 inside network node 12). Removed on import via `removeQualifiedIds()`.
-- **Creating Network Nodes**: Use `createNewNetworkNode(name, nodes, edges)` from `networkNode.ts` (takes snapshot arrays, not reactive state)
+- **Creating Network Nodes**: Use `createNetworkNodeDefinition(name, nodes, edges)` from `networkNode.ts` (takes snapshot arrays, not reactive state)
   - The function automatically identifies free inputs/outputs by checking which connections have no edges
-  - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)`
+  - `analyzeNetworkBoundary(nodes, edges)` from `networkNode.ts` returns the boundary analysis (free inputs/outputs, internal edges) without constructing the full definition
+  - Results can be added to the `networkNodes` store via `addNetworkNode(key, nodeData)` from `registryStore.svelte.ts`
+- **Canvas-level subnetwork operations** (`src/lib/utils/networkNodeCanvas.ts`): Higher-level operations that work directly on the live canvas state:
+  - `explodeNetworkNodeInGraph(nodeId)` — replaces a network node with its constituent nodes/edges, rewiring external connections
+  - `collapseSelectionToSubnetwork(name, selectedNodeIds)` — collapses a set of selected nodes into a new named network node
+  - `flattenSelectedSubgraphs(selectedNodeIds)` — recursively flattens nested subgraphs within a selection in-place
+  - `isNetworkCanvasNode(node)` — type guard for subnetwork canvas nodes
+- **Subnetwork Navigation**: `enterSubnetwork(nodeId)` and `loadParentGraph()` from `graphNavigation.svelte.ts` handle drilling into / back out of subnetworks. The graph stack (`graphStackState` in `graphStack.svelte.ts`) holds a `GraphContext` per level (label, nodes, edges, parentNodeId). Always call `persistActiveCanvas()` before reading stack state — it syncs the live canvas into the top context.
 
 ## Common Commands
 
@@ -234,10 +246,17 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **CI (GitHub Actions)**: Both workflows run `npm run check` (svelte-check) and `npm test` on pull requests and pushes to `main`. Workflow files: `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
 - **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token. Throws `ApiError` (with `.status` and `.data`) on non-2xx responses. Project CRUD ops are in `src/lib/requests/projects.js`.
 - **Canvas node creation**: `createCanvasNode(template, position, options?)` in `src/lib/utils/canvasNodeUtils.ts` creates a new @xyflow Node from a registry template. `getOutputTypeAndName(sourceNode, sourceHandle)` resolves the type/name for a source handle during drag-to-connect.
+- **Auto-layout**: `applyAutoLayout(nodes, edges, direction?)` in `src/lib/utils/autoLayout.ts` repositions nodes using the dagre rank-based algorithm (`'LR'` by default). Call after loading or structurally modifying a graph when node positions aren't provided.
+- **Registry validation**: `filterValidNodes(registry)` in `src/lib/utils/registryValidator.ts` validates a raw registry payload from CORAL, returning a `[validRegistry, skippedKeys]` tuple. Used when loading the registry at startup to skip malformed entries.
 - **Key type enums** (`src/lib/types/`): `ConnectionType` (INPUT/OUTPUT/PASSTHROUGH), `ExecNodeStatus` (FAILED/SUCCEEDED/RUNNING), `JobStatus` (COMPLETED/FAILED/PENDING/RUNNING), `nodeColors` (maps node types to CSS colors), `HIDDEN_SIDEBAR_NODE_TYPES` (excludes ABSTRACT and NETWORK from sidebar listing).
 - **Slurm batch templates**: Two templates in `src/lib/templates/` — `sbatch.template.sh` (non-MPI) and `sbatch-mpi.template.sh` (MPI via `mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1}`). Imported at build time via Vite's `?raw` suffix. `sshMessages.ts` selects between them based on the `USE_MPI` setting. Both templates expose `{{INTERNAL_JOB_ID}}` (used for `--touch-dir nodes-exec-status/<id>`) and `{{TIME_LIMIT}}`. The MPI template additionally exposes `{{NODES}}` and `{{NTASKS_PER_NODE}}`, filled at runtime from `JobConfig` (defaults: 1 node, 4 tasks/node, 01:00:00 time limit). Clicking Execute always opens `JobConfigModal.svelte` (renamed from `MpiConfigModal.svelte`) — it shows MPI-specific fields (nodes, tasks/node) only when MPI is enabled, and always shows the time limit field.
 - **MPI graph payload**: When MPI is enabled, `buildGraphPayload()` in `sshMessages.ts` injects a `plugin: { MPI: { enabled: true, max_num_threads: 1 } }` block at the top of the exported network JSON, as required by CORAL for MPI initialization.
 - **Node execution status**: `getNodesExecutionStatus(jobIdInternal)` reads files from `/app/shared-data/nodes-exec-status/<internalJobId>/` on the remote server, returning a `Map<qualifiedNodeId, string[]>` of status sequences (e.g. `'running'`, `'succeeded'`, `'failed'`).
+
+## Code Conventions
+
+- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
+- **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
 
 ## Git Workflow
 
