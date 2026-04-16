@@ -1,41 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
   Network,
-  SubGraphNodeDefinition,
   StandardNodeDefinition,
   RegisteredNodes,
-  RegisteredSubGraphNodes,
 } from '../types/nodeTypes'
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
-import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 
-// Mock registries data populated per-test
-let mockRegistry = defaultRegistry as RegisteredNodes
-let mockNetworkNodes = defaultNetworkNodes as RegisteredSubGraphNodes
+const mockStore = vi.hoisted(() => ({
+  nodeDataByType: {} as Record<string, StandardNodeDefinition>,
+}))
 
-vi.mock('../stores/nodes.svelte', () => ({
+vi.mock('../stores/registryStore.svelte', () => ({
   getNodeData: vi.fn((type: string): StandardNodeDefinition => {
-    if (!(type in mockRegistry)) {
+    const node = mockStore.nodeDataByType[type]
+    if (!node) {
       throw new Error(
         `Node type '${type}' was not found in the available nodes.`
       )
     }
-    return { ...mockRegistry[type] } // Return a copy
+    return structuredClone(node)
   }),
-  getNetworkNodeData: vi.fn((name: string): SubGraphNodeDefinition => {
-    if (!(name in mockNetworkNodes)) {
-      throw new Error(
-        `Sub-graph node '${name}' not found in networkNodes store`
-      )
-    }
-    return { ...mockNetworkNodes[name] } // Return a copy
-  }),
+  getNetworkNodeDefinition: vi.fn(),
   addNetworkNode: vi.fn(),
-  setEdges: vi.fn(),
-  setNodes: vi.fn(),
-  updateLastNodeId: vi.fn(),
 }))
 
 import {
@@ -45,11 +33,8 @@ import {
 } from './graphParser'
 
 describe('validateGraphData', () => {
-  // beforeEach(() => {
-  //   vi.clearAllMocks()
-  // })
-  let graph
-  let graphNetworkNode
+  let graph: Network
+  let graphNetworkNode: Network
 
   describe('graph structure validation', () => {
     it('throws when no graph data is provided', () => {
@@ -73,7 +58,9 @@ describe('validateGraphData', () => {
 
   describe('standard graphs with no network nodes', () => {
     beforeEach(() => {
+      mockStore.nodeDataByType = defaultRegistry as unknown as RegisteredNodes
       graph = structuredClone(validQualifiedGraph) as Network
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
 
     it('accepts a well defined MWE graph (no network nodes)', () => {
@@ -129,6 +116,7 @@ describe('validateGraphData', () => {
 
   describe('graphs with network nodes', () => {
     beforeEach(() => {
+      mockStore.nodeDataByType = defaultRegistry as unknown as RegisteredNodes
       graphNetworkNode = structuredClone(
         validQualifiedGraphNetworkNode
       ) as Network

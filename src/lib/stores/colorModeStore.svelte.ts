@@ -3,6 +3,14 @@ import { type ColorModeClass } from '@xyflow/svelte'
 // Initialize reactive state
 let colorMode: ColorModeClass = $state('light')
 
+const persistColorMode = async () => {
+  if (window.electron?.store) {
+    await window.electron.store.set('colorMode', colorMode)
+  } else {
+    console.warn("Electron store not available while persisting 'colorMode'")
+  }
+}
+
 // Load initial color mode from electron-store
 const loadColorMode = async () => {
   if (window.electron?.store) {
@@ -30,7 +38,7 @@ const updateThemeMode = async () => {
   } else {
     document.documentElement.classList.remove('dark')
   }
-  await window.electron.store.set('colorMode', colorMode)
+  await persistColorMode()
   console.log('Browser theme', colorMode)
 }
 

@@ -1,3 +1,10 @@
+/**
+ * Connection validation for the flow canvas.
+ * Enforces that edges only form when source output type matches target input type.
+ * Results are cached per connection key to avoid redundant type lookups during
+ * rapid drag events.
+ */
+
 import type { Connection, Edge, Node } from '@xyflow/svelte'
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import {

@@ -7,7 +7,6 @@
     SvelteFlow,
     Background,
     MiniMap,
-    type EdgeTypes,
     type NodeTypes,
     Controls,
     Panel,
@@ -16,34 +15,42 @@
   } from '@xyflow/svelte'
 
   import '@xyflow/svelte/dist/base.css'
-  import CustomEdge from './edges/CustomEdge.svelte'
   import {
+    getEdgesSnapshot,
     getNodes,
     getEdges,
-    getEdgesSnapshot,
     setNodes,
     setEdges,
     addEdge,
-    getAvailableNodes,
-    getStoredNetworkNodes,
     addNode,
   } from '../stores/nodes.svelte'
+  import {
+    getAvailableNodes,
+    getStoredNetworkNodes,
+  } from '../stores/registryStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte.js'
-  import { currentProjectState } from '../stores/currentProjectStore.svelte'
+  import { graphStackState } from '../stores/graphStack.svelte'
+  import {
+    loadParentGraph,
+    renameCurrentSubnetwork,
+  } from '../stores/graphNavigation.svelte'
   import {
     clearConnectionCache,
     isValidConnection,
     isTargetHandleConnected,
   } from '../utils/connectionsValidation'
-  import { onDragOver, onDrop } from '../utils/dragAndDrop.svelte'
-  import {
-    NodeType,
-    NodeTypePyBackend,
-    returnNodeName,
-  } from '../types/nodeTypes'
+  import { onDragOver, onDrop } from '../utils/dragAndDrop'
+  import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
+  import { returnNodeName } from '../utils/canvasNodeUtils'
   import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
   import JobsTable from './layout/JobsTable.svelte'
+  import EditIcon from './icons/EditIcon.svelte'
+  import Button from './layout/Button.svelte'
+  import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
+  import { toastState } from '../stores/toastsStore.svelte'
+  import { getModal } from './layout/Modal.svelte'
+  import { collapseSelectionToSubnetwork } from '../utils/networkNodeCanvas'
   import {
     createCanvasNode,
     buildEdgeForNewNode,
@@ -53,17 +60,21 @@
     type ConnectedNodeDraft,
     type ConnectStartParams,
   } from '../utils/canvasNodeUtils'
-  import { toastState } from '../stores/toastsStore.svelte'
-  import { getModal } from './layout/Modal.svelte'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
 
   const { screenToFlowPosition, getNode, getIntersectingNodes } =
     useSvelteFlow()
-  const createConnectedNodeModalId = 'create-connected-node'
 
+  let isEditingBreadcrumb = $state(false)
+  let breadcrumbNameDraft = $state('')
   let canvasElement = $state<HTMLDivElement>()
   let connectStartParams: ConnectStartParams | null = null
   let connectedNodeDraft = $state<ConnectedNodeDraft | null>(null)
+  type SelectionSubgraphMode = 'create' | 'merge'
+  let selectionSubgraphMode = $state<SelectionSubgraphMode>('create')
+
+  const createNetworkNodeModalId = 'create-network-node'
+  const createConnectedNodeModalId = 'create-connected-node'
 
   const nodeTypes: NodeTypes = {
     [NodeType.ELEMENTARY_CONSTRUCTOR]: UnifiedNode,
@@ -78,9 +89,12 @@
     [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
     [NodeTypePyBackend.METHOD]: UnifiedNode,
   }
-  const edgeTypes: EdgeTypes = {
-    'custom-edge': CustomEdge,
-  }
+
+  let selectedNodes = $derived(getNodes().filter((node) => node.selected))
+  let canCreateSubnetworkFromSelection = $derived(selectedNodes.length > 1)
+  let canMergeSubgraphsFromSelection = $derived(
+    selectedNodes.some((node) => node.data.node_type === NodeType.NETWORK)
+  )
 
   /**
    * Handles node/edge deletion events from @xyflow/svelte.
@@ -95,16 +109,63 @@
     }
   }
 
-  /**
-   * Captures the originating handle when the user begins dragging a connection.
-   * Stores the node ID, handle ID, and handle type in module-level
-   * `connectStartParams` so that `handleConnectEnd` can identify the source of
-   * the drag when it fires. Resets to `null` for any invalid drag (unknown
-   * handle type, missing node/handle ID) so `handleConnectEnd` can safely
-   * bail out early.
-   * @param _ - The mouse or touch event that initiated the drag (unused).
-   * @param params - Handle metadata provided by @xyflow/svelte.
-   */
+  $effect(() => {
+    if (!graphStackState.canGoBack) {
+      isEditingBreadcrumb = false
+      breadcrumbNameDraft = ''
+    }
+  })
+
+  const startEditingBreadcrumb = () => {
+    breadcrumbNameDraft = graphStackState.currentLabel
+    isEditingBreadcrumb = true
+  }
+
+  const cancelEditingBreadcrumb = () => {
+    isEditingBreadcrumb = false
+    breadcrumbNameDraft = graphStackState.currentLabel
+  }
+
+  const submitBreadcrumbRename = async () => {
+    try {
+      await renameCurrentSubnetwork(breadcrumbNameDraft)
+      isEditingBreadcrumb = false
+      toastState.add({
+        message: `Renamed subnetwork to "${graphStackState.currentLabel}"`,
+        timeout: 2000,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to rename subnetwork',
+        type: 'error',
+      })
+    }
+  }
+
+  const openCreateSelectionNetworkModal = (
+    mode: SelectionSubgraphMode = 'create'
+  ) => {
+    selectionSubgraphMode = mode
+    getModal(createNetworkNodeModalId)?.open()
+  }
+
+  const createSubnetworkFromSelection = async (
+    name: string,
+    mode: SelectionSubgraphMode = 'create'
+  ) => {
+    const { newNodes, newEdges } = await collapseSelectionToSubnetwork(
+      name,
+      mode
+    )
+    setNodes(newNodes)
+    setEdges(newEdges)
+  }
+
+  // Records which handle the user started dragging from so it is available
+  // when the drag ends on empty canvas space.
   const handleConnectStart = (
     _: MouseEvent | TouchEvent,
     params: {
@@ -166,7 +227,7 @@
       return
     }
 
-    // Guard: target handles only accept one incoming edge (no multiple edges to the same target handle).
+    // Guard: target handles only accept one incoming edge.
     if (
       connectStartParams.handleType === 'target' &&
       isTargetHandleConnected(
@@ -214,8 +275,6 @@
       position,
       connectStartParams,
     }
-    // Params are now captured in connectedNodeDraft; null the module-level ref so
-    // a re-entrant call to handleConnectEnd doesn't act on stale state.
     connectStartParams = null
 
     if (compatibleOptions.length === 1) {
@@ -230,7 +289,6 @@
       return
     }
 
-    // Multiple compatible options: let the user choose via the modal.
     getModal(createConnectedNodeModalId)?.open()
   }
 
@@ -307,7 +365,6 @@
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}
     {nodeTypes}
-    {edgeTypes}
     fitView
     {isValidConnection}
     onconnectstart={handleConnectStart}
@@ -326,30 +383,80 @@
     {ondelete}
   >
     <Panel position="top-left">
-      <div class="project-info">
-        {#if currentProjectState.id}
-          <span class="project-main">{currentProjectState.name}</span>
-          <span class="project-secondary">ID: {currentProjectState.id}</span>
-        {:else}
-          <span class="project-secondary">Unsaved Project</span>
-        {/if}
-      </div>
       <JobsTable />
-    </Panel>
-    <Panel position="bottom-left">
-      <div class="export-button-container">
-        <!-- <button onclick={executeWithPassword}>Execute with password</button> -->
-        <!-- <button onclick={executeWithKey}>Execute with key</button> -->
-      </div>
-      <div id="custom-panel-logs" class="custom-panel" style="margin-top: 1vh;">
-        -
-      </div>
     </Panel>
     <Panel position="top-right">
       <div class="top-right-controls">
         <ButtonToggleDarkMode />
       </div>
     </Panel>
+    <Panel position="bottom-left">
+      <div class="graph-nav">
+        {#if graphStackState.canGoBack}
+          <button class="nav-button" onclick={() => loadParentGraph()}>
+            Back
+          </button>
+        {/if}
+        <div class="graph-breadcrumbs">
+          {#if graphStackState.canGoBack}
+            <span>{graphStackState.breadcrumbs.slice(0, -1).join(' / ')}</span>
+            <span>/</span>
+          {/if}
+          {#if isEditingBreadcrumb}
+            <input
+              class="breadcrumb-input"
+              bind:value={breadcrumbNameDraft}
+              onkeydown={(event) => {
+                if (event.key === 'Enter') {
+                  submitBreadcrumbRename()
+                } else if (event.key === 'Escape') {
+                  cancelEditingBreadcrumb()
+                }
+              }}
+            />
+            <button class="breadcrumb-action" onclick={submitBreadcrumbRename}>
+              Save
+            </button>
+            <button class="breadcrumb-action" onclick={cancelEditingBreadcrumb}>
+              Cancel
+            </button>
+          {:else}
+            <span class="current-crumb">{graphStackState.currentLabel}</span>
+            {#if graphStackState.canGoBack}
+              <button
+                class="breadcrumb-icon-button"
+                title="Rename subnetwork"
+                onclick={startEditingBreadcrumb}
+              >
+                <EditIcon width="14px" height="14px" />
+              </button>
+            {/if}
+          {/if}
+        </div>
+      </div>
+    </Panel>
+    {#if canCreateSubnetworkFromSelection}
+      <Panel position="bottom-center">
+        <div class="selection-actions">
+          <Button
+            variant="action"
+            size="small"
+            onclick={() => openCreateSelectionNetworkModal('create')}
+          >
+            Create Subnetwork
+          </Button>
+          {#if canMergeSubgraphsFromSelection}
+            <Button
+              variant="default"
+              size="small"
+              onclick={() => openCreateSelectionNetworkModal('merge')}
+            >
+              Merge Subgraphs
+            </Button>
+          {/if}
+        </div>
+      </Panel>
+    {/if}
     <Controls position="bottom-center" orientation="horizontal" />
     <MiniMap />
     <Background />
@@ -366,36 +473,68 @@
   }}
 />
 
+<CreateNetworkNodeModal
+  modalId={createNetworkNodeModalId}
+  title={selectionSubgraphMode === 'merge'
+    ? 'Merge Subgraphs'
+    : 'Create Subgraph'}
+  submitText={selectionSubgraphMode === 'merge' ? 'Merge' : 'Create'}
+  onCreate={(name) =>
+    createSubnetworkFromSelection(name, selectionSubgraphMode)}
+/>
+
 <style>
   .flow-canvas {
     width: 100%;
     height: 100%;
   }
 
-  .project-info {
+  .graph-nav {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    align-items: center;
+    gap: 0.75rem;
     padding: 0.5rem 1rem;
-    background-color: var(--primary-color);
     border-radius: 5px;
-    margin-bottom: 1vh;
-  }
-
-  .project-main {
+    background-color: var(--primary-color);
     font-weight: bold;
-    /* font-size: 1.1rem; */
   }
 
-  .project-secondary {
-    /* font-size: 0.8rem; */
-    opacity: 0.7;
+  .nav-button {
+    border: 1px solid var(--ternary-color);
+    border-radius: 62rem;
+    padding: 0.2rem 0.75rem;
+    background: var(--secondary-color);
+    cursor: pointer;
   }
-  .export-button-container {
+
+  .graph-breadcrumbs {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1vw;
-    max-width: 50vw;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .current-crumb {
+    font-weight: 600;
+  }
+
+  .breadcrumb-input {
+    min-width: 14rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 62rem;
+    background: var(--secondary-color);
+  }
+
+  .breadcrumb-action,
+  .breadcrumb-icon-button {
+    border: 1px solid var(--ternary-color);
+    border-radius: 62rem;
+    padding: 0.15rem 0.5rem;
+    background: var(--secondary-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .top-right-controls {
@@ -405,12 +544,15 @@
     align-items: flex-end;
   }
 
-  .custom-panel {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 1vh;
-    margin-bottom: 1vh;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    background-color: var(--primary-color);
+  .selection-actions {
+    padding: 0.5rem 0.75rem;
+    background: var(--primary-color);
+    border-radius: 62rem;
+    box-shadow: 0 0.2rem 0.8rem
+      color-mix(in srgb, var(--ternary-color) 8%, transparent);
+    /* Lift visually above the Controls bar (26px tall + 15px margin = ~43px from bottom).
+       transform does not affect layout so the panel's empty area below stays transparent
+       and pointer events on the Controls pass through unobstructed. */
+    transform: translateY(-44px);
   }
 </style>

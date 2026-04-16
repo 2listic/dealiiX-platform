@@ -1,3 +1,8 @@
+/**
+ * Drag-and-drop event handlers for the flow canvas.
+ * Bridges HTML DragEvent data from the sidebar into canvas node creation.
+ */
+
 import type { XYPosition } from '@xyflow/svelte'
 import { addNode } from '../stores/nodes.svelte'
 import type { NodeDefinitions } from '../types/nodeTypes'

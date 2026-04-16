@@ -29,7 +29,13 @@
 </script>
 
 <Modal id={modalId} size="lg">
-  <div class="edit-node-form">
+  <form
+    class="edit-node-form"
+    onsubmit={(event) => {
+      event.preventDefault()
+      handleSave()
+    }}
+  >
     <h2>Edit Node {nodeId}</h2>
     <label for={inputId}>Network node name</label>
     <input
@@ -40,10 +46,12 @@
       class="input-field"
     />
     <div class="button-container">
-      <Button variant="default" onclick={handleCancel}>Cancel</Button>
-      <Button variant="action" onclick={handleSave}>Save</Button>
+      <Button type="button" variant="default" onclick={handleCancel}
+        >Cancel</Button
+      >
+      <Button type="submit" variant="action">Save</Button>
     </div>
-  </div>
+  </form>
 </Modal>
 
 <style>

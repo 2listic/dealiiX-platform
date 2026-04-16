@@ -1,3 +1,11 @@
+/**
+ * Protocol-level utilities for subnetwork (network node) definitions.
+ * Converts a canvas subgraph into a SubGraphNodeDefinition for the registry,
+ * and computes the boundary handle maps used when collapsing or expanding subgraphs.
+ *
+ * Canvas-level operations (explode, collapse, flatten) live in networkNodeCanvas.ts.
+ */
+
 import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
@@ -10,7 +18,40 @@ import {
 import { parseGraphToProtocol } from './graphParser'
 
 /**
- * Creates a new network node from the provided graph by identifying free (unconnected)
+ * Bidirectional handle maps for routing edges between an internal subgraph and
+ * the network node that wraps it.
+ *
+ * - `internalHandleToNetworkInput`: `"nodeId::handleId"` → network input handle index
+ * - `internalHandleToNetworkOutput`: `"nodeId::handleId"` → network output handle index
+ * - `networkInputToInternalHandle`: network input handle index → internal node's target handle
+ * - `networkOutputToInternalHandle`: network output handle index → internal node's source handle
+ */
+export type HandleMaps = {
+  internalHandleToNetworkInput: Record<string, number>
+  internalHandleToNetworkOutput: Record<string, number>
+  networkInputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  >
+  networkOutputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  >
+}
+
+/**
+ * Full result of {@link analyzeNetworkBoundary}: the `arguments`, `inputs`, and `outputs`
+ * arrays for the network node definition, plus the bidirectional {@link HandleMaps} needed
+ * to rewire edges when collapsing or expanding subgraphs.
+ */
+export type BoundaryAnalysis = HandleMaps & {
+  argumentsArray: StandardNodeDefinition['arguments']
+  inputsArray: number[]
+  outputsArray: number[]
+}
+
+/**
+ * Creates a new network node definition from the provided graph by identifying free (unconnected)
  * inputs and outputs and encapsulating the entire graph structure.
  *
  * @param {string} name - The custom name for the network node
@@ -19,11 +60,39 @@ import { parseGraphToProtocol } from './graphParser'
  * @returns {SubGraphNodeDefinition} A complete network node definition ready to be added to the networkNodes store
  * @throws {Error} If the graph is empty (no nodes)
  */
-export const createNewNetworkNode = (
+export const createNetworkNodeDefinition = (
   name: string,
   currentNodes: Node[],
   currentEdges: Edge[]
 ): SubGraphNodeDefinition => {
+  const boundary = analyzeNetworkBoundary(currentNodes, currentEdges)
+  const value = parseGraphToProtocol(currentNodes, currentEdges)
+  return {
+    type: TypeField.CORAL_NETWORK,
+    node_type: NodeType.NETWORK,
+    name,
+    arguments: boundary.argumentsArray,
+    inputs: boundary.inputsArray,
+    outputs: boundary.outputsArray,
+    value,
+    is_valid: true,
+  }
+}
+
+/**
+ * Analyzes the boundary of a subgraph by identifying free (unconnected) inputs and outputs,
+ * then builds the arguments, inputs, outputs arrays and handle-to-index maps needed to
+ * represent the subgraph as a network node.
+ *
+ * @param {Node[]} currentNodes - Array of nodes in the subgraph (must be snapshots, not reactive)
+ * @param {Edge[]} currentEdges - Array of edges in the subgraph (must be snapshots, not reactive)
+ * @returns {BoundaryAnalysis} The arguments/inputs/outputs arrays and bidirectional handle maps
+ * @throws {Error} If the graph is empty (no nodes)
+ */
+export const analyzeNetworkBoundary = (
+  currentNodes: Node[],
+  currentEdges: Edge[]
+): BoundaryAnalysis => {
   // Step 1: Validate there are nodes
   if (currentNodes.length === 0) {
     throw new Error('Cannot create network node from empty graph')
@@ -36,6 +105,8 @@ export const createNewNetworkNode = (
     argument: StandardNodeDefinition['arguments'][number]
     isFreeInput: boolean
     isFreeOutput: boolean
+    inputHandles: string[]
+    outputHandles: string[]
   }
 
   const freeConnectionsMap: Record<string, FreeConnection> = {}
@@ -46,7 +117,9 @@ export const createNewNetworkNode = (
   )
 
   for (const node of sortedNodes) {
-    const nodeData = node.data as StandardNodeDefinition
+    const nodeData = node.data as
+      | StandardNodeDefinition
+      | SubGraphNodeDefinition
 
     // Check for free inputs
     if (nodeData.inputs && Array.isArray(nodeData.inputs)) {
@@ -78,8 +151,11 @@ export const createNewNetworkNode = (
               },
               isFreeInput: true,
               isFreeOutput: false,
+              inputHandles: [targetHandle],
+              outputHandles: [],
             }
           }
+          existing?.inputHandles.push(targetHandle)
         }
       })
     }
@@ -106,6 +182,8 @@ export const createNewNetworkNode = (
               },
               isFreeInput: false,
               isFreeOutput: true,
+              inputHandles: [],
+              outputHandles: [sourceHandle],
             }
           } else if (nodeData.arguments && nodeData.arguments[argIndex]) {
             // Handle regular outputs with arguments
@@ -125,8 +203,11 @@ export const createNewNetworkNode = (
                 },
                 isFreeInput: false,
                 isFreeOutput: true,
+                inputHandles: [],
+                outputHandles: [sourceHandle],
               }
             }
+            existing?.outputHandles.push(sourceHandle)
           }
         }
       })
@@ -142,6 +223,16 @@ export const createNewNetworkNode = (
   const argumentsArray: StandardNodeDefinition['arguments'] = []
   const inputsArray: number[] = []
   const outputsArray: number[] = []
+  const internalHandleToNetworkInput: Record<string, number> = {}
+  const internalHandleToNetworkOutput: Record<string, number> = {}
+  const networkInputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  > = {}
+  const networkOutputToInternalHandle: Record<
+    number,
+    { nodeId: string; handleId: string }
+  > = {}
 
   sortedFreeConnections.forEach((conn) => {
     let finalConnectionType: ConnectionType
@@ -168,6 +259,18 @@ export const createNewNetworkNode = (
       finalConnectionType === ConnectionType.PASSTHROUGH
     ) {
       inputsArray.push(currentIndex)
+      const networkInputHandleIndex = inputsArray.length - 1
+      const firstInputHandle = conn.inputHandles[0]
+      if (firstInputHandle) {
+        networkInputToInternalHandle[networkInputHandleIndex] = {
+          nodeId: conn.nodeId,
+          handleId: firstInputHandle,
+        }
+      }
+      conn.inputHandles.forEach((handle) => {
+        internalHandleToNetworkInput[`${conn.nodeId}::${handle}`] =
+          networkInputHandleIndex
+      })
     }
 
     if (
@@ -175,22 +278,28 @@ export const createNewNetworkNode = (
       finalConnectionType === ConnectionType.PASSTHROUGH
     ) {
       outputsArray.push(currentIndex)
+      const networkOutputHandleIndex = outputsArray.length - 1
+      const firstOutputHandle = conn.outputHandles[0]
+      if (firstOutputHandle) {
+        networkOutputToInternalHandle[networkOutputHandleIndex] = {
+          nodeId: conn.nodeId,
+          handleId: firstOutputHandle,
+        }
+      }
+      conn.outputHandles.forEach((handle) => {
+        internalHandleToNetworkOutput[`${conn.nodeId}::${handle}`] =
+          networkOutputHandleIndex
+      })
     }
   })
 
-  // Step 5: Serialize the graph to the value field
-  const graphData = parseGraphToProtocol(currentNodes, currentEdges)
-  const value = graphData
-
-  // Step 6: Construct the final SubGraphNodeDefinition object
   return {
-    type: TypeField.CORAL_NETWORK,
-    node_type: NodeType.NETWORK,
-    name: name,
-    arguments: argumentsArray,
-    inputs: inputsArray,
-    outputs: outputsArray,
-    value: value,
-    is_valid: true,
+    argumentsArray,
+    inputsArray,
+    outputsArray,
+    internalHandleToNetworkInput,
+    internalHandleToNetworkOutput,
+    networkInputToInternalHandle,
+    networkOutputToInternalHandle,
   }
 }

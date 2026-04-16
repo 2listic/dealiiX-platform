@@ -12,6 +12,7 @@
   import ShareProjectModal from './ShareProjectModal.svelte'
   import EditProjectForm from './EditProjectForm.svelte'
   import ConfirmationModal from './layout/ConfirmationModal.svelte'
+  import { graphStackState } from '../stores/graphStack.svelte'
 
   interface Project {
     id: number
@@ -80,6 +81,7 @@
    */
   const handleLoad = async () => {
     try {
+      graphStackState.reset()
       const projectData = await getProject(project.id)
       const [validEdges, invalidEdges] = validateGraphData(projectData.graph)
       if (invalidEdges.length > 0) {
