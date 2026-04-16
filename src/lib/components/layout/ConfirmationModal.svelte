@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal, { getModal } from './Modal.svelte'
   import Button from './Button.svelte'
+  import { onMount } from 'svelte'
 
   interface Props {
     modalId: string
@@ -37,6 +38,19 @@
     }
     getModal(modalId).close()
   }
+
+  onMount(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      const modal = getModal(modalId)
+      if (event.key === 'Enter' && modal?.isVisible()) {
+        event.preventDefault()
+        handleConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  })
 </script>
 
 <Modal id={modalId} {closeOnBackdrop} size="sm">

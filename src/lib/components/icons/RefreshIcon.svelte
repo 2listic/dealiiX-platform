@@ -1,9 +1,12 @@
 <script>
   let { width, height, rotation } = $props()
+  let resolvedRotation = $derived.by(() =>
+    typeof rotation === 'number' ? rotation : (rotation?.current ?? 0)
+  )
 </script>
 
 <svg
-  style="transform: rotate({rotation.current}deg); transition: transform 0.5s ease-out;"
+  style="transform: rotate({resolvedRotation}deg); transition: transform 0.5s ease-out;"
   {width}
   {height}
   viewBox="0 0 24 24"

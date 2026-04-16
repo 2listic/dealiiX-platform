@@ -5,7 +5,7 @@ import {
   isExecutableBackend,
   normalizeSettings,
 } from '../config/execution'
-import { setRegistry } from './nodes.svelte'
+import { setRegistry } from './registryStore.svelte'
 import { parametersState } from './parametersStore.svelte'
 
 let settings = $state(createDefaultSettings())

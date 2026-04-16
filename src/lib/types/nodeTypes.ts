@@ -243,14 +243,3 @@ export const isSubGraphNodeDefinition = (
     node.node_type === NodeType.NETWORK
   )
 }
-
-/**
- * Returns the display name for a node template: prefers `name` over `type`,
- * replaces underscores with spaces, and capitalizes the first letter.
- * @param node - Registry node or stored subgraph node.
- */
-export const returnNodeName = (node: NodeDefinitions): string => {
-  const normalized = (node.name ?? node.type).replaceAll('_', ' ').trim()
-  if (!normalized) return ''
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
-}

@@ -1,30 +1,38 @@
-<script module>
+<script module lang="ts">
+  import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
     StandardNodeDefinition,
+    NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
   // unused exports
-  export type ElementaryConstructor = Node<
+  export type ElementaryConstructor = FlowNode<
     StandardNodeDefinition,
-    NodeType.ELEMENTARY_CONSTRUCTOR
+    FlowNodeType.ELEMENTARY_CONSTRUCTOR
   >
-  export type EmptyConstructor = Node<
+  export type EmptyConstructor = FlowNode<
     StandardNodeDefinition,
-    NodeType.EMPTY_CONSTRUCTOR
+    FlowNodeType.EMPTY_CONSTRUCTOR
   >
-  export type Constructor = Node<StandardNodeDefinition, NodeType.CONSTRUCTOR>
-  export type Abstract = Node<StandardNodeDefinition, NodeType.ABSTRACT>
-  export type VoidMethod = Node<StandardNodeDefinition, NodeType.VOID_METHOD>
-  export type VoidConstMethod = Node<
+  export type Constructor = FlowNode<
     StandardNodeDefinition,
-    NodeType.VOID_CONST_METHOD
+    FlowNodeType.CONSTRUCTOR
   >
-  export type VoidFunction = Node<
+  export type Abstract = FlowNode<StandardNodeDefinition, FlowNodeType.ABSTRACT>
+  export type VoidMethod = FlowNode<
     StandardNodeDefinition,
-    NodeType.VOID_FUNCTION
+    FlowNodeType.VOID_METHOD
   >
-  export type Function = Node<StandardNodeDefinition, NodeType.FUNCTION>
-  export type Network = Node<SubGraphNodeDefinition, NodeType.NETWORK>
+  export type VoidConstMethod = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.VOID_CONST_METHOD
+  >
+  export type VoidFunction = FlowNode<
+    StandardNodeDefinition,
+    FlowNodeType.VOID_FUNCTION
+  >
+  export type Function = FlowNode<StandardNodeDefinition, FlowNodeType.FUNCTION>
+  export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor
@@ -34,6 +42,7 @@
     | VoidConstMethod
     | VoidFunction
     | Function
+    | Network
 </script>
 
 <script lang="ts">
@@ -42,7 +51,6 @@
     Position,
     useSvelteFlow,
     type NodeProps,
-    type Node,
   } from '@xyflow/svelte'
   import { getModal } from '../layout/Modal.svelte'
   import {
@@ -51,13 +59,30 @@
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
-  import { removeNode } from '../../stores/nodes.svelte'
+  import {
+    getEdgesSnapshot,
+    getNextNodeId,
+    getNodesSnapshot,
+    removeNode,
+    setEdges,
+    setNodes,
+  } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
+  import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
+  import { explodeNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
+  import { toastState } from '../../stores/toastsStore.svelte'
+  import OpenIcon from '../icons/OpenIcon.svelte'
+  import ExplosionIcon from '../icons/ExplosionIcon.svelte'
 
-  let { id, data, type }: NodeProps<UnifiedNodeType> = $props()
+  let {
+    id,
+    data,
+    type,
+    selected = false,
+  }: NodeProps<UnifiedNodeType> = $props()
 
   // data.is_valid = true
   let isValid = $derived(data?.is_valid ?? true)
@@ -116,9 +141,40 @@
   //   console.log(nodes.current)
   //   console.log(data)
   // })
+
+  const handleExplodeSubnetwork = () => {
+    try {
+      const exploded = explodeNetworkNodeInGraph(
+        id,
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        getNextNodeId
+      )
+      setNodes(exploded.nodes)
+      setEdges(exploded.edges)
+      clearConnectionCache()
+      toastState.add({
+        message: `Exploded subnetwork "${data.name ?? data.type}"`,
+        timeout: 2200,
+      })
+    } catch (error) {
+      console.error('Failed to explode subnetwork:', error)
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to explode subnetwork',
+        type: 'error',
+      })
+    }
+  }
 </script>
 
-<div class="custom-node" style="--border-color: {color}">
+<div
+  class:selected-node={selected}
+  class="custom-node"
+  style="--border-color: {color}"
+>
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
@@ -131,15 +187,31 @@
       {/if}
     </div>
     <div class="node-buttons">
-      {#if !isNetworkNode}
+      {#if isNetworkNode}
         <button
           class="node-button"
+          title="Open subnetwork"
+          onclick={() => enterSubnetwork(id)}
+        >
+          <OpenIcon width="20px" height="20px" />
+        </button>
+        <button
+          class="node-button"
+          title="Explode subnetwork"
+          onclick={handleExplodeSubnetwork}
+        >
+          <ExplosionIcon width="20px" height="20px" />
+        </button>
+      {:else}
+        <button
+          class="node-button"
+          title="Edit name"
           onclick={() => getModal(editNodeModalId)?.open()}
         >
           <EditIcon width="20px" height="20px" />
         </button>
       {/if}
-      <button class="node-button" onclick={() => removeNode(id)}>
+      <button class="node-button" title="Delete" onclick={() => removeNode(id)}>
         <TrashIcon width="20px" height="20px" />
       </button>
     </div>
@@ -237,6 +309,18 @@
     background: var(--primary-color);
     border: 2px solid var(--border-color);
     min-width: 200px;
+    transition:
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      filter 0.18s ease;
+  }
+
+  .selected-node {
+    border-color: var(--border-color-hover);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--border-color) 28%, transparent),
+      0 10px 24px color-mix(in srgb, var(--ternary-color) 14%, transparent);
+    filter: saturate(1.06);
   }
 
   .node-header {
@@ -264,7 +348,7 @@
 
   .node-buttons {
     display: flex;
-    gap: 0.3vw;
+    gap: 0.4vw;
   }
 
   .node-button {

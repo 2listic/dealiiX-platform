@@ -61,7 +61,13 @@
 </script>
 
 <div style="padding: 1rem">
-  <form bind:this={formElement}>
+  <form
+    bind:this={formElement}
+    onsubmit={(event) => {
+      event.preventDefault()
+      validateAndSubmit()
+    }}
+  >
     <h2>Save Project</h2>
     <div class="inputs-container">
       <div class="input-container">
@@ -90,9 +96,7 @@
       <Button variant="default" type="button" onclick={handleCancel}>
         Cancel
       </Button>
-      <Button variant="action" type="button" onclick={validateAndSubmit}>
-        Save
-      </Button>
+      <Button variant="action" type="submit">Save</Button>
     </div>
   </form>
 </div>

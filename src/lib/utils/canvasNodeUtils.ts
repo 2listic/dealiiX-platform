@@ -20,7 +20,7 @@ export type CompatibleNodeOption = {
   nodeDefinition: NodeDefinitions
   /** Handle ID on the new node that will be wired to the originating handle. */
   handleId: string
-  argumentName: string
+  argumentName: string | null
 }
 
 /** Snapshot of the handle that initiated a connection drag. */
@@ -245,6 +245,15 @@ export const formatSuggestedNodeName = (name: string): string => {
 
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
+
+/**
+ * Returns the display name for a node definition: prefers `name` over `type`,
+ * replaces underscores with spaces, and capitalizes the first letter.
+ * @param node - Registry node or stored subgraph node.
+ * @returns Display name, or `""` if both `name` and `type` are blank.
+ */
+export const returnNodeName = (node: NodeDefinitions): string =>
+  formatSuggestedNodeName(node.name ?? node.type)
 
 /**
  * Finds all available nodes that produce `expectedInputType` on any output handle.

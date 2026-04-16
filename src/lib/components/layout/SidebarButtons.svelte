@@ -4,8 +4,9 @@
     getEdgesSnapshot,
     getNodes,
     getNodesSnapshot,
-    setRegistry,
+    setNodes,
   } from '../../stores/nodes.svelte'
+  import { setRegistry } from '../../stores/registryStore.svelte'
   import {
     loadGraphFromProtocol,
     removeQualifiedIds,
@@ -38,18 +39,19 @@
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
-  import CreateNetworkNodeModal from '../nodes/CreateNetworkNodeModal.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import JobConfigModal from '../JobConfigModal.svelte'
+  import { graphStackState } from '../../stores/graphStack.svelte'
+  import GridIcon from '../icons/GridIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
-  const createNetworkNodeModalId = 'create-network-node-modal'
   const JobConfigModalId = 'job-config-modal'
+  const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -104,6 +106,7 @@
       return
     }
     try {
+      graphStackState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const [validEdges, invalidEdges] = validateGraphData(importedGraph)
@@ -177,6 +180,11 @@
   }
 
   const handleSaveProject = async () => {
+    // Continue only if we are at the root level of the graph
+    if (graphStackState.canGoBack) {
+      getModal(subnetworkWarningModalId).open()
+      return
+    }
     if (currentProjectState.id) {
       // Update existing project
       try {
@@ -205,11 +213,38 @@
     getModal(saveProjectModalId)?.open()
   }
 
-  const handleCreateNetworkNode = () => {
-    getModal(createNetworkNodeModalId)?.open()
+  const handleAutoLayout = async (direction: 'LR' | 'TB') => {
+    try {
+      // lazy import keeps dagre out of the initial bundle; loaded only on first use
+      const { applyAutoLayout } = await import('../../utils/autoLayout')
+      const layoutedNodes = applyAutoLayout(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        direction
+      )
+      setNodes(layoutedNodes)
+      toastState.add({
+        message:
+          direction === 'LR'
+            ? 'Horizontal graph layout updated'
+            : 'Vertical graph layout updated',
+        timeout: 2200,
+      })
+    } catch (error) {
+      console.error('Failed to auto-layout graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to auto-layout graph',
+        type: 'error',
+      })
+    }
   }
 
   const handleGraphDownload = () => {
+    // Continue only if we are at the root level of the graph
+    if (graphStackState.canGoBack) {
+      getModal(subnetworkWarningModalId).open()
+      return
+    }
     try {
       // Parse current graph to Network JSON format (MPI plugin block included)
       const useMpi = settingsState.getKey(USE_MPI) ?? false
@@ -272,6 +307,15 @@
     confirmText="Logout"
     confirmVariant="action"
     onConfirm={handleOncofirmLogout}
+  />
+
+  <ConfirmationModal
+    modalId={subnetworkWarningModalId}
+    title="Cannot save from a subnetwork"
+    message="Navigate back to the root graph before saving or downloading. Conflicts may need to be reviewed."
+    confirmText="OK"
+    cancelText="Close"
+    onConfirm={() => {}}
   />
 
   <!-- Project group -->
@@ -355,6 +399,23 @@
     <span class="button-text">Visualiz.</span>
   </div>
 
+  <!-- Auto Layout group -->
+  <SidebarGroupButton title="Layout">
+    {#snippet icon()}
+      <GridIcon width="28px" height="28px" />
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Horizontal"
+        onclick={() => handleAutoLayout('LR')}
+      />
+      <SidebarGroupButtonItem
+        label="Vertical"
+        onclick={() => handleAutoLayout('TB')}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+
   <!-- Import group -->
   <SidebarGroupButton title="Import">
     {#snippet icon()}
@@ -368,10 +429,6 @@
       <SidebarGroupButtonItem
         label="Import Nodes"
         onclick={() => importNodesInput?.click()}
-      />
-      <SidebarGroupButtonItem
-        label="Create Sub-Graph"
-        onclick={handleCreateNetworkNode}
       />
     {/snippet}
   </SidebarGroupButton>
@@ -391,9 +448,6 @@
     accept=".json"
     style="display: none"
   />
-
-  <CreateNetworkNodeModal modalId={createNetworkNodeModalId} />
-
   <!-- Settings (standalone) -->
   <div class="button-container">
     <label for="settings-button" class="element-label" title="Settings">
