@@ -158,6 +158,7 @@ In particular, when the app exports a `graph.json` for execution, it is written 
 - **Inside the container**: `docker exec -it coral-ssh-slurm cat /app/shared-data/graph.json`
 
 Output files (e.g., `.vtk` files, Slurm logs) produced by CORAL during execution are also written here and served by the `coral-visualizer` container.
+
 ## Run Coral locally with deal.II (no Docker, no SSH)
 
 This approach lets you use the **local + coral** execution mode directly on your machine, without Docker, SSH, or Slurm.
