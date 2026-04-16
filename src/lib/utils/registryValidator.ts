@@ -4,7 +4,6 @@
  * separating well-formed node definitions from non-compliant entries.
  */
 
-
 import type {
   StandardNodeDefinition,
   RegisteredNodes,

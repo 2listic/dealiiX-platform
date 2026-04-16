@@ -78,7 +78,7 @@ Available keys are defined in [electron/utils/storage.js](electron/utils/storage
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-## Set up Docker containers to test SSH communication to Coral with Slurm jobs + Coral visualizer for .vtk output files
+## Run Coral from a container with Slurm and SSH server (simulating a remote cluster) and a separate container for the Coral visualizer
 
 ### Build and run the containers
 
@@ -106,8 +106,10 @@ Build the Coral backend in the container
 
 ```bash
 cd app
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 ```
+
+`-j$(nproc)` is optional but significantly speeds up the build.
 
 #### Manually generate available nodes file registry.json
 
@@ -156,6 +158,129 @@ In particular, when the app exports a `graph.json` for execution, it is written 
 - **Inside the container**: `docker exec -it coral-ssh-slurm cat /app/shared-data/graph.json`
 
 Output files (e.g., `.vtk` files, Slurm logs) produced by CORAL during execution are also written here and served by the `coral-visualizer` container.
+## Run Coral locally with deal.II (no Docker, no SSH)
+
+This approach lets you use the **local + coral** execution mode directly on your machine, without Docker, SSH, or Slurm.
+
+### Install deal.II and build tools (Ubuntu)
+
+```bash
+sudo apt install libdeal.ii-dev
+```
+
+If you need newer version of deal.II, you can try a different repository. For example:
+
+```bash
+sudo add-apt-repository ppa:ginggs/deal.ii-9.7.1-backports
+sudo apt update
+sudo apt install libdeal.ii-dev
+```
+
+### Clone and build Coral repository
+
+Follow instructions at https://github.com/2listic/coral
+
+Build with something like:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
+```
+
+`-j$(nproc)` tells cmake to run as many parallel compile jobs as you have CPU cores. It is optional but significantly speeds up the build.
+
+After the build, you should have something like the following binaries:
+
+- `coral/build/core/coral` — the Coral CLI binary
+- `coral/build/backends/dealii/libcoral_backend_dealii.so` — the deal.II plugin
+
+### Configure the app
+
+Open Settings in the app and set the following under **Execution Mode**:
+
+- **Location**: `local`
+- **Backend kind**: `coral`
+- **Coral binary path**: `<repo>/coral/build/core/coral`
+- **Coral plugin path**: `<repo>/coral/build/backends/dealii/libcoral_backend_dealii.so`
+- **Working directory**: `<repo>/coral/build` (or any writable directory)
+
+Click **Save & Sync** to probe the binary, load the node registry into the sidebar, and confirm everything works.
+
+### Manually test the local Coral binary
+
+Generate the node registry:
+
+```bash
+./coral/build/core/coral -p ./coral/build/backends/dealii/libcoral_backend_dealii.so register
+```
+
+Run a graph:
+
+```bash
+./coral/build/core/coral -p ./coral/build/backends/dealii/libcoral_backend_dealii.so run graph.json --touch-dir nodes-exec-status/1
+```
+
+## Run a custom executable locally with deal.II (no Docker, no SSH)
+
+This approach lets you use the **local + executable** execution mode with any deal.II-based program that follows the DealiiX executable contract.
+
+### Example: deal.II step-70 (Stokes immersed boundary)
+
+The standard deal.II tutorial step-70 (Stokes flow with an immersed rotating body) works out of the box as an executable backend.
+
+#### Get the source
+
+Download the example from the deal.II repository and place it in `coral/examples/step-70/`:
+
+```bash
+mkdir -p coral/examples/step-70
+curl -o coral/examples/step-70/step-70.cc \
+  https://raw.githubusercontent.com/dealii/dealii/v9.5.0/examples/step-70/step-70.cc
+```
+
+Then create `coral/examples/step-70/CMakeLists.txt` with the following content:
+
+```cmake
+cmake_minimum_required(VERSION 3.13.4)
+project(step-70)
+find_package(deal.II 9.5 REQUIRED
+  HINTS ${deal.II_DIR} ${DEAL_II_DIR} $ENV{DEAL_II_DIR})
+deal_ii_initialize_cached_variables()
+add_executable(step-70 step-70.cc)
+deal_ii_setup_target(step-70)
+```
+
+#### Build
+
+```bash
+cd coral/examples/step-70
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+```
+
+#### Manually test the executable contract
+
+```bash
+cd coral/examples/step-70/build
+
+# Probe: file does not exist → deal.II writes JSON template and exits
+./step-70 parameters.json
+cat parameters.json   # valid JSON with all parameters and their defaults
+
+# Run: file exists → reads it and runs the simulation
+./step-70 parameters.json
+```
+
+#### Configure the app
+
+Open Settings and set the following under **Execution Mode**:
+
+- **Location**: `local`
+- **Backend kind**: `executable`
+- **Executable path**: `<repo>/coral/examples/step-70/build/step-70`
+- **Working directory**: `<repo>/coral/examples/step-70/build`
+- **Parameters file name**: `parameters.json`
+
+Click **Save & Sync** — the app probes the binary, reads back the JSON template, and populates the Parameters panel with all step-70 parameters (viscosity, refinement levels, time steps, grid generators, etc.) as an editable tree. Edit the values as needed, then click Execute to run the simulation.
 
 # Packaging
 

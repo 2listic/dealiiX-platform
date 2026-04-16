@@ -132,9 +132,12 @@ ipcMain.handle('get-local-run-log', async (event, { jobId }) => {
   return await getLocalRunLog(jobId)
 })
 
-ipcMain.handle('get-local-node-status-files', async (event, { jobIdInternal }) => {
-  return await getLocalNodeStatusFiles(jobIdInternal)
-})
+ipcMain.handle(
+  'get-local-node-status-files',
+  async (event, { jobIdInternal }) => {
+    return await getLocalNodeStatusFiles(jobIdInternal)
+  }
+)
 
 ipcMain.handle('get-local-run-state', async (event, { jobId }) => {
   return getLocalRunState(jobId)

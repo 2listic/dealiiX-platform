@@ -171,11 +171,7 @@ const exportAndEvalGraphLocal = async (
   await jobIdMapState.add(Number(jobId), internalJobId)
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
-  const finalState = await localJobPolling(
-    jobId,
-    1000,
-    24 * 60 * 60 * 1000
-  )
+  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
   await jobsState.update()
   toastState.add({
     message: `Job id ${jobId}: ${finalState}`,
