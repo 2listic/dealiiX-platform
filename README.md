@@ -53,7 +53,7 @@ Run unit tests
 
 #### Using Chrome
 
-1. Run the app with `npm start:debug`
+1. Run the app with `npm run start:debug`
 2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
 3. A new window will open, add breakpoints in the Sources tab and start debugging
 

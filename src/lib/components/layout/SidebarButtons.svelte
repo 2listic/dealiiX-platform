@@ -22,18 +22,14 @@
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
-  import Settings from '../Settings.svelte'
+  import Settings from '../SettingsModal.svelte'
   import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
-  import {
-    settingsState,
-    URL_VISUALIZER,
-    USE_MPI,
-  } from '../../stores/settingsStore.svelte'
+  import { settingsState } from '../../stores/settingsStore.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
@@ -171,7 +167,7 @@
     })
 
   const handleOpenVisualizer = () => {
-    const url = settingsState.getKey(URL_VISUALIZER)
+    const url = settingsState.current.urlVisualizer
     openNewWindow(url)
   }
 
@@ -247,7 +243,7 @@
     }
     try {
       // Parse current graph to Network JSON format (MPI plugin block included)
-      const useMpi = settingsState.getKey(USE_MPI) ?? false
+      const useMpi = settingsState.current.useMpi
       const graphData = buildGraphPayload(
         getNodesSnapshot(),
         getEdgesSnapshot(),
@@ -377,7 +373,7 @@
 
   <JobConfigModal
     modalId={JobConfigModalId}
-    showMpiFields={settingsState.getKey(USE_MPI) ?? false}
+    showMpiFields={settingsState.current.useMpi}
     onConfirm={handleJobConfirm}
   />
 
@@ -461,9 +457,7 @@
     ></button>
     <span class="button-text"> Settings </span>
   </div>
-  <Modal id={settingsModalId} size="sm">
-    <Settings modalId={settingsModalId} />
-  </Modal>
+  <Settings modalId={settingsModalId} />
 </aside>
 
 <style>

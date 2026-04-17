@@ -1,12 +1,9 @@
 import { auth } from '../stores/auth.svelte'
-import {
-  settingsState,
-  URL_REMOTE_SERVER,
-} from '../stores/settingsStore.svelte'
+import { settingsState } from '../stores/settingsStore.svelte'
 // import { apiRequest } from './api'
 
-export const login = async (data) => {
-  const baseUrl = settingsState.getKey(URL_REMOTE_SERVER)
+export const login = async (data: { username: string; password: string }) => {
+  const baseUrl = settingsState.current.urlRemoteServer
   const response = await fetch(`${baseUrl}/api/users/login`, {
     method: 'POST',
     headers: {

@@ -1,15 +1,14 @@
 import {
-  cloneSettings,
   createDefaultSettings,
   getActiveTargetSettings,
   isExecutableBackend,
   normalizeSettings,
+  type AppSettings,
 } from '../config/execution'
 import { setRegistry } from './registryStore.svelte'
 import { parametersState } from './parametersStore.svelte'
 
 let settings = $state(createDefaultSettings())
-let draftSettings = $state(createDefaultSettings())
 let isSaving = $state(false)
 
 // Load initial settings from electron-store.
@@ -17,59 +16,16 @@ const loadSettings = async () => {
   if (window.electron?.store) {
     const storedSettings = await window.electron.store.get('settings', {})
     settings = normalizeSettings(storedSettings)
-    const storedDraft = await window.electron.store.get('settingsDraft', null)
-    draftSettings = storedDraft
-      ? normalizeSettings(storedDraft)
-      : cloneSettings(settings)
   } else {
     console.warn('Electron store not available (e.g., dev:vite mode)')
   }
 }
 loadSettings()
 
-export const SSH_PATH = 'sshPathKey'
-export const URL_VISUALIZER = 'urlVisualizerKey'
-export const URL_REMOTE_SERVER = 'urlRemoteServerKey'
-export const USE_MPI = 'useMpiKey'
-
-const getLegacyKey = (currentSettings, key) => {
-  switch (key) {
-    case SSH_PATH:
-      return currentSettings.execution.remote.sshKeyPath
-    case URL_VISUALIZER:
-      return currentSettings.urlVisualizer
-    case URL_REMOTE_SERVER:
-      return currentSettings.urlRemoteServer
-    case USE_MPI:
-      return currentSettings.useMpi
-    default:
-      return undefined
-  }
-}
-
-const setLegacyKey = (currentSettings, key, value) => {
-  const nextSettings = cloneSettings(currentSettings)
-  switch (key) {
-    case SSH_PATH:
-      nextSettings.execution.remote.sshKeyPath = value
-      break
-    case URL_VISUALIZER:
-      nextSettings.urlVisualizer = value
-      break
-    case URL_REMOTE_SERVER:
-      nextSettings.urlRemoteServer = value
-      break
-    case USE_MPI:
-      nextSettings.useMpi = value
-      break
-    default:
-      break
-  }
-  return nextSettings
-}
-
-const applySyncedMetadata = async (probeResult) => {
-  const metadata = probeResult?.metadata
+const applySyncedMetadata = async (probeResult: Record<string, unknown>) => {
+  const metadata = probeResult?.metadata as
+    | { kind: string; data: Record<string, unknown> }
+    | undefined
   if (!metadata) return
 
   if (metadata.kind === 'nodeRegistry') {
@@ -78,35 +34,18 @@ const applySyncedMetadata = async (probeResult) => {
   }
 
   if (metadata.kind === 'parametersTemplate') {
-    parametersState.value = metadata.data
+    parametersState.value = metadata.data as any
   }
 }
 
-const persistSettings = async (nextSettings) => {
+const persistSettings = async (nextSettings: AppSettings) => {
   settings = normalizeSettings(nextSettings)
-  draftSettings = cloneSettings(settings)
   await window.electron.store.set('settings', $state.snapshot(settings))
-  await window.electron.store.set(
-    'settingsDraft',
-    $state.snapshot(draftSettings)
-  )
-}
-
-const persistDraftSettings = async (nextDraft) => {
-  draftSettings = normalizeSettings(nextDraft)
-  if (!window.electron?.store) return
-  await window.electron.store.set(
-    'settingsDraft',
-    $state.snapshot(draftSettings)
-  )
 }
 
 export const settingsState = {
   get current() {
     return settings
-  },
-  get draft() {
-    return draftSettings
   },
   get saving() {
     return isSaving
@@ -120,24 +59,13 @@ export const settingsState = {
   isExecutableMode() {
     return isExecutableBackend(settings)
   },
-  getKey(key) {
-    return getLegacyKey(settings, key)
-  },
-  async setKey(key, value) {
-    const nextSettings = setLegacyKey(settings, key, value)
+  async save(nextSettings: AppSettings) {
     await persistSettings(nextSettings)
   },
-  resetDraft() {
-    draftSettings = cloneSettings(settings)
-  },
-  async setDraft(nextDraft) {
-    await persistDraftSettings(nextDraft)
-  },
-  async finalizeDraft(nextDraft) {
+  async finalizeDraft(nextDraft: AppSettings) {
     isSaving = true
     try {
       const normalizedDraft = normalizeSettings(nextDraft)
-      await persistDraftSettings(normalizedDraft)
       if (!window.electron?.invoke || !window.electron?.store) {
         return {
           ok: false,
@@ -155,7 +83,7 @@ export const settingsState = {
       } catch (error) {
         return {
           ok: false,
-          message: error?.message || 'Configuration probe failed',
+          message: (error as Error)?.message || 'Configuration probe failed',
           warnings: [],
         }
       }
@@ -167,7 +95,6 @@ export const settingsState = {
       normalizedDraft.lastProbe = {
         ok: true,
         message: probeResult.message ?? 'Configuration saved and synchronized',
-        warnings: probeResult.warnings ?? [],
         metadataKind: probeResult.metadata?.kind ?? null,
         syncedAt: probeResult.syncedAt ?? null,
       }

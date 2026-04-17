@@ -57,7 +57,6 @@ export type AppSettings = {
   lastProbe: {
     ok: boolean
     message: string
-    warnings: string[]
     metadataKind: 'nodeRegistry' | 'parametersTemplate' | null
     syncedAt: string | null
   } | null
@@ -114,6 +113,9 @@ export const normalizeSettings = (value: unknown): AppSettings => {
   }
 
   const maybeSettings = value as LegacySettings
+
+  // Legacy format (flat key-value without 'execution' key) is no longer supported.
+  // Users on the old format will receive defaults on next load.
 
   if ('execution' in maybeSettings) {
     const execution = maybeSettings.execution as Record<string, unknown>
@@ -199,11 +201,6 @@ export const normalizeSettings = (value: unknown): AppSettings => {
         ? {
             ok: asBoolean(lastProbe.ok, false),
             message: asString(lastProbe.message),
-            warnings: Array.isArray(lastProbe.warnings)
-              ? lastProbe.warnings.filter(
-                  (item): item is string => typeof item === 'string'
-                )
-              : [],
             metadataKind:
               lastProbe.metadataKind === 'parametersTemplate'
                 ? 'parametersTemplate'
@@ -216,28 +213,7 @@ export const normalizeSettings = (value: unknown): AppSettings => {
     }
   }
 
-  return {
-    ...defaults,
-    urlVisualizer: asString(
-      maybeSettings.urlVisualizerKey,
-      defaults.urlVisualizer
-    ),
-    urlRemoteServer: asString(
-      maybeSettings.urlRemoteServerKey,
-      defaults.urlRemoteServer
-    ),
-    useMpi: asBoolean(maybeSettings.useMpiKey, defaults.useMpi),
-    execution: {
-      ...defaults.execution,
-      remote: {
-        ...defaults.execution.remote,
-        sshKeyPath: asString(
-          maybeSettings.sshPathKey,
-          defaults.execution.remote.sshKeyPath
-        ),
-      },
-    },
-  }
+  return defaults
 }
 
 export const cloneSettings = (settings: AppSettings): AppSettings => {

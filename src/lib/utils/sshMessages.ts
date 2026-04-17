@@ -17,7 +17,7 @@ import { JobStatus } from '../types/executionStatus'
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
 import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
 import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
-import { settingsState, USE_MPI } from '../stores/settingsStore.svelte'
+import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
 
 /**
@@ -100,7 +100,7 @@ const exportAndEvalGraphRemote = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
-  const useMpi = settingsState.getKey(USE_MPI) ?? false
+  const useMpi = settingsState.current.useMpi
   const uploadGraph = config?.uploadGraph ?? true
   const uploadParameters = config?.uploadParameters ?? false
 
@@ -154,7 +154,7 @@ const exportAndEvalGraphLocal = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
-  const useMpi = settingsState.getKey(USE_MPI) ?? false
+  const useMpi = settingsState.current.useMpi
   const uploadGraph = config?.uploadGraph ?? true
   const uploadParameters = config?.uploadParameters ?? false
   const internalJobId = jobIdMapState.getNextKey()

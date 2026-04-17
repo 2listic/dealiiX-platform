@@ -186,16 +186,6 @@ const getExecutableTemplateMetadataRemote = async (execution) => {
   }
 }
 
-const buildWarnings = (execution) => {
-  const warnings = []
-  if (execution.location === 'remote') {
-    warnings.push(
-      'Remote probe is currently limited to static configuration validation in this branch.'
-    )
-  }
-  return warnings
-}
-
 export const probeAndSyncExecutionSettings = async (execution) => {
   validateExecutionSettings(execution)
 
@@ -216,20 +206,9 @@ export const probeAndSyncExecutionSettings = async (execution) => {
         : await getExecutableTemplateMetadataRemote(execution)
   }
 
-  const warnings = buildWarnings(execution).filter((warning) => {
-    if (
-      warning.includes('Remote probe is currently limited') &&
-      ['coral', 'executable'].includes(execution.backendKind)
-    ) {
-      return false
-    }
-    return true
-  })
-
   return {
     ok: true,
     message: 'Configuration validated successfully',
-    warnings,
     capabilities: buildCapabilities(execution),
     metadata,
     syncedAt: new Date().toISOString(),
