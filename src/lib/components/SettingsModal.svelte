@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition'
   import {
     BACKEND_KINDS,
     EXECUTION_LOCATIONS,
@@ -11,6 +12,10 @@
   import Modal, { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
+
+  let executionOpen = $state(false)
+  let vtkOpen = $state(false)
+  let cloudOpen = $state(false)
 
   let sshPath = $state(settingsState.current.execution.remote.sshKeyPath)
   let sshFiles = $state<FileList | undefined>()
@@ -255,364 +260,418 @@
   <div style="padding: 0 1rem 1rem 1rem">
     <h2>Settings</h2>
     <div class="inputs-container">
-      <details class="input-container execution-section">
-        <summary>Execution Mode</summary>
-        <div class="radio-group">
-          {#each EXECUTION_LOCATIONS as location (location)}
-            <label class="radio-option">
-              <input
-                type="radio"
-                name="execution-location"
-                checked={executionLocation === location}
-                onchange={() => (executionLocation = location)}
-              />
-              <span>{location}</span>
-            </label>
-          {/each}
-        </div>
-        <div class="radio-group">
-          {#each BACKEND_KINDS as kind (kind)}
-            <label class="radio-option">
-              <input
-                type="radio"
-                name="backend-kind"
-                checked={backendKind === kind}
-                onchange={() => (backendKind = kind)}
-              />
-              <span>{kind}</span>
-            </label>
-          {/each}
-        </div>
-        {#if showRemoteSettings}
-          <div class="subsection">
-            <div class="subsection-title">Remote host</div>
-            <div class="execution-grid">
-              <label class="field">
-                <span>Host</span>
-                <input
-                  bind:value={remoteHost}
-                  class="input-field"
-                  type="text"
-                />
-              </label>
-              <label class="field">
-                <span>Port</span>
-                <input
-                  bind:value={remotePort}
-                  class="input-field"
-                  type="number"
-                />
-              </label>
-              <label class="field">
-                <span>Username</span>
-                <input
-                  bind:value={remoteUsername}
-                  class="input-field"
-                  type="text"
-                />
-              </label>
-            </div>
-            <div class="field">
-              <span style="font-weight: bold">Path to private SSH key</span>
-              <div class="input-line-save">
-                <div>{sshPath || 'No key selected'}</div>
-                {#if !isEditingSshPath}
-                  <Button onclick={() => (isEditingSshPath = true)}>Edit</Button
+      <div class="input-container accordion-section">
+        <button
+          class="accordion-summary"
+          onclick={() => (executionOpen = !executionOpen)}
+          aria-expanded={executionOpen}>Execution Mode</button
+        >
+        {#if executionOpen}
+          <div class="accordion-body" transition:slide={{ duration: 300 }}>
+            <div class="radio-controls">
+              <div class="radio-group">
+                {#each EXECUTION_LOCATIONS as location (location)}
+                  <label
+                    class="radio-option"
+                    class:active={executionLocation === location}
                   >
-                {:else}
-                  <Button onclick={cancelSshPathEdit}>Cancel</Button>
-                {/if}
+                    <input
+                      type="radio"
+                      name="execution-location"
+                      checked={executionLocation === location}
+                      onchange={() => (executionLocation = location)}
+                    />
+                    <span>{location}</span>
+                  </label>
+                {/each}
               </div>
-              {#if isEditingSshPath}
-                <input
-                  id="ssh-path-file"
-                  type="file"
-                  bind:files={sshFiles}
-                  onchange={handleOnChangeFile}
-                  placeholder="SSH path"
-                />
+              <div class="radio-group">
+                {#each BACKEND_KINDS as kind (kind)}
+                  <label
+                    class="radio-option"
+                    class:active={backendKind === kind}
+                  >
+                    <input
+                      type="radio"
+                      name="backend-kind"
+                      checked={backendKind === kind}
+                      onchange={() => (backendKind = kind)}
+                    />
+                    <span>{kind}</span>
+                  </label>
+                {/each}
+              </div>
+            </div>
+            {#if showRemoteSettings}
+              <div class="subsection">
+                <div class="subsection-title">Execution remote host</div>
+                <div class="execution-grid">
+                  <label class="field">
+                    <span>Host</span>
+                    <input
+                      bind:value={remoteHost}
+                      class="input-field"
+                      type="text"
+                    />
+                  </label>
+                  <label class="field">
+                    <span>Port</span>
+                    <input
+                      bind:value={remotePort}
+                      class="input-field"
+                      type="number"
+                    />
+                  </label>
+                  <label class="field">
+                    <span>Username</span>
+                    <input
+                      bind:value={remoteUsername}
+                      class="input-field"
+                      type="text"
+                    />
+                  </label>
+                </div>
+                <div class="field">
+                  <span>Path to private SSH key</span>
+                  <div class="input-line-save">
+                    <div>{sshPath || 'No key selected'}</div>
+                    {#if !isEditingSshPath}
+                      <Button onclick={() => (isEditingSshPath = true)}
+                        >Edit</Button
+                      >
+                    {:else}
+                      <Button onclick={cancelSshPathEdit}>Cancel</Button>
+                    {/if}
+                  </div>
+                  {#if isEditingSshPath}
+                    <input
+                      id="ssh-path-file"
+                      type="file"
+                      bind:files={sshFiles}
+                      onchange={handleOnChangeFile}
+                      placeholder="SSH path"
+                    />
+                  {/if}
+                </div>
+              </div>
+            {/if}
+
+            {#if showCoralSettings}
+              <div class="subsection">
+                <div class="subsection-title">Coral backend</div>
+                <div class="stacked-fields">
+                  <div class="field">
+                    <span>Working directory</span>
+                    {#if showRemoteSettings}
+                      <input
+                        bind:value={remoteWorkingDirectory}
+                        class="input-field"
+                        type="text"
+                      />
+                    {:else}
+                      <div class="input-line-save">
+                        <div>
+                          {localWorkingDirectory || 'No directory selected'}
+                        </div>
+                        {#if !isEditingLocalWorkingDirectory}
+                          <Button
+                            onclick={() =>
+                              (isEditingLocalWorkingDirectory = true)}
+                            >Edit</Button
+                          >
+                        {:else}
+                          <Button onclick={cancelLocalWorkingDirectoryEdit}
+                            >Cancel</Button
+                          >
+                        {/if}
+                      </div>
+                      {#if isEditingLocalWorkingDirectory}
+                        <input
+                          type="file"
+                          webkitdirectory
+                          bind:files={localWorkingDirectoryFiles}
+                          onchange={handleOnChangeLocalWorkingDirectory}
+                          placeholder="Working directory"
+                        />
+                      {/if}
+                    {/if}
+                  </div>
+                  <div class="field">
+                    <span>Coral binary path</span>
+                    {#if showRemoteSettings}
+                      <input
+                        bind:value={remoteCoralBinaryPath}
+                        class="input-field"
+                        type="text"
+                      />
+                    {:else}
+                      <div class="input-line-save">
+                        <div>{localCoralBinaryPath || 'No file selected'}</div>
+                        {#if !isEditingLocalCoralBinaryPath}
+                          <Button
+                            onclick={() =>
+                              (isEditingLocalCoralBinaryPath = true)}
+                            >Edit</Button
+                          >
+                        {:else}
+                          <Button onclick={cancelLocalCoralBinaryPathEdit}
+                            >Cancel</Button
+                          >
+                        {/if}
+                      </div>
+                      {#if isEditingLocalCoralBinaryPath}
+                        <input
+                          type="file"
+                          bind:files={localCoralBinaryFiles}
+                          onchange={handleOnChangeLocalCoralBinaryFile}
+                          placeholder="Coral binary path"
+                        />
+                      {/if}
+                    {/if}
+                  </div>
+                  <div class="field">
+                    <span>Coral plugin path</span>
+                    {#if showRemoteSettings}
+                      <input
+                        bind:value={remoteCoralPluginPath}
+                        class="input-field"
+                        type="text"
+                      />
+                    {:else}
+                      <div class="input-line-save">
+                        <div>{localCoralPluginPath || 'No file selected'}</div>
+                        {#if !isEditingLocalCoralPluginPath}
+                          <Button
+                            onclick={() =>
+                              (isEditingLocalCoralPluginPath = true)}
+                            >Edit</Button
+                          >
+                        {:else}
+                          <Button onclick={cancelLocalCoralPluginPathEdit}
+                            >Cancel</Button
+                          >
+                        {/if}
+                      </div>
+                      {#if isEditingLocalCoralPluginPath}
+                        <input
+                          type="file"
+                          bind:files={localCoralPluginFiles}
+                          onchange={handleOnChangeLocalCoralPluginFile}
+                          placeholder="Coral plugin path"
+                        />
+                      {/if}
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            {/if}
+
+            {#if showExecutableSettings}
+              <div class="subsection">
+                <div class="subsection-title">Custom executable</div>
+                <div class="stacked-fields">
+                  {#if showRemoteSettings}
+                    <label class="field">
+                      <span>Working directory</span>
+                      <input
+                        bind:value={remoteWorkingDirectory}
+                        class="input-field"
+                        type="text"
+                      />
+                    </label>
+                    <label class="field">
+                      <span>Executable path</span>
+                      <input
+                        bind:value={remoteExecutablePath}
+                        class="input-field"
+                        type="text"
+                      />
+                    </label>
+                    <label class="field">
+                      <span>Parameters file name</span>
+                      <input
+                        bind:value={remoteExecutableParametersFileName}
+                        class="input-field"
+                        type="text"
+                        placeholder="parameters.json"
+                      />
+                    </label>
+                  {:else}
+                    <div class="field">
+                      <span>Working directory</span>
+                      <div class="input-line-save">
+                        <div>
+                          {localWorkingDirectory || 'No directory selected'}
+                        </div>
+                        {#if !isEditingLocalWorkingDirectory}
+                          <Button
+                            onclick={() =>
+                              (isEditingLocalWorkingDirectory = true)}
+                            >Edit</Button
+                          >
+                        {:else}
+                          <Button onclick={cancelLocalWorkingDirectoryEdit}
+                            >Cancel</Button
+                          >
+                        {/if}
+                      </div>
+                      {#if isEditingLocalWorkingDirectory}
+                        <input
+                          type="file"
+                          webkitdirectory
+                          bind:files={localWorkingDirectoryFiles}
+                          onchange={handleOnChangeLocalWorkingDirectory}
+                          placeholder="Working directory"
+                        />
+                      {/if}
+                    </div>
+                    <div class="field">
+                      <span>Executable path</span>
+                      <div class="input-line-save">
+                        <div>{localExecutablePath || 'No file selected'}</div>
+                        {#if !isEditingLocalExecutablePath}
+                          <Button
+                            onclick={() =>
+                              (isEditingLocalExecutablePath = true)}
+                            >Edit</Button
+                          >
+                        {:else}
+                          <Button onclick={cancelLocalExecutablePathEdit}
+                            >Cancel</Button
+                          >
+                        {/if}
+                      </div>
+                      {#if isEditingLocalExecutablePath}
+                        <input
+                          type="file"
+                          bind:files={localExecutableFiles}
+                          onchange={handleOnChangeLocalExecutableFile}
+                          placeholder="Executable path"
+                        />
+                      {/if}
+                    </div>
+                    <label class="field">
+                      <span>Parameters file name</span>
+                      <input
+                        bind:value={localExecutableParametersFileName}
+                        class="input-field"
+                        type="text"
+                        placeholder="parameters.json"
+                      />
+                    </label>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+            <div class="probe-info">
+              <div>
+                {settingsState.current.lastProbe?.message ||
+                  'No successful probe yet'}
+              </div>
+              {#if settingsState.current.lastProbe?.syncedAt}
+                <div class="probe-subtle">
+                  Last sync: {new Date(
+                    settingsState.current.lastProbe.syncedAt
+                  ).toLocaleString()}
+                </div>
               {/if}
             </div>
-          </div>
-        {/if}
-
-        {#if showCoralSettings}
-          <div class="subsection">
-            <div class="subsection-title">Coral backend</div>
-            <div class="stacked-fields">
+            <div class="execution-actions">
+              <Button
+                variant="action"
+                type="button"
+                onclick={saveAndSyncExecution}
+                disabled={isSavingExecution}
+              >
+                {isSavingExecution ? 'Saving...' : 'Save & Sync Execution'}
+              </Button>
+            </div>
+            <div class="subsection">
+              <div class="subsection-title">MPI</div>
               <div class="field">
-                <span>Working directory</span>
-                {#if showRemoteSettings}
-                  <input
-                    bind:value={remoteWorkingDirectory}
-                    class="input-field"
-                    type="text"
-                  />
-                {:else}
-                  <div class="input-line-save">
-                    <div>
-                      {localWorkingDirectory || 'No directory selected'}
-                    </div>
-                    {#if !isEditingLocalWorkingDirectory}
-                      <Button
-                        onclick={() => (isEditingLocalWorkingDirectory = true)}
-                        >Edit</Button
-                      >
-                    {:else}
-                      <Button onclick={cancelLocalWorkingDirectoryEdit}
-                        >Cancel</Button
-                      >
-                    {/if}
-                  </div>
-                  {#if isEditingLocalWorkingDirectory}
+                <div class="input-line-save mpi-row">
+                  <span>Use MPI</span>
+                  <label class="switch">
                     <input
-                      type="file"
-                      webkitdirectory
-                      bind:files={localWorkingDirectoryFiles}
-                      onchange={handleOnChangeLocalWorkingDirectory}
-                      placeholder="Working directory"
+                      type="checkbox"
+                      checked={useMpi}
+                      onchange={toggleMpi}
                     />
-                  {/if}
-                {/if}
-              </div>
-              <div class="field">
-                <span>Coral binary path</span>
-                {#if showRemoteSettings}
-                  <input
-                    bind:value={remoteCoralBinaryPath}
-                    class="input-field"
-                    type="text"
-                  />
-                {:else}
-                  <div class="input-line-save">
-                    <div>{localCoralBinaryPath || 'No file selected'}</div>
-                    {#if !isEditingLocalCoralBinaryPath}
-                      <Button
-                        onclick={() => (isEditingLocalCoralBinaryPath = true)}
-                        >Edit</Button
-                      >
-                    {:else}
-                      <Button onclick={cancelLocalCoralBinaryPathEdit}
-                        >Cancel</Button
-                      >
-                    {/if}
-                  </div>
-                  {#if isEditingLocalCoralBinaryPath}
-                    <input
-                      type="file"
-                      bind:files={localCoralBinaryFiles}
-                      onchange={handleOnChangeLocalCoralBinaryFile}
-                      placeholder="Coral binary path"
-                    />
-                  {/if}
-                {/if}
-              </div>
-              <div class="field">
-                <span>Coral plugin path</span>
-                {#if showRemoteSettings}
-                  <input
-                    bind:value={remoteCoralPluginPath}
-                    class="input-field"
-                    type="text"
-                  />
-                {:else}
-                  <div class="input-line-save">
-                    <div>{localCoralPluginPath || 'No file selected'}</div>
-                    {#if !isEditingLocalCoralPluginPath}
-                      <Button
-                        onclick={() => (isEditingLocalCoralPluginPath = true)}
-                        >Edit</Button
-                      >
-                    {:else}
-                      <Button onclick={cancelLocalCoralPluginPathEdit}
-                        >Cancel</Button
-                      >
-                    {/if}
-                  </div>
-                  {#if isEditingLocalCoralPluginPath}
-                    <input
-                      type="file"
-                      bind:files={localCoralPluginFiles}
-                      onchange={handleOnChangeLocalCoralPluginFile}
-                      placeholder="Coral plugin path"
-                    />
-                  {/if}
-                {/if}
+                    <span class="slider round"></span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         {/if}
-
-        {#if showExecutableSettings}
-          <div class="subsection">
-            <div class="subsection-title">Custom executable</div>
-            <div class="stacked-fields">
-              {#if showRemoteSettings}
-                <label class="field">
-                  <span>Working directory</span>
+      </div>
+      <div class="input-container accordion-section">
+        <button
+          class="accordion-summary"
+          onclick={() => (vtkOpen = !vtkOpen)}
+          aria-expanded={vtkOpen}>VTK Visualizer &amp; Editor</button
+        >
+        {#if vtkOpen}
+          <div class="accordion-body" transition:slide={{ duration: 300 }}>
+            <div class="field">
+              <label for="url-vtk-visualizer">URL</label>
+              {#if isEditingVisualizer}
+                <div class="input-line-save">
                   <input
-                    bind:value={remoteWorkingDirectory}
-                    class="input-field"
+                    id="url-vtk-visualizer"
                     type="text"
-                  />
-                </label>
-                <label class="field">
-                  <span>Executable path</span>
-                  <input
-                    bind:value={remoteExecutablePath}
                     class="input-field"
-                    type="text"
+                    bind:value={urlVisualizer}
+                    placeholder="Visualizer URL"
+                    onkeydown={(event) =>
+                      submitOnEnter(event, saveVisualizerUrl)}
                   />
-                </label>
-                <label class="field">
-                  <span>Parameters file name</span>
-                  <input
-                    bind:value={remoteExecutableParametersFileName}
-                    class="input-field"
-                    type="text"
-                    placeholder="parameters.json"
-                  />
-                </label>
+                  <Button onclick={saveVisualizerUrl}>Save</Button>
+                </div>
               {:else}
-                <div class="field">
-                  <span>Working directory</span>
-                  <div class="input-line-save">
-                    <div>
-                      {localWorkingDirectory || 'No directory selected'}
-                    </div>
-                    {#if !isEditingLocalWorkingDirectory}
-                      <Button
-                        onclick={() => (isEditingLocalWorkingDirectory = true)}
-                        >Edit</Button
-                      >
-                    {:else}
-                      <Button onclick={cancelLocalWorkingDirectoryEdit}
-                        >Cancel</Button
-                      >
-                    {/if}
-                  </div>
-                  {#if isEditingLocalWorkingDirectory}
-                    <input
-                      type="file"
-                      webkitdirectory
-                      bind:files={localWorkingDirectoryFiles}
-                      onchange={handleOnChangeLocalWorkingDirectory}
-                      placeholder="Working directory"
-                    />
-                  {/if}
+                <div class="input-line-save">
+                  <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
+                  <Button onclick={() => (isEditingVisualizer = true)}
+                    >Edit</Button
+                  >
                 </div>
-                <div class="field">
-                  <span>Executable path</span>
-                  <div class="input-line-save">
-                    <div>{localExecutablePath || 'No file selected'}</div>
-                    {#if !isEditingLocalExecutablePath}
-                      <Button
-                        onclick={() => (isEditingLocalExecutablePath = true)}
-                        >Edit</Button
-                      >
-                    {:else}
-                      <Button onclick={cancelLocalExecutablePathEdit}
-                        >Cancel</Button
-                      >
-                    {/if}
-                  </div>
-                  {#if isEditingLocalExecutablePath}
-                    <input
-                      type="file"
-                      bind:files={localExecutableFiles}
-                      onchange={handleOnChangeLocalExecutableFile}
-                      placeholder="Executable path"
-                    />
-                  {/if}
-                </div>
-                <label class="field">
-                  <span>Parameters file name</span>
-                  <input
-                    bind:value={localExecutableParametersFileName}
-                    class="input-field"
-                    type="text"
-                    placeholder="parameters.json"
-                  />
-                </label>
               {/if}
             </div>
           </div>
         {/if}
-        <div class="probe-info">
-          <div>
-            {settingsState.current.lastProbe?.message ||
-              'No successful probe yet'}
-          </div>
-          {#if settingsState.current.lastProbe?.syncedAt}
-            <div class="probe-subtle">
-              Last sync: {new Date(
-                settingsState.current.lastProbe.syncedAt
-              ).toLocaleString()}
+      </div>
+      <div class="input-container accordion-section">
+        <button
+          class="accordion-summary"
+          onclick={() => (cloudOpen = !cloudOpen)}
+          aria-expanded={cloudOpen}>Cloud Remote Server</button
+        >
+        {#if cloudOpen}
+          <div class="accordion-body" transition:slide={{ duration: 300 }}>
+            <div class="field">
+              <label for="url-remote-server">URL</label>
+              {#if isEditingRemote}
+                <div class="input-line-save">
+                  <input
+                    id="url-remote-server"
+                    type="text"
+                    class="input-field"
+                    bind:value={urlRemoteServer}
+                    placeholder="Remote Server URL"
+                    onkeydown={(event) => submitOnEnter(event, saveRemoteUrl)}
+                  />
+                  <Button onclick={saveRemoteUrl}>Save</Button>
+                </div>
+              {:else}
+                <div class="input-line-save">
+                  <div>{urlRemoteServer ? urlRemoteServer : 'No URL set'}</div>
+                  <Button onclick={() => (isEditingRemote = true)}>Edit</Button>
+                </div>
+              {/if}
             </div>
-          {/if}
-        </div>
-        <div class="execution-actions">
-          <Button
-            variant="action"
-            type="button"
-            onclick={saveAndSyncExecution}
-            disabled={isSavingExecution}
-          >
-            {isSavingExecution ? 'Saving...' : 'Save & Sync Execution'}
-          </Button>
-        </div>
-        <div class="input-line-save mpi-row">
-          <span>Use MPI</span>
-          <label class="switch">
-            <input type="checkbox" checked={useMpi} onchange={toggleMpi} />
-            <span class="slider round"></span>
-          </label>
-        </div>
-      </details>
-      <details class="input-container accordion-section">
-        <summary>VTK Visualizer &amp; Editor</summary>
-        <label for="url-vtk-visualizer">URL</label>
-        {#if isEditingVisualizer}
-          <div class="input-line-save">
-            <input
-              id="url-vtk-visualizer"
-              type="text"
-              class="input-field"
-              bind:value={urlVisualizer}
-              placeholder="Visualizer URL"
-              onkeydown={(event) => submitOnEnter(event, saveVisualizerUrl)}
-            />
-            <Button onclick={saveVisualizerUrl}>Save</Button>
-          </div>
-        {:else}
-          <div class="input-line-save">
-            <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
-            <Button onclick={() => (isEditingVisualizer = true)}>Edit</Button>
           </div>
         {/if}
-      </details>
-      <details class="input-container accordion-section">
-        <summary>Cloude Remote Server</summary>
-        <label for="url-remote-server">URL</label>
-        {#if isEditingRemote}
-          <div class="input-line-save">
-            <input
-              id="url-remote-server"
-              type="text"
-              class="input-field"
-              bind:value={urlRemoteServer}
-              placeholder="Remote Server URL"
-              onkeydown={(event) => submitOnEnter(event, saveRemoteUrl)}
-            />
-            <Button onclick={saveRemoteUrl}>Save</Button>
-          </div>
-        {:else}
-          <div class="input-line-save">
-            <div>{urlRemoteServer ? urlRemoteServer : 'No URL set'}</div>
-            <Button onclick={() => (isEditingRemote = true)}>Edit</Button>
-          </div>
-        {/if}
-      </details>
+      </div>
       <div class="button-container">
         <Button variant="default" type="button" onclick={closeModal}
           >Close</Button
@@ -667,58 +726,94 @@
     border-color: red;
   }
 
-  .accordion-section,
-  .execution-section {
-    border-top: 1px solid var(--ternary-color);
+  .accordion-section {
     margin-top: 1vh;
     padding-top: 1vh;
   }
 
-  .accordion-section > summary,
-  .execution-section > summary {
+  .accordion-summary {
     font-weight: bold;
     cursor: pointer;
     user-select: none;
-    list-style: none;
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding-bottom: 0;
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: 1.1rem;
+    width: 100%;
+    text-align: left;
   }
 
-  .accordion-section[open] > summary,
-  .execution-section[open] > summary {
-    padding-bottom: 1vh;
-  }
-
-  .accordion-section > summary::before,
-  .execution-section > summary::before {
+  .accordion-summary::before {
     content: '▸';
     display: inline-block;
     transition: transform 0.2s;
   }
 
-  .accordion-section[open] > summary::before,
-  .execution-section[open] > summary::before {
+  .accordion-summary[aria-expanded='true']::before {
     transform: rotate(90deg);
+  }
+
+  .accordion-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    padding-left: 1rem;
+    padding-top: 1vh;
   }
 
   .mpi-row {
     margin-top: 1vh;
     padding-top: 1vh;
-    border-top: 1px solid var(--ternary-color);
+  }
+
+  .radio-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0 1.25rem;
   }
 
   .radio-group {
     display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+    border: 1px solid color-mix(in srgb, var(--ternary-color) 30%, transparent);
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   .radio-option {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    justify-content: center;
+    padding: 0.5rem 1.6rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+    user-select: none;
+    background: var(--primary-color);
+    color: var(--ternary-color);
+    border-right: 1px solid
+      color-mix(in srgb, var(--ternary-color) 30%, transparent);
+  }
+
+  .radio-option:last-child {
+    border-right: none;
+  }
+
+  .radio-option input[type='radio'] {
+    display: none;
+  }
+
+  .radio-option.active {
+    background: var(--button-action-bg);
+    color: #fff;
   }
 
   .execution-grid {
@@ -748,6 +843,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.4vh;
+    padding: 0 1rem;
   }
 
   .probe-info {
@@ -755,6 +851,9 @@
     flex-direction: column;
     gap: 0.4vh;
     font-size: 0.9rem;
+    align-items: center;
+    text-align: center;
+    padding: 0.8rem 0;
   }
 
   .probe-subtle {
@@ -763,7 +862,7 @@
 
   .execution-actions {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .switch {
