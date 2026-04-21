@@ -28,11 +28,11 @@
   let localWorkingDirectoryFiles = $state<FileList | undefined>()
   let isEditingLocalExecutablePath = $state(false)
   let isEditingLocalWorkingDirectory = $state(false)
+
   let urlVisualizer = $derived(settingsState.urlVisualizer)
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $derived(settingsState.urlRemoteServer)
   let isEditingRemote = $state(false)
-  let useMpi = $derived(settingsState.useMpi)
   let executionLocation = $derived(settingsState.execution.location)
   let backendKind = $derived(settingsState.execution.backendKind)
   let remoteHost = $derived(settingsState.remote.host)
@@ -57,6 +57,52 @@
   let showCoralSettings = $derived(backendKind === 'coral')
   let showExecutableSettings = $derived(backendKind === 'executable')
 
+  const closeModal = () => getModal(modalId).close()
+
+  const saveAndSyncExecution = async () => {
+    const execution: ExecutionSettings = {
+      location: executionLocation,
+      backendKind,
+      local: {
+        workingDirectory: localWorkingDirectory,
+        coralBinaryPath: localCoralBinaryPath,
+        coralPluginPath: localCoralPluginPath,
+        executablePath: localExecutablePath,
+        parametersFileName: localExecutableParametersFileName,
+      },
+      remote: {
+        host: remoteHost,
+        port: Number(remotePort),
+        username: remoteUsername,
+        workingDirectory: remoteWorkingDirectory,
+        coralBinaryPath: remoteCoralBinaryPath,
+        coralPluginPath: remoteCoralPluginPath,
+        executablePath: remoteExecutablePath,
+        parametersFileName: remoteExecutableParametersFileName,
+        sshKeyPath: sshPath,
+      },
+    }
+
+    console.log('Saving execution settings:', execution)
+    isSavingExecution = true
+    try {
+      const result = await probeAndSaveExecution(execution)
+      if (!result?.ok) {
+        toastState.add({
+          message: result?.message || 'Configuration probe failed',
+          type: 'error',
+        })
+        return
+      }
+      toastState.add({
+        message: result.message || 'Execution settings saved',
+        type: 'success',
+      })
+    } finally {
+      isSavingExecution = false
+    }
+  }
+
   const resetForm = () => {
     isEditingVisualizer = false
     isEditingSshPath = false
@@ -67,7 +113,6 @@
     isEditingRemote = false
     urlVisualizer = settingsState.urlVisualizer
     urlRemoteServer = settingsState.urlRemoteServer
-    useMpi = settingsState.useMpi
     sshPath = settingsState.remote.sshKeyPath
     executionLocation = settingsState.execution.location
     backendKind = settingsState.execution.backendKind
@@ -164,58 +209,6 @@
     isEditingRemote = false
     toastState.add({ message: 'URL Remote Server saved' })
   }
-
-  const toggleMpi = async () => {
-    useMpi = !useMpi
-    await settingsState.saveUseMpi(useMpi)
-    toastState.add({ message: `MPI ${useMpi ? 'enabled' : 'disabled'}` })
-  }
-
-  const saveAndSyncExecution = async () => {
-    const execution: ExecutionSettings = {
-      location: executionLocation,
-      backendKind,
-      local: {
-        workingDirectory: localWorkingDirectory,
-        coralBinaryPath: localCoralBinaryPath,
-        coralPluginPath: localCoralPluginPath,
-        executablePath: localExecutablePath,
-        parametersFileName: localExecutableParametersFileName,
-      },
-      remote: {
-        host: remoteHost,
-        port: Number(remotePort),
-        username: remoteUsername,
-        workingDirectory: remoteWorkingDirectory,
-        coralBinaryPath: remoteCoralBinaryPath,
-        coralPluginPath: remoteCoralPluginPath,
-        executablePath: remoteExecutablePath,
-        parametersFileName: remoteExecutableParametersFileName,
-        sshKeyPath: sshPath,
-      },
-    }
-
-    console.log('Saving execution settings:', execution)
-    isSavingExecution = true
-    try {
-      const result = await probeAndSaveExecution(execution)
-      if (!result?.ok) {
-        toastState.add({
-          message: result?.message || 'Configuration probe failed',
-          type: 'error',
-        })
-        return
-      }
-      toastState.add({
-        message: result.message || 'Execution settings saved',
-        type: 'success',
-      })
-    } finally {
-      isSavingExecution = false
-    }
-  }
-
-  const closeModal = () => getModal(modalId).close()
 </script>
 
 <Modal id={modalId} size="md" onClose={resetForm}>
@@ -273,6 +266,10 @@
               {#if showRemoteSettings}
                 <div class="subsection">
                   <div class="subsection-title">Execution remote host</div>
+                  <p class="section-hint">
+                    SSH connection — enter a bare hostname or IP address, no
+                    http:// prefix.
+                  </p>
                   <div class="execution-grid">
                     <label class="field">
                       <span>Host</span>
@@ -281,6 +278,7 @@
                         class="input-field"
                         type="text"
                         required
+                        placeholder="localhost"
                       />
                     </label>
                     <label class="field">
@@ -291,6 +289,7 @@
                         type="number"
                         min="1"
                         max="65535"
+                        placeholder="2222"
                       />
                     </label>
                     <label class="field">
@@ -300,6 +299,7 @@
                         class="input-field"
                         type="text"
                         required
+                        placeholder="user"
                       />
                     </label>
                   </div>
@@ -569,22 +569,6 @@
                 </Button>
               </div>
             </form>
-            <div class="subsection">
-              <div class="subsection-title">MPI</div>
-              <div class="field">
-                <div class="input-line-save mpi-row">
-                  <span>Use MPI</span>
-                  <label class="switch">
-                    <input
-                      type="checkbox"
-                      checked={useMpi}
-                      onchange={toggleMpi}
-                    />
-                    <span class="slider round"></span>
-                  </label>
-                </div>
-              </div>
-            </div>
           </div>
         {/if}
       </div>
@@ -596,6 +580,9 @@
         >
         {#if vtkOpen}
           <div class="accordion-body" transition:slide={{ duration: 300 }}>
+            <p class="section-hint">
+              HTTP/HTTPS connection to the VTK visualizer service.
+            </p>
             <div class="field">
               <label for="url-vtk-visualizer">URL</label>
               {#if isEditingVisualizer}
@@ -611,13 +598,13 @@
                     type="url"
                     class="input-field"
                     bind:value={urlVisualizer}
-                    placeholder="Visualizer URL"
+                    placeholder="http://localhost:8008"
                   />
                   <Button type="submit">Save</Button>
                 </form>
               {:else}
                 <div class="input-line-save">
-                  <div>{urlVisualizer ? urlVisualizer : 'No URL set'}</div>
+                  <div>{urlVisualizer || 'No URL set'}</div>
                   <Button onclick={() => (isEditingVisualizer = true)}
                     >Edit</Button
                   >
@@ -635,6 +622,9 @@
         >
         {#if cloudOpen}
           <div class="accordion-body" transition:slide={{ duration: 300 }}>
+            <p class="section-hint">
+              HTTP/HTTPS connection to the cloud remote server.
+            </p>
             <div class="field">
               <label for="url-remote-server">URL</label>
               {#if isEditingRemote}
@@ -650,13 +640,13 @@
                     type="url"
                     class="input-field"
                     bind:value={urlRemoteServer}
-                    placeholder="Remote Server URL"
+                    placeholder="http://localhost:8080"
                   />
                   <Button type="submit">Save</Button>
                 </form>
               {:else}
                 <div class="input-line-save">
-                  <div>{urlRemoteServer ? urlRemoteServer : 'No URL set'}</div>
+                  <div>{settingsState.urlRemoteServer || 'No URL set'}</div>
                   <Button onclick={() => (isEditingRemote = true)}>Edit</Button>
                 </div>
               {/if}
@@ -757,11 +747,6 @@
     padding-top: 1vh;
   }
 
-  .mpi-row {
-    margin-top: 1vh;
-    padding-top: 1vh;
-  }
-
   .radio-controls {
     display: flex;
     flex-direction: column;
@@ -857,55 +842,11 @@
     justify-content: center;
   }
 
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 27px;
-  }
-
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.4s;
-  }
-
-  .slider:before {
-    position: absolute;
-    content: '';
-    height: 21px;
-    width: 21px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-  }
-
-  input:checked + .slider {
-    background-color: var(--button-action-bg);
-  }
-
-  input:checked + .slider:before {
-    transform: translateX(21px);
-  }
-
-  .slider.round {
-    border-radius: 27px;
-  }
-
-  .slider.round:before {
-    border-radius: 50%;
+  .section-hint {
+    margin: 0 0 0.5vh;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    padding: 0 1rem;
   }
 
   .button-container {

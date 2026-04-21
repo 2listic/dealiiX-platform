@@ -57,8 +57,7 @@ export type JobConfig = {
   nodes: number
   tasksPerNode: number
   timeLimit: string
-  uploadGraph: boolean
-  uploadParameters: boolean
+  useMpi: boolean
 }
 
 /**
@@ -88,7 +87,7 @@ export const exportAndEvalGraph = async (
   }
 
   if (execution.location === 'local') {
-    await exportAndEvalExecutableLocal(config)
+    await exportAndEvalExecutableLocal()
     return
   }
 
@@ -100,38 +99,23 @@ const exportAndEvalGraphRemote = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
-  const useMpi = settingsState.current.useMpi
-  const uploadGraph = config?.uploadGraph ?? true
-  const uploadParameters = config?.uploadParameters ?? false
+  const useMpi = config?.useMpi ?? false
 
   // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
-  if (uploadGraph) {
-    const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-    await uploadFileSsh(
-      JSON.stringify(graphPayload),
-      '/app/shared-data/graph.json'
-    )
-  }
-
-  // upload parameters JSON if enabled
-  if (uploadParameters) {
-    const params = parametersState.snapshot
-    if (params) {
-      await uploadFileSsh(
-        JSON.stringify(params, null, 2),
-        '/app/shared-data/template_parameters.json'
-      )
-    }
-  }
+  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  await uploadFileSsh(
+    JSON.stringify(graphPayload),
+    '/app/shared-data/graph.json' // TODO: read path from settings
+  )
 
   // build and upload batch script
   const internalJobId = jobIdMapState.getNextKey()
   const batchScript = buildBatchScript(useMpi, internalJobId, config)
-  await uploadFileSsh(batchScript, '/app/shared-data/job.sh')
+  await uploadFileSsh(batchScript, '/app/shared-data/job.sh') // TODO: read path from settings
 
   // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: 'sbatch /app/shared-data/job.sh',
+    command: 'sbatch /app/shared-data/job.sh', // TODO: read path from settings
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
@@ -154,12 +138,9 @@ const exportAndEvalGraphLocal = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
-  const useMpi = settingsState.current.useMpi
-  const uploadGraph = config?.uploadGraph ?? true
-  const uploadParameters = config?.uploadParameters ?? false
+  const useMpi = config?.useMpi ?? false
   const internalJobId = jobIdMapState.getNextKey()
   const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-  const parametersPayload = uploadParameters ? parametersState.snapshot : null
   const localSettings = settingsState.current.execution.local
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
@@ -167,10 +148,7 @@ const exportAndEvalGraphLocal = async (
     coralPluginPath: localSettings.coralPluginPath,
     workingDirectory: localSettings.workingDirectory,
     graphPayload,
-    parametersPayload,
     internalJobId,
-    uploadGraph,
-    uploadParameters,
   })
 
   const jobId = String(resultExecute.jobId)
@@ -195,9 +173,7 @@ const getExecutableParametersPayload = () => {
   return parametersPayload
 }
 
-const exportAndEvalExecutableLocal = async (
-  config?: JobConfig
-): Promise<void> => {
+const exportAndEvalExecutableLocal = async (): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
   const localSettings = settingsState.current.execution.local
   const resultExecute = await window.electron.invoke(
@@ -208,7 +184,6 @@ const exportAndEvalExecutableLocal = async (
       parametersPayload: getExecutableParametersPayload(),
       parametersFileName: localSettings.parametersFileName,
       internalJobId,
-      uploadParameters: config?.uploadParameters ?? true,
     }
   )
 
@@ -302,15 +277,6 @@ const buildBatchScript = (
       .replaceAll('{{NODES}}', String(config?.nodes ?? 1))
       .replaceAll('{{NTASKS_PER_NODE}}', String(config?.tasksPerNode ?? 4))
   }
-
-  // Build the run/input-parameters flags based on config switches
-  const uploadGraph = config?.uploadGraph ?? true
-  const uploadParameters = config?.uploadParameters ?? false
-  const runFlag = uploadGraph ? 'run /app/shared-data/graph.json' : 'run'
-  const paramsFlag = uploadParameters
-    ? ' -input-parameters /app/shared-data/template_parameters.json'
-    : ''
-  script = script.replaceAll('{{RUN_FLAGS}}', runFlag + paramsFlag)
 
   console.log('Generated script:', script)
 

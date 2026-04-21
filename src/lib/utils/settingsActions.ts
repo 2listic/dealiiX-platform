@@ -1,4 +1,4 @@
-import type { ExecutionSettings } from '../types/settingsTypes'
+import type { ExecutionSettings, ProbeResult } from '../types/settingsTypes'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { setRegistry } from '../stores/registryStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
@@ -36,24 +36,15 @@ export const probeAndSaveExecution = async (execution: ExecutionSettings) => {
 
   if (!probeResult?.ok) return probeResult
 
-  const lastProbe = {
-    ok: true,
-    message: probeResult.message ?? 'Configuration saved and synchronized',
-    metadataKind: probeResult.metadata?.kind ?? null,
-    syncedAt: probeResult.syncedAt ?? null,
-  }
-
   await applySyncedMetadata(probeResult)
-  await settingsState.saveExecution(execution, lastProbe)
+  await settingsState.saveExecution(execution, probeResult)
   return probeResult
 }
 
 // ── Private helpers ──
 
-const applySyncedMetadata = async (probeResult: Record<string, unknown>) => {
-  const metadata = probeResult?.metadata as
-    | { kind: string; data: Record<string, unknown> }
-    | undefined
+const applySyncedMetadata = async (probeResult: ProbeResult) => {
+  const { metadata } = probeResult
   if (!metadata) return
 
   if (metadata.kind === 'nodeRegistry') {

@@ -7,24 +7,22 @@
 
   interface Props {
     modalId: string
-    showMpiFields: boolean
     // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
     onConfirm: (_config: JobConfig) => void
   }
 
-  let { modalId, showMpiFields, onConfirm }: Props = $props()
+  let { modalId, onConfirm }: Props = $props()
 
   let nodes = $state(1)
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
-  let uploadGraph = $state(true)
-  let uploadParameters = $state(false)
+  let useMpi = $state(false)
   let hasParameters = $derived(parametersState.value !== null)
   let execution = $derived(settingsState.current.execution)
   let isExecutableMode = $derived(execution.backendKind === 'executable')
   let isRemoteExecution = $derived(execution.location === 'remote')
   let showSchedulerFields = $derived(isRemoteExecution)
-  let showEffectiveMpiFields = $derived(showMpiFields && !isExecutableMode)
+  let showEffectiveMpiFields = $derived(useMpi && !isExecutableMode)
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
@@ -43,8 +41,7 @@
       nodes,
       tasksPerNode,
       timeLimit,
-      uploadGraph: isExecutableMode ? false : uploadGraph,
-      uploadParameters: isExecutableMode ? true : uploadParameters,
+      useMpi: isExecutableMode ? false : useMpi,
     })
     getModal(modalId).close()
   }
@@ -130,21 +127,13 @@
           </div>
         {/if}
       {:else}
-        <label class="toggle-label">
-          <input type="checkbox" bind:checked={uploadGraph} />
-          <span>Upload Graph</span>
-        </label>
-        <label class="toggle-label">
-          <input
-            type="checkbox"
-            bind:checked={uploadParameters}
-            disabled={!hasParameters}
-            title={hasParameters
-              ? 'Upload parameters file'
-              : 'Load a parameters file first'}
-          />
-          <span class:disabled={!hasParameters}>Upload Parameters</span>
-        </label>
+        <div class="mpi-row">
+          <span class="toggle-label">Use MPI</span>
+          <label class="switch">
+            <input type="checkbox" bind:checked={useMpi} />
+            <span class="slider round"></span>
+          </label>
+        </div>
       {/if}
     </div>
     <div class="button-container">
@@ -250,21 +239,64 @@
   }
 
   .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
     font-weight: bold;
   }
 
-  .toggle-label input[type='checkbox'] {
-    width: 1.25rem;
-    height: 1.25rem;
-    cursor: pointer;
+  .mpi-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .toggle-label .disabled {
-    opacity: 0.5;
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 27px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: '';
+    height: 21px;
+    width: 21px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+  }
+
+  input:checked + .slider {
+    background-color: var(--button-action-bg);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(21px);
+  }
+
+  .slider.round {
+    border-radius: 27px;
+  }
+
+  .slider.round:before {
+    border-radius: 50%;
   }
 
   .button-container {

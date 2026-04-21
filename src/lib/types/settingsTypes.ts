@@ -49,17 +49,19 @@ export type ExecutionSettings = {
   remote: RemoteExecutionSettings
 }
 
+export type ProbeResult = {
+  ok: boolean
+  message: string
+  capabilities: ProbeCapabilities
+  metadata: ExecutionMetadata
+  syncedAt: string
+}
+
 export type AppSettings = {
   urlVisualizer: string
   urlRemoteServer: string
-  useMpi: boolean
   execution: ExecutionSettings
-  lastProbe: {
-    ok: boolean
-    message: string
-    metadataKind: 'nodeRegistry' | 'parametersTemplate' | null
-    syncedAt: string | null
-  } | null
+  lastProbe: ProbeResult | null
 }
 
 const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
@@ -73,7 +75,6 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
 export const createDefaultSettings = (): AppSettings => ({
   urlVisualizer: '',
   urlRemoteServer: '',
-  useMpi: false,
   execution: {
     location: 'remote',
     backendKind: 'coral',

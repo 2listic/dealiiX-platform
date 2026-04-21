@@ -39,17 +39,10 @@ export const startLocalCoralRun = async ({
   coralPluginPath,
   workingDirectory,
   graphPayload,
-  parametersPayload,
   internalJobId,
-  uploadGraph,
-  uploadParameters,
 }) => {
   const jobId = String(internalJobId)
   const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
-  const parametersPath = path.join(
-    workingDirectory,
-    `template_parameters-${jobId}.json`
-  )
   const logPath = path.join(workingDirectory, `local-${jobId}.out`)
   const touchDir = path.join(
     workingDirectory,
@@ -61,24 +54,16 @@ export const startLocalCoralRun = async ({
   await ensureDir(path.dirname(touchDir))
   await ensureDir(touchDir)
 
-  if (uploadGraph) {
-    await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
-  }
-  if (uploadParameters && parametersPayload) {
-    await fs.promises.writeFile(
-      parametersPath,
-      JSON.stringify(parametersPayload, null, 2)
-    )
-  }
+  await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
 
-  const args = ['-p', coralPluginPath, 'run']
-  if (uploadGraph) {
-    args.push(graphPath)
-  }
-  if (uploadParameters && parametersPayload) {
-    args.push('-input-parameters', parametersPath)
-  }
-  args.push('--touch-dir', touchDir)
+  const args = [
+    '-p',
+    coralPluginPath,
+    'run',
+    graphPath,
+    '--touch-dir',
+    touchDir,
+  ]
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(coralBinaryPath, args, {

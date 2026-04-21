@@ -34,32 +34,12 @@ function createWindow() {
       preload: path.join(__dirname, '/preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
       webSecurity: true,
     },
   })
 
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   mainWindow.webContents.openDevTools() // open devTools by default
-}
-
-const getRemoteConnectionSettings = (settings) => {
-  const execution = settings.execution
-  if (execution?.remote) {
-    return {
-      host: execution.remote.host,
-      port: execution.remote.port,
-      username: execution.remote.username,
-      pathToSsh: execution.remote.sshKeyPath,
-    }
-  }
-
-  return {
-    host: 'localhost',
-    port: 2222,
-    username: 'root',
-    pathToSsh: settings.sshPathKey,
-  }
 }
 
 app.whenReady().then(() => {
@@ -88,20 +68,24 @@ ipcMain.handle(
 ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
   const settings = store.get('settings', {})
   const connectionSettings = getRemoteConnectionSettings(settings)
-  if (!connectionSettings.pathToSsh) {
-    throw new Error('SSH key path not configured in settings')
-  }
   return await connectToSSHWithKey(command, connectionSettings)
 })
 
 ipcMain.handle('upload-file-ssh', async (event, { content, remotePath }) => {
   const settings = store.get('settings', {})
   const connectionSettings = getRemoteConnectionSettings(settings)
-  if (!connectionSettings.pathToSsh) {
-    throw new Error('SSH key path not configured in settings')
-  }
   return await uploadFileViaSftp(content, remotePath, connectionSettings)
 })
+
+const getRemoteConnectionSettings = (settings) => {
+  const { host, port, username, sshKeyPath } = settings.execution?.remote ?? {}
+  if (!host || !port || !username || !sshKeyPath) {
+    throw new Error(
+      'SSH connection settings are incomplete. Check your settings.'
+    )
+  }
+  return { host, port, username, pathToSsh: sshKeyPath }
+}
 
 ipcMain.handle(
   'probe-sync-execution-settings',
@@ -168,11 +152,6 @@ ipcMain.handle('get-local-run-state', async (event, { jobId }) => {
 })
 
 ipcMain.handle('open-external-url', async (event, url) => {
-  // Option 1: Open in system default browser (recommended for external URLs)
-  // await shell.openExternal(url)
-  // return { success: true }
-
-  // Option 2: Open in a new Electron window
   const externalWindow = new BrowserWindow()
 
   // Validate URL (basic validation)
@@ -186,7 +165,10 @@ ipcMain.handle('open-external-url', async (event, url) => {
     return { success: true }
   } catch (error) {
     console.error('Failed to open URL:', error)
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 })
 

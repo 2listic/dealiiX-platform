@@ -37,9 +37,6 @@ export const settingsState = {
   get urlRemoteServer() {
     return settings.urlRemoteServer
   },
-  get useMpi() {
-    return settings.useMpi
-  },
   get execution() {
     return settings.execution
   },
@@ -57,9 +54,6 @@ export const settingsState = {
   },
   async saveUrlRemoteServer(url: string) {
     await persistSettings({ ...settings, urlRemoteServer: url })
-  },
-  async saveUseMpi(enabled: boolean) {
-    await persistSettings({ ...settings, useMpi: enabled })
   },
   async saveExecution(
     execution: ExecutionSettings,

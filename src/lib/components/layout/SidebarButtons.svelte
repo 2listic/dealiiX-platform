@@ -242,12 +242,12 @@
       return
     }
     try {
-      // Parse current graph to Network JSON format (MPI plugin block included)
-      const useMpi = settingsState.current.useMpi
+      // Parse current graph to Network JSON format
+      // TODO: add a modal to ask user if he wants the mpi version
       const graphData = buildGraphPayload(
         getNodesSnapshot(),
         getEdgesSnapshot(),
-        useMpi
+        false
       )
       const jsonString = JSON.stringify(graphData, null, 2)
 
@@ -371,11 +371,7 @@
     <span class="button-text">Execute</span>
   </div>
 
-  <JobConfigModal
-    modalId={JobConfigModalId}
-    showMpiFields={settingsState.current.useMpi}
-    onConfirm={handleJobConfirm}
-  />
+  <JobConfigModal modalId={JobConfigModalId} onConfirm={handleJobConfirm} />
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">
