@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DealiiX Platform is an Electron + Svelte 5 desktop application for building and executing computational graphs. It provides a visual node-based editor (using @xyflow/svelte) that connects to a C++ backend called CORAL (Computational Object-oriented Representation And Library) for scientific computing workflows.
 
+## Code Conventions
+
+- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
+- **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
+- **Svelte 5 writable `$derived`**: Since Svelte 5.25, `$derived` values can be temporarily overridden by reassignment and reset automatically when their dependency changes. Prefer `$derived(prop)` over `$state(prop)` + `$effect` for form fields that derive from props — it is writable, stays in sync, and avoids the lint warning `state_referenced_locally`. Use `onClose` on `<Modal>` to reset dirty values on cancel rather than tracking visibility with an effect.
+
 ## Architecture
 
 ### Desktop Application (Electron + Svelte 5)
@@ -239,7 +245,7 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 
 ## Key Technical Details
 
-- **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts.
+- **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts. See Code Conventions for the writable `$derived` pattern.
 - **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`, `upload-file-ssh`, `store:get`, `store:set`, `store:remove`
 - **Electron storage keys** (`electron/utils/storage.js`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
 - **Git hooks (Husky)**: On commit — `npm run lint` (failures abort), then Prettier auto-formats.
@@ -252,11 +258,6 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **Slurm batch templates**: Two templates in `src/lib/templates/` — `sbatch.template.sh` (non-MPI) and `sbatch-mpi.template.sh` (MPI via `mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1}`). Imported at build time via Vite's `?raw` suffix. `sshMessages.ts` selects between them based on the `USE_MPI` setting. Both templates expose `{{INTERNAL_JOB_ID}}` (used for `--touch-dir nodes-exec-status/<id>`) and `{{TIME_LIMIT}}`. The MPI template additionally exposes `{{NODES}}` and `{{NTASKS_PER_NODE}}`, filled at runtime from `JobConfig` (defaults: 1 node, 4 tasks/node, 01:00:00 time limit). Clicking Execute always opens `JobConfigModal.svelte` (renamed from `MpiConfigModal.svelte`) — it shows MPI-specific fields (nodes, tasks/node) only when MPI is enabled, and always shows the time limit field.
 - **MPI graph payload**: When MPI is enabled, `buildGraphPayload()` in `sshMessages.ts` injects a `plugin: { MPI: { enabled: true, max_num_threads: 1 } }` block at the top of the exported network JSON, as required by CORAL for MPI initialization.
 - **Node execution status**: `getNodesExecutionStatus(jobIdInternal)` reads files from `/app/shared-data/nodes-exec-status/<internalJobId>/` on the remote server, returning a `Map<qualifiedNodeId, string[]>` of status sequences (e.g. `'running'`, `'succeeded'`, `'failed'`).
-
-## Code Conventions
-
-- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
-- **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
 
 ## Git Workflow
 

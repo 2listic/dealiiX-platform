@@ -153,7 +153,6 @@
         type="submit"
         variant="action"
         size="small"
-        onclick={handleConfirm}
         disabled={!!timeLimitError || (isExecutableMode && !hasParameters)}
       >
         Execute

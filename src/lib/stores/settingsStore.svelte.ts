@@ -1,109 +1,77 @@
 import {
   createDefaultSettings,
-  getActiveTargetSettings,
-  isExecutableBackend,
-  normalizeSettings,
+  isValidAppSettings,
   type AppSettings,
-} from '../config/execution'
-import { setRegistry } from './registryStore.svelte'
-import { parametersState } from './parametersStore.svelte'
+  type ExecutionSettings,
+} from '../types/settingsTypes'
+import { toastState } from './toastsStore.svelte'
 
 let settings = $state(createDefaultSettings())
-let isSaving = $state(false)
 
 // Load initial settings from electron-store.
 const loadSettings = async () => {
   if (window.electron?.store) {
     const storedSettings = await window.electron.store.get('settings', {})
-    settings = normalizeSettings(storedSettings)
+    if (isValidAppSettings(storedSettings)) {
+      settings = storedSettings
+    } else {
+      settings = createDefaultSettings()
+      toastState.add({
+        message: 'Saved settings were invalid or outdated — defaults restored.',
+        type: 'error',
+      })
+    }
   } else {
     console.warn('Electron store not available (e.g., dev:vite mode)')
   }
 }
 loadSettings()
 
-const applySyncedMetadata = async (probeResult: Record<string, unknown>) => {
-  const metadata = probeResult?.metadata as
-    | { kind: string; data: Record<string, unknown> }
-    | undefined
-  if (!metadata) return
-
-  if (metadata.kind === 'nodeRegistry') {
-    await setRegistry(metadata.data)
-    return
-  }
-
-  if (metadata.kind === 'parametersTemplate') {
-    parametersState.value = metadata.data as any
-  }
-}
-
-const persistSettings = async (nextSettings: AppSettings) => {
-  settings = normalizeSettings(nextSettings)
-  await window.electron.store.set('settings', $state.snapshot(settings))
-}
-
 export const settingsState = {
   get current() {
     return settings
   },
-  get saving() {
-    return isSaving
+  get urlVisualizer() {
+    return settings.urlVisualizer
   },
-  get activeExecution() {
+  get urlRemoteServer() {
+    return settings.urlRemoteServer
+  },
+  get useMpi() {
+    return settings.useMpi
+  },
+  get execution() {
     return settings.execution
   },
-  get activeTarget() {
-    return getActiveTargetSettings(settings)
+  get remote() {
+    return settings.execution.remote
+  },
+  get local() {
+    return settings.execution.local
   },
   isExecutableMode() {
-    return isExecutableBackend(settings)
+    return settings.execution.backendKind === 'executable'
   },
-  async save(nextSettings: AppSettings) {
-    await persistSettings(nextSettings)
+  async saveUrlVisualizer(url: string) {
+    await persistSettings({ ...settings, urlVisualizer: url })
   },
-  async finalizeDraft(nextDraft: AppSettings) {
-    isSaving = true
-    try {
-      const normalizedDraft = normalizeSettings(nextDraft)
-      if (!window.electron?.invoke || !window.electron?.store) {
-        return {
-          ok: false,
-          message:
-            'Save & Sync Execution is available only in the Electron app, not in dev:vite mode.',
-          warnings: [],
-        }
-      }
-      let probeResult
-      try {
-        probeResult = await window.electron.invoke(
-          'probe-sync-execution-settings',
-          normalizedDraft.execution
-        )
-      } catch (error) {
-        return {
-          ok: false,
-          message: (error as Error)?.message || 'Configuration probe failed',
-          warnings: [],
-        }
-      }
-
-      if (!probeResult?.ok) {
-        return probeResult
-      }
-
-      normalizedDraft.lastProbe = {
-        ok: true,
-        message: probeResult.message ?? 'Configuration saved and synchronized',
-        metadataKind: probeResult.metadata?.kind ?? null,
-        syncedAt: probeResult.syncedAt ?? null,
-      }
-
-      await applySyncedMetadata(probeResult)
-      await persistSettings(normalizedDraft)
-      return probeResult
-    } finally {
-      isSaving = false
-    }
+  async saveUrlRemoteServer(url: string) {
+    await persistSettings({ ...settings, urlRemoteServer: url })
   },
+  async saveUseMpi(enabled: boolean) {
+    await persistSettings({ ...settings, useMpi: enabled })
+  },
+  async saveExecution(
+    execution: ExecutionSettings,
+    lastProbe: NonNullable<AppSettings['lastProbe']>
+  ) {
+    await persistSettings({ ...settings, execution, lastProbe })
+  },
+}
+
+// ── Private helpers ──
+
+const persistSettings = async (nextSettings: AppSettings) => {
+  settings = nextSettings
+  await window.electron.store.set('settings', $state.snapshot(settings))
 }
