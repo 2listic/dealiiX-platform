@@ -11,6 +11,7 @@ DealiiX Platform is an Electron + Svelte 5 desktop application for building and 
 - **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
 - **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
 - **Svelte 5 writable `$derived`**: Since Svelte 5.25, `$derived` values can be temporarily overridden by reassignment and reset automatically when their dependency changes. Prefer `$derived(prop)` over `$state(prop)` + `$effect` for form fields that derive from props — it is writable, stays in sync, and avoids the lint warning `state_referenced_locally`. Use `onClose` on `<Modal>` to reset dirty values on cancel rather than tracking visibility with an effect.
+- **Renaming files**: Always use `git mv <old> <new>` to rename files so git tracks the rename rather than treating it as a delete + add. Never delete a file and recreate it manually when the intent is a rename.
 
 ## Architecture
 

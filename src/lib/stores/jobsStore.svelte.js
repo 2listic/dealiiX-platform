@@ -1,61 +1,119 @@
-import { getJobsState, JOB_LIST_DAYS } from '../utils/sshMessages'
+import { fetchRemoteJobs, JOB_LIST_DAYS } from '../utils/sshMessages'
+import { settingsState } from './settingsStore.svelte'
 import { toastState } from './toastsStore.svelte'
+/** @import { JobIdEntry } from '../types/jobTypes' */
 
-/** @type {Record<number, number>} Maps scheduler job IDs to internal job IDs */
+/**
+ * Maps scheduler job IDs to { internalId, backendKind } entries.
+ *
+ * - For remote (Slurm) runs the key is the external scheduler ID (e.g. 55) and
+ *   internalId is the touch-dir counter allocated before submission.
+ * - For local runs there is no external scheduler, so the key equals internalId
+ *   (the circular mapping is harmless; backendKind is the only useful field).
+ *
+ * @type {Record<string, JobIdEntry>}
+ */
 let jobIdMap = $state({})
 
+/**
+ * 2D array mirroring the format returned by list-local-runs / sacct:
+ *   row 0 → headers ['JobID', 'State', 'Start', 'End']
+ *   row n → [id, state, isoStart, isoEnd]
+ *
+ * Persisted to electron-store under 'jobs' so the table survives cold restarts
+ * without requiring an immediate SSH connection or IPC call.
+ *
+ * @type {string[][]}
+ */
 let jobs = $state([])
 
-// Load initial values from electron-store
+// Load initial values from electron-store.
+// jobIdMap entries that pre-date the { internalId, backendKind } shape (old
+// format stored a bare number) are discarded so the store always has a uniform
+// type — no inline migration guards elsewhere.
 const loadStore = async () => {
-  if (window.electron?.store) {
-    jobIdMap = await window.electron.store.get('jobIdMap', {})
-    jobs = await window.electron.store.get('jobs', [])
-  } else {
+  if (!window.electron?.store) {
     console.warn('Electron store not available (e.g., dev:vite mode)')
+    return
   }
+  const rawMap = await window.electron.store.get('jobIdMap', {})
+  if (isValidJobIdMap(rawMap)) {
+    jobIdMap = rawMap
+  } else {
+    await window.electron.store.set('jobIdMap', {})
+  }
+  jobs = await window.electron.store.get('jobs', [])
 }
 loadStore()
 
 /**
- * Store for mapping scheduler job IDs to internal jobs IDs.
+ * Returns true only if every value in the map has the current { internalId, backendKind } shape.
+ * @param {unknown} map
+ * @returns {boolean}
+ */
+const isValidJobIdMap = (map) => {
+  if (!map || typeof map !== 'object') return false
+  return Object.values(map).every(
+    (v) =>
+      v !== null &&
+      typeof v === 'object' &&
+      typeof v.internalId === 'number' &&
+      (v.backendKind === 'coral' || v.backendKind === 'executable')
+  )
+}
+
+/**
+ * Store for mapping scheduler job IDs to internal job metadata.
+ * Used by JobsTable to resolve the touch-dir path and to gate the Nodes Status button.
  */
 export const jobIdMapState = {
   get current() {
     return jobIdMap
   },
-  /** Returns the next available internal job ID (0, 1, 2, ...) */
+  /** Returns the next available internal job ID (0, 1, 2, ...). */
   getNextKey() {
-    const values = Object.values(jobIdMap)
-    if (values.length === 0) return 0
-    return Math.max(...values) + 1
+    const ids = Object.values(jobIdMap).map((v) => v.internalId)
+    if (ids.length === 0) return 0
+    return Math.max(...ids) + 1
   },
   /**
-   * Adds a job ID mapping
-   * @param {number} jobIdScheduler - The scheduler job ID
-   * @param {number} jobIdInternal - The incremental key used as touch-dir
+   * Records a new job ID mapping.
+   * @param {number} jobIdScheduler - Slurm ID for remote jobs; equals internalJobId for local jobs.
+   * @param {number} jobIdInternal - The touch-dir counter used in nodes-exec-status/<id>/.
+   * @param {'coral' | 'executable'} backendKind - Backend used for this run.
    */
-  async add(jobIdScheduler, jobIdInternal) {
-    jobIdMap[jobIdScheduler] = jobIdInternal
+  async add(jobIdScheduler, jobIdInternal, backendKind) {
+    jobIdMap[jobIdScheduler] = { internalId: jobIdInternal, backendKind }
     await window.electron?.store?.set('jobIdMap', $state.snapshot(jobIdMap))
   },
   /**
-   * Gets the internal job ID for a given scheduler job ID
-   * @param {number} jobIdScheduler - The scheduler job ID
-   * @returns {number | undefined} The internal jobs IDs or undefined if not found
+   * @param {number} jobIdScheduler
+   * @returns {number | undefined}
    */
   getJobIdInternal(jobIdScheduler) {
-    return jobIdMap[jobIdScheduler]
+    return jobIdMap[jobIdScheduler]?.internalId
+  },
+  /**
+   * @param {number} jobIdScheduler
+   * @returns {'coral' | 'executable' | undefined}
+   */
+  getJobBackendKind(jobIdScheduler) {
+    return jobIdMap[jobIdScheduler]?.backendKind
   },
 }
 
+/**
+ * Store for the job list details displayed in JobsTable.
+ * Content differs by execution location:
+ *   - local  → IPC list local runs
+ *   - remote → SSH sacct query
+ */
 export const jobsState = {
   get current() {
     return jobs
   },
   get isEmpty() {
-    if (jobs.length <= 1) return true // jobs were not retrieved at all
-    // check if first job is empty
+    if (jobs.length <= 1) return true
     return jobs[1].length === 1
   },
   get oneOrLess() {
@@ -64,9 +122,15 @@ export const jobsState = {
   set current(value) {
     jobs = value
   },
+  // Refreshes the job list from the appropriate source for the current execution location.
   async update() {
     try {
-      jobs = await getJobsState(JOB_LIST_DAYS)
+      const isLocal = settingsState.execution.location === 'local'
+      jobs = isLocal
+        ? await window.electron.invoke('list-local-runs', {
+            numDays: JOB_LIST_DAYS,
+          })
+        : await fetchRemoteJobs(JOB_LIST_DAYS)
       await window.electron?.store?.set('jobs', $state.snapshot(jobs))
     } catch (error) {
       console.error('Error updating jobs state:', error)

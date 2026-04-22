@@ -11,7 +11,7 @@ import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
-import { JobStatus } from '../types/executionStatus'
+import { JobStatus } from '../types/jobTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
@@ -75,7 +75,7 @@ export const exportAndEvalGraph = async (
   edges: Edge[],
   config?: JobConfig
 ): Promise<void> => {
-  const execution = settingsState.current.execution
+  const execution = settingsState.execution
   if (execution.backendKind === 'coral') {
     if (execution.location === 'local') {
       await exportAndEvalGraphLocal(nodes, edges, config)
@@ -123,7 +123,7 @@ const exportAndEvalGraphRemote = async (
   // get job id and store mapping
   const jobId = resultExecute.match(/\d+/)[0]
   if (!jobId) throw new Error('Job ID not found')
-  await jobIdMapState.add(jobId, internalJobId)
+  await jobIdMapState.add(jobId, internalJobId, 'coral')
 
   // poll every 10 secs for 1 day, finally display final status
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
@@ -141,7 +141,7 @@ const exportAndEvalGraphLocal = async (
   const useMpi = config?.useMpi ?? false
   const internalJobId = jobIdMapState.getNextKey()
   const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-  const localSettings = settingsState.current.execution.local
+  const localSettings = settingsState.local
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
     coralBinaryPath: localSettings.coralBinaryPath,
@@ -152,7 +152,7 @@ const exportAndEvalGraphLocal = async (
   })
 
   const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(Number(jobId), internalJobId)
+  await jobIdMapState.add(Number(jobId), internalJobId, 'coral')
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
   const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
@@ -175,26 +175,27 @@ const getExecutableParametersPayload = () => {
 
 const exportAndEvalExecutableLocal = async (): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
-  const localSettings = settingsState.current.execution.local
-  const resultExecute = await window.electron.invoke(
-    'start-local-executable-run',
-    {
-      executablePath: localSettings.executablePath,
-      workingDirectory: localSettings.workingDirectory,
-      parametersPayload: getExecutableParametersPayload(),
-      parametersFileName: localSettings.parametersFileName,
-      internalJobId,
-    }
+  const localSettings = settingsState.local
+  await window.electron.invoke('start-local-executable-run', {
+    executablePath: localSettings.executablePath,
+    workingDirectory: localSettings.workingDirectory,
+    parametersPayload: getExecutableParametersPayload(),
+    parametersFileName: localSettings.parametersFileName,
+    internalJobId,
+  })
+
+  // local runs have no external scheduler ID — both keys are the same internalJobId
+  await jobIdMapState.add(internalJobId, internalJobId, 'executable')
+  toastState.add({ message: `Started local executable run ${internalJobId}` })
+
+  const finalState = await localJobPolling(
+    String(internalJobId),
+    1000,
+    24 * 60 * 60 * 1000
   )
-
-  const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(Number(jobId), internalJobId)
-  toastState.add({ message: `Started local executable run ${jobId}` })
-
-  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
   await jobsState.update()
   toastState.add({
-    message: `Job id ${jobId}: ${finalState}`,
+    message: `Job id ${internalJobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
   })
 }
@@ -202,7 +203,7 @@ const exportAndEvalExecutableLocal = async (): Promise<void> => {
 const exportAndEvalExecutableRemote = async (
   config?: JobConfig
 ): Promise<void> => {
-  const remoteSettings = settingsState.current.execution.remote
+  const remoteSettings = settingsState.remote
   const internalJobId = jobIdMapState.getNextKey()
   const parametersPayload = getExecutableParametersPayload()
   const parametersFileName =
@@ -231,7 +232,7 @@ const exportAndEvalExecutableRemote = async (
 
   const jobId = resultExecute.match(/\d+/)?.[0]
   if (!jobId) throw new Error('Job ID not found')
-  await jobIdMapState.add(Number(jobId), internalJobId)
+  await jobIdMapState.add(Number(jobId), internalJobId, 'executable')
 
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
   toastState.add({
@@ -409,20 +410,15 @@ export const JOB_DATE_INDEX = [2, 3]
 export const JOB_LIST_DAYS = 7
 
 /**
- * Retrieves the state of jobs from the last specified number of days.
- * @param {number} numDays - The number of days to look back for job states.
- * @returns {Promise<string[][]>} A promise that resolves to a 2D array of job states, where each inner array represents a job with its details.
- * @throws {Error} Throws if the SSH command execution fails or if the result contains an error.
+ * Fetches the job list from the remote Slurm scheduler via SSH sacct.
+ * @param {number} numDays - How many days back to query.
+ * @returns {Promise<string[][]>} 2D array: row 0 is headers, rows 1+ are job fields.
+ * @throws {Error} Throws if the SSH command fails or returns an error string.
  * @example
- * const jobs = await getJobsState(7)
- * // [['JobID', 'State', 'Start', 'End'], ['55', 'COMPLETED', '2026-02-09T08:20:39', '2026-02-09T08:21:40'], ...]
+ * const jobs = await fetchRemoteJobs(7)
+ * // [['JobID','State','Start','End'], ['55','COMPLETED','2026-02-09T08:20:39','...']]
  */
-export const getJobsState = async (numDays: number): Promise<string[][]> => {
-  const execution = settingsState.current.execution
-  if (execution.location === 'local') {
-    return await window.electron.invoke('list-local-runs', { numDays })
-  }
-
+export const fetchRemoteJobs = async (numDays: number): Promise<string[][]> => {
   const startDate = new Date(Date.now() - numDays * 24 * 60 * 60 * 1000)
   const startDateIso = startDate.toISOString().split('T')[0]
   // sacct -X (no duplicate steps), -P (parse with pipes), -S (start date), -o (output fields)
@@ -454,7 +450,7 @@ export const getJobsState = async (numDays: number): Promise<string[][]> => {
 export const getOutFileContent = async (
   jobId: string | number
 ): Promise<string> => {
-  const execution = settingsState.current.execution
+  const execution = settingsState.execution
   if (execution.location === 'local') {
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
@@ -481,7 +477,7 @@ export const getOutFileContent = async (
 export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
-  const execution = settingsState.current.execution
+  const execution = settingsState.execution
   if (execution.backendKind === 'executable') {
     return new Map<string, string[]>()
   }

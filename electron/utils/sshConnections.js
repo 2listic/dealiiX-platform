@@ -40,26 +40,12 @@ function connectToSSHWithPassword(host, username, password, command) {
   })
 }
 
-const normalizeKeyConnection = (connectionOrPath) => {
-  if (typeof connectionOrPath === 'string') {
-    return {
-      host: 'localhost',
-      port: 2222,
-      username: 'root',
-      pathToSsh: connectionOrPath,
-    }
-  }
-
-  return {
-    host: connectionOrPath.host ?? 'localhost',
-    port: connectionOrPath.port ?? 2222,
-    username: connectionOrPath.username ?? 'root',
-    pathToSsh: connectionOrPath.pathToSsh,
-  }
-}
-
-function connectToSSHWithKey(command, connectionOrPath) {
-  const connection = normalizeKeyConnection(connectionOrPath)
+/**
+ * @param {string} command
+ * @param {{ host: string, port: number, username: string, pathToSsh: string }} connection
+ * @returns {Promise<string>}
+ */
+function connectToSSHWithKey(command, connection) {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -105,8 +91,13 @@ function connectToSSHWithKey(command, connectionOrPath) {
   })
 }
 
-function uploadFileViaSftp(content, remotePath, connectionOrPath) {
-  const connection = normalizeKeyConnection(connectionOrPath)
+/**
+ * @param {string} content
+ * @param {string} remotePath
+ * @param {{ host: string, port: number, username: string, pathToSsh: string }} connection
+ * @returns {Promise<string>}
+ */
+function uploadFileViaSftp(content, remotePath, connection) {
   return new Promise((resolve, reject) => {
     console.log('uploadFileViaSftp called')
     const conn = new Client()

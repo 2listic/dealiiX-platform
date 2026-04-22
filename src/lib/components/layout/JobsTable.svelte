@@ -9,7 +9,7 @@
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
-  import { JobStatus } from '../../types/executionStatus'
+  import { JobStatus } from '../../types/jobTypes'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -117,9 +117,10 @@
         <table transition:fade>
           <colgroup>
             <col style="width: 10%;" />
-            <col style="width: 18%;" />
-            <col style="width: 27%;" />
-            <col style="width: 27%;" />
+            <col style="width: 16%;" />
+            <col style="width: 22%;" />
+            <col style="width: 22%;" />
+            <col style="width: 12%;" />
             <col style="width: 9%;" />
             <col style="width: 9%;" />
           </colgroup>
@@ -128,6 +129,7 @@
               {#each jobsData[0] as headCell, i (i)}
                 <th>{headCell}</th>
               {/each}
+              <th>Backend</th>
               <th>Logs</th>
               <th>Nodes Status</th>
             </tr>
@@ -157,6 +159,7 @@
               </span>
             </td>
           {/each}
+          <td>{jobIdMapState.getJobBackendKind(line[0]) ?? '—'}</td>
           <td>
             {#if [JobStatus.COMPLETED, JobStatus.FAILED].includes(line[1])}
               <Button
@@ -167,11 +170,14 @@
             {/if}
           </td>
           <td>
-            <Button
-              size="xsmall"
-              title="View the execution status of nodes for the current job"
-              onclick={() => handleNodesExecutionStatus(line[0])}>Status</Button
-            >
+            {#if jobIdMapState.getJobBackendKind(line[0]) === 'coral'}
+              <Button
+                size="xsmall"
+                title="View the execution status of nodes for the current job"
+                onclick={() => handleNodesExecutionStatus(line[0])}
+                >Status</Button
+              >
+            {/if}
           </td>
         </tr>
       {/snippet}

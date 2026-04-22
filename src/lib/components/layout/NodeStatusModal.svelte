@@ -4,7 +4,7 @@
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import ErrorIcon from '../icons/ErrorIcon.svelte'
   import { getNodesExecutionStatus } from '../../utils/sshMessages'
-  import { ExecNodeStatus } from '../../types/executionStatus'
+  import { ExecNodeStatus } from '../../types/jobTypes'
 
   interface Props {
     modalId: string

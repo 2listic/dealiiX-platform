@@ -18,7 +18,7 @@
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
   let hasParameters = $derived(parametersState.value !== null)
-  let execution = $derived(settingsState.current.execution)
+  let execution = $derived(settingsState.execution)
   let isExecutableMode = $derived(execution.backendKind === 'executable')
   let isRemoteExecution = $derived(execution.location === 'remote')
   let showSchedulerFields = $derived(isRemoteExecution)
