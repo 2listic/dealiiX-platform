@@ -1,7 +1,26 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
 
-function connectToSSHWithPassword(host, username, password, command) {
+export interface SshConnection {
+  host: string
+  port: number
+  username: string
+  pathToSsh: string
+}
+
+/**
+ * @param host
+ * @param username
+ * @param password
+ * @param command
+ * @returns stdout + stderr combined
+ */
+export function connectToSSHWithPassword(
+  host: string,
+  username: string,
+  password: string,
+  command: string
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -12,16 +31,16 @@ function connectToSSHWithPassword(host, username, password, command) {
           if (err) reject(err)
           let data = ''
           stream
-            .on('close', (code) => {
+            .on('close', (code: number) => {
               console.log('Command completed with code', code)
               conn.end()
               resolve(data)
             })
-            .on('data', (chunk) => {
+            .on('data', (chunk: Buffer) => {
               console.log('STDOUT:', chunk.toString())
               data += chunk
             })
-            .stderr.on('data', (chunk) => {
+            .stderr.on('data', (chunk: Buffer) => {
               console.log('STDERR:', chunk.toString())
               data += chunk
             })
@@ -41,11 +60,14 @@ function connectToSSHWithPassword(host, username, password, command) {
 }
 
 /**
- * @param {string} command
- * @param {{ host: string, port: number, username: string, pathToSsh: string }} connection
- * @returns {Promise<string>}
+ * @param command - Shell command to execute on the remote host.
+ * @param connection - SSH connection parameters.
+ * @returns stdout + stderr combined.
  */
-function connectToSSHWithKey(command, connection) {
+export function connectToSSHWithKey(
+  command: string,
+  connection: SshConnection
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -57,16 +79,16 @@ function connectToSSHWithKey(command, connection) {
 
           let data = ''
           stream
-            .on('close', (code) => {
+            .on('close', (code: number) => {
               console.log('Command completed with code', code)
               conn.end()
               resolve(data)
             })
-            .on('data', (chunk) => {
+            .on('data', (chunk: Buffer) => {
               console.log('STDOUT:', chunk.toString())
               data += chunk
             })
-            .stderr.on('data', (chunk) => {
+            .stderr.on('data', (chunk: Buffer) => {
               console.log('STDERR:', chunk.toString())
               data += chunk
             })
@@ -82,22 +104,23 @@ function connectToSSHWithKey(command, connection) {
         username: connection.username,
         privateKey: fs.readFileSync(connection.pathToSsh),
         debug: console.log,
-        // hostVerifier: (keyHash) => {  // consider hashing the private key
-        //   return true
-        // },
-        readyTimeout: 5000, // additional options
+        readyTimeout: 5000,
         keepaliveInterval: 10000,
       })
   })
 }
 
 /**
- * @param {string} content
- * @param {string} remotePath
- * @param {{ host: string, port: number, username: string, pathToSsh: string }} connection
- * @returns {Promise<string>}
+ * @param content - File content to upload.
+ * @param remotePath - Destination path on the remote host.
+ * @param connection - SSH connection parameters.
+ * @returns Confirmation message.
  */
-function uploadFileViaSftp(content, remotePath, connection) {
+export function uploadFileViaSftp(
+  content: string,
+  remotePath: string,
+  connection: SshConnection
+): Promise<string> {
   return new Promise((resolve, reject) => {
     console.log('uploadFileViaSftp called')
     const conn = new Client()
@@ -130,5 +153,3 @@ function uploadFileViaSftp(content, remotePath, connection) {
       })
   })
 }
-
-export { connectToSSHWithPassword, connectToSSHWithKey, uploadFileViaSftp }

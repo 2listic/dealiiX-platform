@@ -455,10 +455,7 @@ export const getOutFileContent = async (
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
-  const outputDirectory =
-    execution.backendKind === 'executable'
-      ? execution.remote.workingDirectory
-      : '/app/shared-data'
+  const outputDirectory = execution.remote.workingDirectory
   const command = `cat ${shellEscape(`${outputDirectory}/slurm-${jobId}.out`)}`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
@@ -488,7 +485,7 @@ export const getNodesExecutionStatus = async (
           jobIdInternal,
         })
       : await window.electron.invoke('execute-ssh-with-key', {
-          command: `ls -tr /app/shared-data/nodes-exec-status/${jobIdInternal}`,
+          command: `ls -tr ${shellEscape(`${execution.remote.workingDirectory}/nodes-exec-status/${jobIdInternal}`)}`,
         })
 
   // parse output into a Map where key is node ID and value is array of status strings

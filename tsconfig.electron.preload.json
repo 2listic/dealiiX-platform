@@ -1,0 +1,32 @@
+{
+  // Compiles only electron/preload.ts with CommonJS output.
+  //
+  // Why a separate config from tsconfig.electron.json?
+  // Electron always runs sandboxed preload scripts as CommonJS regardless of the
+  // package.json "type": "module" setting. The main process files are ESM, so they
+  // need a different module format and cannot share a single tsconfig.
+  "compilerOptions": {
+    "target": "ESNext",
+    // CommonJS output: TypeScript transforms `import {…} from 'electron'` into
+    // `const {…} = require('electron')`, which is what Electron's preload context expects.
+    "module": "CommonJS",
+    // Classic Node CJS resolution, matching the CommonJS output format.
+    "moduleResolution": "Node",
+    // Output goes directly alongside the compiled main process files so that
+    // `path.join(__dirname, 'preload.js')` in main.ts resolves correctly at runtime.
+    "outDir": "dist-electron/electron",
+    // Preload only imports from within electron/, so rootDir can be narrower than
+    // in tsconfig.electron.json (no cross-project type references needed here).
+    "rootDir": "electron",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    // Source maps omitted — the preload is small and rarely debugged at source level.
+    "sourceMap": false,
+    "declaration": false
+    // Note: verbatimModuleSyntax is intentionally absent (defaults to false).
+    // With module: "CommonJS", TypeScript must transform import statements into
+    // require() calls. verbatimModuleSyntax: true would forbid that transformation.
+  },
+  "include": ["electron/preload.ts"]
+}

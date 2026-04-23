@@ -1,11 +1,16 @@
 import { ipcMain, BrowserWindow, nativeTheme, screen } from 'electron/main'
 import { dialog } from 'electron'
 import fs from 'fs'
+import type {
+  AppSettings,
+  ExecutionSettings,
+} from '../src/lib/types/settingsTypes.js'
 
 import {
   uploadFileViaSftp,
   connectToSSHWithKey,
   connectToSSHWithPassword,
+  type SshConnection,
 } from './utils/sshConnections.js'
 import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
@@ -22,29 +27,29 @@ import store from './utils/storage.js'
  * Registers all IPC handlers for the main process.
  * @returns {void}
  */
-export function registerIpcHandlers() {
+export function registerIpcHandlers(): void {
   ipcMain.handle(
     'execute-ssh-command-with-password',
-    async (event, { host, username, password, command }) => {
+    async (_event, { host, username, password, command }) => {
       return await connectToSSHWithPassword(host, username, password, command)
     }
   )
 
-  ipcMain.handle('execute-ssh-with-key', async (event, { command }) => {
-    const settings = store.get('settings', {})
+  ipcMain.handle('execute-ssh-with-key', async (_event, { command }) => {
+    const settings = store.get('settings')
     const connectionSettings = getRemoteConnectionSettings(settings)
     return await connectToSSHWithKey(command, connectionSettings)
   })
 
-  ipcMain.handle('upload-file-ssh', async (event, { content, remotePath }) => {
-    const settings = store.get('settings', {})
+  ipcMain.handle('upload-file-ssh', async (_event, { content, remotePath }) => {
+    const settings = store.get('settings')
     const connectionSettings = getRemoteConnectionSettings(settings)
     return await uploadFileViaSftp(content, remotePath, connectionSettings)
   })
 
   ipcMain.handle(
     'probe-sync-execution-settings',
-    async (event, executionSettings) => {
+    async (_event, executionSettings: ExecutionSettings) => {
       return await probeAndSyncExecutionSettings(executionSettings)
     }
   )
@@ -63,7 +68,10 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'save-json-file',
-    async (event, { defaultPath, content, title = 'Save Parameters File' }) => {
+    async (
+      _event,
+      { defaultPath, content, title = 'Save Parameters File' }
+    ) => {
       const result = await dialog.showSaveDialog({
         title,
         defaultPath,
@@ -79,34 +87,34 @@ export function registerIpcHandlers() {
     }
   )
 
-  ipcMain.handle('start-local-coral-run', async (event, payload) => {
+  ipcMain.handle('start-local-coral-run', async (_event, payload) => {
     return await startLocalCoralRun(payload)
   })
 
-  ipcMain.handle('start-local-executable-run', async (event, payload) => {
+  ipcMain.handle('start-local-executable-run', async (_event, payload) => {
     return await startLocalExecutableRun(payload)
   })
 
-  ipcMain.handle('list-local-runs', async (event, { numDays }) => {
+  ipcMain.handle('list-local-runs', async (_event, { numDays }) => {
     return listLocalRuns(numDays)
   })
 
-  ipcMain.handle('get-local-run-log', async (event, { jobId }) => {
+  ipcMain.handle('get-local-run-log', async (_event, { jobId }) => {
     return await getLocalRunLog(jobId)
   })
 
   ipcMain.handle(
     'get-local-node-status-files',
-    async (event, { jobIdInternal }) => {
+    async (_event, { jobIdInternal }) => {
       return await getLocalNodeStatusFiles(jobIdInternal)
     }
   )
 
-  ipcMain.handle('get-local-run-state', async (event, { jobId }) => {
+  ipcMain.handle('get-local-run-state', async (_event, { jobId }) => {
     return getLocalRunState(jobId)
   })
 
-  ipcMain.handle('open-external-url', async (event, url) => {
+  ipcMain.handle('open-external-url', async (_event, url: string) => {
     const { width, height } = screen.getPrimaryDisplay().workAreaSize
     const externalWindow = new BrowserWindow({
       width: Math.round(width * 0.8),
@@ -130,7 +138,7 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('set-theme', (event, theme) => {
+  ipcMain.handle('set-theme', (_event, theme: string) => {
     if (theme === 'dark') {
       nativeTheme.themeSource = 'dark'
     } else {
@@ -142,8 +150,11 @@ export function registerIpcHandlers() {
 
 // ── Private helpers ──
 
-const getRemoteConnectionSettings = (settings) => {
-  const { host, port, username, sshKeyPath } = settings.execution?.remote ?? {}
+const getRemoteConnectionSettings = (
+  settings: AppSettings | undefined
+): SshConnection => {
+  const remote = settings?.execution?.remote
+  const { host, port, username, sshKeyPath } = remote ?? {}
   if (!host || !port || !username || !sshKeyPath) {
     throw new Error(
       'SSH connection settings are incomplete. Check your settings.'

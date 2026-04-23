@@ -330,47 +330,50 @@
                 </div>
               {/if}
 
+              <div class="subsection">
+                <div class="subsection-title">Working directory</div>
+                <div class="field">
+                  {#if showRemoteSettings}
+                    <input
+                      bind:value={remoteWorkingDirectory}
+                      class="input-field"
+                      type="text"
+                      required
+                    />
+                  {:else}
+                    <div class="input-line-save">
+                      <div>
+                        {localWorkingDirectory || 'No directory selected'}
+                      </div>
+                      {#if !isEditingLocalWorkingDirectory}
+                        <Button
+                          onclick={() =>
+                            (isEditingLocalWorkingDirectory = true)}
+                          >Edit</Button
+                        >
+                      {:else}
+                        <Button onclick={cancelLocalWorkingDirectoryEdit}
+                          >Cancel</Button
+                        >
+                      {/if}
+                    </div>
+                    {#if isEditingLocalWorkingDirectory}
+                      <input
+                        type="file"
+                        webkitdirectory
+                        bind:files={localWorkingDirectoryFiles}
+                        onchange={handleOnChangeLocalWorkingDirectory}
+                        placeholder="Working directory"
+                      />
+                    {/if}
+                  {/if}
+                </div>
+              </div>
+
               {#if showCoralSettings}
                 <div class="subsection">
                   <div class="subsection-title">Coral backend</div>
                   <div class="stacked-fields">
-                    <div class="field">
-                      <span>Working directory</span>
-                      {#if showRemoteSettings}
-                        <input
-                          bind:value={remoteWorkingDirectory}
-                          class="input-field"
-                          type="text"
-                          required
-                        />
-                      {:else}
-                        <div class="input-line-save">
-                          <div>
-                            {localWorkingDirectory || 'No directory selected'}
-                          </div>
-                          {#if !isEditingLocalWorkingDirectory}
-                            <Button
-                              onclick={() =>
-                                (isEditingLocalWorkingDirectory = true)}
-                              >Edit</Button
-                            >
-                          {:else}
-                            <Button onclick={cancelLocalWorkingDirectoryEdit}
-                              >Cancel</Button
-                            >
-                          {/if}
-                        </div>
-                        {#if isEditingLocalWorkingDirectory}
-                          <input
-                            type="file"
-                            webkitdirectory
-                            bind:files={localWorkingDirectoryFiles}
-                            onchange={handleOnChangeLocalWorkingDirectory}
-                            placeholder="Working directory"
-                          />
-                        {/if}
-                      {/if}
-                    </div>
                     <div class="field">
                       <span>Coral binary path</span>
                       {#if showRemoteSettings}
@@ -453,15 +456,6 @@
                   <div class="stacked-fields">
                     {#if showRemoteSettings}
                       <label class="field">
-                        <span>Working directory</span>
-                        <input
-                          bind:value={remoteWorkingDirectory}
-                          class="input-field"
-                          type="text"
-                          required
-                        />
-                      </label>
-                      <label class="field">
                         <span>Executable path</span>
                         <input
                           bind:value={remoteExecutablePath}
@@ -481,34 +475,6 @@
                         />
                       </label>
                     {:else}
-                      <div class="field">
-                        <span>Working directory</span>
-                        <div class="input-line-save">
-                          <div>
-                            {localWorkingDirectory || 'No directory selected'}
-                          </div>
-                          {#if !isEditingLocalWorkingDirectory}
-                            <Button
-                              onclick={() =>
-                                (isEditingLocalWorkingDirectory = true)}
-                              >Edit</Button
-                            >
-                          {:else}
-                            <Button onclick={cancelLocalWorkingDirectoryEdit}
-                              >Cancel</Button
-                            >
-                          {/if}
-                        </div>
-                        {#if isEditingLocalWorkingDirectory}
-                          <input
-                            type="file"
-                            webkitdirectory
-                            bind:files={localWorkingDirectoryFiles}
-                            onchange={handleOnChangeLocalWorkingDirectory}
-                            placeholder="Working directory"
-                          />
-                        {/if}
-                      </div>
                       <div class="field">
                         <span>Executable path</span>
                         <div class="input-line-save">

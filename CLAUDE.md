@@ -17,9 +17,9 @@ DealiiX Platform is an Electron + Svelte 5 desktop application for building and 
 
 ### Desktop Application (Electron + Svelte 5)
 
-- `electron/main.js` - Electron main process, handles IPC for SSH connections, theme switching, external URLs
-- `electron/preload.js` - Context bridge exposing `window.electron` API (send, on, invoke, getFilePath)
-- `electron/utils/sshConnections.js` - SSH utilities using ssh2 library
+- `electron/main.ts` - Electron main process, handles IPC for SSH connections, theme switching, external URLs
+- `electron/preload.ts` - Context bridge exposing `window.electron` API (send, on, invoke, getFilePath)
+- `electron/utils/sshConnections.ts` - SSH utilities using ssh2 library
 - `src/` - Svelte 5 frontend with runes-based reactivity
 
 ### Submodules (separate repos)
@@ -199,26 +199,29 @@ Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational g
 ### Development
 
 ```bash
-npm run dev          # Build frontend + run Electron in dev mode
+npm run dev          # Compile electron TS + build frontend (dev) + run Electron
 npm run dev:vite     # Run frontend only with hot-reload
-npm start            # Run Electron (requires built frontend)
+npm start            # Run Electron (requires already-built electron + frontend)
 npm start:debug      # Run Electron with Chrome DevTools debugger on port 9229
 ```
 
 ### Build & Package
 
 ```bash
-npm run build        # Build frontend to dist/
-npm run make:deb     # Package for Linux (.deb)
-npm run make:dmg     # Package for macOS (requires macOS)
+npm run build:electron   # Compile electron TypeScript to dist-electron/
+npm run build            # Compile electron TS + build frontend to dist/
+npm run make:deb         # Package for Linux (.deb)
+npm run make:dmg         # Package for macOS (requires macOS)
 ```
 
 ### Code Quality
 
 ```bash
-npm run lint         # ESLint check
-npm run lint:fix     # ESLint with auto-fix
-npm run format       # Prettier format
+npm run lint             # ESLint check
+npm run lint:fix         # ESLint with auto-fix
+npm run check            # svelte-check (frontend TypeScript + Svelte)
+npm run check:electron   # tsc --noEmit for the electron main process
+npm run format           # Prettier format
 ```
 
 ### Unit Tests
@@ -248,9 +251,10 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 
 - **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts. See Code Conventions for the writable `$derived` pattern.
 - **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`, `upload-file-ssh`, `store:get`, `store:set`, `store:remove`
-- **Electron storage keys** (`electron/utils/storage.js`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
-- **Git hooks (Husky)**: On commit — `npm run lint` (failures abort), then Prettier auto-formats.
-- **CI (GitHub Actions)**: Both workflows run `npm run check` (svelte-check) and `npm test` on pull requests and pushes to `main`. Workflow files: `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
+- **Electron storage keys** (`electron/utils/storage.ts`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
+- **Electron TypeScript build**: `electron/**/*.ts` files are compiled by `tsc` (not Vite) to `dist-electron/`. The main process uses `tsconfig.electron.json` (ESM output); the preload uses `tsconfig.electron.preload.json` (CJS output, required by Electron's sandboxed preload context). `dist-electron/` is gitignored. Type declarations for `ssh2` (which ships no `.d.ts`) live in `electron/types/ssh2.d.ts`.
+- **Git hooks (Husky)**: On commit — `npm run lint` and `npm run check:electron` (failures abort), then Prettier auto-formats.
+- **CI (GitHub Actions)**: All workflows run `npm run check` (svelte-check), `npm run check:electron` (electron tsc), and `npm test`. Workflow files: `.github/workflows/ci.yml`, `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
 - **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token. Throws `ApiError` (with `.status` and `.data`) on non-2xx responses. Project CRUD ops are in `src/lib/requests/projects.js`.
 - **Canvas node creation**: `createCanvasNode(template, position, options?)` in `src/lib/utils/canvasNodeUtils.ts` creates a new @xyflow Node from a registry template. `getOutputTypeAndName(sourceNode, sourceHandle)` resolves the type/name for a source handle during drag-to-connect.
 - **Auto-layout**: `applyAutoLayout(nodes, edges, direction?)` in `src/lib/utils/autoLayout.ts` repositions nodes using the dagre rank-based algorithm (`'LR'` by default). Call after loading or structurally modifying a graph when node positions aren't provided.

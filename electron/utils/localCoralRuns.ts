@@ -5,11 +5,35 @@ import store from './storage.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
-/** @type {Map<string, any>} */
-const localRuns = new Map()
+export interface LocalRun {
+  jobId: string
+  state: 'RUNNING' | 'COMPLETED' | 'FAILED'
+  start: string
+  end: string
+  logPath: string
+  touchDir: string
+}
+
+interface CoralRunPayload {
+  coralBinaryPath: string
+  coralPluginPath: string
+  workingDirectory: string
+  graphPayload: unknown
+  internalJobId: number | string
+}
+
+interface ExecutableRunPayload {
+  executablePath: string
+  workingDirectory: string
+  parametersPayload: unknown
+  parametersFileName: string
+  internalJobId: number | string
+}
+
+const localRuns = new Map<string, LocalRun>()
 
 const loadLocalRuns = () => {
-  const storedRuns = store.get(LOCAL_RUNS_KEY, [])
+  const storedRuns = store.get(LOCAL_RUNS_KEY, []) as LocalRun[]
   if (!Array.isArray(storedRuns)) return
   for (const run of storedRuns) {
     if (run?.jobId != null) {
@@ -23,24 +47,28 @@ const persistLocalRuns = () => {
   store.set(LOCAL_RUNS_KEY, Array.from(localRuns.values()))
 }
 
-const updateRun = (jobId, patch) => {
+const updateRun = (jobId: string, patch: Partial<LocalRun>) => {
   const current = localRuns.get(String(jobId))
   if (!current) return
   localRuns.set(String(jobId), { ...current, ...patch })
   persistLocalRuns()
 }
 
-const ensureDir = async (dirPath) => {
+const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
 }
 
+/**
+ * @param payload - Coral run configuration.
+ * @returns The internal job ID of the spawned process.
+ */
 export const startLocalCoralRun = async ({
   coralBinaryPath,
   coralPluginPath,
   workingDirectory,
   graphPayload,
   internalJobId,
-}) => {
+}: CoralRunPayload): Promise<{ jobId: string }> => {
   const jobId = String(internalJobId)
   const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
   const logPath = path.join(workingDirectory, `local-${jobId}.out`)
@@ -71,8 +99,8 @@ export const startLocalCoralRun = async ({
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  child.stdout.pipe(stdoutStream)
-  child.stderr.pipe(stdoutStream)
+  child.stdout!.pipe(stdoutStream)
+  child.stderr!.pipe(stdoutStream)
 
   localRuns.set(jobId, {
     jobId,
@@ -87,10 +115,7 @@ export const startLocalCoralRun = async ({
   child.on('error', (error) => {
     stdoutStream.write(`\nProcess error: ${error.message}\n`)
     stdoutStream.end()
-    updateRun(jobId, {
-      state: 'FAILED',
-      end: new Date().toISOString(),
-    })
+    updateRun(jobId, { state: 'FAILED', end: new Date().toISOString() })
   })
 
   child.on('close', (code) => {
@@ -104,13 +129,17 @@ export const startLocalCoralRun = async ({
   return { jobId }
 }
 
+/**
+ * @param payload - Executable run configuration.
+ * @returns The internal job ID of the spawned process.
+ */
 export const startLocalExecutableRun = async ({
   executablePath,
   workingDirectory,
   parametersPayload,
   parametersFileName,
   internalJobId,
-}) => {
+}: ExecutableRunPayload): Promise<{ jobId: string }> => {
   const jobId = String(internalJobId)
   const parametersPath = path.join(
     workingDirectory,
@@ -130,8 +159,8 @@ export const startLocalExecutableRun = async ({
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  child.stdout.pipe(stdoutStream)
-  child.stderr.pipe(stdoutStream)
+  child.stdout!.pipe(stdoutStream)
+  child.stderr!.pipe(stdoutStream)
 
   localRuns.set(jobId, {
     jobId,
@@ -146,10 +175,7 @@ export const startLocalExecutableRun = async ({
   child.on('error', (error) => {
     stdoutStream.write(`\nProcess error: ${error.message}\n`)
     stdoutStream.end()
-    updateRun(jobId, {
-      state: 'FAILED',
-      end: new Date().toISOString(),
-    })
+    updateRun(jobId, { state: 'FAILED', end: new Date().toISOString() })
   })
 
   child.on('close', (code) => {
@@ -163,7 +189,11 @@ export const startLocalExecutableRun = async ({
   return { jobId }
 }
 
-export const listLocalRuns = (numDays) => {
+/**
+ * @param numDays - Only include runs started within this many days.
+ * @returns Table rows: first row is headers, rest are data.
+ */
+export const listLocalRuns = (numDays: number): string[][] => {
   const minTime = Date.now() - numDays * 24 * 60 * 60 * 1000
   const headers = ['JobID', 'State', 'Start', 'End']
   const rows = Array.from(localRuns.values())
@@ -174,11 +204,22 @@ export const listLocalRuns = (numDays) => {
   return [headers, ...rows]
 }
 
-export const getLocalRunState = (jobId) => {
+/**
+ * @param jobId
+ * @returns State string, or empty string if not found.
+ */
+export const getLocalRunState = (jobId: string | number): string => {
   return localRuns.get(String(jobId))?.state ?? ''
 }
 
-export const getLocalRunLog = async (jobId) => {
+/**
+ * @param jobId
+ * @returns Full log file contents.
+ * @throws {Error} If the job has no log path.
+ */
+export const getLocalRunLog = async (
+  jobId: string | number
+): Promise<string> => {
   const run = localRuns.get(String(jobId))
   if (!run?.logPath) {
     throw new Error(`No local log available for job ${jobId}`)
@@ -186,7 +227,13 @@ export const getLocalRunLog = async (jobId) => {
   return await fs.promises.readFile(run.logPath, 'utf8')
 }
 
-export const getLocalNodeStatusFiles = async (jobIdInternal) => {
+/**
+ * @param jobIdInternal
+ * @returns Newline-separated list of status filenames sorted by mtime, or empty string.
+ */
+export const getLocalNodeStatusFiles = async (
+  jobIdInternal: string | number
+): Promise<string> => {
   const run = localRuns.get(String(jobIdInternal))
   const touchDir = run?.touchDir
   if (!touchDir) return ''

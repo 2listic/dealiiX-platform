@@ -14,16 +14,17 @@ Or if you already cloned the repo, use
 
 # Development
 
-`npm run dev` to build the front-end and run the Electron app in development mode. You'll need to restart to see changes.
+`npm run dev` to compile the Electron TypeScript, build the front-end, and run the Electron app in development mode. You'll need to restart to see changes.
 
 ### Build or run the front-end only
 
-- `npm run build` to build the front-end
+- `npm run build` to compile the Electron TypeScript and build the front-end
+- `npm run build:electron` to compile only the Electron TypeScript (outputs to `dist-electron/`)
 - `npm run dev:vite` to run only the front-end with hot-reload
 
 ### Run the Electron app
 
-- `npm start` to run the electron app (build front-end before), or
+- `npm start` to run the electron app (run `npm run build` first), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
 ## Linting and Formatting
@@ -40,7 +41,21 @@ Prettier is used for formatting. Run the following to format the code or use you
 
 ### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; Prettier then auto-formats (a new commit is needed to include those last changes).
+
+## TypeScript
+
+### Renderer (Frontend UI - Svelte)
+
+In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check`.
+
+### Electron (Backend Main Process and Preload)
+
+The Electron main process (`electron/`) is directly typechecked and compiled with `tsc`.
+
+Two configs exist because the main process and the preload need different JavaScript module formats: **[tsconfig.electron.json](tsconfig.electron.json)** and **[tsconfig.electron.preload.json](tsconfig.electron.preload.json)**.
+
+Run `npm run build:electron` to compile into `dist-electron/`, or use `npm run check:electron` for a type-check-only pass without emitting files.
 
 ## Testing
 
@@ -71,7 +86,7 @@ await window.electron.store.get('jobIdMap')
 await window.electron.store.remove('jobIdMap')
 ```
 
-Available keys are defined in [electron/utils/storage.js](electron/utils/storage.js).
+Available keys are defined in [electron/utils/storage.ts](electron/utils/storage.ts).
 
 ## Debugging Svelte
 
@@ -285,11 +300,27 @@ Click **Save & Sync** — the app probes the binary, reads back the JSON templat
 
 # Packaging
 
-Build the frontend with `npm run build` and then run the following commands to package the app.
+Compile Electron Typescript + build the frontend with `npm run build` and then run the following commands to package the app.
 
-### Linux
+### Linux (Debian / Ubuntu)
 
-`npm run make:deb`
+```bash
+npm run make:deb    # package into a .deb distributable
+```
+
+#### Install
+
+Double-click the `.deb` file to open it in the App Center, or install from the terminal:
+
+```bash
+sudo dpkg -i out/make/deb/x64/dealiix-platform_<version>_amd64.deb
+```
+
+#### Uninstall
+
+```bash
+sudo apt remove dealiix-platform
+```
 
 ### MacOS
 
@@ -302,7 +333,7 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
-- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — type checking (`npm run check`) and unit tests (`npm run test`), either failing blocks the merge.
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), and unit tests (`npm run test`), either failing blocks the merge.
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release

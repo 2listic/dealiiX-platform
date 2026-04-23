@@ -1,3 +1,10 @@
+import type {
+  ExecutionSettings,
+  ProbeResult,
+  NodeRegistryMetadata,
+  ParametersTemplateMetadata,
+} from '../../src/lib/types/settingsTypes.js'
+
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -7,34 +14,17 @@ import { connectToSSHWithKey } from './sshConnections.js'
 
 const execFileAsync = promisify(execFile)
 
-const buildCapabilities = (execution) => ({
-  supportsNodeRegistry: execution.backendKind === 'coral',
-  supportsParametersTemplate: execution.backendKind === 'executable',
-  supportsRunWithParameters: true,
-  requiresCanvas: execution.backendKind === 'coral',
-  requiresScheduler: execution.location === 'remote',
-})
-
-const shellEscape = (value) => {
+const shellEscape = (value: string | number) => {
   return `'${String(value).replaceAll("'", `'\\''`)}'`
 }
 
-const resolveWorkingDirectory = (target, backendKind) => {
-  if (target.workingDirectory) return target.workingDirectory
-  if (backendKind === 'coral' && target.coralBinaryPath) {
-    return path.dirname(target.coralBinaryPath)
-  }
-  if (backendKind === 'executable' && target.executablePath) {
-    return path.dirname(target.executablePath)
-  }
-  return ''
-}
-
-const getExecutableParametersFileName = (target) => {
+const getExecutableParametersFileName = (
+  target: ExecutionSettings['local'] | ExecutionSettings['remote']
+): string => {
   return target.parametersFileName || 'parameters.json'
 }
 
-const validateExecutionSettings = (execution) => {
+const validateExecutionSettings = (execution: ExecutionSettings): void => {
   const target = execution?.[execution.location]
   if (!target) {
     throw new Error('Invalid execution target configuration')
@@ -52,15 +42,9 @@ const validateExecutionSettings = (execution) => {
     }
   }
 
-  const resolvedWorkingDirectory = resolveWorkingDirectory(
-    target,
-    execution.backendKind
-  )
-
-  if (!resolvedWorkingDirectory) {
+  if (!target.workingDirectory) {
     throw new Error('A working directory is required')
   }
-  target.workingDirectory = resolvedWorkingDirectory
 
   if (execution.backendKind === 'coral' && !target.coralBinaryPath) {
     throw new Error('Coral backend requires a binary path')
@@ -74,14 +58,14 @@ const validateExecutionSettings = (execution) => {
   }
 }
 
-const fileMustExist = (filePath, label) => {
+const fileMustExist = (filePath: string | undefined, label: string): void => {
   if (!filePath) return
   if (!fs.existsSync(filePath)) {
     throw new Error(`${label} does not exist: ${filePath}`)
   }
 }
 
-const probeLocalPaths = (execution) => {
+const probeLocalPaths = (execution: ExecutionSettings): void => {
   const target = execution.local
   if (execution.backendKind === 'coral') {
     fileMustExist(target.coralBinaryPath, 'Coral binary')
@@ -99,7 +83,13 @@ const probeLocalPaths = (execution) => {
   }
 }
 
-const getCoralRegistryMetadataLocal = async (execution) => {
+/**
+ * @param execution
+ * @returns Registry metadata from the local coral binary.
+ */
+const getCoralRegistryMetadataLocal = async (
+  execution: ExecutionSettings
+): Promise<NodeRegistryMetadata> => {
   const registryPath = path.join(
     execution.local.workingDirectory,
     'node_types.json'
@@ -119,7 +109,13 @@ const getCoralRegistryMetadataLocal = async (execution) => {
   }
 }
 
-const getExecutableTemplateMetadataLocal = async (execution) => {
+/**
+ * @param execution
+ * @returns Parameters template metadata from the local executable.
+ */
+const getExecutableTemplateMetadataLocal = async (
+  execution: ExecutionSettings
+): Promise<ParametersTemplateMetadata> => {
   const tempDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'dealiix-exec-probe-')
   )
@@ -149,7 +145,13 @@ const getExecutableTemplateMetadataLocal = async (execution) => {
   }
 }
 
-const getCoralRegistryMetadataRemote = async (execution) => {
+/**
+ * @param execution
+ * @returns Registry metadata fetched from the remote coral binary via SSH.
+ */
+const getCoralRegistryMetadataRemote = async (
+  execution: ExecutionSettings
+): Promise<NodeRegistryMetadata> => {
   const command = [
     `cd ${shellEscape(execution.remote.workingDirectory)}`,
     `${shellEscape(execution.remote.coralBinaryPath)} -p ${shellEscape(execution.remote.coralPluginPath)} register > /dev/null 2>&1`,
@@ -169,7 +171,13 @@ const getCoralRegistryMetadataRemote = async (execution) => {
   }
 }
 
-const getExecutableTemplateMetadataRemote = async (execution) => {
+/**
+ * @param execution
+ * @returns Parameters template metadata fetched from the remote executable via SSH.
+ */
+const getExecutableTemplateMetadataRemote = async (
+  execution: ExecutionSettings
+): Promise<ParametersTemplateMetadata> => {
   const paramsFile = `dealiix-probe-${Date.now()}-${getExecutableParametersFileName(execution.remote)}`
   const command = `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(paramsFile)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(paramsFile)} > /dev/null 2>&1; probe_status=$?; if [ -f ${shellEscape(paramsFile)} ]; then cat ${shellEscape(paramsFile)}; rm -f ${shellEscape(paramsFile)}; exit 0; fi; exit $probe_status`
 
@@ -186,7 +194,17 @@ const getExecutableTemplateMetadataRemote = async (execution) => {
   }
 }
 
-export const probeAndSyncExecutionSettings = async (execution) => {
+/**
+ * Validates execution settings, probes local paths or remote connectivity, and fetches
+ * backend metadata (node registry or parameters template) depending on the backend kind.
+ *
+ * @param execution - The execution settings to validate and probe.
+ * @returns Probe result with metadata and sync timestamp.
+ * @throws {Error} If settings are invalid, required paths are missing, or the probe command fails.
+ */
+export const probeAndSyncExecutionSettings = async (
+  execution: ExecutionSettings
+): Promise<ProbeResult> => {
   validateExecutionSettings(execution)
 
   if (execution.location === 'local') {
@@ -209,7 +227,6 @@ export const probeAndSyncExecutionSettings = async (execution) => {
   return {
     ok: true,
     message: 'Configuration validated successfully',
-    capabilities: buildCapabilities(execution),
     metadata,
     syncedAt: new Date().toISOString(),
   }

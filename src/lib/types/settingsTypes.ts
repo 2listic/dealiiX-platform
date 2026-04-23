@@ -4,14 +4,6 @@ export const BACKEND_KINDS = ['coral', 'executable'] as const
 export type ExecutionLocation = (typeof EXECUTION_LOCATIONS)[number]
 export type BackendKind = (typeof BACKEND_KINDS)[number]
 
-export type ProbeCapabilities = {
-  supportsNodeRegistry: boolean
-  supportsParametersTemplate: boolean
-  supportsRunWithParameters: boolean
-  requiresCanvas: boolean
-  requiresScheduler: boolean
-}
-
 export type NodeRegistryMetadata = {
   kind: 'nodeRegistry'
   data: Record<string, unknown>
@@ -52,7 +44,6 @@ export type ExecutionSettings = {
 export type ProbeResult = {
   ok: boolean
   message: string
-  capabilities: ProbeCapabilities
   metadata: ExecutionMetadata
   syncedAt: string
 }

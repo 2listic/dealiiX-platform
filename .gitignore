@@ -26,9 +26,18 @@ dist-ssr
 # Electron-forge outputs
 out/
 
+# Compiled electron main process
+dist-electron/
+
 # Vscode and extensions
 .vscode/
 .continue/
 
 # Containers' shared folder
 containers/shared-data/*
+
+# Test files
+test_files/legacy/*
+
+# Local runs folder
+/local_runs
