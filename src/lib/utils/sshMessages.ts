@@ -12,6 +12,7 @@ import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
 import { JobStatus } from '../types/jobTypes'
+import type { RemoteExecutionSettings } from '../types/settingsTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
@@ -100,22 +101,29 @@ const exportAndEvalGraphRemote = async (
   config?: JobConfig
 ): Promise<void> => {
   const useMpi = config?.useMpi ?? false
+  const remoteSettings = settingsState.remote
+  const workingDirectory = remoteSettings.workingDirectory
 
   // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
   const graphPayload = buildGraphPayload(nodes, edges, useMpi)
   await uploadFileSsh(
     JSON.stringify(graphPayload),
-    '/app/shared-data/graph.json' // TODO: read path from settings
+    `${workingDirectory}/graph.json`
   )
 
   // build and upload batch script
   const internalJobId = jobIdMapState.getNextKey()
-  const batchScript = buildBatchScript(useMpi, internalJobId, config)
-  await uploadFileSsh(batchScript, '/app/shared-data/job.sh') // TODO: read path from settings
+  const batchScript = buildBatchScript(
+    useMpi,
+    internalJobId,
+    remoteSettings,
+    config
+  )
+  await uploadFileSsh(batchScript, `${workingDirectory}/job.sh`)
 
   // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: 'sbatch /app/shared-data/job.sh', // TODO: read path from settings
+    command: `sbatch ${shellEscape(`${workingDirectory}/job.sh`)}`,
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
@@ -260,19 +268,23 @@ export const buildGraphPayload = (
 
 /**
  * Builds the batch script content from the appropriate template, replacing all placeholders.
- * {{TIME_LIMIT}} applies to both MPI and non-MPI templates.
+ * {{WORKING_DIRECTORY}}, {{CORAL_BINARY_PATH}}, {{CORAL_PLUGIN_PATH}}, and {{TIME_LIMIT}} apply to both templates.
  * {{NODES}} and {{NTASKS_PER_NODE}} apply only to the MPI template.
  * Falls back to sensible defaults if config is not provided.
  */
 const buildBatchScript = (
   useMpi: boolean,
   internalJobId: number,
+  remoteSettings: RemoteExecutionSettings,
   config?: JobConfig
 ): string => {
   const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
   let script = template
     .replaceAll('{{INTERNAL_JOB_ID}}', String(internalJobId))
     .replaceAll('{{TIME_LIMIT}}', config?.timeLimit ?? '01:00:00')
+    .replaceAll('{{WORKING_DIRECTORY}}', remoteSettings.workingDirectory)
+    .replaceAll('{{CORAL_BINARY_PATH}}', remoteSettings.coralBinaryPath)
+    .replaceAll('{{CORAL_PLUGIN_PATH}}', remoteSettings.coralPluginPath)
   if (useMpi) {
     script = script
       .replaceAll('{{NODES}}', String(config?.nodes ?? 1))

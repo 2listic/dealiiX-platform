@@ -126,6 +126,28 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 
 `-j$(nproc)` is optional but significantly speeds up the build.
 
+### Configure the app
+
+Open Settings in the app and set the following:
+
+Under **Execution Mode**:
+
+- **Location**: `remote`
+- **Backend kind**: `coral`
+- **Host**: `localhost`
+- **Port**: `2222`
+- **Username**: `root`
+- **Path to private SSH key**: the private key matching the public key configured in `docker-compose.yml`
+- **Working directory**: `/app/shared-data`
+- **Coral binary path**: `/app/build/core/coral`
+- **Coral plugin path**: `/app/build/backends/dealii/libcoral_backend_dealii.so`
+
+Under **VTK Visualizer & Editor**:
+
+- **URL**: `http://localhost:8008`
+
+Click **Save & Sync Execution** to probe the SSH connection, load the node registry into the sidebar, and confirm everything works.
+
 #### Manually generate available nodes file registry.json
 
 ```bash
@@ -293,8 +315,8 @@ Open Settings and set the following under **Execution Mode**:
 - **Location**: `local`
 - **Backend kind**: `executable`
 - **Executable path**: `<repo>/coral/examples/step-70/build/step-70`
-- **Working directory**: `<repo>/coral/examples/step-70/build`
-- **Parameters file name**: `parameters.json`
+- **Working directory**: `<repo>/coral/examples/step-70/build` (or any writable directory)
+- **Parameters file name**: `parameters.json` (it will be generated if it doesn't exist)
 
 Click **Save & Sync** — the app probes the binary, reads back the JSON template, and populates the Parameters panel with all step-70 parameters (viscosity, refinement levels, time steps, grid generators, etc.) as an editable tree. Edit the values as needed, then click Execute to run the simulation.
 
