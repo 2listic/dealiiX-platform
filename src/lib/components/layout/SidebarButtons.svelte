@@ -48,6 +48,10 @@
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
+  let isExecutableMode = $derived(settingsState.isExecutableMode())
+  let hasRemoteServer = $derived(settingsState.hasRemoteServer)
+  let hasVisualizer = $derived(settingsState.hasVisualizer)
+
   const token = $derived(auth.token)
   const username = $derived(auth.username)
   const loginText = $derived.by(() => {
@@ -278,32 +282,40 @@
 
 <aside>
   <!-- Login (standalone) -->
-  <div class="button-container">
-    <label for="login-button" class="element-label" title={loginTitle}>
-      <LoginIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="login-button"
-      onclick={handleLoginLogout}
-      style="display: none"
-      aria-label="Login"
-    ></button>
-    <span class="button-text">
-      {loginText}
-    </span>
-  </div>
+  {#if !isExecutableMode}
+    <div class="button-container">
+      <label
+        for="login-button"
+        class="element-label"
+        class:disabled={!hasRemoteServer}
+        title={loginTitle}
+      >
+        <LoginIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="login-button"
+        onclick={handleLoginLogout}
+        disabled={!hasRemoteServer}
+        style="display: none"
+        aria-label="Login"
+      ></button>
+      <span class="button-text">
+        {loginText}
+      </span>
+    </div>
 
-  <Modal id={loginModalId}>
-    <LoginForm modalId={loginModalId} />
-  </Modal>
+    <Modal id={loginModalId}>
+      <LoginForm modalId={loginModalId} />
+    </Modal>
 
-  <ConfirmationModal
-    modalId={logoutConfirmModalId}
-    message="Are you sure you want to logout?"
-    confirmText="Logout"
-    confirmVariant="action"
-    onConfirm={handleOncofirmLogout}
-  />
+    <ConfirmationModal
+      modalId={logoutConfirmModalId}
+      message="Are you sure you want to logout?"
+      confirmText="Logout"
+      confirmVariant="action"
+      onConfirm={handleOncofirmLogout}
+    />
+  {/if}
 
   <ConfirmationModal
     modalId={subnetworkWarningModalId}
@@ -315,43 +327,45 @@
   />
 
   <!-- Project group -->
-  <SidebarGroupButton title="Project">
-    {#snippet icon()}
-      <svg
-        fill="var(--ternary-color)"
-        width="30px"
-        height="30px"
-        viewBox="0 0 32 32"
-        version="1.1"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
-        ></path>
-      </svg>
-    {/snippet}
-    {#snippet items()}
-      <SidebarGroupButtonItem
-        label="Save Project"
-        onclick={handleSaveProject}
-      />
-      <SidebarGroupButtonItem
-        label="Load Projects"
-        onclick={handleLoadProjects}
-      />
-      <SidebarGroupButtonItem
-        label="Download Graph"
-        onclick={handleGraphDownload}
-      />
-    {/snippet}
-  </SidebarGroupButton>
+  {#if !isExecutableMode}
+    <SidebarGroupButton title="Project" disabled={!hasRemoteServer}>
+      {#snippet icon()}
+        <svg
+          fill="var(--ternary-color)"
+          width="30px"
+          height="30px"
+          viewBox="0 0 32 32"
+          version="1.1"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
+          ></path>
+        </svg>
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Save Project"
+          onclick={handleSaveProject}
+        />
+        <SidebarGroupButtonItem
+          label="Load Projects"
+          onclick={handleLoadProjects}
+        />
+        <SidebarGroupButtonItem
+          label="Download Graph"
+          onclick={handleGraphDownload}
+        />
+      {/snippet}
+    </SidebarGroupButton>
 
-  <Modal id={saveProjectModalId} size="sm">
-    <SaveProjectForm modalId={saveProjectModalId} />
-  </Modal>
-  <Modal id={projectsModalId}>
-    <ProjectsList modalId={projectsModalId} />
-  </Modal>
+    <Modal id={saveProjectModalId} size="sm">
+      <SaveProjectForm modalId={saveProjectModalId} />
+    </Modal>
+    <Modal id={projectsModalId}>
+      <ProjectsList modalId={projectsModalId} />
+    </Modal>
+  {/if}
 
   <!-- Execute Graph (standalone) -->
   <div class="button-container">
@@ -378,6 +392,7 @@
     <label
       for="vtk-visualizer-button"
       class="element-label"
+      class:disabled={!hasVisualizer}
       title="Open VTK Visualizer"
     >
       <CubeIcon width="30px" height="30px" />
@@ -385,6 +400,7 @@
     <button
       id="vtk-visualizer-button"
       onclick={handleOpenVisualizer}
+      disabled={!hasVisualizer}
       style="display: none"
       aria-label="Open VTK Visualizer"
     ></button>
@@ -392,38 +408,42 @@
   </div>
 
   <!-- Auto Layout group -->
-  <SidebarGroupButton title="Layout">
-    {#snippet icon()}
-      <GridIcon width="28px" height="28px" />
-    {/snippet}
-    {#snippet items()}
-      <SidebarGroupButtonItem
-        label="Horizontal"
-        onclick={() => handleAutoLayout('LR')}
-      />
-      <SidebarGroupButtonItem
-        label="Vertical"
-        onclick={() => handleAutoLayout('TB')}
-      />
-    {/snippet}
-  </SidebarGroupButton>
+  {#if !isExecutableMode}
+    <SidebarGroupButton title="Layout">
+      {#snippet icon()}
+        <GridIcon width="28px" height="28px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Horizontal"
+          onclick={() => handleAutoLayout('LR')}
+        />
+        <SidebarGroupButtonItem
+          label="Vertical"
+          onclick={() => handleAutoLayout('TB')}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+  {/if}
 
   <!-- Import group -->
-  <SidebarGroupButton title="Import">
-    {#snippet icon()}
-      <UploadIcon width="30px" height="30px" />
-    {/snippet}
-    {#snippet items()}
-      <SidebarGroupButtonItem
-        label="Import Graph"
-        onclick={() => importGraphInput?.click()}
-      />
-      <SidebarGroupButtonItem
-        label="Import Nodes"
-        onclick={() => importNodesInput?.click()}
-      />
-    {/snippet}
-  </SidebarGroupButton>
+  {#if !isExecutableMode}
+    <SidebarGroupButton title="Import">
+      {#snippet icon()}
+        <UploadIcon width="30px" height="30px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Import Graph"
+          onclick={() => importGraphInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Import Nodes"
+          onclick={() => importNodesInput?.click()}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+  {/if}
 
   <!-- Hidden file inputs -->
   <input
@@ -489,8 +509,13 @@
     margin: 0.5rem 0.2rem;
   }
 
-  .element-label:hover {
+  .element-label:hover:not(.disabled) {
     border-color: var(--border-color-hover);
+  }
+
+  .element-label.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .button-text {

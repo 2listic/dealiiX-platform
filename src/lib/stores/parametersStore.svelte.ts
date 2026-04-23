@@ -1,19 +1,8 @@
-type ParameterLeaf = {
-  value: string
-  default_value: string
-  documentation: string
-  pattern: string
-  pattern_description: string
-  actions?: string
-  __extra?: boolean
-}
-
-interface ParameterTree {
-  __extra?: boolean
-  [key: string]: ParameterLeaf | ParameterTree | boolean | undefined
-}
-
-type ParameterNode = ParameterLeaf | ParameterTree
+import type {
+  ParameterLeaf,
+  ParameterTree,
+  ParameterNode,
+} from '../types/parameterTypes'
 
 let parameters: ParameterTree | null = $state(null)
 

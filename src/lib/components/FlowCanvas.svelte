@@ -43,8 +43,6 @@
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
   import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
   import { returnNodeName } from '../utils/canvasNodeUtils'
-  import ButtonToggleDarkMode from './layout/ButtonToggleDarkMode.svelte'
-  import JobsTable from './layout/JobsTable.svelte'
   import EditIcon from './icons/EditIcon.svelte'
   import Button from './layout/Button.svelte'
   import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
@@ -382,14 +380,6 @@
     colorMode={colorModeState.value}
     {ondelete}
   >
-    <Panel position="top-left">
-      <JobsTable />
-    </Panel>
-    <Panel position="top-right">
-      <div class="top-right-controls">
-        <ButtonToggleDarkMode />
-      </div>
-    </Panel>
     <Panel position="bottom-left">
       <div class="graph-nav">
         {#if graphStackState.canGoBack}
@@ -535,13 +525,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .top-right-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-end;
   }
 
   .selection-actions {

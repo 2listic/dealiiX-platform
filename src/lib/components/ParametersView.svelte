@@ -4,26 +4,14 @@
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
-
-  type ParameterLeaf = {
-    value: string
-    default_value: string
-    documentation: string
-    pattern: string
-    pattern_description: string
-    actions?: string
-    __extra?: boolean
-  }
-
-  interface ParameterTree {
-    __extra?: boolean
-    [key: string]: ParameterLeaf | ParameterTree | boolean | undefined
-  }
-
-  type ParameterNode = ParameterLeaf | ParameterTree
+  import type {
+    ParameterLeaf,
+    ParameterTree,
+    ParameterNode,
+  } from '../types/parameterTypes'
 
   let parameters = $derived(parametersState.value)
-  let fileInput: HTMLInputElement = $state(null)
+  let fileInput = $state<HTMLInputElement | null>(null)
   let executableMode = $derived(settingsState.isExecutableMode())
   let lastParametersFilePath = $state('')
   let expandedSections = $state<Record<string, boolean>>({})
@@ -49,10 +37,6 @@
     return typeof obj === 'object' && obj !== null && '__extra' in obj
       ? Boolean((obj as { __extra?: boolean }).__extra)
       : false
-  }
-
-  function cloneLeaf(leaf: ParameterLeaf): ParameterLeaf {
-    return { ...leaf }
   }
 
   function coerceUploadedLeaf(value: unknown): ParameterLeaf {
@@ -133,11 +117,11 @@
   }
 
   function toggleSection(path: string[], key: string, depth: number) {
-    const sectionPath = getSectionPathKey(path, key)
-    expandedSections = {
-      ...expandedSections,
-      [sectionPath]: !isSectionOpen(path, key, depth),
-    }
+    expandedSections[getSectionPathKey(path, key)] = !isSectionOpen(
+      path,
+      key,
+      depth
+    )
   }
 
   function duplicateSection(path: string[], key: string) {
@@ -180,15 +164,11 @@
 
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
     parametersState.value = nextParameters
-    expandedSections = {
-      ...expandedSections,
-      [getSectionPathKey(duplicateModalPath, newName)]: true,
-    }
+    expandedSections[getSectionPathKey(duplicateModalPath, newName)] = true
     toastState.add({
       message: `Section ${duplicateModalKey} duplicated as ${newName}`,
       type: 'success',
     })
-    resetDuplicateSectionModal()
     getModal(duplicateSectionModalId)?.close()
   }
 
@@ -229,7 +209,7 @@
             return [
               key,
               {
-                ...cloneLeaf(templateValue),
+                ...templateValue,
                 value: uploadedValue.value,
               },
             ]
@@ -241,12 +221,12 @@
             return [
               key,
               {
-                ...cloneLeaf(templateValue),
+                ...templateValue,
                 value: String(uploadedValue),
               },
             ]
           }
-          return [key, cloneLeaf(templateValue)]
+          return [key, { ...templateValue }]
         }
 
         const nestedUploaded =
@@ -435,17 +415,13 @@
       {/if}
     </div>
   {:else}
-    <div class="toolbar">
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept=".json"
-        onchange={loadFile}
-        hidden
-      />
-      <Button size="small" onclick={() => fileInput.click()}>Load File</Button>
-      <Button size="small" onclick={saveParameters}>Save</Button>
-    </div>
+    <input
+      bind:this={fileInput}
+      type="file"
+      accept=".json"
+      onchange={loadFile}
+      hidden
+    />
     <div class="tree">
       {#snippet renderTree(tree: ParameterTree, depth: number, path: string[])}
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
@@ -538,6 +514,18 @@
 
       {@render renderTree(parameters, 0, [])}
     </div>
+    <div class="toolbar">
+      <Button
+        size="small"
+        title="Merge new fields from file"
+        onclick={() => fileInput?.click()}>Merge from file</Button
+      >
+      <Button
+        size="small"
+        title="Download parameters as a JSON file"
+        onclick={saveParameters}>Download Params</Button
+      >
+    </div>
   {/if}
 </div>
 
@@ -601,11 +589,12 @@
     display: flex;
     gap: 5rem;
     justify-content: center;
-    padding: 1rem 1rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
   }
 
   .tree {
-    padding: 0.5rem 1rem;
+    padding: 7rem 1rem 1rem 1rem;
   }
 
   .section-block {

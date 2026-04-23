@@ -37,6 +37,12 @@ export const settingsState = {
   get urlRemoteServer() {
     return settings.urlRemoteServer
   },
+  get hasRemoteServer() {
+    return !!settings.urlRemoteServer
+  },
+  get hasVisualizer() {
+    return !!settings.urlVisualizer
+  },
   get execution() {
     return settings.execution
   },
