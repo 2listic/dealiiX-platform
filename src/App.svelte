@@ -65,7 +65,6 @@
           {#if isCoralMode}
             <FlowCanvas />
           {:else}
-            // isExecutableMode
             <ParametersView />
           {/if}
         </div>

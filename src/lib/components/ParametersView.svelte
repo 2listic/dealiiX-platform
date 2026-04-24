@@ -518,12 +518,12 @@
       <Button
         size="small"
         title="Merge new fields from file"
-        onclick={() => fileInput?.click()}>Merge from file</Button
+        onclick={() => fileInput?.click()}>Add from file</Button
       >
       <Button
         size="small"
         title="Download parameters as a JSON file"
-        onclick={saveParameters}>Download Params</Button
+        onclick={saveParameters}>Download params</Button
       >
     </div>
   {/if}
@@ -594,7 +594,7 @@
   }
 
   .tree {
-    padding: 8rem 2rem 2rem 1rem;
+    padding: 7rem 2rem 2rem 1rem;
   }
 
   .section-block {

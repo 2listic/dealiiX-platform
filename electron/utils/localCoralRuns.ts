@@ -105,7 +105,7 @@ export const startLocalCoralRun = async ({
   localRuns.set(jobId, {
     jobId,
     state: 'RUNNING',
-    start: new Date().toISOString(),
+    start: new Date().toISOString(), // full UTC ISO-8601, Z suffix preserved for frontend timezone conversion
     end: '',
     logPath,
     touchDir,
@@ -165,7 +165,7 @@ export const startLocalExecutableRun = async ({
   localRuns.set(jobId, {
     jobId,
     state: 'RUNNING',
-    start: new Date().toISOString(),
+    start: new Date().toISOString(), // full UTC ISO-8601, Z suffix preserved for frontend timezone conversion
     end: '',
     logPath,
     touchDir: '',

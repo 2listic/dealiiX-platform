@@ -24,6 +24,25 @@
     easing: cubicOut,
   })
 
+  // Formats a date string from either source into "YYYY-MM-DD HH:MM:SS" in the user's local timezone.
+  //
+  // Two date formats arrive here:
+  //   - Local runs:  full UTC ISO-8601 with Z suffix, e.g. "2026-04-24T14:30:45.123Z"
+  //                  JS Date parses the Z as UTC and then converts to local time.
+  //   - Remote sacct: server-local time with no timezone marker, e.g. "2026-02-09T08:20:39"
+  //                  JS Date parses a string without Z as local time, so no conversion happens —
+  //                  the value is displayed as-is (already in the server's wall-clock time).
+  //
+  // The 'sv' (Swedish) locale is used because its date/time format is "YYYY-MM-DD HH:MM:SS" —
+  // identical to ISO-8601 but in local time and without the T separator. This avoids pulling in a
+  // date library while still producing a consistent, readable format across all system locales.
+  const formatDate = (str) => {
+    if (!str) return str
+    const d = new Date(str)
+    if (isNaN(d.getTime())) return str
+    return d.toLocaleString('sv')
+  }
+
   let isJobListExpanded = $state(false)
   const toggleExpand = async () => {
     isJobListExpanded = !isJobListExpanded
@@ -152,7 +171,7 @@
             <td>
               <span>
                 {#if JOB_DATE_INDEX.includes(i)}
-                  {bodyCell.replace('T', ' ')}
+                  {formatDate(bodyCell)}
                 {:else}
                   {bodyCell}
                 {/if}
@@ -253,9 +272,9 @@
   .container-table-jobs {
     display: flex;
     flex-direction: column;
-    max-height: 7vh;
+    max-height: 8vh;
     overflow: hidden;
-    width: 40vw;
+    width: 50vw;
     transition: all 1s ease-in-out;
   }
   .container-table-jobs.expanded {
@@ -271,6 +290,7 @@
   th,
   td {
     text-align: center;
+    vertical-align: top; /* first line always visible when content wraps */
     padding: 0.4vh;
   }
 </style>
