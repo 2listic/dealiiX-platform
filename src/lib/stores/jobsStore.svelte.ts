@@ -1,7 +1,7 @@
 import { fetchRemoteJobs, JOB_LIST_DAYS } from '../utils/sshMessages'
 import { settingsState } from './settingsStore.svelte'
 import { toastState } from './toastsStore.svelte'
-/** @import { JobIdEntry } from '../types/jobTypes' */
+import type { JobIdEntry } from '../types/jobTypes'
 
 /**
  * Maps scheduler job IDs to { internalId, backendKind } entries.
@@ -10,10 +10,8 @@ import { toastState } from './toastsStore.svelte'
  *   internalId is the touch-dir counter allocated before submission.
  * - For local runs there is no external scheduler, so the key equals internalId
  *   (the circular mapping is harmless; backendKind is the only useful field).
- *
- * @type {Record<string, JobIdEntry>}
  */
-let jobIdMap = $state({})
+let jobIdMap = $state<Record<string, JobIdEntry>>({})
 
 /**
  * 2D array mirroring the format returned by list-local-runs / sacct:
@@ -22,23 +20,21 @@ let jobIdMap = $state({})
  *
  * Persisted to electron-store under 'jobs' so the table survives cold restarts
  * without requiring an immediate SSH connection or IPC call.
- *
- * @type {string[][]}
  */
-let jobs = $state([])
+let jobs = $state<string[][]>([])
 
 // Load initial values from electron-store.
 // jobIdMap entries that pre-date the { internalId, backendKind } shape (old
 // format stored a bare number) are discarded so the store always has a uniform
 // type — no inline migration guards elsewhere.
-const loadStore = async () => {
+const loadStore = async (): Promise<void> => {
   if (!window.electron?.store) {
     console.warn('Electron store not available (e.g., dev:vite mode)')
     return
   }
   const rawMap = await window.electron.store.get('jobIdMap', {})
   if (isValidJobIdMap(rawMap)) {
-    jobIdMap = rawMap
+    jobIdMap = rawMap as Record<string, JobIdEntry>
   } else {
     await window.electron.store.set('jobIdMap', {})
   }
@@ -48,17 +44,18 @@ loadStore()
 
 /**
  * Returns true only if every value in the map has the current { internalId, backendKind } shape.
- * @param {unknown} map
- * @returns {boolean}
+ * @param map - The raw value loaded from electron-store.
+ * @returns Whether the map conforms to the expected `Record<string, JobIdEntry>` shape.
  */
-const isValidJobIdMap = (map) => {
+const isValidJobIdMap = (map: unknown): boolean => {
   if (!map || typeof map !== 'object') return false
-  return Object.values(map).every(
+  return Object.values(map as Record<string, unknown>).every(
     (v) =>
       v !== null &&
       typeof v === 'object' &&
-      typeof v.internalId === 'number' &&
-      (v.backendKind === 'coral' || v.backendKind === 'executable')
+      typeof (v as JobIdEntry).internalId === 'number' &&
+      ((v as JobIdEntry).backendKind === 'coral' ||
+        (v as JobIdEntry).backendKind === 'executable')
   )
 }
 
@@ -67,37 +64,46 @@ const isValidJobIdMap = (map) => {
  * Used by JobsTable to resolve the touch-dir path and to gate the Nodes Status button.
  */
 export const jobIdMapState = {
-  get current() {
+  get current(): Record<string, JobIdEntry> {
     return jobIdMap
   },
-  /** Returns the next available internal job ID (0, 1, 2, ...). */
-  getNextKey() {
+  /**
+   * Returns the next available internal job ID (0, 1, 2, ...).
+   * @returns The next integer ID to use for a new job.
+   */
+  getNextKey(): number {
     const ids = Object.values(jobIdMap).map((v) => v.internalId)
     if (ids.length === 0) return 0
     return Math.max(...ids) + 1
   },
   /**
    * Records a new job ID mapping.
-   * @param {number} jobIdScheduler - Slurm ID for remote jobs; equals internalJobId for local jobs.
-   * @param {number} jobIdInternal - The touch-dir counter used in nodes-exec-status/<id>/.
-   * @param {'coral' | 'executable'} backendKind - Backend used for this run.
+   * @param jobIdScheduler - Slurm ID for remote jobs; equals internalJobId for local jobs.
+   * @param jobIdInternal - The touch-dir counter used in nodes-exec-status/<id>/.
+   * @param backendKind - Backend used for this run.
    */
-  async add(jobIdScheduler, jobIdInternal, backendKind) {
+  async add(
+    jobIdScheduler: number,
+    jobIdInternal: number,
+    backendKind: 'coral' | 'executable'
+  ): Promise<void> {
     jobIdMap[jobIdScheduler] = { internalId: jobIdInternal, backendKind }
     await window.electron?.store?.set('jobIdMap', $state.snapshot(jobIdMap))
   },
   /**
-   * @param {number} jobIdScheduler
-   * @returns {number | undefined}
+   * @param jobIdScheduler - The scheduler job ID to look up.
+   * @returns The internal job ID, or undefined if not found.
    */
-  getJobIdInternal(jobIdScheduler) {
+  getJobIdInternal(jobIdScheduler: number): number | undefined {
     return jobIdMap[jobIdScheduler]?.internalId
   },
   /**
-   * @param {number} jobIdScheduler
-   * @returns {'coral' | 'executable' | undefined}
+   * @param jobIdScheduler - The scheduler job ID to look up.
+   * @returns The backend kind, or undefined if not found.
    */
-  getJobBackendKind(jobIdScheduler) {
+  getJobBackendKind(
+    jobIdScheduler: number
+  ): 'coral' | 'executable' | undefined {
     return jobIdMap[jobIdScheduler]?.backendKind
   },
 }
@@ -109,21 +115,21 @@ export const jobIdMapState = {
  *   - remote → SSH sacct query
  */
 export const jobsState = {
-  get current() {
+  get current(): string[][] {
     return jobs
   },
-  get isEmpty() {
+  get isEmpty(): boolean {
     if (jobs.length <= 1) return true
     return jobs[1].length === 1
   },
-  get oneOrLess() {
+  get oneOrLess(): boolean {
     return jobs.length <= 2
   },
-  set current(value) {
+  set current(value: string[][]) {
     jobs = value
   },
-  // Refreshes the job list from the appropriate source for the current execution location.
-  async update() {
+  /** Refreshes the job list from the appropriate source for the current execution location. */
+  async update(): Promise<void> {
     try {
       const isLocal = settingsState.execution.location === 'local'
       jobs = isLocal

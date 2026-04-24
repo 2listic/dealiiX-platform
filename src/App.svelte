@@ -12,7 +12,7 @@
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
   import { settingsState } from './lib/stores/settingsStore.svelte'
 
-  let executableMode = $derived(settingsState.isExecutableMode())
+  let isCoralMode = $derived(settingsState.isCoralMode)
   let executionLocation = $derived(settingsState.execution.location)
   let backendKind = $derived(settingsState.execution.backendKind)
 
@@ -22,18 +22,13 @@
   var style = window.getComputedStyle(document.body)
   const sidebarWrapperWidth = style.getPropertyValue('--sidebar-wrapper-width')
   $effect(() => {
-    if (executableMode && sidebarWrapperElem && sidebarPositionHolderElem) {
-      sidebarWrapperElem.style.position = 'absolute'
-      sidebarWrapperElem.style.width = '0px'
-      sidebarPositionHolderElem.style.display = 'none'
-      return
-    }
+    if (!sidebarWrapperElem || !sidebarPositionHolderElem) return
 
-    if (isExpanded && sidebarWrapperElem && sidebarPositionHolderElem) {
+    if (isExpanded) {
       sidebarWrapperElem.style.position = 'static'
       sidebarWrapperElem.style.width = '25vw'
       sidebarPositionHolderElem.style.display = 'none'
-    } else if (sidebarWrapperElem && sidebarPositionHolderElem) {
+    } else {
       sidebarWrapperElem.style.position = 'absolute'
       sidebarWrapperElem.style.width = sidebarWrapperWidth
       sidebarPositionHolderElem.style.display = 'block'
@@ -45,23 +40,16 @@
   <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
-      <div class:hidden-menu={executableMode}>
+      {#if isCoralMode}
         <ButtonToggleMenu />
-      </div>
-      <div
-        id="sidebar-wrapper"
-        bind:this={sidebarWrapperElem}
-        class:hidden-sidebar={executableMode}
-      >
-        {#if !executableMode}
+        <div id="sidebar-wrapper" bind:this={sidebarWrapperElem}>
           <Sidebar />
-        {/if}
-      </div>
-      <div
-        id="sidebar-position-holder"
-        bind:this={sidebarPositionHolderElem}
-        class:hidden-sidebar={executableMode}
-      ></div>
+        </div>
+        <div
+          id="sidebar-position-holder"
+          bind:this={sidebarPositionHolderElem}
+        ></div>
+      {/if}
       <div id="sidebar-buttons-wrapper">
         <SidebarButtons />
       </div>
@@ -74,10 +62,11 @@
           <ButtonToggleDarkMode />
         </div>
         <div class="flow-wrapper">
-          {#if executableMode}
-            <ParametersView />
-          {:else}
+          {#if isCoralMode}
             <FlowCanvas />
+          {:else}
+            // isExecutableMode
+            <ParametersView />
           {/if}
         </div>
       </div>
@@ -104,7 +93,6 @@
     top: 0;
     z-index: 100;
     cursor: pointer;
-    /* margin-top: 30px; */
     min-width: var(--sidebar-wrapper-min-width);
     transition: width 0.5s 0.1s ease-in-out;
   }
@@ -118,18 +106,9 @@
     width: 25vw !important; /* Set important to override the inline style */
   }
 
-  #sidebar-wrapper.hidden-sidebar {
-    overflow: hidden;
-    pointer-events: none;
-  }
-
   #sidebar-buttons-wrapper {
     flex: 0 0 auto; /* Don't grow, don't shrink, use element's intrinsic width (fit-content) as starting size */
     width: fit-content;
-  }
-
-  .hidden-menu {
-    display: none;
   }
 
   .main-content {

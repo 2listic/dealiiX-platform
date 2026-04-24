@@ -16,8 +16,8 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
   mainWindow = new BrowserWindow({
-    width,
-    height,
+    width: Math.round(width * 0.8),
+    height: Math.round(height * 0.8),
     icon: path.join(appPath, 'electron/assets/coral-orange.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

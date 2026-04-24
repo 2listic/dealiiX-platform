@@ -48,7 +48,7 @@
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
-  let isExecutableMode = $derived(settingsState.isExecutableMode())
+  let isCoralMode = $derived(settingsState.isCoralMode)
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
 
@@ -282,7 +282,7 @@
 
 <aside>
   <!-- Login (standalone) -->
-  {#if !isExecutableMode}
+  {#if isCoralMode}
     <div class="button-container">
       <label
         for="login-button"
@@ -327,7 +327,7 @@
   />
 
   <!-- Project group -->
-  {#if !isExecutableMode}
+  {#if isCoralMode}
     <SidebarGroupButton title="Project" disabled={!hasRemoteServer}>
       {#snippet icon()}
         <svg
@@ -369,20 +369,16 @@
 
   <!-- Execute Graph (standalone) -->
   <div class="button-container">
-    <label
-      for="execute-graph-button"
-      class="element-label"
-      title="Execute graph"
-    >
+    <label for="execute-graph-button" class="element-label" title="Run new job">
       <ExecuteIcon width="30px" height="30px" />
     </label>
     <button
       id="execute-graph-button"
       onclick={handleExecution}
       style="display: none"
-      aria-label="Execute graph"
+      aria-label="Run new job"
     ></button>
-    <span class="button-text">Execute</span>
+    <span class="button-text">Run</span>
   </div>
 
   <JobConfigModal modalId={JobConfigModalId} onConfirm={handleJobConfirm} />
@@ -408,7 +404,7 @@
   </div>
 
   <!-- Auto Layout group -->
-  {#if !isExecutableMode}
+  {#if isCoralMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -427,7 +423,7 @@
   {/if}
 
   <!-- Import group -->
-  {#if !isExecutableMode}
+  {#if isCoralMode}
     <SidebarGroupButton title="Import">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
@@ -487,6 +483,7 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
+    padding-inline: 0.5rem;
   }
 
   .button-container {

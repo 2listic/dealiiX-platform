@@ -52,8 +52,11 @@ export const settingsState = {
   get local() {
     return settings.execution.local
   },
-  isExecutableMode() {
+  get isExecutableMode() {
     return settings.execution.backendKind === 'executable'
+  },
+  get isCoralMode() {
+    return settings.execution.backendKind === 'coral'
   },
   async saveUrlVisualizer(url: string) {
     await persistSettings({ ...settings, urlVisualizer: url })

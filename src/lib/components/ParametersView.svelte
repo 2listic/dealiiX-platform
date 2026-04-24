@@ -12,7 +12,7 @@
 
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
-  let executableMode = $derived(settingsState.isExecutableMode())
+  let isExecutableMode = $derived(settingsState.isExecutableMode)
   let lastParametersFilePath = $state('')
   let expandedSections = $state<Record<string, boolean>>({})
   let duplicateModalName = $state('')
@@ -395,7 +395,7 @@
 <div class="parameters-view">
   {#if !parameters}
     <div class="empty-state">
-      {#if executableMode}
+      {#if isExecutableMode}
         <div class="empty-state-copy">
           <strong>No backend template synced yet</strong>
           <span>
@@ -594,7 +594,7 @@
   }
 
   .tree {
-    padding: 7rem 1rem 1rem 1rem;
+    padding: 8rem 2rem 2rem 1rem;
   }
 
   .section-block {

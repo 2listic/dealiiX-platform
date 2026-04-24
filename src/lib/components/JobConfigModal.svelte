@@ -18,11 +18,11 @@
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
   let hasParameters = $derived(parametersState.value !== null)
-  let execution = $derived(settingsState.execution)
-  let isExecutableMode = $derived(execution.backendKind === 'executable')
-  let isRemoteExecution = $derived(execution.location === 'remote')
-  let showSchedulerFields = $derived(isRemoteExecution)
-  let showEffectiveMpiFields = $derived(useMpi && !isExecutableMode)
+  let isExecutableMode = $derived(settingsState.isExecutableMode)
+  let isCoralMode = $derived(settingsState.isCoralMode)
+  let isRemoteExecution = $derived(
+    settingsState.execution.location === 'remote'
+  )
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
@@ -61,72 +61,68 @@
       }
     }}
   >
-    <h2>Job Configuration</h2>
-    <div class="inputs-container">
-      {#if showEffectiveMpiFields}
-        <div class="inputs-row">
-          <div class="input-container">
-            <label for="mpi-nodes">Nodes</label>
-            <input
-              id="mpi-nodes"
-              type="number"
-              min="1"
-              bind:value={nodes}
-              class="input-field"
-            />
-          </div>
-          <div class="input-container">
-            <label for="mpi-tasks-per-node">Tasks per node</label>
-            <input
-              id="mpi-tasks-per-node"
-              type="number"
-              min="1"
-              bind:value={tasksPerNode}
-              class="input-field"
-            />
-          </div>
-          <div class="input-container total">
-            <span class="total-label">Total</span>
-            <span class="total-value">{totalProcesses}</span>
-          </div>
-        </div>
-      {/if}
-      {#if showSchedulerFields}
-        <div class="inputs-row">
-          <div class="input-container time-limit">
-            <label for="job-time-limit">Time limit</label>
-            <input
-              id="job-time-limit"
-              type="text"
-              placeholder="e.g. 01:00:00"
-              bind:value={timeLimit}
-              class="input-field"
-              class:input-field--error={timeLimitError}
-            />
-            <span
-              class="hint-message"
-              class:hint-message--error={timeLimitError}
-            >
-              {timeLimitError || 'Use 0 for no time limit'}
-            </span>
-          </div>
-        </div>
-      {/if}
-    </div>
-    <hr />
-    <div class="toggle-container">
-      {#if isExecutableMode}
-        <div class="hint-message">
-          The executable will run with the current parameters file. Graph upload
-          is disabled in this mode.
-        </div>
-        {#if !hasParameters}
-          <div class="hint-message hint-message--error">
-            Synchronize the executable settings first to generate a parameters
-            template.
+    <h2>Run job</h2>
+    {#if isCoralMode && (useMpi || isRemoteExecution)}
+      <div class="inputs-container">
+        {#if useMpi}
+          <div class="inputs-row">
+            <div class="input-container">
+              <label for="mpi-nodes">Nodes</label>
+              <input
+                id="mpi-nodes"
+                type="number"
+                min="1"
+                bind:value={nodes}
+                class="input-field"
+              />
+            </div>
+            <div class="input-container">
+              <label for="mpi-tasks-per-node">Tasks per node</label>
+              <input
+                id="mpi-tasks-per-node"
+                type="number"
+                min="1"
+                bind:value={tasksPerNode}
+                class="input-field"
+              />
+            </div>
+            <div class="input-container total">
+              <span class="total-label">Total</span>
+              <span class="total-value">{totalProcesses}</span>
+            </div>
           </div>
         {/if}
-      {:else}
+        {#if isRemoteExecution}
+          <div class="inputs-row">
+            <div class="input-container time-limit">
+              <label for="job-time-limit">Time limit</label>
+              <input
+                id="job-time-limit"
+                type="text"
+                placeholder="e.g. 01:00:00"
+                bind:value={timeLimit}
+                class="input-field"
+                class:input-field--error={timeLimitError}
+              />
+              <span
+                class="hint-message"
+                class:hint-message--error={timeLimitError}
+              >
+                {timeLimitError || 'Use 0 for no time limit'}
+              </span>
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/if}
+    {#if isExecutableMode && !hasParameters}
+      <div class="hint-message">
+        Synchronize the executable settings first to generate a parameters
+        template.
+      </div>
+    {/if}
+    {#if isCoralMode}
+      <div class="toggle-container">
         <div class="mpi-row">
           <span class="toggle-label">Use MPI</span>
           <label class="switch">
@@ -134,8 +130,8 @@
             <span class="slider round"></span>
           </label>
         </div>
-      {/if}
-    </div>
+      </div>
+    {/if}
     <div class="button-container">
       <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button
@@ -144,7 +140,7 @@
         size="small"
         disabled={!!timeLimitError || (isExecutableMode && !hasParameters)}
       >
-        Execute
+        Run
       </Button>
     </div>
   </form>
@@ -199,7 +195,7 @@
   }
 
   .hint-message {
-    font-size: 0.8rem;
+    /* font-size: 0.8rem; */
     color: var(--ternary-color);
   }
 
@@ -224,12 +220,6 @@
     flex: 0 1 auto;
     min-width: 10rem;
     max-width: 16rem;
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid var(--ternary-color);
-    margin: 1rem 0 0;
   }
 
   .toggle-container {
