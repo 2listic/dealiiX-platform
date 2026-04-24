@@ -9,7 +9,7 @@
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
-  import { JobStatus } from '../../types/jobTypes'
+  import { normalizeJobStatus, isTerminalStatus } from '../../types/jobTypes'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -170,7 +170,9 @@
           {#each line as bodyCell, i (i)}
             <td>
               <span>
-                {#if JOB_DATE_INDEX.includes(i)}
+                {#if i === 1}
+                  {normalizeJobStatus(bodyCell)}
+                {:else if JOB_DATE_INDEX.includes(i)}
                   {formatDate(bodyCell)}
                 {:else}
                   {bodyCell}
@@ -180,7 +182,7 @@
           {/each}
           <td>{jobIdMapState.getJobBackendKind(line[0]) ?? '—'}</td>
           <td>
-            {#if [JobStatus.COMPLETED, JobStatus.FAILED].includes(line[1])}
+            {#if isTerminalStatus(normalizeJobStatus(line[1]))}
               <Button
                 size="xsmall"
                 title="View logs from the current job"

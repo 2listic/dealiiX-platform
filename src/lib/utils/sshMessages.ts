@@ -11,7 +11,11 @@ import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
-import { JobStatus } from '../types/jobTypes'
+import {
+  JobStatus,
+  normalizeJobStatus,
+  isTerminalStatus,
+} from '../types/jobTypes'
 import type { RemoteExecutionSettings } from '../types/settingsTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
@@ -329,11 +333,12 @@ const uploadFileSsh = async (
   content: string,
   remotePath: string
 ): Promise<void> => {
+  // console.log(`[uploadFileSsh] uploading to ${remotePath}:`, content)
   const result = await window.electron.invoke('upload-file-ssh', {
     content,
     remotePath,
   })
-  console.log('SSH upload result:', result)
+  console.log(`[uploadFileSsh] result for ${remotePath}:`, result)
 }
 
 /**
@@ -360,14 +365,12 @@ const jobPolling = async (
       })
       console.log(result)
 
-      const cleaned = result.trim()
+      const cleaned = normalizeJobStatus(result.trim())
       if (Object.values(JobStatus).includes(cleaned as JobStatus)) {
         await jobsState.update()
 
-        // if completed or failed stop polling and return the final status
-        if (
-          [JobStatus.COMPLETED, JobStatus.FAILED].includes(cleaned as JobStatus)
-        ) {
+        // stop polling on any terminal state and return it
+        if (isTerminalStatus(cleaned)) {
           return cleaned
         }
       }
@@ -403,9 +406,7 @@ const localJobPolling = async (
     const state = await window.electron.invoke('get-local-run-state', { jobId })
     const cleaned = String(state || '').trim()
     if (Object.values(JobStatus).includes(cleaned as JobStatus)) {
-      if (
-        [JobStatus.COMPLETED, JobStatus.FAILED].includes(cleaned as JobStatus)
-      ) {
+      if (isTerminalStatus(cleaned)) {
         return cleaned
       }
     }

@@ -39,5 +39,9 @@ containers/shared-data/*
 # Test files
 test_files/legacy/*
 
-# Local runs folder
-/local_runs
+# Local runs folder — ignore generated outputs but track step-70 source files
+/local_runs/*
+!/local_runs/step-70
+/local_runs/step-70/*
+!/local_runs/step-70/step-70.cc
+!/local_runs/step-70/CMakeLists.txt

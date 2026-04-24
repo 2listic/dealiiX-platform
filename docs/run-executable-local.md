@@ -10,55 +10,57 @@ The standard deal.II tutorial step-70 works out of the box as an executable back
 
 ### Get the source
 
-```bash
-mkdir -p coral/examples/step-70
-curl -o coral/examples/step-70/step-70.cc \
-  https://raw.githubusercontent.com/dealii/dealii/v9.5.0/examples/step-70/step-70.cc
-```
-
-Create `coral/examples/step-70/CMakeLists.txt`:
-
-```cmake
-cmake_minimum_required(VERSION 3.13.4)
-project(step-70)
-find_package(deal.II 9.5 REQUIRED
-  HINTS ${deal.II_DIR} ${DEAL_II_DIR} $ENV{DEAL_II_DIR})
-deal_ii_initialize_cached_variables()
-add_executable(step-70 step-70.cc)
-deal_ii_setup_target(step-70)
-```
+The source files are already in the repo at `local_runs/step-70/`. No download needed.
 
 ### Build
 
 ```bash
-cd coral/examples/step-70
+cd local_runs/step-70
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
+### Dimension suffix convention
+
+step-70 (and DealiiX-compatible executables in general) pick up the spatial dimension from a numeric suffix on the parameters file name. For example:
+
+| File name          | Dimension    |
+| ------------------ | ------------ |
+| `parameters.json`  | default (3D) |
+| `parameters2.json` | 2D           |
+| `parameters3.json` | 3D           |
+
 ### Manually verify the executable contract
 
 ```bash
-cd coral/examples/step-70/build
+cd local_runs/step-70/build
 
 # Probe: file does not exist → deal.II writes a JSON template and exits
-./step-70 parameters.json
-cat parameters.json   # valid JSON with all parameters and their defaults
+./step-70 parameters2.json
+cat parameters2.json   # valid JSON with all parameters and their defaults
 
 # Run: file exists → reads it and runs the simulation
-./step-70 parameters.json
+./step-70 parameters2.json
 ```
 
 ### Configure the app
 
 Open **Settings** and set the following under **Execution Mode**:
 
-| Setting              | Value                                                             |
-| -------------------- | ----------------------------------------------------------------- |
-| Location             | `local`                                                           |
-| Backend kind         | `executable`                                                      |
-| Executable path      | `<repo>/coral/examples/step-70/build/step-70`                     |
-| Working directory    | `<repo>/coral/examples/step-70/build` (or any writable directory) |
-| Parameters file name | `parameters.json` (generated on first probe if absent)            |
+| Setting              | Value                                                         |
+| -------------------- | ------------------------------------------------------------- |
+| Location             | `local`                                                       |
+| Backend kind         | `executable`                                                  |
+| Executable path      | `<repo>/local_runs/step-70/build/step-70`                     |
+| Working directory    | `<repo>/local_runs/step-70/build` (or any writable directory) |
+| Parameters file name | `parameters2.json` (generated on first probe if absent)       |
 
 Click **Save & Sync** — the app probes the binary, reads back the JSON template, and populates the Parameters panel with all step-70 parameters as an editable tree. Edit the values as needed, then click **Execute** to run the simulation.
+
+### Smoke test (fast 2D run)
+
+For a quick end-to-end check that everything is wired up correctly, use the 2D mode with a coarser solid mesh. The settings in `test_files/template_parameters_step-70-2dim-1ref.json` are a ready-made starting point — the key difference from the defaults is `Initial solid refinement: 1` (default is `5`), which dramatically reduces the mesh size and runtime.
+
+1. Set **Parameters file name** to `parameters2.json`.
+2. After **Save & Sync**, load `test_files/template_parameters_step-70-2dim-1ref.json` from the Parameters panel (or copy its values manually — the notable one is `Initial solid refinement → 1`).
+3. Click **Execute**. The simulation finishes in seconds rather than minutes.
