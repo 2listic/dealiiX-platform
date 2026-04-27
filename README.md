@@ -3,7 +3,7 @@
 ### Cloning the repository
 
 When cloning for the first time use `--recursive` flag to get also the Coral submodule  
-`git clone --recursive git@github.com:2listic/coral.git`
+`git clone --recursive git@github.com:2listic/dealiiX-platform.git`
 
 Or if you already cloned the repo, use  
 `git submodule update --init --recursive`

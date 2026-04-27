@@ -37,9 +37,9 @@ Open **Settings** and set the following under **Execution Mode**:
 | ----------------- | --------------------------------------------------------------- |
 | Location          | `local`                                                         |
 | Backend kind      | `coral`                                                         |
+| Working directory | `<repo>/local_runs/coral` (or any writable directory)           |
 | Coral binary path | `<repo>/coral/build/core/coral`                                 |
 | Coral plugin path | `<repo>/coral/build/backends/dealii/libcoral_backend_dealii.so` |
-| Working directory | `<repo>/coral/build` (or any writable directory)                |
 
 Click **Save & Sync** to probe the binary, load the node registry into the sidebar, and confirm everything works.
 

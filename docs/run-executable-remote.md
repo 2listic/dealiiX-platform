@@ -42,7 +42,7 @@ Open **Settings** and set the following under **Execution Mode**:
 | Path to private SSH key | private key matching `docker-compose.yml` |
 | Working directory       | `/app/shared-data`                        |
 | Executable path         | `/app/shared-data/step-70/build/step-70`  |
-| Parameters file name    | `parameters2.json`                        |
+| Parameters file name    | `parameters.json`                         |
 
 Click **Save & Sync Execution** — the app probes the remote binary via SSH, reads back the JSON parameter template, and populates the Parameters panel as an editable tree.
 

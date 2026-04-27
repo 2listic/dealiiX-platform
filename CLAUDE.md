@@ -24,7 +24,7 @@ DealiiX Platform is an Electron + Svelte 5 desktop application for building and 
 
 ### Submodules (separate repos)
 
-- `coral/` - C++ computational graph library using deal.II, builds `dealii_backend.g` executable
+- `coral/` - C++ computational graph library using deal.II, builds `coral/build/core/coral` (CLI binary) and `coral/build/backends/dealii/libcoral_backend_dealii.so` (deal.II plugin)
 - `coral-remote-server/` - Go REST API server for project management and authentication
 - `coral-visualizer/` - Python Flask app for VTK file visualization
 
