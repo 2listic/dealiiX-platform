@@ -13,6 +13,11 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) All Electron source files migrated from `.js` to `.ts`. New `tsconfig.electron.json` (ESM) and `tsconfig.electron.preload.json` (CJS) added. Type declarations for `ssh2` added in `electron/types/ssh2.d.ts`.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) `settingsStore.svelte.js` → `settingsStore.svelte.ts`; `auth.svelte.js` → `auth.svelte.ts`; `jobsStore.svelte.js` → `jobsStore.svelte.ts`; `api.js` → `api.ts`; `authentication.js` → `authentication.ts`; `projects.js` → `projects.ts`.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) New modules: `settingsTypes.ts` for settings type definitions, `settingsActions.ts` with `probeAndSaveExecution`, `parameterTypes.ts`. `executionStatus.ts` renamed to `jobTypes.ts`.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) IPC handlers extracted from `main.ts` into a dedicated `ipcHandlers.ts` module.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) `Settings.svelte` replaced by `SettingsModal.svelte`; the settings component now owns its modal instead of being wrapped externally.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Registry node stores extracted to a dedicated module. New `graphStack.svelte.ts` store added to manage the hierarchical navigation context stack (breadcrumbs, graph snapshots per level, parent node references).
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) `@dagrejs/dagre@3.0.0` added to dependencies.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Vite dev config updated to exclude `@xyflow/svelte` from dependency pre-bundling, fixing an optimization conflict in browser dev mode.
@@ -26,11 +31,22 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### CI/CD
 
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) TypeScript compilation of the Electron process (`check:electron`) added to CI/CD workflows (`ci.yml`, `release-linux.yml`, `release-macos.yml`) and the Husky pre-commit hook.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Fixed a race condition in the GitHub Actions pipeline causing `esbuild` version mismatches during `npm install`.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) CI/CD workflows restructured: new `ci.yml` runs type check (`svelte-check`) and tests on every push/PR to `main` (ubuntu only, no duplicate macOS run); `create_deb.yml` and `create-macos.yml` renamed to `release-linux.yml` and `release-macos.yml` trigger now only on tags.
 
 ### UI/UX
 
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Settings modal redesigned with accordions grouping related sections, pill-shaped radio buttons, and smooth CSS transitions.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) New execution badge always visible in the app showing the currently active execution mode.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Sidebar buttons are hidden or disabled based on the currently selected execution mode.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) ParametersView now fills the full canvas area; the jobs table sits on top as a floating overlay.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Jobs table shows a new "backend" column indicating whether each job used the Coral or Executable backend. Node-status button is hidden for executable jobs.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Jobs table formats submission and completion dates with time zone conversion for local-mode jobs.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Sidebar state is stabilized when switching between execution modes.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Parameter sections can be duplicated in the ParametersView.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) HTML-level form validation in the settings modal provides immediate native browser feedback.
+- [#180](https://github.com/2listic/dealiiX-platform/pull/180) New execution settings picker: users can choose between Remote (SSH + Slurm), Local Coral, and Local Executable execution modes. The selected mode is persisted in the settings store.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Project name merged into the new breadcrumb bar added to the bottom-left panel. New dedicated icons for the "Open subgraph" and "Explode" actions added to the header of every network (subgraph) node.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) New auto-layout button icon added. Layout tools are now grouped under a dedicated "Layout" sidebar menu with separate Horizontal and Vertical layout options. All the sidebar button dropdowns now close automatically after selecting an option.
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Selected nodes now display explicit visual selection styling on the canvas.
@@ -38,9 +54,23 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) New collapsible parameters panel on the right side of the canvas, toggled by a vertical "Parameters" tab.
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) "Upload Graph" and "Upload Parameters" checkboxes added to the "Job Execution" modal so users can choose what to upload before job execution.
 
+### Electron-Backend
+
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Entire Electron backend migrated to TypeScript: `main.ts`, `ipcHandlers.ts`, `executionProbe.ts`, `localCoralRuns.ts`, `sshConnections.ts`, `storage.ts`, `preload.ts`.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Jobs store reset logic when the persisted job ID map is corrupted or requires migration; new job ID map structure now also stores the backend type used per job.
+- [#180](https://github.com/2listic/dealiiX-platform/pull/180) New `localCoralRuns.ts` module handles spawning a local Coral process and monitoring its stdout/stderr output.
+- [#180](https://github.com/2listic/dealiiX-platform/pull/180) New `executionProbe.ts` module probes the local environment at settings-save time to detect available Coral backends and validate paths.
+
 ### SSH communication
 
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Remote (Slurm) and local Coral execution modes now read all paths and endpoints from the settings store instead of using hardcoded values.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) `cancelled` job status added.
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) Conditionally upload of the graph JSON and/or template parameters file. Sbatch templates replaced the hardcoded execution command with a new placeholder that is resolved to include or omit a new flag to handle parameters file.
+
+### Documentation
+
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) Execution mode documentation split into four dedicated files: `docs/run-coral-docker.md`, `docs/run-coral-local.md`, `docs/run-executable-local.md`, `docs/run-executable-remote.md`.
+- [#181](https://github.com/2listic/dealiiX-platform/pull/181) deal.II step-70 source files (`step-70.cc`, `CMakeLists.txt`) added under `local_runs/` as a reference for local executable mode testing.
 
 ### Submodules
 
