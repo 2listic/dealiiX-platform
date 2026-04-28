@@ -54,28 +54,16 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle('pick-directory', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('pick-directory', () => {
+    const filePaths = dialog.showOpenDialogSync({
       properties: ['openDirectory'],
     })
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    return result.filePaths[0]
+    return filePaths?.[0] ?? null
   })
 
-  ipcMain.handle('pick-file', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-    })
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    return result.filePaths[0]
+  ipcMain.handle('pick-file', () => {
+    const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
+    return filePaths?.[0] ?? null
   })
 
   ipcMain.handle(
