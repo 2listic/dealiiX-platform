@@ -62,11 +62,14 @@ export function connectToSSHWithPassword(
 /**
  * @param command - Shell command to execute on the remote host.
  * @param connection - SSH connection parameters.
+ * @param options.rejectOnNonZeroCode - When true, reject if the remote command exits with a
+ *   non-zero code, including the captured output in the error message. Defaults to false.
  * @returns stdout + stderr combined.
  */
 export function connectToSSHWithKey(
   command: string,
-  connection: SshConnection
+  connection: SshConnection,
+  options: { rejectOnNonZeroCode?: boolean } = {}
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client()
@@ -82,6 +85,12 @@ export function connectToSSHWithKey(
             .on('close', (code: number) => {
               console.log('Command completed with code', code)
               conn.end()
+              if (options.rejectOnNonZeroCode && code !== 0) {
+                const detail = data.trim() || '(no output)'
+                return reject(
+                  new Error(`Remote command failed (exit ${code}): ${detail}`)
+                )
+              }
               resolve(data)
             })
             .on('data', (chunk: Buffer) => {

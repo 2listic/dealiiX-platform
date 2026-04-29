@@ -66,19 +66,18 @@ const fileMustExist = (filePath: string | undefined, label: string): void => {
 }
 
 const probeLocalPaths = (execution: ExecutionSettings): void => {
-  const target = execution.local
   if (execution.backendKind === 'coral') {
-    fileMustExist(target.coralBinaryPath, 'Coral binary')
-    if (target.coralPluginPath) {
-      fileMustExist(target.coralPluginPath, 'Coral plugin')
+    fileMustExist(execution.local.coralBinaryPath, 'Coral binary')
+    if (execution.local.coralPluginPath) {
+      fileMustExist(execution.local.coralPluginPath, 'Coral plugin')
     }
-  } else {
-    fileMustExist(target.executablePath, 'Executable')
+  } else if (execution.backendKind === 'executable') {
+    fileMustExist(execution.local.executablePath, 'Executable')
   }
 
-  if (!fs.existsSync(target.workingDirectory)) {
+  if (!fs.existsSync(execution.local.workingDirectory)) {
     throw new Error(
-      `Working directory does not exist: ${target.workingDirectory}`
+      `Working directory does not exist: ${execution.local.workingDirectory}`
     )
   }
 }
@@ -152,18 +151,27 @@ const getExecutableTemplateMetadataLocal = async (
 const getCoralRegistryMetadataRemote = async (
   execution: ExecutionSettings
 ): Promise<NodeRegistryMetadata> => {
-  const command = [
-    `cd ${shellEscape(execution.remote.workingDirectory)}`,
-    `${shellEscape(execution.remote.coralBinaryPath)} -p ${shellEscape(execution.remote.coralPluginPath)} register > /dev/null 2>&1`,
-    'cat node_types.json',
-  ].join(' && ')
-
-  const registryRaw = await connectToSSHWithKey(command, {
+  const sshConfig = {
     host: execution.remote.host,
     port: execution.remote.port,
     username: execution.remote.username,
     pathToSsh: execution.remote.sshKeyPath,
-  })
+  }
+
+  // Run coral register — stdout suppressed so the registry file is the only output later;
+  // stderr flows through SSH so errors surface in the rejection message.
+  await connectToSSHWithKey(
+    `cd ${shellEscape(execution.remote.workingDirectory)} && ${shellEscape(execution.remote.coralBinaryPath)} -p ${shellEscape(execution.remote.coralPluginPath)} register > /dev/null`,
+    sshConfig,
+    { rejectOnNonZeroCode: true }
+  )
+
+  // Read the generated registry file in a separate call so its content is unambiguous.
+  const registryRaw = await connectToSSHWithKey(
+    `cd ${shellEscape(execution.remote.workingDirectory)} && cat node_types.json`,
+    sshConfig,
+    { rejectOnNonZeroCode: true }
+  )
 
   return {
     kind: 'nodeRegistry',
@@ -178,15 +186,34 @@ const getCoralRegistryMetadataRemote = async (
 const getExecutableTemplateMetadataRemote = async (
   execution: ExecutionSettings
 ): Promise<ParametersTemplateMetadata> => {
-  const paramsFile = `dealiix-probe-${Date.now()}-${getExecutableParametersFileName(execution.remote)}`
-  const command = `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(paramsFile)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(paramsFile)} > /dev/null 2>&1; probe_status=$?; if [ -f ${shellEscape(paramsFile)} ]; then cat ${shellEscape(paramsFile)}; rm -f ${shellEscape(paramsFile)}; exit 0; fi; exit $probe_status`
-
-  const parametersRaw = await connectToSSHWithKey(command, {
+  const sshConfig = {
     host: execution.remote.host,
     port: execution.remote.port,
     username: execution.remote.username,
     pathToSsh: execution.remote.sshKeyPath,
-  })
+  }
+  const paramsFile = `dealiix-probe-${Date.now()}-${getExecutableParametersFileName(execution.remote)}`
+
+  // Clean up any leftover probe file from a previous failed run.
+  await connectToSSHWithKey(
+    `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(paramsFile)}`,
+    sshConfig,
+    { rejectOnNonZeroCode: true }
+  )
+
+  // Run the executable — tolerate non-zero exit because some executables write the params
+  // file but still exit with a non-zero code (e.g. usage errors when no other args are given).
+  await connectToSSHWithKey(
+    `cd ${shellEscape(execution.remote.workingDirectory)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(paramsFile)}`,
+    sshConfig
+  )
+
+  // Read the generated params file; fails with a clear message if the executable did not create it.
+  const parametersRaw = await connectToSSHWithKey(
+    `cat ${shellEscape(`${execution.remote.workingDirectory}/${paramsFile}`)} && rm -f ${shellEscape(`${execution.remote.workingDirectory}/${paramsFile}`)}`,
+    sshConfig,
+    { rejectOnNonZeroCode: true }
+  )
 
   return {
     kind: 'parametersTemplate',
@@ -199,35 +226,41 @@ const getExecutableTemplateMetadataRemote = async (
  * backend metadata (node registry or parameters template) depending on the backend kind.
  *
  * @param execution - The execution settings to validate and probe.
- * @returns Probe result with metadata and sync timestamp.
- * @throws {Error} If settings are invalid, required paths are missing, or the probe command fails.
+ * @returns Probe result with metadata and sync timestamp, or an error result on failure.
  */
 export const probeAndSyncExecutionSettings = async (
   execution: ExecutionSettings
 ): Promise<ProbeResult> => {
-  validateExecutionSettings(execution)
+  try {
+    validateExecutionSettings(execution)
 
-  if (execution.location === 'local') {
-    probeLocalPaths(execution)
-  }
+    if (execution.location === 'local') {
+      probeLocalPaths(execution)
+    }
 
-  let metadata = null
-  if (execution.backendKind === 'coral') {
-    metadata =
-      execution.location === 'local'
-        ? await getCoralRegistryMetadataLocal(execution)
-        : await getCoralRegistryMetadataRemote(execution)
-  } else if (execution.backendKind === 'executable') {
-    metadata =
-      execution.location === 'local'
-        ? await getExecutableTemplateMetadataLocal(execution)
-        : await getExecutableTemplateMetadataRemote(execution)
-  }
+    let metadata = null
+    if (execution.backendKind === 'coral') {
+      metadata =
+        execution.location === 'local'
+          ? await getCoralRegistryMetadataLocal(execution)
+          : await getCoralRegistryMetadataRemote(execution)
+    } else if (execution.backendKind === 'executable') {
+      metadata =
+        execution.location === 'local'
+          ? await getExecutableTemplateMetadataLocal(execution)
+          : await getExecutableTemplateMetadataRemote(execution)
+    }
 
-  return {
-    ok: true,
-    message: 'Configuration validated successfully',
-    metadata,
-    syncedAt: new Date().toISOString(),
+    return {
+      ok: true,
+      message: 'Configuration validated successfully',
+      metadata,
+      syncedAt: new Date().toISOString(),
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: (error as Error)?.message || 'Configuration probe failed',
+    }
   }
 }

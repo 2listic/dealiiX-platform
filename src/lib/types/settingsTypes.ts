@@ -44,8 +44,8 @@ export type ExecutionSettings = {
 export type ProbeResult = {
   ok: boolean
   message: string
-  metadata: ExecutionMetadata
-  syncedAt: string
+  metadata?: ExecutionMetadata
+  syncedAt?: string
 }
 
 export type AppSettings = {

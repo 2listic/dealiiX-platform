@@ -35,11 +35,16 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle('execute-ssh-with-key', async (_event, { command }) => {
-    const settings = store.get('settings')
-    const connectionSettings = getRemoteConnectionSettings(settings)
-    return await connectToSSHWithKey(command, connectionSettings)
-  })
+  ipcMain.handle(
+    'execute-ssh-with-key',
+    async (_event, { command, rejectOnNonZeroCode = false }) => {
+      const settings = store.get('settings')
+      const connectionSettings = getRemoteConnectionSettings(settings)
+      return await connectToSSHWithKey(command, connectionSettings, {
+        rejectOnNonZeroCode,
+      })
+    }
+  )
 
   ipcMain.handle('upload-file-ssh', async (_event, { content, remotePath }) => {
     const settings = store.get('settings')
