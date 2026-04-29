@@ -14,6 +14,30 @@ DealiiX Platform is an Electron + Svelte 5 desktop application for building and 
 - **Renaming files**: Always use `git mv <old> <new>` to rename files so git tracks the rename rather than treating it as a delete + add. Never delete a file and recreate it manually when the intent is a rename.
 - **Explicit else-if over bare else**: When branching on enum-like string unions (e.g. `location === 'local' | 'remote'`, `backendKind === 'coral' | 'executable'`), always use `else if (x === '...')` rather than a bare `else`. This makes the covered cases self-documenting and avoids silently swallowing future variants.
 
+## Git Commit Style
+
+Commit messages use a short subject line followed by a bullet list. Each bullet is prefixed with a conventional commit type:
+
+```
+Fix/refactor: short summary of the overall change
+
+- fix: specific bug that was corrected
+- refactor: code restructured without behaviour change
+- feat: new capability added
+- docs: documentation or CLAUDE.md update
+- chore: tooling, config, or dependency change
+```
+
+Rules:
+
+- No `Co-Authored-By` trailer
+- Keep the subject line concise — detail goes in the PR description, not the commit
+- Use sentence case, no trailing period
+
+## Changelog
+
+Update `CHANGELOG.md` under `## [Unreleased]` alongside every commit that touches user-visible behaviour or project structure. Add entries under the appropriate section heading (e.g. `### SSH communication`, `### UI/UX`, `### Electron-Backend`). Write in plain prose — concise, general, no specific file names unless essential for clarity. Do not reference internal implementation details or refactors that have no user-visible effect.
+
 ## Architecture
 
 ### Desktop Application (Electron + Svelte 5)
