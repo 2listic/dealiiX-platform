@@ -85,18 +85,18 @@ export const exportAndEvalGraph = async (
     if (execution.location === 'local') {
       await exportAndEvalGraphLocal(nodes, edges, config)
       return
+    } else if (execution.location === 'remote') {
+      await exportAndEvalGraphRemote(nodes, edges, config)
+      return
     }
-
-    await exportAndEvalGraphRemote(nodes, edges, config)
-    return
+  } else if (execution.backendKind === 'executable') {
+    if (execution.location === 'local') {
+      await exportAndEvalExecutableLocal()
+      return
+    } else if (execution.location === 'remote') {
+      await exportAndEvalExecutableRemote(config)
+    }
   }
-
-  if (execution.location === 'local') {
-    await exportAndEvalExecutableLocal()
-    return
-  }
-
-  await exportAndEvalExecutableRemote(config)
 }
 
 const exportAndEvalGraphRemote = async (
@@ -128,13 +128,17 @@ const exportAndEvalGraphRemote = async (
   // submit job
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: `sbatch ${shellEscape(`${workingDirectory}/job.sh`)}`,
+    rejectOnNonZeroCode: true,
   })
   console.log('SSH Connection Result:', resultExecute)
   toastState.add({ message: resultExecute })
 
   // get job id and store mapping
-  const jobId = resultExecute.match(/\d+/)[0]
-  if (!jobId) throw new Error('Job ID not found')
+  const jobId = resultExecute.match(/\d+/)?.[0]
+  if (!jobId)
+    throw new Error(
+      `sbatch did not return a job ID. Output: "${resultExecute}"`
+    )
   await jobIdMapState.add(jobId, internalJobId, 'coral')
 
   // poll every 10 secs for 1 day, finally display final status
@@ -239,6 +243,7 @@ const exportAndEvalExecutableRemote = async (
 
   const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
     command: `sbatch ${shellEscape(jobScriptRemotePath)}`,
+    rejectOnNonZeroCode: true,
   })
   toastState.add({ message: resultExecute })
 
@@ -439,9 +444,9 @@ export const fetchRemoteJobs = async (numDays: number): Promise<string[][]> => {
   // const command = `sacct -X -P -S 2025-09-29T10:10:00 -o JobID,State,Start,End`
 
   const result = await window.electron.invoke('execute-ssh-with-key', {
-    command: command,
+    command,
+    rejectOnNonZeroCode: true,
   })
-  if (result.includes('error')) throw new Error(result)
 
   // Split sacct output string into an array and revert order (new jobs first)
   const resultJobs = result.split('\n').reverse()
@@ -492,14 +497,22 @@ export const getNodesExecutionStatus = async (
     return new Map<string, string[]>()
   }
   // define the command to list the files in the touch-dir
-  const output =
-    execution.location === 'local'
-      ? await window.electron.invoke('get-local-node-status-files', {
-          jobIdInternal,
-        })
-      : await window.electron.invoke('execute-ssh-with-key', {
-          command: `ls -tr ${shellEscape(`${execution.remote.workingDirectory}/nodes-exec-status/${jobIdInternal}`)}`,
-        })
+  let output = ''
+  if (execution.location === 'local') {
+    output = await window.electron.invoke('get-local-node-status-files', {
+      jobIdInternal,
+    })
+  } else if (execution.location === 'remote') {
+    try {
+      output = await window.electron.invoke('execute-ssh-with-key', {
+        command: `ls -tr ${shellEscape(`${execution.remote.workingDirectory}/nodes-exec-status/${jobIdInternal}`)}`,
+        rejectOnNonZeroCode: true,
+      })
+    } catch {
+      // status directory not yet created — job is still starting
+      return new Map()
+    }
+  }
 
   // parse output into a Map where key is node ID and value is array of status strings
   const result = new Map<string, string[]>()

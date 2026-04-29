@@ -63,6 +63,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- [#183](https://github.com/2listic/dealiiX-platform/pull/183) SSH command failures now surface a meaningful error message instead of a cryptic JSON parse error. Execution probe, sbatch submission, sacct queries, and node-status polling all reject on non-zero exit codes with the captured output in the error. The settings probe returns a structured error result, avoiding the noisy Electron IPC prefix in user-facing toasts. Fixed a crash when sbatch output contains no job ID, replaced a fragile case-sensitive sacct error check, and fixed ls error output being parsed as junk node-status entries when the status directory does not yet exist.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) Remote (Slurm) and local Coral execution modes now read all paths and endpoints from the settings store instead of using hardcoded values.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) `cancelled` job status added.
 - [#158](https://github.com/2listic/dealiiX-platform/issues/158) Conditionally upload of the graph JSON and/or template parameters file. Sbatch templates replaced the hardcoded execution command with a new placeholder that is resolved to include or omit a new flag to handle parameters file.
