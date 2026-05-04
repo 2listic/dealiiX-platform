@@ -19,16 +19,6 @@
   let cloudOpen = $state(false)
 
   let sshPath = $derived(settingsState.remote.sshKeyPath)
-  let sshFiles = $state<FileList | undefined>()
-  let isEditingSshPath = $state(false)
-  let localCoralBinaryFiles = $state<FileList | undefined>()
-  let localCoralPluginFiles = $state<FileList | undefined>()
-  let isEditingLocalCoralBinaryPath = $state(false)
-  let isEditingLocalCoralPluginPath = $state(false)
-  let localExecutableFiles = $state<FileList | undefined>()
-  let localWorkingDirectoryFiles = $state<FileList | undefined>()
-  let isEditingLocalExecutablePath = $state(false)
-  let isEditingLocalWorkingDirectory = $state(false)
 
   let urlVisualizer = $derived(settingsState.urlVisualizer)
   let isEditingVisualizer = $state(false)
@@ -107,11 +97,6 @@
 
   const resetForm = () => {
     isEditingVisualizer = false
-    isEditingSshPath = false
-    isEditingLocalCoralBinaryPath = false
-    isEditingLocalCoralPluginPath = false
-    isEditingLocalExecutablePath = false
-    isEditingLocalWorkingDirectory = false
     isEditingRemote = false
     urlVisualizer = settingsState.urlVisualizer
     urlRemoteServer = settingsState.urlRemoteServer
@@ -133,69 +118,29 @@
     remoteExecutableParametersFileName = settingsState.remote.parametersFileName
   }
 
-  const handleOnChangeFile = () => {
-    isEditingSshPath = false
-    const file = sshFiles[0]
-    if (!file) return
-    sshPath = window.electron.getFilePath(file)
+  const pickSshFile = async () => {
+    const picked = await window.electron.invoke('pick-file')
+    if (picked) sshPath = picked
   }
 
-  const cancelSshPathEdit = () => {
-    isEditingSshPath = false
-    sshFiles = undefined
+  const pickLocalWorkingDirectory = async () => {
+    const picked = await window.electron.invoke('pick-directory')
+    if (picked) localWorkingDirectory = picked
   }
 
-  const handleOnChangeLocalCoralBinaryFile = () => {
-    isEditingLocalCoralBinaryPath = false
-    const file = localCoralBinaryFiles?.[0]
-    if (!file) return
-    localCoralBinaryPath = window.electron.getFilePath(file)
+  const pickLocalCoralBinary = async () => {
+    const picked = await window.electron.invoke('pick-file')
+    if (picked) localCoralBinaryPath = picked
   }
 
-  const cancelLocalCoralBinaryPathEdit = () => {
-    isEditingLocalCoralBinaryPath = false
-    localCoralBinaryFiles = undefined
+  const pickLocalCoralPlugin = async () => {
+    const picked = await window.electron.invoke('pick-file')
+    if (picked) localCoralPluginPath = picked
   }
 
-  const handleOnChangeLocalCoralPluginFile = () => {
-    isEditingLocalCoralPluginPath = false
-    const file = localCoralPluginFiles?.[0]
-    if (!file) return
-    localCoralPluginPath = window.electron.getFilePath(file)
-  }
-
-  const cancelLocalCoralPluginPathEdit = () => {
-    isEditingLocalCoralPluginPath = false
-    localCoralPluginFiles = undefined
-  }
-
-  const handleOnChangeLocalExecutableFile = () => {
-    isEditingLocalExecutablePath = false
-    const file = localExecutableFiles?.[0]
-    if (!file) return
-    localExecutablePath = window.electron.getFilePath(file)
-  }
-
-  const cancelLocalExecutablePathEdit = () => {
-    isEditingLocalExecutablePath = false
-    localExecutableFiles = undefined
-  }
-
-  const extractDirectoryPath = (file: File) => {
-    const filePath = window.electron.getFilePath(file)
-    return filePath.replace(/[/\\][^/\\]+$/, '')
-  }
-
-  const handleOnChangeLocalWorkingDirectory = () => {
-    const file = localWorkingDirectoryFiles?.[0]
-    isEditingLocalWorkingDirectory = false
-    if (!file) return
-    localWorkingDirectory = extractDirectoryPath(file)
-  }
-
-  const cancelLocalWorkingDirectoryEdit = () => {
-    isEditingLocalWorkingDirectory = false
-    localWorkingDirectoryFiles = undefined
+  const pickLocalExecutable = async () => {
+    const picked = await window.electron.invoke('pick-file')
+    if (picked) localExecutablePath = picked
   }
 
   const saveVisualizerUrl = async () => {
@@ -309,23 +254,8 @@
                     <span>Path to private SSH key</span>
                     <div class="input-line-save">
                       <div>{sshPath || 'No key selected'}</div>
-                      {#if !isEditingSshPath}
-                        <Button onclick={() => (isEditingSshPath = true)}
-                          >Edit</Button
-                        >
-                      {:else}
-                        <Button onclick={cancelSshPathEdit}>Cancel</Button>
-                      {/if}
+                      <Button onclick={pickSshFile}>Edit</Button>
                     </div>
-                    {#if isEditingSshPath}
-                      <input
-                        id="ssh-path-file"
-                        type="file"
-                        bind:files={sshFiles}
-                        onchange={handleOnChangeFile}
-                        placeholder="SSH path"
-                      />
-                    {/if}
                   </div>
                 </div>
               {/if}
@@ -345,27 +275,8 @@
                       <div>
                         {localWorkingDirectory || 'No directory selected'}
                       </div>
-                      {#if !isEditingLocalWorkingDirectory}
-                        <Button
-                          onclick={() =>
-                            (isEditingLocalWorkingDirectory = true)}
-                          >Edit</Button
-                        >
-                      {:else}
-                        <Button onclick={cancelLocalWorkingDirectoryEdit}
-                          >Cancel</Button
-                        >
-                      {/if}
+                      <Button onclick={pickLocalWorkingDirectory}>Edit</Button>
                     </div>
-                    {#if isEditingLocalWorkingDirectory}
-                      <input
-                        type="file"
-                        webkitdirectory
-                        bind:files={localWorkingDirectoryFiles}
-                        onchange={handleOnChangeLocalWorkingDirectory}
-                        placeholder="Working directory"
-                      />
-                    {/if}
                   {/if}
                 </div>
               </div>
@@ -388,26 +299,8 @@
                           <div>
                             {localCoralBinaryPath || 'No file selected'}
                           </div>
-                          {#if !isEditingLocalCoralBinaryPath}
-                            <Button
-                              onclick={() =>
-                                (isEditingLocalCoralBinaryPath = true)}
-                              >Edit</Button
-                            >
-                          {:else}
-                            <Button onclick={cancelLocalCoralBinaryPathEdit}
-                              >Cancel</Button
-                            >
-                          {/if}
+                          <Button onclick={pickLocalCoralBinary}>Edit</Button>
                         </div>
-                        {#if isEditingLocalCoralBinaryPath}
-                          <input
-                            type="file"
-                            bind:files={localCoralBinaryFiles}
-                            onchange={handleOnChangeLocalCoralBinaryFile}
-                            placeholder="Coral binary path"
-                          />
-                        {/if}
                       {/if}
                     </div>
                     <div class="field">
@@ -424,26 +317,8 @@
                           <div>
                             {localCoralPluginPath || 'No file selected'}
                           </div>
-                          {#if !isEditingLocalCoralPluginPath}
-                            <Button
-                              onclick={() =>
-                                (isEditingLocalCoralPluginPath = true)}
-                              >Edit</Button
-                            >
-                          {:else}
-                            <Button onclick={cancelLocalCoralPluginPathEdit}
-                              >Cancel</Button
-                            >
-                          {/if}
+                          <Button onclick={pickLocalCoralPlugin}>Edit</Button>
                         </div>
-                        {#if isEditingLocalCoralPluginPath}
-                          <input
-                            type="file"
-                            bind:files={localCoralPluginFiles}
-                            onchange={handleOnChangeLocalCoralPluginFile}
-                            placeholder="Coral plugin path"
-                          />
-                        {/if}
                       {/if}
                     </div>
                   </div>
@@ -479,26 +354,8 @@
                         <span>Executable path</span>
                         <div class="input-line-save">
                           <div>{localExecutablePath || 'No file selected'}</div>
-                          {#if !isEditingLocalExecutablePath}
-                            <Button
-                              onclick={() =>
-                                (isEditingLocalExecutablePath = true)}
-                              >Edit</Button
-                            >
-                          {:else}
-                            <Button onclick={cancelLocalExecutablePathEdit}
-                              >Cancel</Button
-                            >
-                          {/if}
+                          <Button onclick={pickLocalExecutable}>Edit</Button>
                         </div>
-                        {#if isEditingLocalExecutablePath}
-                          <input
-                            type="file"
-                            bind:files={localExecutableFiles}
-                            onchange={handleOnChangeLocalExecutableFile}
-                            placeholder="Executable path"
-                          />
-                        {/if}
                       </div>
                       <label class="field">
                         <span>Parameters file name</span>
@@ -648,10 +505,6 @@
     flex-direction: column;
     gap: 1vh;
     padding-top: 1vh;
-  }
-
-  #ssh-path-file {
-    cursor: pointer;
   }
 
   .input-line-save {
