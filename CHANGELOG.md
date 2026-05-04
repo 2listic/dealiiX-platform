@@ -37,6 +37,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#182](https://github.com/2listic/dealiiX-platform/pull/182) File and directory pickers in the settings modal now open the native OS dialog directly via a single Edit click, replacing the two-step browser `<input type="file">` flow.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) Settings modal redesigned with accordions grouping related sections, pill-shaped radio buttons, and smooth CSS transitions.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) New execution badge always visible in the app showing the currently active execution mode.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) Sidebar buttons are hidden or disabled based on the currently selected execution mode.
@@ -56,6 +57,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Electron-Backend
 
+- [#182](https://github.com/2listic/dealiiX-platform/pull/182) Added `pick-file` IPC handler and switched `pick-directory` to `dialog.showOpenDialogSync`.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) Entire Electron backend migrated to TypeScript: `main.ts`, `ipcHandlers.ts`, `executionProbe.ts`, `localCoralRuns.ts`, `sshConnections.ts`, `storage.ts`, `preload.ts`.
 - [#181](https://github.com/2listic/dealiiX-platform/pull/181) Jobs store reset logic when the persisted job ID map is corrupted or requires migration; new job ID map structure now also stores the backend type used per job.
 - [#180](https://github.com/2listic/dealiiX-platform/pull/180) New `localCoralRuns.ts` module handles spawning a local Coral process and monitoring its stdout/stderr output.
