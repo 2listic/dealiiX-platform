@@ -5,16 +5,19 @@
     title,
     icon,
     items,
+    disabled = false,
   }: {
     title: string
     icon: Snippet
     items: Snippet
+    disabled?: boolean
   } = $props()
 
   let isOpen = $state(false)
   let popoverEl: HTMLDivElement | undefined = $state()
 
   const toggle = () => {
+    if (disabled) return
     isOpen = !isOpen
   }
 
@@ -35,7 +38,13 @@
 
 <div class="popover-wrapper" bind:this={popoverEl}>
   <div class="button-container">
-    <button class="element-label" onclick={toggle} {title}>
+    <button
+      class="element-label"
+      class:disabled
+      onclick={toggle}
+      {title}
+      {disabled}
+    >
       {@render icon()}
     </button>
     <span class="button-text">{title}</span>
@@ -78,8 +87,13 @@
     margin: 0.5rem 0.2rem;
   }
 
-  .element-label:hover {
+  .element-label:hover:not(.disabled) {
     border-color: var(--border-color-hover);
+  }
+
+  .element-label.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .button-text {

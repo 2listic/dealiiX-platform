@@ -31,8 +31,6 @@
         type: 'success',
       })
 
-      // Reset and close
-      networkNodeName = ''
       getModal(modalId)?.close()
     } catch (error) {
       console.error('Failed to create network node:', error)
@@ -66,12 +64,11 @@
   }
 
   const handleCancel = () => {
-    networkNodeName = ''
     getModal(modalId)?.close()
   }
 </script>
 
-<Modal id={modalId} size="sm">
+<Modal id={modalId} size="sm" onClose={() => (networkNodeName = '')}>
   <form
     class="create-network-node-form"
     onsubmit={(event) => {

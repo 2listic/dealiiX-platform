@@ -12,6 +12,7 @@ export default defineConfig([
     ignores: [
       'out/**',
       'dist/**',
+      'dist-electron/**',
       'coral-remote-server/**',
       'coral-visualizer/**',
       'coral/**',

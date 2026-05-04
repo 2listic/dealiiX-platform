@@ -26,9 +26,22 @@ dist-ssr
 # Electron-forge outputs
 out/
 
+# Compiled electron main process
+dist-electron/
+
 # Vscode and extensions
 .vscode/
 .continue/
 
 # Containers' shared folder
 containers/shared-data/*
+
+# Test files
+test_files/legacy/*
+
+# Local runs folder — ignore generated outputs but track step-70 source files
+/local_runs/*
+!/local_runs/step-70
+/local_runs/step-70/*
+!/local_runs/step-70/step-70.cc
+!/local_runs/step-70/CMakeLists.txt

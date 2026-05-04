@@ -1,17 +1,27 @@
-type ParameterLeaf = {
-  value: string
-  default_value: string
-  documentation: string
-  pattern: string
-  pattern_description: string
-  actions?: string
-}
-
-type ParameterTree = {
-  [key: string]: ParameterLeaf | ParameterTree
-}
+import type {
+  ParameterLeaf,
+  ParameterTree,
+  ParameterNode,
+} from '../types/parameterTypes'
 
 let parameters: ParameterTree | null = $state(null)
+
+const stripUiMetadata = (node: ParameterNode): ParameterNode => {
+  if (typeof node !== 'object' || node === null) {
+    return node
+  }
+
+  const entries = Object.entries(node)
+    .filter(([key]) => key !== '__extra')
+    .map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        return [key, stripUiMetadata(value as ParameterLeaf | ParameterTree)]
+      }
+      return [key, value]
+    })
+
+  return Object.fromEntries(entries) as ParameterLeaf | ParameterTree
+}
 
 export const parametersState = {
   get value() {
@@ -21,6 +31,8 @@ export const parametersState = {
     parameters = v
   },
   get snapshot() {
-    return parameters ? $state.snapshot(parameters) : null
+    return parameters
+      ? (stripUiMetadata($state.snapshot(parameters)) as ParameterTree)
+      : null
   },
 }

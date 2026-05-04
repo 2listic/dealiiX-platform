@@ -75,8 +75,6 @@
         message: 'Project shared successfully',
         type: 'success',
       })
-      selectedUserId = null
-      selectedPermission = 'read'
       onShare()
     } catch (error) {
       console.error('Error sharing project:', error)
@@ -89,12 +87,18 @@
 
   const handleCancel = () => {
     getModal(modalId)?.close()
-    selectedUserId = null
-    selectedPermission = 'read'
   }
 </script>
 
-<Modal id={modalId} closeOnBackdrop={true} size="sm">
+<Modal
+  id={modalId}
+  closeOnBackdrop={true}
+  size="sm"
+  onClose={() => {
+    selectedUserId = null
+    selectedPermission = 'read'
+  }}
+>
   <form
     class="share-modal"
     onsubmit={(event) => {

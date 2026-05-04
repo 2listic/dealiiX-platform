@@ -22,13 +22,11 @@
   }
 
   const handleCancel = () => {
-    // reset the name to the original value and close
-    editedName = currentName
     getModal(modalId)?.close()
   }
 </script>
 
-<Modal id={modalId} size="lg">
+<Modal id={modalId} size="lg" onClose={() => (editedName = currentName)}>
   <form
     class="edit-node-form"
     onsubmit={(event) => {

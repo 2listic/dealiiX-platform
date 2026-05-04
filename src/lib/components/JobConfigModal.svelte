@@ -3,22 +3,26 @@
   import Button from './layout/Button.svelte'
   import type { JobConfig } from '../utils/sshMessages'
   import { parametersState } from '../stores/parametersStore.svelte'
+  import { settingsState } from '../stores/settingsStore.svelte'
 
   interface Props {
     modalId: string
-    showMpiFields: boolean
     // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
     onConfirm: (_config: JobConfig) => void
   }
 
-  let { modalId, showMpiFields, onConfirm }: Props = $props()
+  let { modalId, onConfirm }: Props = $props()
 
   let nodes = $state(1)
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
-  let uploadGraph = $state(true)
-  let uploadParameters = $state(false)
+  let useMpi = $state(false)
   let hasParameters = $derived(parametersState.value !== null)
+  let isExecutableMode = $derived(settingsState.isExecutableMode)
+  let isCoralMode = $derived(settingsState.isCoralMode)
+  let isRemoteExecution = $derived(
+    settingsState.execution.location === 'remote'
+  )
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
@@ -33,7 +37,12 @@
   )
 
   const handleConfirm = () => {
-    onConfirm({ nodes, tasksPerNode, timeLimit, uploadGraph, uploadParameters })
+    onConfirm({
+      nodes,
+      tasksPerNode,
+      timeLimit,
+      useMpi: isExecutableMode ? false : useMpi,
+    })
     getModal(modalId).close()
   }
 
@@ -52,80 +61,86 @@
       }
     }}
   >
-    <h2>Job Configuration</h2>
-    <div class="inputs-container">
-      {#if showMpiFields}
-        <div class="inputs-row">
-          <div class="input-container">
-            <label for="mpi-nodes">Nodes</label>
-            <input
-              id="mpi-nodes"
-              type="number"
-              min="1"
-              bind:value={nodes}
-              class="input-field"
-            />
+    <h2>Run job</h2>
+    {#if isCoralMode && (useMpi || isRemoteExecution)}
+      <div class="inputs-container">
+        {#if useMpi}
+          <div class="inputs-row">
+            <div class="input-container">
+              <label for="mpi-nodes">Nodes</label>
+              <input
+                id="mpi-nodes"
+                type="number"
+                min="1"
+                bind:value={nodes}
+                class="input-field"
+              />
+            </div>
+            <div class="input-container">
+              <label for="mpi-tasks-per-node">Tasks per node</label>
+              <input
+                id="mpi-tasks-per-node"
+                type="number"
+                min="1"
+                bind:value={tasksPerNode}
+                class="input-field"
+              />
+            </div>
+            <div class="input-container total">
+              <span class="total-label">Total</span>
+              <span class="total-value">{totalProcesses}</span>
+            </div>
           </div>
-          <div class="input-container">
-            <label for="mpi-tasks-per-node">Tasks per node</label>
-            <input
-              id="mpi-tasks-per-node"
-              type="number"
-              min="1"
-              bind:value={tasksPerNode}
-              class="input-field"
-            />
+        {/if}
+        {#if isRemoteExecution}
+          <div class="inputs-row">
+            <div class="input-container time-limit">
+              <label for="job-time-limit">Time limit</label>
+              <input
+                id="job-time-limit"
+                type="text"
+                placeholder="e.g. 01:00:00"
+                bind:value={timeLimit}
+                class="input-field"
+                class:input-field--error={timeLimitError}
+              />
+              <span
+                class="hint-message"
+                class:hint-message--error={timeLimitError}
+              >
+                {timeLimitError || 'Use 0 for no time limit'}
+              </span>
+            </div>
           </div>
-          <div class="input-container total">
-            <span class="total-label">Total</span>
-            <span class="total-value">{totalProcesses}</span>
-          </div>
-        </div>
-      {/if}
-      <div class="inputs-row">
-        <div class="input-container time-limit">
-          <label for="job-time-limit">Time limit</label>
-          <input
-            id="job-time-limit"
-            type="text"
-            placeholder="e.g. 01:00:00"
-            bind:value={timeLimit}
-            class="input-field"
-            class:input-field--error={timeLimitError}
-          />
-          <span class="hint-message" class:hint-message--error={timeLimitError}>
-            {timeLimitError || 'Use 0 for no time limit'}
-          </span>
+        {/if}
+      </div>
+    {/if}
+    {#if isExecutableMode && !hasParameters}
+      <div class="hint-message">
+        Synchronize the executable settings first to generate a parameters
+        template.
+      </div>
+    {/if}
+    {#if isCoralMode}
+      <div class="toggle-container">
+        <div class="mpi-row">
+          <span class="toggle-label">Use MPI</span>
+          <label class="switch">
+            <input type="checkbox" bind:checked={useMpi} />
+            <span class="slider round"></span>
+          </label>
         </div>
       </div>
-    </div>
-    <hr />
-    <div class="toggle-container">
-      <label class="toggle-label">
-        <input type="checkbox" bind:checked={uploadGraph} />
-        <span>Upload Graph</span>
-      </label>
-      <label class="toggle-label">
-        <input
-          type="checkbox"
-          bind:checked={uploadParameters}
-          disabled={!hasParameters}
-          title={hasParameters
-            ? 'Upload parameters file'
-            : 'Load a parameters file first'}
-        />
-        <span class:disabled={!hasParameters}>Upload Parameters</span>
-      </label>
-    </div>
+    {/if}
     <div class="button-container">
       <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button
         type="submit"
         variant="action"
         size="small"
-        disabled={!!timeLimitError}
+        disabled={!!timeLimitError || (isExecutableMode && !hasParameters)}
       >
-        Execute
+        Run
       </Button>
     </div>
   </form>
@@ -180,7 +195,7 @@
   }
 
   .hint-message {
-    font-size: 0.8rem;
+    /* font-size: 0.8rem; */
     color: var(--ternary-color);
   }
 
@@ -207,12 +222,6 @@
     max-width: 16rem;
   }
 
-  hr {
-    border: none;
-    border-top: 1px solid var(--ternary-color);
-    margin: 1rem 0 0;
-  }
-
   .toggle-container {
     display: flex;
     gap: 2rem;
@@ -220,21 +229,64 @@
   }
 
   .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
     font-weight: bold;
   }
 
-  .toggle-label input[type='checkbox'] {
-    width: 1.25rem;
-    height: 1.25rem;
-    cursor: pointer;
+  .mpi-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .toggle-label .disabled {
-    opacity: 0.5;
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 27px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: '';
+    height: 21px;
+    width: 21px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+  }
+
+  input:checked + .slider {
+    background-color: var(--button-action-bg);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(21px);
+  }
+
+  .slider.round {
+    border-radius: 27px;
+  }
+
+  .slider.round:before {
+    border-radius: 50%;
   }
 
   .button-container {

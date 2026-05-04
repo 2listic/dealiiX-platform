@@ -1,7 +1,26 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
 
-function connectToSSHWithPassword(host, username, password, command) {
+export interface SshConnection {
+  host: string
+  port: number
+  username: string
+  pathToSsh: string
+}
+
+/**
+ * @param host
+ * @param username
+ * @param password
+ * @param command
+ * @returns stdout + stderr combined
+ */
+export function connectToSSHWithPassword(
+  host: string,
+  username: string,
+  password: string,
+  command: string
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -12,16 +31,16 @@ function connectToSSHWithPassword(host, username, password, command) {
           if (err) reject(err)
           let data = ''
           stream
-            .on('close', (code) => {
+            .on('close', (code: number) => {
               console.log('Command completed with code', code)
               conn.end()
               resolve(data)
             })
-            .on('data', (chunk) => {
+            .on('data', (chunk: Buffer) => {
               console.log('STDOUT:', chunk.toString())
               data += chunk
             })
-            .stderr.on('data', (chunk) => {
+            .stderr.on('data', (chunk: Buffer) => {
               console.log('STDERR:', chunk.toString())
               data += chunk
             })
@@ -40,7 +59,18 @@ function connectToSSHWithPassword(host, username, password, command) {
   })
 }
 
-function connectToSSHWithKey(command, pathToSsh) {
+/**
+ * @param command - Shell command to execute on the remote host.
+ * @param connection - SSH connection parameters.
+ * @param options.rejectOnNonZeroCode - When true, reject if the remote command exits with a
+ *   non-zero code, including the captured output in the error message. Defaults to false.
+ * @returns stdout + stderr combined.
+ */
+export function connectToSSHWithKey(
+  command: string,
+  connection: SshConnection,
+  options: { rejectOnNonZeroCode?: boolean } = {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const conn = new Client()
     conn
@@ -52,16 +82,22 @@ function connectToSSHWithKey(command, pathToSsh) {
 
           let data = ''
           stream
-            .on('close', (code) => {
+            .on('close', (code: number) => {
               console.log('Command completed with code', code)
               conn.end()
+              if (options.rejectOnNonZeroCode && code !== 0) {
+                const detail = data.trim() || '(no output)'
+                return reject(
+                  new Error(`Remote command failed (exit ${code}): ${detail}`)
+                )
+              }
               resolve(data)
             })
-            .on('data', (chunk) => {
+            .on('data', (chunk: Buffer) => {
               console.log('STDOUT:', chunk.toString())
               data += chunk
             })
-            .stderr.on('data', (chunk) => {
+            .stderr.on('data', (chunk: Buffer) => {
               console.log('STDERR:', chunk.toString())
               data += chunk
             })
@@ -72,21 +108,28 @@ function connectToSSHWithKey(command, pathToSsh) {
         reject(err)
       })
       .connect({
-        host: 'localhost',
-        port: 2222,
-        username: 'root',
-        privateKey: fs.readFileSync(pathToSsh),
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        privateKey: fs.readFileSync(connection.pathToSsh),
         debug: console.log,
-        // hostVerifier: (keyHash) => {  // consider hashing the private key
-        //   return true
-        // },
-        readyTimeout: 5000, // additional options
+        readyTimeout: 5000,
         keepaliveInterval: 10000,
       })
   })
 }
 
-function uploadFileViaSftp(content, remotePath, pathToSsh) {
+/**
+ * @param content - File content to upload.
+ * @param remotePath - Destination path on the remote host.
+ * @param connection - SSH connection parameters.
+ * @returns Confirmation message.
+ */
+export function uploadFileViaSftp(
+  content: string,
+  remotePath: string,
+  connection: SshConnection
+): Promise<string> {
   return new Promise((resolve, reject) => {
     console.log('uploadFileViaSftp called')
     const conn = new Client()
@@ -111,13 +154,11 @@ function uploadFileViaSftp(content, remotePath, pathToSsh) {
         reject(err)
       })
       .connect({
-        host: 'localhost',
-        port: 2222,
-        username: 'root',
-        privateKey: fs.readFileSync(pathToSsh),
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        privateKey: fs.readFileSync(connection.pathToSsh),
         debug: console.log,
       })
   })
 }
-
-export { connectToSSHWithPassword, connectToSSHWithKey, uploadFileViaSftp }

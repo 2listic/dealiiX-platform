@@ -4,33 +4,31 @@
   import ParametersView from './lib/components/ParametersView.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
+  import JobsTable from './lib/components/layout/JobsTable.svelte'
+  import ButtonToggleDarkMode from './lib/components/layout/ButtonToggleDarkMode.svelte'
+  import ExecutionBadge from './lib/components/layout/ExecutionBadge.svelte'
   import { sideBarState } from './lib/stores/sidebar.svelte'
-  import { onMount } from 'svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
+  import { settingsState } from './lib/stores/settingsStore.svelte'
 
-  let parametersOpen = $state(false)
+  let isCoralMode = $derived(settingsState.isCoralMode)
+  let executionLocation = $derived(settingsState.execution.location)
+  let backendKind = $derived(settingsState.execution.backendKind)
 
   let isExpanded = $derived(sideBarState.isExpanded)
-  let sidebarWrapperElem
-  let sidebarPositionHolderElem
-  let sidebarWrapperWidth = '3vw'
-
-  onMount(() => {
-    sidebarWrapperElem = document.getElementById('sidebar-wrapper')
-    sidebarPositionHolderElem = document.getElementById(
-      'sidebar-position-holder'
-    )
-    const style = window.getComputedStyle(document.body)
-    sidebarWrapperWidth =
-      style.getPropertyValue('--sidebar-wrapper-width') || sidebarWrapperWidth
-  })
+  let sidebarWrapperElem = $state<HTMLDivElement>()
+  let sidebarPositionHolderElem = $state<HTMLDivElement>()
+  var style = window.getComputedStyle(document.body)
+  const sidebarWrapperWidth = style.getPropertyValue('--sidebar-wrapper-width')
   $effect(() => {
-    if (isExpanded && sidebarWrapperElem && sidebarPositionHolderElem) {
+    if (!sidebarWrapperElem || !sidebarPositionHolderElem) return
+
+    if (isExpanded) {
       sidebarWrapperElem.style.position = 'static'
       sidebarWrapperElem.style.width = '25vw'
       sidebarPositionHolderElem.style.display = 'none'
-    } else if (sidebarWrapperElem && sidebarPositionHolderElem) {
+    } else {
       sidebarWrapperElem.style.position = 'absolute'
       sidebarWrapperElem.style.width = sidebarWrapperWidth
       sidebarPositionHolderElem.style.display = 'block'
@@ -42,31 +40,33 @@
   <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
-      <ButtonToggleMenu />
-      <div id="sidebar-wrapper">
-        <Sidebar />
-      </div>
-      <div id="sidebar-position-holder"></div>
+      {#if isCoralMode}
+        <ButtonToggleMenu />
+        <div id="sidebar-wrapper" bind:this={sidebarWrapperElem}>
+          <Sidebar />
+        </div>
+        <div
+          id="sidebar-position-holder"
+          bind:this={sidebarPositionHolderElem}
+        ></div>
+      {/if}
       <div id="sidebar-buttons-wrapper">
         <SidebarButtons />
       </div>
       <div class="main-content">
-        <div class="flow-wrapper">
-          <FlowCanvas />
+        <div class="top-left-overlay">
+          <JobsTable />
         </div>
-        <div class="parameters-panel" class:open={parametersOpen}>
-          <button
-            class="parameters-tab"
-            onclick={() => (parametersOpen = !parametersOpen)}
-            title={parametersOpen
-              ? 'Close parameters panel'
-              : 'Open parameters panel'}
-          >
-            <span>Parameters</span>
-          </button>
-          <div class="parameters-panel-inner">
+        <div class="top-right-overlay">
+          <ExecutionBadge location={executionLocation} {backendKind} />
+          <ButtonToggleDarkMode />
+        </div>
+        <div class="flow-wrapper">
+          {#if isCoralMode}
+            <FlowCanvas />
+          {:else}
             <ParametersView />
-          </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -92,7 +92,6 @@
     top: 0;
     z-index: 100;
     cursor: pointer;
-    /* margin-top: 30px; */
     min-width: var(--sidebar-wrapper-min-width);
     transition: width 0.5s 0.1s ease-in-out;
   }
@@ -115,75 +114,34 @@
     /* flex:1 — sole growing child in the flex row, it takes all remaining horizontal space after the sidebar. */
     flex: 1;
     height: 100vh;
-    /* position: relative - makes it the anchor for the absolutely-positioned parameters panel and its pull-tab. */
+    /* position: relative - makes it the anchor for the absolutely-positioned overlays. */
     position: relative;
     overflow: hidden;
+  }
+
+  .top-left-overlay {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 10;
+    pointer-events: auto;
+  }
+
+  .top-right-overlay {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1rem;
   }
 
   .flow-wrapper {
     width: 100%;
     height: 100%;
-  }
-
-  .parameters-panel {
-    position: absolute;
-    z-index: 50;
-    top: 7rem;
-    /* Positioned to the right edge of .main-content */
-    right: 0;
-    width: 65%;
-    height: calc(100% - 7rem);
-    background-color: var(--background-color);
-    border-top: 2px solid var(--xy-edge-stroke, #ccc);
-    border-left: 1px solid var(--xy-edge-stroke, #ccc);
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-    /* Transform - translates fully off-screen to the right */
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .parameters-panel-inner {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .parameters-tab {
-    position: absolute;
-    left: -3rem;
-    top: 1rem;
-    width: 3rem;
-    height: 9rem;
-    background: var(--primary-color);
-    border: 1px solid var(--xy-edge-stroke, #ccc);
-    border-right: none;
-    border-radius: 6px 0 0 6px;
-    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.12);
-    cursor: pointer;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    color: var(--ternary-color);
-    font-weight: bold;
-    font-size: 1.1rem;
-  }
-
-  .parameters-tab span {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    user-select: none;
-    letter-spacing: 0.04em;
-  }
-
-  .parameters-panel.open {
-    /* Remove the translation */
-    transform: translateX(0);
-    pointer-events: auto;
+    position: relative;
   }
 </style>

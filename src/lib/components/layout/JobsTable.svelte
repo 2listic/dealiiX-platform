@@ -9,7 +9,7 @@
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
-  import { JobStatus } from '../../types/executionStatus'
+  import { normalizeJobStatus, isTerminalStatus } from '../../types/jobTypes'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -23,6 +23,25 @@
     duration: 400,
     easing: cubicOut,
   })
+
+  // Formats a date string from either source into "YYYY-MM-DD HH:MM:SS" in the user's local timezone.
+  //
+  // Two date formats arrive here:
+  //   - Local runs:  full UTC ISO-8601 with Z suffix, e.g. "2026-04-24T14:30:45.123Z"
+  //                  JS Date parses the Z as UTC and then converts to local time.
+  //   - Remote sacct: server-local time with no timezone marker, e.g. "2026-02-09T08:20:39"
+  //                  JS Date parses a string without Z as local time, so no conversion happens —
+  //                  the value is displayed as-is (already in the server's wall-clock time).
+  //
+  // The 'sv' (Swedish) locale is used because its date/time format is "YYYY-MM-DD HH:MM:SS" —
+  // identical to ISO-8601 but in local time and without the T separator. This avoids pulling in a
+  // date library while still producing a consistent, readable format across all system locales.
+  const formatDate = (str) => {
+    if (!str) return str
+    const d = new Date(str)
+    if (isNaN(d.getTime())) return str
+    return d.toLocaleString('sv')
+  }
 
   let isJobListExpanded = $state(false)
   const toggleExpand = async () => {
@@ -117,9 +136,10 @@
         <table transition:fade>
           <colgroup>
             <col style="width: 10%;" />
-            <col style="width: 18%;" />
-            <col style="width: 27%;" />
-            <col style="width: 27%;" />
+            <col style="width: 16%;" />
+            <col style="width: 22%;" />
+            <col style="width: 22%;" />
+            <col style="width: 12%;" />
             <col style="width: 9%;" />
             <col style="width: 9%;" />
           </colgroup>
@@ -128,6 +148,7 @@
               {#each jobsData[0] as headCell, i (i)}
                 <th>{headCell}</th>
               {/each}
+              <th>Backend</th>
               <th>Logs</th>
               <th>Nodes Status</th>
             </tr>
@@ -149,16 +170,19 @@
           {#each line as bodyCell, i (i)}
             <td>
               <span>
-                {#if JOB_DATE_INDEX.includes(i)}
-                  {bodyCell.replace('T', ' ')}
+                {#if i === 1}
+                  {normalizeJobStatus(bodyCell)}
+                {:else if JOB_DATE_INDEX.includes(i)}
+                  {formatDate(bodyCell)}
                 {:else}
                   {bodyCell}
                 {/if}
               </span>
             </td>
           {/each}
+          <td>{jobIdMapState.getJobBackendKind(line[0]) ?? '—'}</td>
           <td>
-            {#if [JobStatus.COMPLETED, JobStatus.FAILED].includes(line[1])}
+            {#if isTerminalStatus(normalizeJobStatus(line[1]))}
               <Button
                 size="xsmall"
                 title="View logs from the current job"
@@ -167,11 +191,14 @@
             {/if}
           </td>
           <td>
-            <Button
-              size="xsmall"
-              title="View the execution status of nodes for the current job"
-              onclick={() => handleNodesExecutionStatus(line[0])}>Status</Button
-            >
+            {#if jobIdMapState.getJobBackendKind(line[0]) === 'coral'}
+              <Button
+                size="xsmall"
+                title="View the execution status of nodes for the current job"
+                onclick={() => handleNodesExecutionStatus(line[0])}
+                >Status</Button
+              >
+            {/if}
           </td>
         </tr>
       {/snippet}
@@ -247,9 +274,9 @@
   .container-table-jobs {
     display: flex;
     flex-direction: column;
-    max-height: 7vh;
+    max-height: 8vh;
     overflow: hidden;
-    width: 40vw;
+    width: 50vw;
     transition: all 1s ease-in-out;
   }
   .container-table-jobs.expanded {
@@ -265,6 +292,7 @@
   th,
   td {
     text-align: center;
+    vertical-align: top; /* first line always visible when content wraps */
     padding: 0.4vh;
   }
 </style>

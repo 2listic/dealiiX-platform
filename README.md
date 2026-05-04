@@ -3,7 +3,7 @@
 ### Cloning the repository
 
 When cloning for the first time use `--recursive` flag to get also the Coral submodule  
-`git clone --recursive git@github.com:2listic/coral.git`
+`git clone --recursive git@github.com:2listic/dealiiX-platform.git`
 
 Or if you already cloned the repo, use  
 `git submodule update --init --recursive`
@@ -14,16 +14,17 @@ Or if you already cloned the repo, use
 
 # Development
 
-`npm run dev` to build the front-end and run the Electron app in development mode. You'll need to restart to see changes.
+`npm run dev` to compile the Electron TypeScript, build the front-end, and run the Electron app in development mode. You'll need to restart to see changes.
 
 ### Build or run the front-end only
 
-- `npm run build` to build the front-end
+- `npm run build` to compile the Electron TypeScript and build the front-end
+- `npm run build:electron` to compile only the Electron TypeScript (outputs to `dist-electron/`)
 - `npm run dev:vite` to run only the front-end with hot-reload
 
 ### Run the Electron app
 
-- `npm start` to run the electron app (build front-end before), or
+- `npm start` to run the electron app (run `npm run build` first), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
 ## Linting and Formatting
@@ -40,7 +41,21 @@ Prettier is used for formatting. Run the following to format the code or use you
 
 ### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint aborts the commit on errors; Prettier then auto-formats (a new commit is needed to include those changes).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; Prettier then auto-formats (a new commit is needed to include those last changes).
+
+## TypeScript
+
+### Renderer (Frontend UI - Svelte)
+
+In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check`.
+
+### Electron (Backend Main Process and Preload)
+
+The Electron main process (`electron/`) is directly typechecked and compiled with `tsc`.
+
+Two configs exist because the main process and the preload need different JavaScript module formats: **[tsconfig.electron.json](tsconfig.electron.json)** and **[tsconfig.electron.preload.json](tsconfig.electron.preload.json)**.
+
+Run `npm run build:electron` to compile into `dist-electron/`, or use `npm run check:electron` for a type-check-only pass without emitting files.
 
 ## Testing
 
@@ -53,7 +68,7 @@ Run unit tests
 
 #### Using Chrome
 
-1. Run the app with `npm start:debug`
+1. Run the app with `npm run start:debug`
 2. Open Chrome, go to `chrome://inspect` and select to inspect the launched Electron app
 3. A new window will open, add breakpoints in the Sources tab and start debugging
 
@@ -71,99 +86,47 @@ await window.electron.store.get('jobIdMap')
 await window.electron.store.remove('jobIdMap')
 ```
 
-Available keys are defined in [electron/utils/storage.js](electron/utils/storage.js).
+Available keys are defined in [electron/utils/storage.ts](electron/utils/storage.ts).
 
 ## Debugging Svelte
 
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-## Set up Docker containers to test SSH communication to Coral with Slurm jobs + Coral visualizer for .vtk output files
+## Execution modes
 
-### Build and run the containers
+The app supports four execution modes. See the dedicated guide for each:
 
-Adjust your path to your public SSH key in the `docker-compose.yml` file (it has to match the private SSH key you will select in the front-end app from the Settings area), then build and start in detached mode
-
-`docker compose up -d`
-
-To rebuild images (e.g. after updating the `coral` submodule or changing the `Dockerfile.coral`):
-
-`docker compose up -d --build`
-
-In the main app window click on the settings button and set the default url for the Visualizer  
-`http://localhost:8008/`
-
-### Build Coral in the running container
-
-Connect to via SSH client  
-`ssh -p 2222 root@localhost`
-
-Or open a shell in the container (restarting the container if needed)
-
-`docker exec -it coral-ssh-slurm bash`
-
-Build the Coral backend in the container
-
-```bash
-cd app
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
-```
-
-#### Manually generate available nodes file registry.json
-
-```bash
-cd app
-./build/core/coral --plugin ./build/backends/dealii/libcoral_backend_dealii.so register --registry-path shared-data/registry.json
-```
-
-#### Manually test the Coral backend
-
-Manually execute the backend from the running container with path to the graph.json to execute and the path to the directory where the node execution status files will be written
-`/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json --touch-dir node-execution-status`
-
-Read a file located in shared-data from outside the container
-`ssh -p 2222 root@localhost 'cat /app/shared-data/slurm-1.out'`
-
-#### Manually test Slurm + Coral
-
-Test Slurm from the runninig container  
-`srun whoami`  
-or  
-`sbatch --wrap="echo Hello from \$(hostname)" --output=hello.out`
-
-Test Slurm and Coral from the running container  
-`sbatch --wrap="/app/build/core/coral --plugin /app/build/backends/dealii/libcoral_backend_dealii.so run /app/shared-data/graph.json"`
-
-Test the state of a specific job id (i.e id 1) with sacct  
-`sacct -j 2 -n -X -p -o State,ExitCode,Start,End`  
-`-j` job id  
-`-n` no header  
-`-X` exclude steps (only top-level job)  
-`-p` pipe delimited output  
-`-o <list>` columns to display
-
-#### Debugging Slurm
-
-`slurmctld -Dvv` to run the slurm controller in the forground and debug mode
-
-### Shared data folder
-
-The `containers/shared-data/` local folder is mounted as a volume into the `coral-ssh-slurm` container at `/app/shared-data/` and into the `coral-visualizer` container at `/deploy/data/`. This means any file placed in the local folder is accessible inside the containers and vice versa.
-
-In particular, when the app exports a `graph.json` for execution, it is written to this shared folder. You can inspect or replace it either:
-
-- **Locally**: check `containers/shared-data/graph.json`
-- **Inside the container**: `docker exec -it coral-ssh-slurm cat /app/shared-data/graph.json`
-
-Output files (e.g., `.vtk` files, Slurm logs) produced by CORAL during execution are also written here and served by the `coral-visualizer` container.
+| Mode                    | Description                                                                   | Guide                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Remote + Coral**      | Docker containers with Slurm and SSH, simulating a remote HPC cluster         | [docs/run-coral-docker.md](docs/run-coral-docker.md)           |
+| **Local + Coral**       | Coral binary running directly on your machine, no Docker or SSH               | [docs/run-coral-local.md](docs/run-coral-local.md)             |
+| **Local + Executable**  | Any deal.II executable following the DealiiX executable contract, run locally | [docs/run-executable-local.md](docs/run-executable-local.md)   |
+| **Remote + Executable** | Any deal.II executable run on a remote machine over SSH                       | [docs/run-executable-remote.md](docs/run-executable-remote.md) |
 
 # Packaging
 
-Build the frontend with `npm run build` and then run the following commands to package the app.
+Compile Electron Typescript + build the frontend with `npm run build` and then run the following commands to package the app.
 
-### Linux
+### Linux (Debian / Ubuntu)
 
-`npm run make:deb`
+```bash
+npm run make:deb    # package into a .deb distributable
+```
+
+#### Install
+
+Double-click the `.deb` file to open it in the App Center, or install from the terminal:
+
+```bash
+sudo dpkg -i out/make/deb/x64/dealiix-platform_<version>_amd64.deb
+```
+
+#### Uninstall
+
+```bash
+sudo apt remove dealiix-platform
+```
 
 ### MacOS
 
@@ -176,7 +139,7 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
-- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — type checking (`npm run check`) and unit tests (`npm run test`), either failing blocks the merge.
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), and unit tests (`npm run test`), either failing blocks the merge.
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release

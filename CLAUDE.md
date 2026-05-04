@@ -6,18 +6,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DealiiX Platform is an Electron + Svelte 5 desktop application for building and executing computational graphs. It provides a visual node-based editor (using @xyflow/svelte) that connects to a C++ backend called CORAL (Computational Object-oriented Representation And Library) for scientific computing workflows.
 
+## Code Conventions
+
+- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
+- **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
+- **Svelte 5 writable `$derived`**: Since Svelte 5.25, `$derived` values can be temporarily overridden by reassignment and reset automatically when their dependency changes. Prefer `$derived(prop)` over `$state(prop)` + `$effect` for form fields that derive from props — it is writable, stays in sync, and avoids the lint warning `state_referenced_locally`. Use `onClose` on `<Modal>` to reset dirty values on cancel rather than tracking visibility with an effect.
+- **Renaming files**: Always use `git mv <old> <new>` to rename files so git tracks the rename rather than treating it as a delete + add. Never delete a file and recreate it manually when the intent is a rename.
+- **Explicit else-if over bare else**: When branching on enum-like string unions (e.g. `location === 'local' | 'remote'`, `backendKind === 'coral' | 'executable'`), always use `else if (x === '...')` rather than a bare `else`. This makes the covered cases self-documenting and avoids silently swallowing future variants.
+
+## Git Commit Style
+
+Commit messages use a short subject line followed by a bullet list. Each bullet is prefixed with a conventional commit type:
+
+```
+Fix/refactor: short summary of the overall change
+
+- fix: specific bug that was corrected
+- refactor: code restructured without behaviour change
+- feat: new capability added
+- docs: documentation or CLAUDE.md update
+- chore: tooling, config, or dependency change
+```
+
+Rules:
+
+- No `Co-Authored-By` trailer
+- Keep the subject line concise — detail goes in the PR description, not the commit
+- Use sentence case, no trailing period
+
+## Changelog
+
+Update `CHANGELOG.md` under `## [Unreleased]` alongside every commit that touches user-visible behaviour or project structure. Add entries under the appropriate section heading (e.g. `### SSH communication`, `### UI/UX`, `### Electron-Backend`). Write in plain prose — concise, general, no specific file names unless essential for clarity. Do not reference internal implementation details or refactors that have no user-visible effect.
+
 ## Architecture
 
 ### Desktop Application (Electron + Svelte 5)
 
-- `electron/main.js` - Electron main process, handles IPC for SSH connections, theme switching, external URLs
-- `electron/preload.js` - Context bridge exposing `window.electron` API (send, on, invoke, getFilePath)
-- `electron/utils/sshConnections.js` - SSH utilities using ssh2 library
+- `electron/main.ts` - Electron main process, handles IPC for SSH connections, theme switching, external URLs
+- `electron/preload.ts` - Context bridge exposing `window.electron` API (send, on, invoke, getFilePath)
+- `electron/utils/sshConnections.ts` - SSH utilities using ssh2 library
 - `src/` - Svelte 5 frontend with runes-based reactivity
 
 ### Submodules (separate repos)
 
-- `coral/` - C++ computational graph library using deal.II, builds `dealii_backend.g` executable
+- `coral/` - C++ computational graph library using deal.II, builds `coral/build/core/coral` (CLI binary) and `coral/build/backends/dealii/libcoral_backend_dealii.so` (deal.II plugin)
 - `coral-remote-server/` - Go REST API server for project management and authentication
 - `coral-visualizer/` - Python Flask app for VTK file visualization
 
@@ -192,26 +224,29 @@ Network nodes (`node_type: NodeType.NETWORK`) encapsulate entire computational g
 ### Development
 
 ```bash
-npm run dev          # Build frontend + run Electron in dev mode
+npm run dev          # Compile electron TS + build frontend (dev) + run Electron
 npm run dev:vite     # Run frontend only with hot-reload
-npm start            # Run Electron (requires built frontend)
+npm start            # Run Electron (requires already-built electron + frontend)
 npm start:debug      # Run Electron with Chrome DevTools debugger on port 9229
 ```
 
 ### Build & Package
 
 ```bash
-npm run build        # Build frontend to dist/
-npm run make:deb     # Package for Linux (.deb)
-npm run make:dmg     # Package for macOS (requires macOS)
+npm run build:electron   # Compile electron TypeScript to dist-electron/
+npm run build            # Compile electron TS + build frontend to dist/
+npm run make:deb         # Package for Linux (.deb)
+npm run make:dmg         # Package for macOS (requires macOS)
 ```
 
 ### Code Quality
 
 ```bash
-npm run lint         # ESLint check
-npm run lint:fix     # ESLint with auto-fix
-npm run format       # Prettier format
+npm run lint             # ESLint check
+npm run lint:fix         # ESLint with auto-fix
+npm run check            # svelte-check (frontend TypeScript + Svelte)
+npm run check:electron   # tsc --noEmit for the electron main process
+npm run format           # Prettier format
 ```
 
 ### Unit Tests
@@ -239,11 +274,12 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 
 ## Key Technical Details
 
-- **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts.
+- **Svelte 5 runes**: Uses `$state`, `$derived`, `$effect` for reactivity (not legacy stores). Use `$state.snapshot()` when passing reactive state to non-reactive contexts. See Code Conventions for the writable `$derived` pattern.
 - **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`, `upload-file-ssh`, `store:get`, `store:set`, `store:remove`
-- **Electron storage keys** (`electron/utils/storage.js`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
-- **Git hooks (Husky)**: On commit — `npm run lint` (failures abort), then Prettier auto-formats.
-- **CI (GitHub Actions)**: Both workflows run `npm run check` (svelte-check) and `npm test` on pull requests and pushes to `main`. Workflow files: `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
+- **Electron storage keys** (`electron/utils/storage.ts`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
+- **Electron TypeScript build**: `electron/**/*.ts` files are compiled by `tsc` (not Vite) to `dist-electron/`. The main process uses `tsconfig.electron.json` (ESM output); the preload uses `tsconfig.electron.preload.json` (CJS output, required by Electron's sandboxed preload context). `dist-electron/` is gitignored. Type declarations for `ssh2` (which ships no `.d.ts`) live in `electron/types/ssh2.d.ts`.
+- **Git hooks (Husky)**: On commit — `npm run lint` and `npm run check:electron` (failures abort), then Prettier auto-formats.
+- **CI (GitHub Actions)**: All workflows run `npm run check` (svelte-check), `npm run check:electron` (electron tsc), and `npm test`. Workflow files: `.github/workflows/ci.yml`, `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
 - **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token. Throws `ApiError` (with `.status` and `.data`) on non-2xx responses. Project CRUD ops are in `src/lib/requests/projects.js`.
 - **Canvas node creation**: `createCanvasNode(template, position, options?)` in `src/lib/utils/canvasNodeUtils.ts` creates a new @xyflow Node from a registry template. `getOutputTypeAndName(sourceNode, sourceHandle)` resolves the type/name for a source handle during drag-to-connect.
 - **Auto-layout**: `applyAutoLayout(nodes, edges, direction?)` in `src/lib/utils/autoLayout.ts` repositions nodes using the dagre rank-based algorithm (`'LR'` by default). Call after loading or structurally modifying a graph when node positions aren't provided.
@@ -252,11 +288,6 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **Slurm batch templates**: Two templates in `src/lib/templates/` — `sbatch.template.sh` (non-MPI) and `sbatch-mpi.template.sh` (MPI via `mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1}`). Imported at build time via Vite's `?raw` suffix. `sshMessages.ts` selects between them based on the `USE_MPI` setting. Both templates expose `{{INTERNAL_JOB_ID}}` (used for `--touch-dir nodes-exec-status/<id>`) and `{{TIME_LIMIT}}`. The MPI template additionally exposes `{{NODES}}` and `{{NTASKS_PER_NODE}}`, filled at runtime from `JobConfig` (defaults: 1 node, 4 tasks/node, 01:00:00 time limit). Clicking Execute always opens `JobConfigModal.svelte` (renamed from `MpiConfigModal.svelte`) — it shows MPI-specific fields (nodes, tasks/node) only when MPI is enabled, and always shows the time limit field.
 - **MPI graph payload**: When MPI is enabled, `buildGraphPayload()` in `sshMessages.ts` injects a `plugin: { MPI: { enabled: true, max_num_threads: 1 } }` block at the top of the exported network JSON, as required by CORAL for MPI initialization.
 - **Node execution status**: `getNodesExecutionStatus(jobIdInternal)` reads files from `/app/shared-data/nodes-exec-status/<internalJobId>/` on the remote server, returning a `Map<qualifiedNodeId, string[]>` of status sequences (e.g. `'running'`, `'succeeded'`, `'failed'`).
-
-## Code Conventions
-
-- **File declaration order**: In `.ts` / `.svelte.ts` modules, place exported (public) functions before private helpers. Private helpers go at the bottom, separated by a `// ── Private helpers ──` banner comment. This lets readers see the public API first without scrolling past implementation details.
-- **Documentation**: Every exported function must have a JSDoc block with `@param` tags for each parameter, a `@returns` tag describing the return value, and `@throws` for any thrown errors. Inside the function body, add a short inline comment before each distinct logic block (e.g. data preparation, a partition step, a map/filter pass) to narrate intent — not what the code does line-by-line, but why each block exists.
 
 ## Git Workflow
 

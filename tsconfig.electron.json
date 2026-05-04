@@ -1,0 +1,37 @@
+{
+  // Compiles the Electron main process and all utils (everything except preload.ts).
+  // Output is ESM, matching the package.json "type": "module" setting.
+  // A separate tsconfig.electron.preload.json handles the preload with CJS output.
+  "compilerOptions": {
+    // Emit modern JS — Electron ships a recent V8 that supports all ESNext syntax.
+    "target": "ESNext",
+    // Preserve import/export as-is in the output (ESM), compatible with "type": "module".
+    "module": "ESNext",
+    // Bundler mode is more permissive than NodeNext: finds package types even if the
+    // package doesn't expose a proper exports.types field (e.g. ssh2).
+    "moduleResolution": "Bundler",
+    // Compiled output root. Files mirror the source tree: electron/main.ts → dist-electron/electron/main.js
+    "outDir": "dist-electron",
+    // Must be project root (not "electron") because some utils import types from
+    // src/lib/types/settingsTypes.ts. rootDir must contain all referenced source files.
+    "rootDir": ".",
+    // Avoids requiring exhaustive annotation of every callback — pragmatic for a first migration.
+    "strict": false,
+    // Allows `import fs from 'fs'` default-import style for Node.js built-ins.
+    "esModuleInterop": true,
+    // Skips type-checking .d.ts files in node_modules; some transitive packages have imperfect declarations.
+    "skipLibCheck": true,
+    // Maps runtime errors back to .ts source lines in the Node.js debugger and Chrome DevTools.
+    "sourceMap": true,
+    // No .d.ts output needed — this is an app, not a library.
+    "declaration": false,
+    // Enforces that type-only imports are written as `import type {…}`, preventing
+    // accidental runtime imports of pure types.
+    "verbatimModuleSyntax": true
+  },
+  // Include all electron source files and the hand-written ssh2 type declaration
+  // (electron/types/ssh2.d.ts), which exists because ssh2 ships no bundled .d.ts files.
+  "include": ["electron/**/*.ts", "electron/**/*.d.ts"],
+  // Preload is excluded here — it needs CommonJS output and is handled by tsconfig.electron.preload.json.
+  "exclude": ["electron/preload.ts"]
+}
