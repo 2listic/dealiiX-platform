@@ -77,6 +77,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Submodules
 
+- [#184](https://github.com/2listic/dealiiX-platform/pull/184) Coral-Visualizer updated with new paraview based backend and its new features about filtering, pipeline, status and cell manipulation.
 - [#173](https://github.com/2listic/dealiiX-platform/pull/173) Coral-Visualizer updated in order to be able to test new feature volume cells MaterialID tagging.
 - [#177](https://github.com/2listic/dealiiX-platform/pull/177) Coral submodule backend updated in order to test new `read_grid` node with containerized Coral backend.
 
