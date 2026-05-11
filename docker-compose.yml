@@ -29,7 +29,7 @@ services:
     image: coral-visualizer:latest
     container_name: coral-visualizer
     ports:
-      - '8008:80'
+      - '8008:8080'
     volumes:
       - ./containers/shared-data:/deploy/data
     networks:

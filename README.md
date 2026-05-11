@@ -93,7 +93,7 @@ Available keys are defined in [electron/utils/storage.ts](electron/utils/storage
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-## Execution modes
+# Execution modes
 
 The app supports four execution modes. See the dedicated guide for each:
 
