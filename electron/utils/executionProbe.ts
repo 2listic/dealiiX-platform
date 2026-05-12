@@ -11,6 +11,11 @@ import path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { connectToSSHWithKey } from './sshConnections.js'
+import {
+  getParameterProbeFileNames,
+  parseParametersFileWithFormat,
+  withParameterFileFormat,
+} from '../../src/lib/utils/parameterFileFormat.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -22,6 +27,25 @@ const getExecutableParametersFileName = (
   target: ExecutionSettings['local'] | ExecutionSettings['remote']
 ): string => {
   return target.parametersFileName || 'parameters.json'
+}
+
+const parseExecutableParametersTemplate = (
+  content: string,
+  generatedFileName: string
+): ParametersTemplateMetadata => {
+  const parsed = parseParametersFileWithFormat(content, generatedFileName)
+  return {
+    kind: 'parametersTemplate',
+    data: parsed.data,
+    parametersFileName: withParameterFileFormat(
+      generatedFileName,
+      parsed.format
+    ),
+  }
+}
+
+const formatErrorMessage = (error: unknown): string => {
+  return (error as Error)?.message || String(error)
 }
 
 const validateExecutionSettings = (execution: ExecutionSettings): void => {
@@ -118,27 +142,37 @@ const getExecutableTemplateMetadataLocal = async (
   const tempDir = await fs.promises.mkdtemp(
     path.join(os.tmpdir(), 'dealiix-exec-probe-')
   )
-  const paramsPath = path.join(
-    tempDir,
+  const candidates = getParameterProbeFileNames(
     getExecutableParametersFileName(execution.local)
   )
+  let lastError: unknown = null
 
   try {
-    try {
-      await execFileAsync(execution.local.executablePath, [paramsPath], {
-        cwd: execution.local.workingDirectory,
-      })
-    } catch (error) {
-      if (!fs.existsSync(paramsPath)) {
-        throw error
+    for (const paramsFile of candidates) {
+      const paramsPath = path.join(tempDir, paramsFile)
+      try {
+        await fs.promises.mkdir(path.dirname(paramsPath), { recursive: true })
+
+        try {
+          await execFileAsync(execution.local.executablePath, [paramsPath], {
+            cwd: execution.local.workingDirectory,
+          })
+        } catch (error) {
+          if (!fs.existsSync(paramsPath)) {
+            throw error
+          }
+        }
+
+        const parametersRaw = await fs.promises.readFile(paramsPath, 'utf8')
+        return parseExecutableParametersTemplate(parametersRaw, paramsFile)
+      } catch (error) {
+        lastError = error
       }
     }
 
-    const parametersRaw = await fs.promises.readFile(paramsPath, 'utf8')
-    return {
-      kind: 'parametersTemplate',
-      data: JSON.parse(parametersRaw),
-    }
+    throw new Error(
+      `Executable did not generate a readable parameters template. Tried ${candidates.join(', ')}. Last error: ${formatErrorMessage(lastError)}`
+    )
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true })
   }
@@ -192,33 +226,51 @@ const getExecutableTemplateMetadataRemote = async (
     username: execution.remote.username,
     pathToSsh: execution.remote.sshKeyPath,
   }
-  const paramsFile = `dealiix-probe-${Date.now()}-${getExecutableParametersFileName(execution.remote)}`
-
-  // Clean up any leftover probe file from a previous failed run.
-  await connectToSSHWithKey(
-    `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(paramsFile)}`,
-    sshConfig,
-    { rejectOnNonZeroCode: true }
+  const candidates = getParameterProbeFileNames(
+    getExecutableParametersFileName(execution.remote)
   )
+  let lastError: unknown = null
 
-  // Run the executable — tolerate non-zero exit because some executables write the params
-  // file but still exit with a non-zero code (e.g. usage errors when no other args are given).
-  await connectToSSHWithKey(
-    `cd ${shellEscape(execution.remote.workingDirectory)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(paramsFile)}`,
-    sshConfig
-  )
+  for (const paramsFile of candidates) {
+    const probeFile = `dealiix-probe-${Date.now()}-${paramsFile}`
+    const probePath = `${execution.remote.workingDirectory}/${probeFile}`
 
-  // Read the generated params file; fails with a clear message if the executable did not create it.
-  const parametersRaw = await connectToSSHWithKey(
-    `cat ${shellEscape(`${execution.remote.workingDirectory}/${paramsFile}`)} && rm -f ${shellEscape(`${execution.remote.workingDirectory}/${paramsFile}`)}`,
-    sshConfig,
-    { rejectOnNonZeroCode: true }
-  )
+    try {
+      // Clean up any leftover probe file from a previous failed run.
+      await connectToSSHWithKey(
+        `cd ${shellEscape(execution.remote.workingDirectory)} && rm -f ${shellEscape(probeFile)}`,
+        sshConfig,
+        { rejectOnNonZeroCode: true }
+      )
 
-  return {
-    kind: 'parametersTemplate',
-    data: JSON.parse(parametersRaw),
+      // Run the executable — tolerate non-zero exit because some executables write the params
+      // file but still exit with a non-zero code (e.g. usage errors when no other args are given).
+      await connectToSSHWithKey(
+        `cd ${shellEscape(execution.remote.workingDirectory)} && ${shellEscape(execution.remote.executablePath)} ${shellEscape(probeFile)}`,
+        sshConfig
+      )
+
+      // Read the generated params file; fails if the executable did not create it.
+      const parametersRaw = await connectToSSHWithKey(
+        `cat ${shellEscape(probePath)} && rm -f ${shellEscape(probePath)}`,
+        sshConfig,
+        { rejectOnNonZeroCode: true }
+      )
+
+      return parseExecutableParametersTemplate(parametersRaw, paramsFile)
+    } catch (error) {
+      lastError = error
+      try {
+        await connectToSSHWithKey(`rm -f ${shellEscape(probePath)}`, sshConfig)
+      } catch {
+        // Best-effort cleanup only; keep the original probe failure.
+      }
+    }
   }
+
+  throw new Error(
+    `Executable did not generate a readable parameters template. Tried ${candidates.join(', ')}. Last error: ${formatErrorMessage(lastError)}`
+  )
 }
 
 /**
@@ -251,9 +303,22 @@ export const probeAndSyncExecutionSettings = async (
           : await getExecutableTemplateMetadataRemote(execution)
     }
 
+    const requestedParametersFileName =
+      execution.backendKind === 'executable'
+        ? getExecutableParametersFileName(execution[execution.location])
+        : ''
+    const effectiveParametersFileName =
+      metadata?.kind === 'parametersTemplate'
+        ? metadata.parametersFileName
+        : undefined
+
     return {
       ok: true,
-      message: 'Configuration validated successfully',
+      message:
+        effectiveParametersFileName &&
+        effectiveParametersFileName !== requestedParametersFileName
+          ? `Configuration validated successfully; using ${effectiveParametersFileName} for parameters`
+          : 'Configuration validated successfully',
       metadata,
       syncedAt: new Date().toISOString(),
     }

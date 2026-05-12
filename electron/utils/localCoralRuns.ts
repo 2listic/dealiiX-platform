@@ -2,6 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
 import store from './storage.js'
+import { stringifyParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
+import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
@@ -25,7 +27,7 @@ interface CoralRunPayload {
 interface ExecutableRunPayload {
   executablePath: string
   workingDirectory: string
-  parametersPayload: unknown
+  parametersPayload: ParameterTree
   parametersFileName: string
   internalJobId: number | string
 }
@@ -150,7 +152,7 @@ export const startLocalExecutableRun = async ({
   await ensureDir(workingDirectory)
   await fs.promises.writeFile(
     parametersPath,
-    JSON.stringify(parametersPayload, null, 2)
+    stringifyParametersFile(parametersPayload, parametersPath)
   )
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })

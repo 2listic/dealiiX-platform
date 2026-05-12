@@ -14,6 +14,10 @@ import {
 } from './utils/sshConnections.js'
 import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
+  getParameterFileFilters,
+  stringifyParametersFile,
+} from '../src/lib/utils/parameterFileFormat.js'
+import {
   getLocalNodeStatusFiles,
   getLocalRunLog,
   getLocalRunState,
@@ -88,6 +92,34 @@ export function registerIpcHandlers(): void {
       }
 
       await fs.promises.writeFile(result.filePath, content, 'utf8')
+      return { canceled: false, filePath: result.filePath }
+    }
+  )
+
+  ipcMain.handle(
+    'save-parameters-file',
+    async (
+      _event,
+      { defaultPath, parameters, content, title = 'Save Parameters File' }
+    ) => {
+      const result = await dialog.showSaveDialog({
+        title,
+        defaultPath,
+        filters: getParameterFileFilters(),
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { canceled: true, filePath: null }
+      }
+
+      const fileContent =
+        parameters !== undefined
+          ? stringifyParametersFile(parameters, result.filePath)
+          : content
+      if (typeof fileContent !== 'string') {
+        throw new Error('No parameters content was provided')
+      }
+      await fs.promises.writeFile(result.filePath, fileContent, 'utf8')
       return { canceled: false, filePath: result.filePath }
     }
   )

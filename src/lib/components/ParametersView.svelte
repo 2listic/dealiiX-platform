@@ -9,6 +9,12 @@
     ParameterTree,
     ParameterNode,
   } from '../types/parameterTypes'
+  import {
+    isParameterLeaf,
+    normalizeParameterFileName,
+    parseParametersFileWithFormat,
+    stringifyParametersFile,
+  } from '../utils/parameterFileFormat'
 
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
@@ -21,12 +27,7 @@
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
   function isLeaf(obj: unknown): obj is ParameterLeaf {
-    return (
-      typeof obj === 'object' &&
-      obj !== null &&
-      'value' in obj &&
-      'pattern_description' in obj
-    )
+    return isParameterLeaf(obj)
   }
 
   function isTree(obj: unknown): obj is ParameterTree {
@@ -271,19 +272,34 @@
     }
   }
 
+  async function syncImportedParametersFileName(fileName: string) {
+    if (!isExecutableMode) return
+    await settingsState.saveActiveExecutionParametersFileName(fileName)
+  }
+
   function loadFile(event: Event) {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return
-    lastParametersFilePath = window.electron?.getFilePath
+    const selectedPath = window.electron?.getFilePath
       ? window.electron.getFilePath(file)
-      : lastParametersFilePath
+      : ''
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const parsed = JSON.parse(e.target?.result as string)
+        const parsedFile = parseParametersFileWithFormat(
+          e.target?.result as string,
+          file.name
+        )
+        const parsed = parsedFile.data
+        const normalizedFileName = normalizeParameterFileName(
+          file.name,
+          parsedFile.format
+        )
+        lastParametersFilePath = selectedPath || normalizedFileName
         if (!parametersState.snapshot) {
           parametersState.value = parsed
+          await syncImportedParametersFileName(normalizedFileName)
           return
         }
 
@@ -322,9 +338,10 @@
         }
 
         parametersState.value = merged
+        await syncImportedParametersFileName(normalizedFileName)
       } catch {
         toastState.add({
-          message: 'Invalid parameters JSON file',
+          message: 'Invalid parameters file',
           type: 'error',
         })
       }
@@ -355,12 +372,18 @@
 
   async function saveParameters() {
     if (!parameters) return
-    const json = JSON.stringify(parametersState.snapshot, null, 4)
+    const snapshot = parametersState.snapshot
+    if (!snapshot) return
+    const defaultPath =
+      lastParametersFilePath ||
+      settingsState.execution[settingsState.execution.location]
+        .parametersFileName ||
+      'template_parameters.json'
 
     if (window.electron?.invoke) {
-      const result = await window.electron.invoke('save-json-file', {
-        defaultPath: lastParametersFilePath || 'template_parameters.json',
-        content: json,
+      const result = await window.electron.invoke('save-parameters-file', {
+        defaultPath,
+        parameters: snapshot,
         title: 'Save Parameters File',
       })
       if (!result?.canceled && result?.filePath) {
@@ -373,14 +396,12 @@
       return
     }
 
-    const blob = new Blob([json], { type: 'application/json' })
+    const content = stringifyParametersFile(snapshot, defaultPath)
+    const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = lastParametersFilePath
-      ? lastParametersFilePath.split(/[/\\]/).pop() ||
-        'template_parameters.json'
-      : 'template_parameters.json'
+    a.download = defaultPath.split(/[/\\]/).pop() || 'template_parameters.json'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -407,7 +428,7 @@
         <input
           bind:this={fileInput}
           type="file"
-          accept=".json"
+          accept=".json,.prm"
           onchange={loadFile}
           hidden
         />
@@ -418,7 +439,7 @@
     <input
       bind:this={fileInput}
       type="file"
-      accept=".json"
+      accept=".json,.prm"
       onchange={loadFile}
       hidden
     />
@@ -522,7 +543,7 @@
       >
       <Button
         size="small"
-        title="Download parameters as a JSON file"
+        title="Download parameters as a JSON or PRM file"
         onclick={saveParameters}>Download params</Button
       >
     </div>

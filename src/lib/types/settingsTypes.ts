@@ -12,6 +12,7 @@ export type NodeRegistryMetadata = {
 export type ParametersTemplateMetadata = {
   kind: 'parametersTemplate'
   data: Record<string, unknown>
+  parametersFileName?: string
 }
 
 export type ExecutionMetadata =
