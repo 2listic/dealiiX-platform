@@ -30,9 +30,10 @@ Fix/refactor: short summary of the overall change
 
 Rules:
 
-- No `Co-Authored-By` trailer
+- No `Co-Authored-By` trailer, no "Generated with Claude Code" attribution
 - Keep the subject line concise — detail goes in the PR description, not the commit
 - Use sentence case, no trailing period
+- PR descriptions use `## Summary` (bullet list) and `## Test plan` (markdown checklist) sections
 
 ## Changelog
 
