@@ -68,6 +68,7 @@ The application uses two JSON protocols to communicate with CORAL:
 - `parseGraphWithQualifiedIds()` - Same as above but adds hierarchical `qualified_id` to all nodes (used for export/save/download)
 - `addQualifiedIds()` / `removeQualifiedIds()` - Add/remove `qualified_id` fields recursively through nested network nodes
 - `loadGraphFromProtocol()` - Load a graph from CORAL protocol format (renamed from `loadGraph()`)
+- `importGraphFromProtocol()` - Full import pipeline: validate + strip qualified IDs + load. Returns `{ invalidEdges, registeredNetworkNodes }` for callers to toast.
 
 ### State Management
 
