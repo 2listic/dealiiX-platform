@@ -97,13 +97,13 @@ Available keys are defined in [electron/utils/storage.ts](electron/utils/storage
 
 The app supports four execution modes. See the dedicated guide for each:
 
-| Mode                    | Description                                                                   | Guide                                                          |
-| ----------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Remote + Coral**      | Docker containers with Slurm and SSH, simulating a remote HPC cluster         | [docs/run-coral-docker.md](docs/run-coral-docker.md)           |
-| **Remote + Coral (real machine)** | Connect to CORAL + Slurm containers running on a real remote machine over SSH | [docs/remote-setup.md](docs/remote-setup.md) |
-| **Local + Coral**       | Coral binary running directly on your machine, no Docker or SSH               | [docs/run-coral-local.md](docs/run-coral-local.md)             |
-| **Local + Executable**  | Any deal.II executable following the DealiiX executable contract, run locally | [docs/run-executable-local.md](docs/run-executable-local.md)   |
-| **Remote + Executable** | Any deal.II executable run on a remote machine over SSH                       | [docs/run-executable-remote.md](docs/run-executable-remote.md) |
+| Mode                              | Description                                                                   | Guide                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Remote + Coral**                | Docker containers with Slurm and SSH, simulating a remote HPC cluster         | [docs/run-coral-docker.md](docs/run-coral-docker.md)           |
+| **Remote + Coral (real machine)** | Connect to CORAL + Slurm containers running on a real remote machine over SSH | [docs/remote-setup.md](docs/remote-setup.md)                   |
+| **Local + Coral**                 | Coral binary running directly on your machine, no Docker or SSH               | [docs/run-coral-local.md](docs/run-coral-local.md)             |
+| **Local + Executable**            | Any deal.II executable following the DealiiX executable contract, run locally | [docs/run-executable-local.md](docs/run-executable-local.md)   |
+| **Remote + Executable**           | Any deal.II executable run on a remote machine over SSH                       | [docs/run-executable-remote.md](docs/run-executable-remote.md) |
 
 # Packaging
 
