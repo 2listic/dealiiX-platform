@@ -13,7 +13,7 @@ services:
       - '8000:8000'
     volumes:
       - ./containers/shared-data:/app/shared-data
-      - ~/.ssh/id_ed25519.pub:/tmp/ssh_key.pub:ro
+      - ${SSH_PUB_KEY_PATH}:/tmp/ssh_key.pub:ro
     environment:
       - OMPI_ALLOW_RUN_AS_ROOT=1
       - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1

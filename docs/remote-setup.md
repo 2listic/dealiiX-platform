@@ -45,7 +45,7 @@ If you forgot it, run this afterwards:
 git submodule update --init --recursive
 ```
 
-## Step 3 — copy your public key to the remote machine
+## Step 2 — copy your public key to the remote machine
 
 ```bash
 scp ~/.ssh/id_ed25519.pub <remote-user>@<remote-host>:~/.ssh/<yourname>_id_ed25519.pub
@@ -58,43 +58,28 @@ cat ~/.ssh/<yourname>_id_ed25519.pub >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-## Step 4 — `Dockerfile.coral` on the remote machine
+## Step 3 — create a `.env` file on the remote machine
 
-Make sure these lines are **uncommented** so the container's sshd starts correctly
-and allows root login via key:
+The SSH public key path is machine-specific, so it is configured via a `.env`
+file that is gitignored and must be created on each machine:
 
-```dockerfile
-RUN mkdir -p /run/sshd
-RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-  echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-EXPOSE 6817 6818 8000 22
+```bash
+echo 'SSH_PUB_KEY_PATH=/home/<remote-user>/.ssh/<yourname>_id_ed25519.pub' > .env
 ```
 
-Leave the `--mount=type=secret` block commented — the key arrives via volume mount.
+On your local machine the equivalent would be:
 
-## Step 5 — `docker-compose.yml` on the remote machine
-
-The `coral-ssh-slurm` service must have port 2222 mapped and the public key
-mounted as `authorized_keys` inside the container:
-
-```yaml
-ports:
-  - '2222:22'
-volumes:
-  - ./containers/shared-data:/app/shared-data
-  - /home/<remote-user>/.ssh/<yourname>_id_ed25519.pub:/root/.ssh/authorized_keys:ro
+```bash
+echo 'SSH_PUB_KEY_PATH=~/.ssh/id_ed25519.pub' > .env
 ```
 
-The secrets sections must remain commented out.
-
-## Step 6 — build and start the containers
+## Step 4 — build and start the containers
 
 ```bash
 docker compose up -d --build
 ```
 
-## Step 7 — build CORAL inside the container
+## Step 5 — build CORAL inside the container
 
 This takes several minutes the first time:
 
@@ -102,7 +87,7 @@ This takes several minutes the first time:
 ssh -p 2222 root@localhost 'cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build'
 ```
 
-## Step 8 — open the SSH tunnel on your local machine
+## Step 6 — open the SSH tunnel on your local machine
 
 Keep this session open while using the app. Specifying the user explicitly overrides
 any `User` rule you may have in `~/.ssh/config` for this host:
@@ -111,7 +96,7 @@ any `User` rule you may have in `~/.ssh/config` for this host:
 ssh -L 2222:localhost:2222 -L 8008:localhost:8008 <remote-user>@<remote-host>
 ```
 
-## Step 9 — configure the Electron app
+## Step 7 — configure the Electron app
 
 Open Settings → Execution Mode → Remote:
 
