@@ -115,14 +115,14 @@ ssh -L 2222:localhost:2222 -L 8008:localhost:8008 <remote-user>@<remote-host>
 
 Open Settings → Execution Mode → Remote:
 
-| Field | Value |
-|-------|-------|
-| Host | `localhost` |
-| Port | `2222` |
-| Username | `root` |
-| SSH key path | `~/.ssh/id_ed25519` (your local private key) |
-| Working directory | `/app/shared-data` |
-| Coral binary path | `/app/build/core/coral` |
+| Field             | Value                                                   |
+| ----------------- | ------------------------------------------------------- |
+| Host              | `localhost`                                             |
+| Port              | `2222`                                                  |
+| Username          | `root`                                                  |
+| SSH key path      | `~/.ssh/id_ed25519` (your local private key)            |
+| Working directory | `/app/shared-data`                                      |
+| Coral binary path | `/app/build/core/coral`                                 |
 | Coral plugin path | `/app/build/backends/dealii/libcoral_backend_dealii.so` |
 
 Click **Save & Sync Execution** to verify the connection.
