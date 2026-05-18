@@ -6,7 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
-- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is re-enabled on port 2222 via public key authentication using a volume-mounted authorised key. A step-by-step setup guide is available at `docs/remote-setup.md`.
+- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is re-enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
 
 ### Docker
 
