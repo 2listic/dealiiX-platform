@@ -4,6 +4,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-05-11
+
 ### Canvas-graph
 
 - [#174](https://github.com/2listic/dealiiX-platform/pull/174) Subnetwork nodes can now be opened and edited in-place directly from the canvas. Navigation through nested graphs is handled via a breadcrumb bar with back navigation. Subnetworks can be renamed from the breadcrumb while editing. A selection of nodes can be collapsed into a new named subnetwork, and any subnetwork node can be exploded back into its constituent nodes in the parent graph. When a subnetwork is emptied while editing and the user navigates back, the corresponding subnetwork node is automatically removed from the parent graph.
