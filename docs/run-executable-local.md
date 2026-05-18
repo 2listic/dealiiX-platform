@@ -17,7 +17,7 @@ The source files are already in the repo at `local_runs/step-70/`. No download n
 ```bash
 cd local_runs/step-70
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
+cmake --build build -j4
 ```
 
 ### Dimension suffix convention

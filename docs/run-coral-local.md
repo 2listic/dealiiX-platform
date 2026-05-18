@@ -21,7 +21,7 @@ sudo apt install libdeal.ii-dev
 Follow the instructions at https://github.com/2listic/coral, then build:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j4
 ```
 
 After the build you should have:

@@ -38,7 +38,7 @@ Then build:
 
 ```bash
 cd /app
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j4
 ```
 
 ## Configure the app
