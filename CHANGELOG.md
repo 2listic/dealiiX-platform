@@ -4,6 +4,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### SSH communication
+
+- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is re-enabled on port 2222 via public key authentication using a volume-mounted authorised key. A step-by-step setup guide is available at `containers/remote-setup.md`.
+
 ## [1.4.0] - 2026-05-11
 
 ### Canvas-graph

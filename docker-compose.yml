@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.coral
-      secrets:
-        - ssh-key
     image: coral-ssh-slurm:latest
     container_name: coral-ssh-slurm
     hostname: slurm
@@ -15,6 +13,7 @@ services:
       - '8000:8000'
     volumes:
       - ./containers/shared-data:/app/shared-data
+      - ~/.ssh/id_ed25519.pub:/root/.ssh/authorized_keys:ro
     environment:
       - OMPI_ALLOW_RUN_AS_ROOT=1
       - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
@@ -41,7 +40,3 @@ services:
 networks:
   coral-network:
     driver: bridge
-
-secrets:
-  ssh-key:
-    file: /home/your-username/.ssh/your-ssh-public-key
