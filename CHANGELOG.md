@@ -6,7 +6,11 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
-- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is re-enabled on port 2222 via public key authentication using a volume-mounted authorised key. A step-by-step setup guide is available at `containers/remote-setup.md`.
+- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is re-enabled on port 2222 via public key authentication using a volume-mounted authorised key. A step-by-step setup guide is available at `docs/remote-setup.md`.
+
+### Docker
+
+- `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
 
 ## [1.4.0] - 2026-05-11
 

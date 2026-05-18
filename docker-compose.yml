@@ -37,6 +37,24 @@ services:
       - coral-ssh-slurm
     # restart: unless-stopped
 
+  coral-remote-server:
+    build:
+      context: ./coral-remote-server
+    image: coral-remote-server:latest
+    container_name: coral-remote-server
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./coral-remote-server/data:/root/data
+    environment:
+      - GIN_MODE=${GIN_MODE:-release}
+      - PORT=8080
+      - DB_PATH=/root/data/coral.db
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+    networks:
+      - coral-network
+    # restart: unless-stopped
+
 networks:
   coral-network:
     driver: bridge
