@@ -4,6 +4,7 @@
  *
  * Key functions:
  *   Protocol → Flow:  nodesFromProtocolToFlow(), edgesFromProtocolToFlow(), loadGraphFromProtocol()
+ *   Import pipeline:  importGraphFromProtocol() — validate + strip qualified IDs + load in one call
  *   Flow → Protocol:  parseGraphToProtocol(), parseGraphWithQualifiedIds()
  *   Qualified IDs:    addQualifiedIds(), removeQualifiedIds()
  *   Validation:       validateGraphData()
@@ -59,6 +60,29 @@ export const loadGraphFromProtocol = async (
   updateLastNodeId()
 
   return networkNodes
+}
+
+/**
+ * Validates, cleans, and loads a network into the flow editor in one step.
+ * Combines validateGraphData, removeQualifiedIds, and loadGraphFromProtocol so callers
+ * only need to handle toasting and project-state updates.
+ * @param graph - The network to import (may include qualified_id fields from a saved file)
+ * @returns invalidEdges found during type-compatibility validation, and registeredNetworkNodes
+ * @throws {Error} If graph data is missing required fields or contains structural errors
+ */
+export const importGraphFromProtocol = async (
+  graph: Network | QualifiedNetwork
+): Promise<{
+  invalidEdges: Array<{ edgeId: string; edge: NetworkEdge; error: string }>
+  registeredNetworkNodes: string[]
+}> => {
+  const [validEdges, invalidEdges] = validateGraphData(graph as Network)
+  const cleanedGraph = removeQualifiedIds(graph)
+  const registeredNetworkNodes = await loadGraphFromProtocol(
+    cleanedGraph.workflow.nodes,
+    validEdges
+  )
+  return { invalidEdges, registeredNetworkNodes }
 }
 
 /**
