@@ -4,11 +4,17 @@ This approach simulates a remote HPC cluster using Docker containers: one contai
 
 ## Prerequisites
 
-A public/private SSH key pair. The public key is baked into the container; the private key is selected in the app Settings.
+A public/private SSH key pair. The public key is injected into the container at runtime; the private key is selected in the app Settings.
 
 ## Build and start the containers
 
-Adjust the path to your public SSH key in `docker-compose.yml`, then:
+Create a `.env` file in the repo root with the path to your public key (this file is gitignored):
+
+```bash
+echo 'SSH_PUB_KEY_PATH=~/.ssh/id_ed25519.pub' > .env
+```
+
+Then:
 
 ```bash
 docker compose up -d

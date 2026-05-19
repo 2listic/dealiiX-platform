@@ -93,7 +93,7 @@ Keep this session open while using the app. Specifying the user explicitly overr
 any `User` rule you may have in `~/.ssh/config` for this host:
 
 ```bash
-ssh -L 2222:localhost:2222 -L 8008:localhost:8008 <remote-user>@<remote-host>
+ssh -L 2222:localhost:2222 -L 8008:localhost:8008 -L 8080:localhost:8080 <remote-user>@<remote-host>
 ```
 
 ## Step 7 — configure the Electron app
