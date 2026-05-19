@@ -61,16 +61,13 @@ chmod 600 ~/.ssh/authorized_keys
 ## Step 3 — create a `.env` file on the remote machine
 
 The SSH public key path is machine-specific, so it is configured via a `.env`
-file that is gitignored and must be created on each machine:
+file that is gitignored and must be created on each machine. Copy the provided
+example and set the correct path:
 
 ```bash
-echo 'SSH_PUB_KEY_PATH=/home/<remote-user>/.ssh/<yourname>_id_ed25519.pub' > .env
-```
-
-On your local machine the equivalent would be:
-
-```bash
-echo 'SSH_PUB_KEY_PATH=~/.ssh/id_ed25519.pub' > .env
+cp .env.example .env
+# then edit .env and set SSH_PUB_KEY_PATH to the actual path, e.g.:
+# SSH_PUB_KEY_PATH=/home/<remote-user>/.ssh/<yourname>_id_ed25519.pub
 ```
 
 ## Step 4 — build and start the containers

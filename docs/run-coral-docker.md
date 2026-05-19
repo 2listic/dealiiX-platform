@@ -8,11 +8,13 @@ A public/private SSH key pair. The public key is injected into the container at 
 
 ## Build and start the containers
 
-Create a `.env` file in the repo root with the path to your public key (this file is gitignored):
+Create a `.env` file in the repo root by copying the provided example (`.env` is gitignored):
 
 ```bash
-echo 'SSH_PUB_KEY_PATH=~/.ssh/id_ed25519.pub' > .env
+cp .env.example .env
 ```
+
+Edit it if your key is at a different path than `~/.ssh/id_ed25519.pub`.
 
 Then:
 

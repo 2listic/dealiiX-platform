@@ -13,7 +13,7 @@ services:
       - '8000:8000'
     volumes:
       - ./containers/shared-data:/app/shared-data
-      - ${SSH_PUB_KEY_PATH}:/tmp/ssh_key.pub:ro
+      - ${SSH_PUB_KEY_PATH:?SSH_PUB_KEY_PATH is not set — create a .env file, see docs/run-coral-docker.md}:/tmp/ssh_key.pub:ro
     environment:
       - OMPI_ALLOW_RUN_AS_ROOT=1
       - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
