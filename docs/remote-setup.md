@@ -70,13 +70,25 @@ cp .env.example .env
 # SSH_PUB_KEY_PATH=/home/<remote-user>/.ssh/<yourname>_id_ed25519.pub
 ```
 
-## Step 4 — build and start the containers
+## Step 4 — set permissions on the shared data directory
+
+The visualizer container runs as a non-root user whose UID does not match
+the remote user, so it needs world-write access to the shared data directory:
+
+```bash
+chmod a+w containers/shared-data
+```
+
+This only needs to be done once. Without it the visualizer will silently fail
+to save files and will report permission errors in edit mode.
+
+## Step 5 — build and start the containers
 
 ```bash
 docker compose up -d --build
 ```
 
-## Step 5 — build CORAL inside the container
+## Step 6 — build CORAL inside the container
 
 This takes several minutes the first time:
 
@@ -84,7 +96,7 @@ This takes several minutes the first time:
 ssh -p 2222 root@localhost 'cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build'
 ```
 
-## Step 6 — open the SSH tunnel on your local machine
+## Step 7 — open the SSH tunnel on your local machine
 
 Keep this session open while using the app. Specifying the user explicitly overrides
 any `User` rule you may have in `~/.ssh/config` for this host:
@@ -93,7 +105,7 @@ any `User` rule you may have in `~/.ssh/config` for this host:
 ssh -L 2222:localhost:2222 -L 8008:localhost:8008 -L 8080:localhost:8080 <remote-user>@<remote-host>
 ```
 
-## Step 7 — configure the Electron app
+## Step 8 — configure the Electron app
 
 Open Settings → Execution Mode → Remote:
 
