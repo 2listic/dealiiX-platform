@@ -7,6 +7,11 @@ NODE="slurmnode1"
 
 echo "$NODE_ADDR   $NODE" >> /etc/hosts
 
+if [ -f /tmp/ssh_key.pub ]; then
+    cp /tmp/ssh_key.pub /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+fi
+
 echo "Starting services..."
 service munge start
 sleep 2
