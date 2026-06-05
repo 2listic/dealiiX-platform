@@ -208,12 +208,6 @@ export const parseParametersFileWithFormat = (
   }
 }
 
-export const parseParametersFile = (
-  content: string,
-  fileName?: string
-): ParameterTree => {
-  return parseParametersFileWithFormat(content, fileName).data
-}
 
 export const isParameterTree = (value: unknown): value is ParameterTree => {
   return (

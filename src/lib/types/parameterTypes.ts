@@ -8,9 +8,12 @@ export type ParameterLeaf = {
   __extra?: boolean
 }
 
-export interface ParameterTree {
-  __extra?: boolean
-  [key: string]: ParameterLeaf | ParameterTree | boolean | undefined
-}
+/** boolean | undefined — required by TypeScript to accommodate `__extra?: boolean` in the index signature. */
+export type Extra = boolean | undefined
 
 export type ParameterNode = ParameterLeaf | ParameterTree
+
+export interface ParameterTree {
+  __extra?: boolean
+  [key: string]: ParameterNode | Extra
+}

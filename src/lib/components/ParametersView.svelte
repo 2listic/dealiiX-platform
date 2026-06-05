@@ -20,11 +20,11 @@
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
   let isExecutableMode = $derived(settingsState.isExecutableMode)
-  let lastParametersFilePath = $state('')
+  let lastParametersFilePath = ''
   let expandedSections = $state<Record<string, boolean>>({})
   let duplicateModalName = $state('')
-  let duplicateModalKey = $state('')
-  let duplicateModalPath = $state<string[]>([])
+  let duplicateModalKey = ''
+  let duplicateModalPath: string[] = []
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
   function isExtraNode(obj: unknown): boolean {
@@ -86,6 +86,12 @@
     } as ParameterTree
   }
 
+  /**
+   * Returns the subtree at `path`, or null if any segment is missing or a leaf.
+   * `path` points to the PARENT — the node itself is `getTreeAtPath(root, path)[key]`.
+   * @param root - The root of the tree to navigate.
+   * @param path - Array of keys from the root to the target's parent.
+   */
   function getTreeAtPath(
     root: ParameterTree,
     path: string[]
@@ -118,6 +124,13 @@
     )
   }
 
+  /**
+   * Opens the duplicate modal pre-filled with a suggested name.
+   * The path/key split is intentional: mutation requires a handle to the parent
+   * (to insert a sibling), not to the node itself.
+   * @param path - Path to the parent tree, e.g. `["Geometry"]` for a section inside Geometry.
+   * @param key  - Name of the section within its parent, e.g. `"Mesh"`.
+   */
   function duplicateSection(path: string[], key: string) {
     if (!parametersState.value) return
 
@@ -128,12 +141,15 @@
     getModal(duplicateSectionModalId)?.open()
   }
 
+  /** 
+   * Commits the duplication after the user confirms the name in the modal.
+   */
   function confirmDuplicateSection() {
     if (!parametersState.value || !duplicateModalKey) return
 
-    const nextParameters = JSON.parse(
-      JSON.stringify(parametersState.value)
-    ) as ParameterTree
+    // Deep-clone so intermediate mutations don't touch the live reactive store.
+    const nextParameters = $state.snapshot(parametersState.value) as ParameterTree
+    // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
     if (!parentTree || !isParameterTree(sourceNode)) {
@@ -156,7 +172,9 @@
       return
     }
 
+    // mutation here propagates back to nextParameters.
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
+    // only this final assignment triggers Svelte reactivity.
     parametersState.value = nextParameters
     expandedSections[getSectionPathKey(duplicateModalPath, newName)] = true
     toastState.add({
@@ -182,6 +200,17 @@
     duplicateModalPath = []
   }
 
+  /**
+   * Merges an uploaded file onto the canonical template tree.
+   * The template is the authority for structure and metadata; the upload only contributes `value` fields.
+   * Designed to be called twice from `loadFile` when extra keys are detected: first with
+   * `includeExtras=false` (dry run), then with `includeExtras=true` if the user confirms.
+   * @param template      - Canonical parameter tree (authority for structure and metadata).
+   * @param uploaded      - Parsed content of the user's file (untrusted, arbitrary shape).
+   * @param currentPath   - Dot-separated path of the current subtree for building `extraPaths`. Pass `''` at root.
+   * @param includeExtras - Whether to include keys not present in the template.
+   * @returns Merged tree and list of dotted paths that were in the upload but not the template.
+   */
   function mergeParametersTemplate(
     template: ParameterTree,
     uploaded: unknown,
@@ -189,6 +218,7 @@
     includeExtras = false
   ): { merged: ParameterTree; extraPaths: string[] } {
     const extraPaths: string[] = []
+    // Phase 1: walk every key in the template, taking values from the upload when present.
     const mergedEntries: [string, ParameterNode][] = Object.entries(template)
       .filter(([key]) => key !== '__extra')
       .map(([key, templateValue]) => {
@@ -199,27 +229,18 @@
             : undefined
 
         if (isParameterLeaf(templateValue)) {
+          // Uploaded is a full leaf (JSON format): take its value, keep template metadata.
           if (uploadedValue && isParameterLeaf(uploadedValue)) {
-            return [
-              key,
-              {
-                ...templateValue,
-                value: uploadedValue.value,
-              },
-            ]
+            return [key, { ...templateValue, value: uploadedValue.value }]
           }
+          // Uploaded is a bare primitive (PRM format): stringify it into the template leaf.
           if (
             uploadedValue !== undefined &&
             (typeof uploadedValue !== 'object' || uploadedValue === null)
           ) {
-            return [
-              key,
-              {
-                ...templateValue,
-                value: String(uploadedValue),
-              },
-            ]
+            return [key, { ...templateValue, value: String(uploadedValue) }]
           }
+          // No uploaded value: keep the template default unchanged.
           return [key, { ...templateValue }]
         }
 
@@ -233,7 +254,9 @@
           path,
           includeExtras
         )
+        // Bubble up extra paths from nested levels.
         extraPaths.push(...nested.extraPaths)
+        // Preserve __extra flag if the template subtree was itself already extra.
         return [
           key,
           isExtraNode(templateValue)
@@ -242,6 +265,8 @@
         ]
       })
 
+    // Phase 2: find keys in the upload that don't exist in the template.
+    // Phase 1 only walks template keys, so this second pass is needed to catch upload-only keys.
     if (uploaded && typeof uploaded === 'object') {
       for (const [key, value] of Object.entries(
         uploaded as Record<string, unknown>
@@ -282,29 +307,21 @@
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return
-    const selectedPath = window.electron?.getFilePath
-      ? window.electron.getFilePath(file)
-      : ''
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
-        const parsedFile = parseParametersFileWithFormat(
+        const { data: uploadedTree, format: detectedFormat } = parseParametersFileWithFormat(
           e.target?.result as string,
           file.name
         )
-        const parsed = parsedFile.data
-        const normalizedFileName = normalizeParameterFileName(
-          file.name,
-          parsedFile.format
-        )
-        lastParametersFilePath = selectedPath || normalizedFileName
+        lastParametersFilePath = window.electron?.getFilePath?.(file) ?? ''
 
         // Without a snapshot there is nothing to merge against — load directly.
         if (!parametersState.snapshot) {
-          parametersState.value = parsed
+          parametersState.value = uploadedTree
         } else {
           const baseTemplate = parametersState.snapshot
-          const initialMerge = mergeParametersTemplate(baseTemplate, parsed)
+          const initialMerge = mergeParametersTemplate(baseTemplate, uploadedTree)
           let merged = initialMerge.merged
           const { extraPaths } = initialMerge
 
@@ -319,7 +336,7 @@
               // Second merge pass with includeExtras=true to include the extra keys.
               merged = mergeParametersTemplate(
                 baseTemplate,
-                parsed,
+                uploadedTree,
                 '',
                 true
               ).merged
@@ -341,7 +358,7 @@
           parametersState.value = merged
         }
 
-        await syncImportedParametersFileName(normalizedFileName)
+        await syncImportedParametersFileName(normalizeParameterFileName(file.name, detectedFormat))
       } catch {
         toastState.add({
           message: 'Invalid parameters file',
@@ -380,8 +397,7 @@
     if (!snapshot) return
     const defaultPath =
       lastParametersFilePath ||
-      settingsState.execution[settingsState.execution.location]
-        .parametersFileName ||
+      settingsState.activeParametersFileName ||
       'template_parameters.json'
 
     if (window.electron?.invoke) {
@@ -543,7 +559,7 @@
       <Button
         size="small"
         title="Merge new fields from file"
-        onclick={() => fileInput?.click()}>Add from file</Button
+        onclick={() => fileInput?.click()}>Merge from file</Button
       >
       <Button
         size="small"

@@ -58,6 +58,9 @@ export const settingsState = {
   get isCoralMode() {
     return settings.execution.backendKind === 'coral'
   },
+  get activeParametersFileName() {
+    return settings.execution[settings.execution.location].parametersFileName
+  },
   async saveUrlVisualizer(url: string) {
     await persistSettings({ ...settings, urlVisualizer: url })
   },
