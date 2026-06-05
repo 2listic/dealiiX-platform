@@ -60,20 +60,17 @@ export const normalizeParameterFileName = (
 
 /**
  * Returns the ordered list of candidate filenames to try when probing an executable
- * for its parameters template.
+ * for its parameters template. JSON is always tried first because it carries richer
+ * metadata (validation patterns, default values) than PRM.
  *
- * @param fileName - Configured parameters filename (Defaults to `"parameters.json"`).
- * @returns Array of one or two filenames ordered by preference.
+ * @param fileName - Configured parameters filename. Defaults to `"parameters.json"`.
+ * @returns `[jsonCandidate, prmCandidate]` derived from `fileName`'s basename.
  */
 export const getParameterProbeFileNames = (
   fileName: string | undefined
 ): string[] => {
   const primary = fileName?.trim() || 'parameters.json'
-  const alternateFormat =
-    getParameterFileFormat(primary) === 'json' ? 'prm' : 'json'
-  return Array.from(
-    new Set([primary, replaceExtension(primary, alternateFormat)])
-  )
+  return [replaceExtension(primary, 'json'), replaceExtension(primary, 'prm')]
 }
 
 export const getParameterFileFilters = () => [

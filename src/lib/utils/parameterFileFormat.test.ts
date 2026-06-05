@@ -95,14 +95,14 @@ set Tolerance = 1e-8
     expect(parsed.data.Error).toBeDefined()
   })
 
-  it('builds probe filenames that fall back to the alternate format', () => {
+  it('builds probe filenames with JSON always first', () => {
     expect(getParameterProbeFileNames('parameters.json')).toEqual([
       'parameters.json',
       'parameters.prm',
     ])
     expect(getParameterProbeFileNames('parameters.prm')).toEqual([
-      'parameters.prm',
       'parameters.json',
+      'parameters.prm',
     ])
   })
 
