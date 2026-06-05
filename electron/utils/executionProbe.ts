@@ -37,10 +37,7 @@ const parseExecutableParametersTemplate = (
   return {
     kind: 'parametersTemplate',
     data: parsed.data,
-    parametersFileName: replaceExtension(
-      generatedFileName,
-      parsed.format
-    ),
+    parametersFileName: replaceExtension(generatedFileName, parsed.format),
   }
 }
 

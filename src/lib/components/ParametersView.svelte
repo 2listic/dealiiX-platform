@@ -27,7 +27,7 @@
   let duplicateModalPath = $state<string[]>([])
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
-function isExtraNode(obj: unknown): boolean {
+  function isExtraNode(obj: unknown): boolean {
     return typeof obj === 'object' && obj !== null && '__extra' in obj
       ? Boolean((obj as { __extra?: boolean }).__extra)
       : false
@@ -311,15 +311,18 @@ function isExtraNode(obj: unknown): boolean {
           if (extraPaths.length > 0) {
             const preview = extraPaths.slice(0, 5).join(', ')
             const suffix =
-              extraPaths.length > 5
-                ? `, and ${extraPaths.length - 5} more`
-                : ''
+              extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
             const includeExtras = window.confirm(
               `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
             )
             if (includeExtras) {
               // Second merge pass with includeExtras=true to include the extra keys.
-              merged = mergeParametersTemplate(baseTemplate, parsed, '', true).merged
+              merged = mergeParametersTemplate(
+                baseTemplate,
+                parsed,
+                '',
+                true
+              ).merged
               toastState.add({
                 message: 'Extra sections were added to the parameters table',
                 type: 'info',

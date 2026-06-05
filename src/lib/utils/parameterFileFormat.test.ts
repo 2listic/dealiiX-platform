@@ -107,12 +107,8 @@ set Tolerance = 1e-8
   })
 
   it('normalizes parameter filenames to the detected format', () => {
-    expect(replaceExtension('parameters.json', 'prm')).toBe(
-      'parameters.prm'
-    )
-    expect(replaceExtension('parameters', 'json')).toBe(
-      'parameters.json'
-    )
+    expect(replaceExtension('parameters.json', 'prm')).toBe('parameters.prm')
+    expect(replaceExtension('parameters', 'json')).toBe('parameters.json')
   })
 
   it('normalizes imported parameter filenames without keeping directory prefixes', () => {

@@ -150,7 +150,10 @@ export const startLocalExecutableRun = async ({
   const logPath = path.join(workingDirectory, `local-${jobId}.out`)
 
   await ensureDir(workingDirectory)
-  const parametersContent = serializeParametersFile(parametersPayload, parametersFileName)
+  const parametersContent = serializeParametersFile(
+    parametersPayload,
+    parametersFileName
+  )
   await fs.promises.writeFile(parametersPath, parametersContent)
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
