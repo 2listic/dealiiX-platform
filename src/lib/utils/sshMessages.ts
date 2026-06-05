@@ -24,7 +24,7 @@ import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
 import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
-import { stringifyParametersFile } from './parameterFileFormat'
+import { serializeParametersFile } from './parameterFileFormat'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -229,7 +229,7 @@ const exportAndEvalExecutableRemote = async (
   const jobScriptRemotePath = `${remoteSettings.workingDirectory}/job.sh`
 
   await uploadFileSsh(
-    stringifyParametersFile(parametersPayload, parametersFileName),
+    serializeParametersFile(parametersPayload, parametersFileName),
     parametersRemotePath
   )
 

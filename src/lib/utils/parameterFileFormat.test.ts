@@ -6,9 +6,9 @@ import {
   parsePrmParameters,
   getParameterProbeFileNames,
   normalizeParameterFileName,
-  stringifyParametersFile,
+  serializeParametersFile,
   stringifyPrmParameters,
-  withParameterFileFormat,
+  replaceExtension,
 } from './parameterFileFormat'
 
 const samplePrm = `# Listing of Parameters
@@ -107,10 +107,10 @@ set Tolerance = 1e-8
   })
 
   it('normalizes parameter filenames to the detected format', () => {
-    expect(withParameterFileFormat('parameters.json', 'prm')).toBe(
+    expect(replaceExtension('parameters.json', 'prm')).toBe(
       'parameters.prm'
     )
-    expect(withParameterFileFormat('parameters', 'json')).toBe(
+    expect(replaceExtension('parameters', 'json')).toBe(
       'parameters.json'
     )
   })
@@ -138,7 +138,7 @@ set Tolerance = 1e-8
       },
     }
 
-    const prm = stringifyParametersFile(tree, 'parameters.prm')
+    const prm = serializeParametersFile(tree, 'parameters.prm')
 
     expect(prm).toContain('subsection Error')
     expect(prm).toContain('# Number of digits to use when printing the error.')
@@ -168,7 +168,7 @@ set Tolerance = 1e-8
     }
 
     expect(
-      JSON.parse(stringifyParametersFile(tree, 'parameters.json'))
+      JSON.parse(serializeParametersFile(tree, 'parameters.json'))
     ).toEqual(tree)
   })
 })

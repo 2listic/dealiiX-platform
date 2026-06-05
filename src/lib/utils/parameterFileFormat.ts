@@ -10,13 +10,10 @@ const PRM_EXTENSION_RE = /\.prm$/i
 const JSON_EXTENSION_RE = /\.json$/i
 const PARAMETER_EXTENSION_RE = /\.(json|prm)$/i
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null
-}
-
 export const isParameterLeaf = (value: unknown): value is ParameterLeaf => {
   return (
-    isRecord(value) &&
+    typeof value === 'object' &&
+    value !== null &&
     'value' in value &&
     'default_value' in value &&
     'pattern_description' in value
@@ -29,7 +26,14 @@ export const getParameterFileFormat = (
   return fileName && PRM_EXTENSION_RE.test(fileName) ? 'prm' : 'json'
 }
 
-export const withParameterFileFormat = (
+/**
+ * Returns `fileName` with its extension replaced by the format's canonical extension.
+ * Appends the extension if none is present. Defaults to `parameters.<format>` when `fileName` is absent.
+ *
+ * @param fileName - Filename to modify (path components are preserved).
+ * @param format   - Target format determining the output extension.
+ */
+export const replaceExtension = (
   fileName: string | undefined,
   format: ParameterFileFormat
 ): string => {
@@ -39,15 +43,28 @@ export const withParameterFileFormat = (
     : `${target}.${format}`
 }
 
+/**
+ * Strips the path from `fileName` and normalises its extension to match `format`.
+ *
+ * @param fileName - File path or bare name to normalise.
+ * @param format   - Target format determining the output extension.
+ */
 export const normalizeParameterFileName = (
   fileName: string | undefined,
   format: ParameterFileFormat
 ): string => {
   const trimmed = fileName?.trim() ?? ''
   const basename = trimmed.split(/[/\\]/).pop()
-  return withParameterFileFormat(basename || undefined, format)
+  return replaceExtension(basename || undefined, format)
 }
 
+/**
+ * Returns the ordered list of candidate filenames to try when probing an executable
+ * for its parameters template.
+ *
+ * @param fileName - Configured parameters filename (Defaults to `"parameters.json"`).
+ * @returns Array of one or two filenames ordered by preference.
+ */
 export const getParameterProbeFileNames = (
   fileName: string | undefined
 ): string[] => {
@@ -55,7 +72,7 @@ export const getParameterProbeFileNames = (
   const alternateFormat =
     getParameterFileFormat(primary) === 'json' ? 'prm' : 'json'
   return Array.from(
-    new Set([primary, withParameterFileFormat(primary, alternateFormat)])
+    new Set([primary, replaceExtension(primary, alternateFormat)])
   )
 }
 
@@ -154,6 +171,15 @@ export const parsePrmParameters = (content: string): ParameterTree => {
   return root
 }
 
+/**
+ * Parses a parameter file and returns the tree together with the detected format.
+ * Content sniffing takes precedence over the filename extension.
+ *
+ * @param content  - Raw file text to parse.
+ * @param fileName - Optional filename used as a hint when content sniffing is inconclusive.
+ * @returns Parsed ParameterTree and the detected format.
+ * @throws If the content looks like JSON (starts with `{` or `[`) but fails to parse.
+ */
 export const parseParametersFileWithFormat = (
   content: string,
   fileName?: string
@@ -162,11 +188,17 @@ export const parseParametersFileWithFormat = (
   const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[')
   if (looksJson || JSON_EXTENSION_RE.test(fileName ?? '')) {
     try {
-      return {
-        data: coerceParameterTree(JSON.parse(content)),
-        format: 'json',
+      const parsed = JSON.parse(content)
+      if (!isParameterTree(parsed)) {
+        throw new Error(
+          'Parameters file must contain an object at the top level'
+        )
       }
+      return { data: parsed, format: 'json' }
     } catch (error) {
+      // Re-throw only when content itself looked like JSON — a parse failure then
+      // means malformed JSON, not a wrong format. If only the extension hinted JSON
+      // but content doesn't look like it, fall through to the PRM parser.
       if (looksJson) {
         throw error
       }
@@ -186,8 +218,13 @@ export const parseParametersFile = (
   return parseParametersFileWithFormat(content, fileName).data
 }
 
-const isParameterTree = (value: unknown): value is ParameterTree => {
-  return isRecord(value) && !Array.isArray(value) && !isParameterLeaf(value)
+export const isParameterTree = (value: unknown): value is ParameterTree => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !isParameterLeaf(value)
+  )
 }
 
 const leafValue = (leaf: ParameterLeaf): string => {
@@ -235,6 +272,11 @@ const serializePrmTree = (tree: ParameterTree, depth = 0): string[] => {
   return lines
 }
 
+/**
+ * Serialises a ParameterTree to deal.II PRM text format.
+ * The two-line header matches the standard deal.II output so the file is
+ * accepted by executables that validate the header.
+ */
 export const stringifyPrmParameters = (tree: ParameterTree): string => {
   const lines = ['# Listing of Parameters', '# ---------------------']
   const body = serializePrmTree(tree)
@@ -244,18 +286,16 @@ export const stringifyPrmParameters = (tree: ParameterTree): string => {
   return `${lines.join('\n')}\n`
 }
 
-export const stringifyParametersFile = (
+/**
+ * Serialises a ParameterTree to JSON or PRM text.
+ * Format is derived from `fileName`'s extension: `.prm` → PRM, otherwise JSON.
+ * When `fileName` is absent, JSON is used as the default.
+ */
+export const serializeParametersFile = (
   tree: ParameterTree,
   fileName?: string
 ): string => {
   return getParameterFileFormat(fileName) === 'prm'
     ? stringifyPrmParameters(tree)
     : JSON.stringify(tree, null, 2)
-}
-
-export const coerceParameterTree = (value: unknown): ParameterTree => {
-  if (!isParameterTree(value)) {
-    throw new Error('Parameters file must contain an object at the top level')
-  }
-  return value
 }

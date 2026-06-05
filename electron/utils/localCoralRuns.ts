@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
 import store from './storage.js'
-import { stringifyParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
+import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
@@ -150,10 +150,8 @@ export const startLocalExecutableRun = async ({
   const logPath = path.join(workingDirectory, `local-${jobId}.out`)
 
   await ensureDir(workingDirectory)
-  await fs.promises.writeFile(
-    parametersPath,
-    stringifyParametersFile(parametersPayload, parametersPath)
-  )
+  const parametersContent = serializeParametersFile(parametersPayload, parametersFileName)
+  await fs.promises.writeFile(parametersPath, parametersContent)
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(executablePath, [parametersPath], {

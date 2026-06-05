@@ -11,9 +11,10 @@
   } from '../types/parameterTypes'
   import {
     isParameterLeaf,
+    isParameterTree,
     normalizeParameterFileName,
     parseParametersFileWithFormat,
-    stringifyParametersFile,
+    serializeParametersFile,
   } from '../utils/parameterFileFormat'
 
   let parameters = $derived(parametersState.value)
@@ -26,22 +27,14 @@
   let duplicateModalPath = $state<string[]>([])
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
-  function isLeaf(obj: unknown): obj is ParameterLeaf {
-    return isParameterLeaf(obj)
-  }
-
-  function isTree(obj: unknown): obj is ParameterTree {
-    return typeof obj === 'object' && obj !== null && !isLeaf(obj)
-  }
-
-  function isExtraNode(obj: unknown): boolean {
+function isExtraNode(obj: unknown): boolean {
     return typeof obj === 'object' && obj !== null && '__extra' in obj
       ? Boolean((obj as { __extra?: boolean }).__extra)
       : false
   }
 
   function coerceUploadedLeaf(value: unknown): ParameterLeaf {
-    if (isLeaf(value)) {
+    if (isParameterLeaf(value)) {
       return { ...value, __extra: true }
     }
 
@@ -56,11 +49,11 @@
   }
 
   function includeExtraNode(node: unknown): ParameterNode {
-    if (isLeaf(node)) {
+    if (isParameterLeaf(node)) {
       return { ...node, __extra: true }
     }
 
-    if (isTree(node)) {
+    if (isParameterTree(node)) {
       const entries = Object.entries(node)
         .filter(([key]) => key !== '__extra')
         .map(([key, value]) => [key, includeExtraNode(value)])
@@ -74,7 +67,7 @@
   }
 
   function cloneNodeAsExtra(node: ParameterNode): ParameterNode {
-    if (isLeaf(node)) {
+    if (isParameterLeaf(node)) {
       return { ...node, __extra: true }
     }
 
@@ -100,7 +93,7 @@
     let current: ParameterTree = root
     for (const segment of path) {
       const next = current[segment]
-      if (!isTree(next)) {
+      if (!isParameterTree(next)) {
         return null
       }
       current = next
@@ -143,7 +136,7 @@
     ) as ParameterTree
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
-    if (!parentTree || !isTree(sourceNode)) {
+    if (!parentTree || !isParameterTree(sourceNode)) {
       toastState.add({
         message: `Section ${duplicateModalKey} could not be duplicated`,
         type: 'error',
@@ -205,8 +198,8 @@
             ? (uploaded as Record<string, unknown>)[key]
             : undefined
 
-        if (isLeaf(templateValue)) {
-          if (uploadedValue && isLeaf(uploadedValue)) {
+        if (isParameterLeaf(templateValue)) {
+          if (uploadedValue && isParameterLeaf(uploadedValue)) {
             return [
               key,
               {
@@ -274,9 +267,17 @@
 
   async function syncImportedParametersFileName(fileName: string) {
     if (!isExecutableMode) return
-    await settingsState.saveActiveExecutionParametersFileName(fileName)
+    await settingsState.saveParametersFileName(fileName)
   }
 
+  /**
+   * Reads the selected file and loads it into the parameter state.
+   * Without a template snapshot, the file becomes the new state directly.
+   * With a template, the file is merged onto it so template metadata is preserved.
+   * When the file contains keys absent from the template, prompts the user before including them.
+   *
+   * @param event - The change event from the hidden file input.
+   */
   function loadFile(event: Event) {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
@@ -297,47 +298,46 @@
           parsedFile.format
         )
         lastParametersFilePath = selectedPath || normalizedFileName
+
+        // Without a snapshot there is nothing to merge against — load directly.
         if (!parametersState.snapshot) {
           parametersState.value = parsed
-          await syncImportedParametersFileName(normalizedFileName)
-          return
-        }
+        } else {
+          const baseTemplate = parametersState.snapshot
+          const initialMerge = mergeParametersTemplate(baseTemplate, parsed)
+          let merged = initialMerge.merged
+          const { extraPaths } = initialMerge
 
-        const baseTemplate = parametersState.snapshot
-        const initialMerge = mergeParametersTemplate(baseTemplate, parsed)
-        let merged = initialMerge.merged
-        const { extraPaths } = initialMerge
-
-        if (extraPaths.length > 0) {
-          const preview = extraPaths.slice(0, 5).join(', ')
-          const suffix =
-            extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
-          const includeExtras = window.confirm(
-            `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
-          )
-          if (includeExtras) {
-            merged = mergeParametersTemplate(
-              baseTemplate,
-              parsed,
-              '',
-              true
-            ).merged
-            toastState.add({
-              message: 'Extra sections were added to the parameters table',
-              type: 'info',
-              timeout: 8000,
-            })
-          } else {
-            toastState.add({
-              message:
-                'Extra sections were ignored and only template entries were loaded',
-              type: 'info',
-              timeout: 8000,
-            })
+          if (extraPaths.length > 0) {
+            const preview = extraPaths.slice(0, 5).join(', ')
+            const suffix =
+              extraPaths.length > 5
+                ? `, and ${extraPaths.length - 5} more`
+                : ''
+            const includeExtras = window.confirm(
+              `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
+            )
+            if (includeExtras) {
+              // Second merge pass with includeExtras=true to include the extra keys.
+              merged = mergeParametersTemplate(baseTemplate, parsed, '', true).merged
+              toastState.add({
+                message: 'Extra sections were added to the parameters table',
+                type: 'info',
+                timeout: 8000,
+              })
+            } else {
+              toastState.add({
+                message:
+                  'Extra sections were ignored and only template entries were loaded',
+                type: 'info',
+                timeout: 8000,
+              })
+            }
           }
+
+          parametersState.value = merged
         }
 
-        parametersState.value = merged
         await syncImportedParametersFileName(normalizedFileName)
       } catch {
         toastState.add({
@@ -346,6 +346,7 @@
         })
       }
 
+      // Reset so the same file path can trigger onChange again on re-selection.
       input.value = ''
     }
     reader.readAsText(file)
@@ -396,7 +397,7 @@
       return
     }
 
-    const content = stringifyParametersFile(snapshot, defaultPath)
+    const content = serializeParametersFile(snapshot, defaultPath)
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -446,7 +447,7 @@
     <div class="tree">
       {#snippet renderTree(tree: ParameterTree, depth: number, path: string[])}
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
-          {#if isLeaf(val)}
+          {#if isParameterLeaf(val)}
             {@const inputType = parsePatternType(val.pattern_description)}
             <div class="param-leaf">
               {#if val.documentation}

@@ -14,7 +14,7 @@ import { connectToSSHWithKey } from './sshConnections.js'
 import {
   getParameterProbeFileNames,
   parseParametersFileWithFormat,
-  withParameterFileFormat,
+  replaceExtension,
 } from '../../src/lib/utils/parameterFileFormat.js'
 
 const execFileAsync = promisify(execFile)
@@ -37,7 +37,7 @@ const parseExecutableParametersTemplate = (
   return {
     kind: 'parametersTemplate',
     data: parsed.data,
-    parametersFileName: withParameterFileFormat(
+    parametersFileName: replaceExtension(
       generatedFileName,
       parsed.format
     ),
@@ -303,22 +303,9 @@ export const probeAndSyncExecutionSettings = async (
           : await getExecutableTemplateMetadataRemote(execution)
     }
 
-    const requestedParametersFileName =
-      execution.backendKind === 'executable'
-        ? getExecutableParametersFileName(execution[execution.location])
-        : ''
-    const effectiveParametersFileName =
-      metadata?.kind === 'parametersTemplate'
-        ? metadata.parametersFileName
-        : undefined
-
     return {
       ok: true,
-      message:
-        effectiveParametersFileName &&
-        effectiveParametersFileName !== requestedParametersFileName
-          ? `Configuration validated successfully; using ${effectiveParametersFileName} for parameters`
-          : 'Configuration validated successfully',
+      message: 'Configuration validated successfully',
       metadata,
       syncedAt: new Date().toISOString(),
     }

@@ -37,10 +37,15 @@ export const probeAndSaveExecution = async (execution: ExecutionSettings) => {
   if (!probeResult?.ok) return probeResult
 
   await applySyncedMetadata(probeResult)
-  await settingsState.saveExecution(
-    applyEffectiveParametersFileName(execution, probeResult),
-    probeResult
-  )
+  await settingsState.saveExecution(execution, probeResult)
+  if (
+    probeResult.metadata?.kind === 'parametersTemplate' &&
+    probeResult.metadata.parametersFileName
+  ) {
+    await settingsState.saveParametersFileName(
+      probeResult.metadata.parametersFileName
+    )
+  }
   return probeResult
 }
 
@@ -57,28 +62,5 @@ const applySyncedMetadata = async (probeResult: ProbeResult) => {
 
   if (metadata.kind === 'parametersTemplate') {
     parametersState.value = metadata.data as any
-  }
-}
-
-const applyEffectiveParametersFileName = (
-  execution: ExecutionSettings,
-  probeResult: ProbeResult
-): ExecutionSettings => {
-  const metadata = probeResult.metadata
-  if (
-    execution.backendKind !== 'executable' ||
-    metadata?.kind !== 'parametersTemplate' ||
-    !metadata.parametersFileName
-  ) {
-    return execution
-  }
-
-  const location = execution.location
-  return {
-    ...execution,
-    [location]: {
-      ...execution[location],
-      parametersFileName: metadata.parametersFileName,
-    },
   }
 }

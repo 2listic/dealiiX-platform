@@ -70,7 +70,7 @@ export const settingsState = {
   ) {
     await persistSettings({ ...settings, execution, lastProbe })
   },
-  async saveActiveExecutionParametersFileName(parametersFileName: string) {
+  async saveParametersFileName(parametersFileName: string) {
     const location = settings.execution.location
     await persistSettings({
       ...settings,

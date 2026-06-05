@@ -15,7 +15,7 @@ import {
 import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
   getParameterFileFilters,
-  stringifyParametersFile,
+  serializeParametersFile,
 } from '../src/lib/utils/parameterFileFormat.js'
 import {
   getLocalNodeStatusFiles,
@@ -75,27 +75,14 @@ export function registerIpcHandlers(): void {
     return filePaths?.[0] ?? null
   })
 
-  ipcMain.handle(
-    'save-json-file',
-    async (
-      _event,
-      { defaultPath, content, title = 'Save Parameters File' }
-    ) => {
-      const result = await dialog.showSaveDialog({
-        title,
-        defaultPath,
-        filters: [{ name: 'JSON', extensions: ['json'] }],
-      })
-
-      if (result.canceled || !result.filePath) {
-        return { canceled: true, filePath: null }
-      }
-
-      await fs.promises.writeFile(result.filePath, content, 'utf8')
-      return { canceled: false, filePath: result.filePath }
-    }
-  )
-
+  /**
+   * Shows a native save dialog and writes the parameter file.
+   * @param defaultPath - Pre-filled filename shown in the dialog.
+   * @param parameters  - ParameterTree to serialise. Takes precedence over `content`.
+   * @param content     - Pre-serialised string fallback, used only when `parameters` is absent.
+   * @param title       - Dialog window title.
+   * @returns { canceled, filePath } — filePath is null when canceled.
+   */
   ipcMain.handle(
     'save-parameters-file',
     async (
@@ -112,9 +99,11 @@ export function registerIpcHandlers(): void {
         return { canceled: true, filePath: null }
       }
 
+      // Format derived from the confirmed path extension: .prm → PRM text, otherwise JSON.
+      // On Linux (GTK) the filter dropdown does not append the extension automatically.
       const fileContent =
         parameters !== undefined
-          ? stringifyParametersFile(parameters, result.filePath)
+          ? serializeParametersFile(parameters, result.filePath)
           : content
       if (typeof fileContent !== 'string') {
         throw new Error('No parameters content was provided')
