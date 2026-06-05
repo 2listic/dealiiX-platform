@@ -208,7 +208,6 @@ export const parseParametersFileWithFormat = (
   }
 }
 
-
 export const isParameterTree = (value: unknown): value is ParameterTree => {
   return (
     typeof value === 'object' &&

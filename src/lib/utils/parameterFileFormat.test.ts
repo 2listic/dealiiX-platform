@@ -142,7 +142,10 @@ set Tolerance = 1e-8
   })
 
   it('round-trips prm values through the shared parse and stringify helpers', () => {
-    const parsed = parseParametersFileWithFormat(samplePrm, 'parameters.prm').data
+    const parsed = parseParametersFileWithFormat(
+      samplePrm,
+      'parameters.prm'
+    ).data
     const serialized = stringifyPrmParameters(parsed)
     const reparsed = parsePrmParameters(serialized)
 

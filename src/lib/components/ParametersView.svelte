@@ -141,14 +141,16 @@
     getModal(duplicateSectionModalId)?.open()
   }
 
-  /** 
+  /**
    * Commits the duplication after the user confirms the name in the modal.
    */
   function confirmDuplicateSection() {
     if (!parametersState.value || !duplicateModalKey) return
 
     // Deep-clone so intermediate mutations don't touch the live reactive store.
-    const nextParameters = $state.snapshot(parametersState.value) as ParameterTree
+    const nextParameters = $state.snapshot(
+      parametersState.value
+    ) as ParameterTree
     // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
@@ -310,10 +312,8 @@
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
-        const { data: uploadedTree, format: detectedFormat } = parseParametersFileWithFormat(
-          e.target?.result as string,
-          file.name
-        )
+        const { data: uploadedTree, format: detectedFormat } =
+          parseParametersFileWithFormat(e.target?.result as string, file.name)
         lastParametersFilePath = window.electron?.getFilePath?.(file) ?? ''
 
         // Without a snapshot there is nothing to merge against — load directly.
@@ -321,7 +321,10 @@
           parametersState.value = uploadedTree
         } else {
           const baseTemplate = parametersState.snapshot
-          const initialMerge = mergeParametersTemplate(baseTemplate, uploadedTree)
+          const initialMerge = mergeParametersTemplate(
+            baseTemplate,
+            uploadedTree
+          )
           let merged = initialMerge.merged
           const { extraPaths } = initialMerge
 
@@ -358,7 +361,9 @@
           parametersState.value = merged
         }
 
-        await syncImportedParametersFileName(normalizeParameterFileName(file.name, detectedFormat))
+        await syncImportedParametersFileName(
+          normalizeParameterFileName(file.name, detectedFormat)
+        )
       } catch {
         toastState.add({
           message: 'Invalid parameters file',
