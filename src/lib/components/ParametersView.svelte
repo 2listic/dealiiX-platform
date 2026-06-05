@@ -12,14 +12,12 @@
   import {
     isParameterLeaf,
     isParameterTree,
-    normalizeParameterFileName,
     parseParametersFileWithFormat,
     serializeParametersFile,
   } from '../utils/parameterFileFormat'
 
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
-  let isExecutableMode = $derived(settingsState.isExecutableMode)
   let lastParametersFilePath = ''
   let expandedSections = $state<Record<string, boolean>>({})
   let duplicateModalName = $state('')
@@ -292,11 +290,6 @@
     }
   }
 
-  async function syncImportedParametersFileName(fileName: string) {
-    if (!isExecutableMode) return
-    await settingsState.saveParametersFileName(fileName)
-  }
-
   /**
    * Reads the selected file and loads it into the parameter state.
    * Without a template snapshot, the file becomes the new state directly.
@@ -310,13 +303,17 @@
     const file = input.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
-        const { data: uploadedTree, format: detectedFormat } =
-          parseParametersFileWithFormat(e.target?.result as string, file.name)
+        const { data: uploadedTree } = parseParametersFileWithFormat(
+          e.target?.result as string,
+          file.name
+        )
         lastParametersFilePath = window.electron?.getFilePath?.(file) ?? ''
 
-        // Without a snapshot there is nothing to merge against — load directly.
+        // Currently always takes the else branch — ParametersView is only rendered in executable mode,
+        // and a probe should always run before this function is reachable (button not visible).
+        // Kept as defensive code in case context changes.
         if (!parametersState.snapshot) {
           parametersState.value = uploadedTree
         } else {
@@ -360,10 +357,6 @@
 
           parametersState.value = merged
         }
-
-        await syncImportedParametersFileName(
-          normalizeParameterFileName(file.name, detectedFormat)
-        )
       } catch {
         toastState.add({
           message: 'Invalid parameters file',
@@ -441,24 +434,13 @@
 <div class="parameters-view">
   {#if !parameters}
     <div class="empty-state">
-      {#if isExecutableMode}
-        <div class="empty-state-copy">
-          <strong>No backend template synced yet</strong>
-          <span>
-            Save the executable configuration from Settings to probe the backend
-            and load its parameters template.
-          </span>
-        </div>
-      {:else}
-        <input
-          bind:this={fileInput}
-          type="file"
-          accept=".json,.prm"
-          onchange={loadFile}
-          hidden
-        />
-        <Button onclick={() => fileInput.click()}>Load Parameters File</Button>
-      {/if}
+      <div class="empty-state-copy">
+        <strong>No backend template synced yet</strong>
+        <span>
+          Save the executable configuration from Settings to probe the backend
+          and load its parameters template.
+        </span>
+      </div>
     </div>
   {:else}
     <input

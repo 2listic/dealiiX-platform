@@ -182,23 +182,25 @@ export const parseParametersFileWithFormat = (
   fileName?: string
 ): ParsedParametersFile => {
   const trimmed = content.trimStart()
-  const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[')
-  if (looksJson || JSON_EXTENSION_RE.test(fileName ?? '')) {
+
+  // Content sniffing takes priority: JSON-looking content must parse as valid JSON.
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    const parsed = JSON.parse(content)
+    if (!isParameterTree(parsed)) {
+      throw new Error('Parameters file must contain an object at the top level')
+    }
+    return { data: parsed, format: 'json' }
+  }
+
+  // Extension hint: try JSON but silently fall back to PRM if the content is not JSON.
+  if (JSON_EXTENSION_RE.test(fileName ?? '')) {
     try {
       const parsed = JSON.parse(content)
-      if (!isParameterTree(parsed)) {
-        throw new Error(
-          'Parameters file must contain an object at the top level'
-        )
+      if (isParameterTree(parsed)) {
+        return { data: parsed, format: 'json' }
       }
-      return { data: parsed, format: 'json' }
-    } catch (error) {
-      // Re-throw only when content itself looked like JSON — a parse failure then
-      // means malformed JSON, not a wrong format. If only the extension hinted JSON
-      // but content doesn't look like it, fall through to the PRM parser.
-      if (looksJson) {
-        throw error
-      }
+    } catch {
+      // Content is not JSON despite the .json extension — fall through to PRM.
     }
   }
 
