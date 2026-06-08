@@ -87,6 +87,13 @@ set Tolerance = 1e-8
     })
   })
 
+  it('strips inline # comments from prm values', () => {
+    const parsed = parsePrmParameters(
+      'set Omega = t < 0.5 ? 6.28 : -6.28 # default: 0\n'
+    )
+    expect(parsed.Omega).toMatchObject({ value: 't < 0.5 ? 6.28 : -6.28' })
+  })
+
   it('detects prm content even when the requested filename ends in .json', () => {
     const parsed = parseParametersFileWithFormat(samplePrm, 'parameters.json')
 

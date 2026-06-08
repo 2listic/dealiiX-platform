@@ -90,28 +90,59 @@ const createImportedLeaf = (
   pattern_description: '[Text]',
 })
 
+/**
+ * Parses a deal.II `.prm` file into a `ParameterTree`.
+ *
+ * The format consists of `subsection` / `end` blocks for nesting,
+ * `set <name> = <value>` entries for leaf parameters, and `#`-prefixed
+ * comment lines that become each leaf's `documentation` field.
+ * Inline `# …` suffixes on `set` lines (e.g. `# default: 0`) are stripped
+ * to match deal.II's own `ParameterHandler` behaviour.
+ *
+ * @param content - Raw `.prm` file text (any line ending).
+ * @returns The parsed `ParameterTree` with all subsections and leaf values.
+ * @throws If the file contains unknown syntax, mismatched `subsection`/`end`
+ *         pairs, name collisions, or an empty parameter or subsection name.
+ */
 export const parsePrmParameters = (content: string): ParameterTree => {
+  // root is the top-level tree that will be returned.
   const root: ParameterTree = {}
+
+  // stack tracks the current nesting path. stack[0] is always root.
+  // Each 'subsection' pushes a new object; each 'end' pops it.
+  // stack.length - 1 is the current depth; stack[stack.length - 1] is the active node.
   const stack: ParameterTree[] = [root]
+
+  // comments accumulates consecutive '#' lines immediately before a 'set' or 'subsection'.
+  // Stored without the leading '#' and flushed (reset to []) after each value or section.
   const comments: string[] = []
+
+  // Normalise line endings to '\n' (Windows PRM files use '\r\n').
   const lines = content.replace(/\r\n?/g, '\n').split('\n')
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1
     const trimmed = line.trim()
 
+    // ── Blank line ──────────────────────────────────────────────────────────
     if (!trimmed) {
+      // A blank line separates comment paragraphs. Push an empty string as a
+      // paragraph separator only if there are already comments and the last
+      // line is not already a separator, to avoid duplicates.
       if (comments.length > 0 && comments[comments.length - 1] !== '') {
         comments.push('')
       }
       return
     }
 
+    // ── Full-line comment (# …) ──────────────────────────────────────────────
     if (trimmed.startsWith('#')) {
+      // Strip the '#' and one optional leading space; accumulate for the next entry.
       comments.push(trimmed.slice(1).trimStart())
       return
     }
 
+    // ── subsection <name> ────────────────────────────────────────────────────
     const subsectionMatch = trimmed.match(/^subsection\s+(.+)$/)
     if (subsectionMatch) {
       const name = subsectionMatch[1].trim()
@@ -121,28 +152,40 @@ export const parsePrmParameters = (content: string): ParameterTree => {
 
       const parent = stack[stack.length - 1]
       const existing = parent[name]
+
+      // deal.II allows re-opening a subsection that already exists (two-stage
+      // parsing: the first pass may create it, the second pass re-enters it).
+      // Guard against a name collision where a 'set' already claimed the key.
       if (existing !== undefined && !isParameterTree(existing)) {
         throw new Error(
           `PRM subsection "${name}" conflicts with a parameter at line ${lineNumber}`
         )
       }
 
+      // Reuse the existing section object if present, otherwise create a new one.
       const section = (existing as ParameterTree | undefined) ?? {}
       parent[name] = section
+      // Descend: make the new section the active node.
       stack.push(section)
       comments.length = 0
       return
     }
 
+    // ── end ──────────────────────────────────────────────────────────────────
     if (trimmed === 'end') {
+      // Popping the root would mean there is an unmatched 'end'.
       if (stack.length === 1) {
         throw new Error(`Unexpected PRM end at line ${lineNumber}`)
       }
+      // Ascend: return to the parent section.
       stack.pop()
       comments.length = 0
       return
     }
 
+    // ── set <name> = <value> ─────────────────────────────────────────────────
+    // The name can contain spaces (e.g. 'set Function expression = …').
+    // The lazy (.+?) stops at the first ' =' to avoid greedily eating the '='.
     const setMatch = trimmed.match(/^set\s+(.+?)\s*=\s*(.*)$/)
     if (setMatch) {
       const name = setMatch[1].trim()
@@ -150,8 +193,19 @@ export const parsePrmParameters = (content: string): ParameterTree => {
         throw new Error(`Invalid PRM parameter name at line ${lineNumber}`)
       }
 
+      // deal.II treats '#' as an inline comment character: everything from
+      // the first '#' onward is documentation, not part of the value.
+      // Example: "t < 0.5 ? 6.28 : -6.28 # default: 0" → "t < 0.5 ? 6.28 : -6.28"
+      const rawValue = setMatch[2]
+      const hashPos = rawValue.indexOf('#')
+      const value = (
+        hashPos >= 0 ? rawValue.slice(0, hashPos) : rawValue
+      ).trim()
+
+      // Join accumulated comment lines into a single documentation string and
+      // store the leaf in the currently active section (top of stack).
       stack[stack.length - 1][name] = createImportedLeaf(
-        setMatch[2].trim(),
+        value,
         comments.join('\n').trim()
       )
       comments.length = 0
@@ -161,6 +215,8 @@ export const parsePrmParameters = (content: string): ParameterTree => {
     throw new Error(`Unsupported PRM syntax at line ${lineNumber}: ${line}`)
   })
 
+  // After processing every line the stack should be back to just [root].
+  // A non-empty stack means one or more 'subsection' blocks were never closed.
   if (stack.length !== 1) {
     throw new Error('PRM file ended before all subsections were closed')
   }
