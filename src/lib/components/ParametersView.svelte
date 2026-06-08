@@ -19,11 +19,17 @@
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
   let lastParametersFilePath = ''
-  let expandedSections = $state<Record<string, boolean>>({})
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
+
+  // Action: sets open once on mount, then lets the browser own the state.
+  // No update() → Svelte never re-applies this on re-renders, so user-opened
+  // sections stay open when the tree is mutated (e.g. after a duplication).
+  function setInitialOpen(node: HTMLDetailsElement, open: boolean) {
+    node.open = open
+  }
 
   function isExtraNode(obj: unknown): boolean {
     return typeof obj === 'object' && obj !== null && '__extra' in obj
@@ -105,23 +111,6 @@
     return current
   }
 
-  function getSectionPathKey(path: string[], key: string): string {
-    return [...path, key].join('.')
-  }
-
-  function isSectionOpen(path: string[], key: string, depth: number): boolean {
-    const sectionPath = getSectionPathKey(path, key)
-    return expandedSections[sectionPath] ?? depth < 1
-  }
-
-  function toggleSection(path: string[], key: string, depth: number) {
-    expandedSections[getSectionPathKey(path, key)] = !isSectionOpen(
-      path,
-      key,
-      depth
-    )
-  }
-
   /**
    * Opens the duplicate modal pre-filled with a suggested name.
    * The path/key split is intentional: mutation requires a handle to the parent
@@ -176,22 +165,11 @@
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
     // only this final assignment triggers Svelte reactivity.
     parametersState.value = nextParameters
-    expandedSections[getSectionPathKey(duplicateModalPath, newName)] = true
     toastState.add({
       message: `Section ${duplicateModalKey} duplicated as ${newName}`,
       type: 'success',
     })
     getModal(duplicateSectionModalId)?.close()
-  }
-
-  function handleSectionContextMenu(
-    event: MouseEvent,
-    path: string[],
-    key: string
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    duplicateSection(path, key)
   }
 
   function resetDuplicateSectionModal() {
@@ -509,33 +487,26 @@
               </label>
             </div>
           {:else}
-            <div class="section-block">
-              <button
-                type="button"
-                class="section-header"
-                class:extra={isExtraNode(val)}
-                onclick={() => toggleSection(path, key, depth)}
-                oncontextmenu={(event) =>
-                  handleSectionContextMenu(event, path, key)}
-              >
-                <span class="section-chevron">
-                  {#if isSectionOpen(path, key, depth)}
-                    ▾
-                  {:else}
-                    ▸
-                  {/if}
-                </span>
-                <span>{key}</span>
-              </button>
-              {#if isSectionOpen(path, key, depth)}
-                <div class="section-content">
-                  {@render renderTree(val as ParameterTree, depth + 1, [
-                    ...path,
-                    key,
-                  ])}
-                </div>
-              {/if}
-            </div>
+            <details use:setInitialOpen={depth < 1}>
+              <summary class:extra={isExtraNode(val)}>
+                {key}
+                <button
+                  type="button"
+                  class="duplicate-btn"
+                  title="Duplicate section"
+                  onclick={(e) => {
+                    e.stopPropagation()
+                    duplicateSection(path, key)
+                  }}>⧉ Copy</button
+                >
+              </summary>
+              <div class="section-content">
+                {@render renderTree(val as ParameterTree, depth + 1, [
+                  ...path,
+                  key,
+                ])}
+              </div>
+            </details>
           {/if}
         {/each}
       {/snippet}
@@ -625,12 +596,11 @@
     padding: 7rem 2rem 2rem 1rem;
   }
 
-  .section-block {
+  details {
     margin: 0.25rem 0;
   }
 
-  .section-header {
-    width: 100%;
+  summary {
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -639,21 +609,53 @@
     padding: 0.4rem 0.25rem;
     border-radius: 3px;
     user-select: none;
-    border: none;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    font: inherit;
+    list-style: none;
   }
 
-  .section-header:hover {
+  /* Chrome/Safari render their own disclosure triangle on <summary> by default.
+     list-style:none (above) removes it in Firefox; this removes it in WebKit. */
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* ::before inserts a virtual first child with no HTML node.
+     Because summary is a flex container, it becomes the leftmost flex item. */
+  summary::before {
+    content: '▸';
+    flex: 0 0 auto;
+    width: 1rem;
+    text-align: center;
+  }
+
+  /* details[open] matches when the browser has set the open attribute.
+     The > child combinator ensures we only target the direct summary, not nested ones. */
+  details[open] > summary::before {
+    content: '▾';
+  }
+
+  summary:hover {
     background: var(--background-color-secondary);
   }
 
-  .section-chevron {
-    width: 1rem;
-    text-align: center;
+  .duplicate-btn {
+    margin-left: auto;
+    opacity: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
     flex: 0 0 auto;
+  }
+
+  summary:hover .duplicate-btn {
+    opacity: 1;
+  }
+
+  summary:hover .duplicate-btn:hover {
+    border-color: var(--ternary-color);
   }
 
   .section-content {
@@ -662,7 +664,7 @@
     margin-left: 0.5rem;
   }
 
-  .section-header.extra,
+  summary.extra,
   .param-name.extra,
   .param-doc.extra {
     color: #1f6feb;
@@ -676,8 +678,9 @@
       column-gap: 1.5rem;
     }
 
-    .section-content :global(.section-block) {
-      grid-column: 1 / -1; /* make <details> span from column 1 to the last column */
+    /* :global() needed because <details> rendered inside a snippet */
+    .section-content :global(details) {
+      grid-column: 1 / -1; /* span both columns so a section never splits across them */
     }
   }
 
