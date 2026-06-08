@@ -7,11 +7,7 @@
     setNodes,
   } from '../../stores/nodes.svelte'
   import { setRegistry } from '../../stores/registryStore.svelte'
-  import {
-    loadGraphFromProtocol,
-    removeQualifiedIds,
-    validateGraphData,
-  } from '../../utils/graphParser'
+  import { importGraphFromProtocol } from '../../utils/graphParser'
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
@@ -88,29 +84,17 @@
       graphStackState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
-      const [validEdges, invalidEdges] = validateGraphData(importedGraph)
-      if (invalidEdges.length > 0) {
-        invalidEdges.forEach((invalidEdge) => {
-          toastState.add({
-            message: invalidEdge.error,
-            type: 'error',
-          })
+      const { invalidEdges, registeredNetworkNodes } =
+        await importGraphFromProtocol(importedGraph)
+      invalidEdges.forEach((invalidEdge) => {
+        toastState.add({ message: invalidEdge.error, type: 'error' })
+      })
+      registeredNetworkNodes.forEach((nodeName) => {
+        toastState.add({
+          message: `Sub-graph node ${nodeName} was registered`,
+          type: 'success',
         })
-      }
-
-      const cleanedGraph = removeQualifiedIds(importedGraph)
-      const registeredNetworkNodes = await loadGraphFromProtocol(
-        cleanedGraph.workflow.nodes,
-        validEdges
-      )
-      if (registeredNetworkNodes.length > 0) {
-        registeredNetworkNodes.forEach((nodeName) => {
-          toastState.add({
-            message: `Sub-graph node ${nodeName} was registered`,
-            type: 'success',
-          })
-        })
-      }
+      })
       currentProjectState.clear()
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())
@@ -131,6 +115,14 @@
     }
     const importedNodesAsText = await readFileAsText(files[0])
     const importedNodes = JSON.parse(importedNodesAsText)
+    if ('workflow' in importedNodes) {
+      toastState.add({
+        message:
+          'This looks like a graph file, not a registry. Use "Open graph" to load it.',
+        type: 'error',
+      })
+      return
+    }
     const skippedKeys = await setRegistry(importedNodes)
     skippedKeys.forEach((key) => {
       toastState.add({

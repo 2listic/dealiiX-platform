@@ -30,9 +30,10 @@ Fix/refactor: short summary of the overall change
 
 Rules:
 
-- No `Co-Authored-By` trailer
+- No `Co-Authored-By` trailer, no "Generated with Claude Code" attribution
 - Keep the subject line concise — detail goes in the PR description, not the commit
 - Use sentence case, no trailing period
+- PR descriptions use `## Summary` (bullet list) and `## Test plan` (markdown checklist) sections
 
 ## Changelog
 
@@ -68,6 +69,7 @@ The application uses two JSON protocols to communicate with CORAL:
 - `parseGraphWithQualifiedIds()` - Same as above but adds hierarchical `qualified_id` to all nodes (used for export/save/download)
 - `addQualifiedIds()` / `removeQualifiedIds()` - Add/remove `qualified_id` fields recursively through nested network nodes
 - `loadGraphFromProtocol()` - Load a graph from CORAL protocol format (renamed from `loadGraph()`)
+- `importGraphFromProtocol()` - Full import pipeline: validate + strip qualified IDs + load. Returns `{ invalidEdges, registeredNetworkNodes }` for callers to toast.
 
 ### State Management
 

@@ -33,6 +33,9 @@ dist-electron/
 .vscode/
 .continue/
 
+# Local environment variables (machine-specific paths)
+.env
+
 # Containers' shared folder
 containers/shared-data/*
 

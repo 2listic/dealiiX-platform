@@ -24,7 +24,7 @@ Then build inside the container:
 docker exec -it coral-ssh-slurm bash -c "
   cd /app/shared-data/step-70 &&
   cmake -B build -DCMAKE_BUILD_TYPE=Release &&
-  cmake --build build -j\$(nproc)
+  cmake --build build -j4
 "
 ```
 

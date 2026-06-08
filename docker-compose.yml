@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.coral
-      secrets:
-        - ssh-key
     image: coral-ssh-slurm:latest
     container_name: coral-ssh-slurm
     hostname: slurm
@@ -15,6 +13,7 @@ services:
       - '8000:8000'
     volumes:
       - ./containers/shared-data:/app/shared-data
+      - ${SSH_PUB_KEY_PATH:?SSH_PUB_KEY_PATH is not set — create a .env file, see docs/run-coral-docker.md}:/tmp/ssh_key.pub:ro
     environment:
       - OMPI_ALLOW_RUN_AS_ROOT=1
       - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
@@ -38,10 +37,24 @@ services:
       - coral-ssh-slurm
     # restart: unless-stopped
 
+  coral-remote-server:
+    build:
+      context: ./coral-remote-server
+    image: coral-remote-server:latest
+    container_name: coral-remote-server
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./coral-remote-server/data:/root/data
+    environment:
+      - GIN_MODE=${GIN_MODE:-release}
+      - PORT=8080
+      - DB_PATH=/root/data/coral.db
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+    networks:
+      - coral-network
+    # restart: unless-stopped
+
 networks:
   coral-network:
     driver: bridge
-
-secrets:
-  ssh-key:
-    file: /home/your-username/.ssh/your-ssh-public-key
