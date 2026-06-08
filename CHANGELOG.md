@@ -4,6 +4,15 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### UI/UX
+
+- [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
+- [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
+
+### Electron-Backend
+
+- [#185](https://github.com/2listic/dealiiX-platform/pull/185) `.prm` (deal.II text parameter) files are now supported alongside JSON as a parameter file format. Format is auto-detected from content; JSON is preferred when probing since it carries richer metadata (validation patterns, defaults, documentation). When probing, the app tries the JSON candidate first and falls back to `.prm` if absent or unparseable. "Merge from file" no longer overwrites the stored parameters file name.
+
 ### SSH communication
 
 - Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
