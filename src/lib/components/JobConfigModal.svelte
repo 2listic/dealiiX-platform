@@ -1,22 +1,32 @@
 <script lang="ts">
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
-  import type { JobConfig } from '../utils/sshMessages'
+  import type {
+    CoralJobConfig,
+    ExecutableJobConfig,
+  } from '../utils/sshMessages'
+  import {
+    exportAndEvalCoralGraph,
+    exportAndEvalExecutable,
+  } from '../utils/sshMessages'
+  import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { toastState } from '../stores/toastsStore.svelte'
 
   interface Props {
     modalId: string
-    // underscore-prefixed arg name to avoid eslint no-unused-vars error in interfaces
-    onConfirm: (_config: JobConfig) => void
   }
 
-  let { modalId, onConfirm }: Props = $props()
+  let { modalId }: Props = $props()
 
   let nodes = $state(1)
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
+  // Writable derived: pre-filled from settings, temporarily overridable per run.
+  // Resets to the stored value automatically if settings change.
+  let parametersFileName = $derived(settingsState.activeParametersFileName)
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(settingsState.isExecutableMode)
   let isCoralMode = $derived(settingsState.isCoralMode)
@@ -37,17 +47,33 @@
   )
 
   const handleConfirm = () => {
-    onConfirm({
-      nodes,
-      tasksPerNode,
-      timeLimit,
-      useMpi: isExecutableMode ? false : useMpi,
+    getModal(modalId)?.close()
+
+    // Close first so the modal doesn't block the UI during the long-running job.
+    const run = isExecutableMode
+      ? exportAndEvalExecutable({
+          kind: 'executable',
+          parametersFileName,
+        } satisfies ExecutableJobConfig)
+      : exportAndEvalCoralGraph(getNodesSnapshot(), getEdgesSnapshot(), {
+          kind: 'coral',
+          nodes,
+          tasksPerNode,
+          timeLimit,
+          useMpi,
+        } satisfies CoralJobConfig)
+
+    run.catch((error) => {
+      console.error('Failed to execute graph:', error)
+      toastState.add({
+        message: error.message || 'Failed to execute graph',
+        type: 'error',
+      })
     })
-    getModal(modalId).close()
   }
 
   const handleCancel = () => {
-    getModal(modalId).close()
+    getModal(modalId)?.close()
   }
 </script>
 
@@ -119,6 +145,23 @@
       <div class="hint-message">
         Synchronize the executable settings first to generate a parameters
         template.
+      </div>
+    {/if}
+    {#if isExecutableMode && hasParameters}
+      <div class="inputs-container">
+        <div class="input-container">
+          <label for="parameters-file-name">Parameters file</label>
+          <input
+            id="parameters-file-name"
+            type="text"
+            bind:value={parametersFileName}
+            class="input-field"
+            placeholder="parameters.json"
+          />
+          <span class="hint-message"
+            >Extension determines format: .json or .prm</span
+          >
+        </div>
       </div>
     {/if}
     {#if isCoralMode}
