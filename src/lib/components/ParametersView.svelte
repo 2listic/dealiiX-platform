@@ -179,6 +179,27 @@
   }
 
   /**
+   * Deletes an extra node (section or leaf) after user confirmation.
+   * Only nodes marked __extra are deletable; template nodes are read-only.
+   * @param path - Path to the parent tree.
+   * @param key  - Key of the node to delete within its parent.
+   */
+  function deleteExtraNode(path: string[], key: string) {
+    if (!parametersState.value) return
+    if (!window.confirm(`Delete "${key}"? This cannot be undone.`)) return
+    // Deep-clone so intermediate mutations don't touch the live reactive store.
+    const next = $state.snapshot(parametersState.value) as ParameterTree
+    // parent is a reference into next — mutations propagate back via JS reference semantics.
+    const parent = getTreeAtPath(next, path)
+    if (!parent) return
+    // mutation here propagates back to next.
+    delete parent[key]
+    // only this final assignment triggers Svelte reactivity.
+    parametersState.value = next
+    toastState.add({ message: `${key} removed`, type: 'success' })
+  }
+
+  /**
    * Merges an uploaded file onto the canonical template tree.
    * The template is the authority for structure and metadata; the upload only contributes `value` fields.
    * Designed to be called twice from `loadFile` when extra keys are detected: first with
@@ -499,6 +520,17 @@
                     duplicateSection(path, key)
                   }}>⧉ Copy</button
                 >
+                {#if isExtraNode(val)}
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    title="Delete section"
+                    onclick={(e) => {
+                      e.stopPropagation()
+                      deleteExtraNode(path, key)
+                    }}>× Delete</button
+                  >
+                {/if}
               </summary>
               <div class="section-content">
                 {@render renderTree(val as ParameterTree, depth + 1, [
@@ -658,6 +690,26 @@
     border-color: var(--ternary-color);
   }
 
+  .delete-btn {
+    opacity: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    flex: 0 0 auto;
+  }
+
+  summary:hover .delete-btn {
+    opacity: 1;
+  }
+
+  summary:hover .delete-btn:hover {
+    border-color: var(--ternary-color);
+  }
+
   .section-content {
     padding-left: 1rem;
     border-left: 1px solid var(--xy-edge-stroke, #333);
@@ -761,7 +813,6 @@
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     background: var(--secondary-color);
-    color: var(--ternary-color);
     font: inherit;
   }
 
