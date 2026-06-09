@@ -23,6 +23,7 @@
     setEdges,
     addEdge,
     addNode,
+    removeNodes,
   } from '../stores/nodes.svelte'
   import {
     getAvailableNodes,
@@ -89,7 +90,7 @@
   }
 
   let selectedNodes = $derived(getNodes().filter((node) => node.selected))
-  let canCreateSubnetworkFromSelection = $derived(selectedNodes.length > 1)
+  let hasMultiSelection = $derived(selectedNodes.length > 1)
   let canMergeSubgraphsFromSelection = $derived(
     selectedNodes.some((node) => node.data.node_type === NodeType.NETWORK)
   )
@@ -141,6 +142,11 @@
         type: 'error',
       })
     }
+  }
+
+  const deleteSelectedNodes = () => {
+    removeNodes(selectedNodes.map((n) => n.id))
+    clearConnectionCache()
   }
 
   const openCreateSelectionNetworkModal = (
@@ -425,7 +431,7 @@
         </div>
       </div>
     </Panel>
-    {#if canCreateSubnetworkFromSelection}
+    {#if hasMultiSelection}
       <Panel position="bottom-center">
         <div class="selection-actions">
           <Button
@@ -444,6 +450,9 @@
               Merge Subgraphs
             </Button>
           {/if}
+          <Button variant="delete" size="small" onclick={deleteSelectedNodes}>
+            Delete Selected
+          </Button>
         </div>
       </Panel>
     {/if}

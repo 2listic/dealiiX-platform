@@ -1,3 +1,4 @@
+import { SvelteSet } from 'svelte/reactivity'
 import { initialNodes, initialEdges } from '../data/flowData'
 import { setLastNodeId, getNextNodeId } from './nodeIdCounter.svelte'
 export { getNextNodeId }
@@ -58,6 +59,18 @@ export const removeNode = (nodeId: string): void => {
   nodes = nodes.filter((node) => node.id !== nodeId)
   edges = edges.filter(
     (edge) => edge.source !== nodeId && edge.target !== nodeId
+  )
+}
+
+/**
+ * Remove multiple nodes and all edges connected to any of them in a single state update.
+ * @param {string[]} nodeIds - IDs of the nodes to remove
+ */
+export const removeNodes = (nodeIds: string[]): void => {
+  const idSet = new SvelteSet(nodeIds)
+  nodes = nodes.filter((node) => !idSet.has(node.id))
+  edges = edges.filter(
+    (edge) => !idSet.has(edge.source) && !idSet.has(edge.target)
   )
 }
 
