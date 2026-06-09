@@ -299,7 +299,7 @@
 
   <!-- Project group -->
   {#if isCoralMode}
-    <SidebarGroupButton title="Project" disabled={!hasRemoteServer}>
+    <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
       {#snippet icon()}
         <svg
           fill="var(--ternary-color)"
