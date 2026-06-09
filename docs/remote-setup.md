@@ -72,15 +72,16 @@ cp .env.example .env
 
 ## Step 4 — set permissions on the shared data directory
 
-The visualizer container runs as a non-root user whose UID does not match
-the remote user, so it needs world-write access to the shared data directory:
+The visualizer container runs as `mambauser` (a non-root user baked into the
+image) whose UID does not match the remote user, so the shared data directory
+needs to be group- or world-writable:
 
 ```bash
 chmod a+w containers/shared-data
 ```
 
-This only needs to be done once. Without it the visualizer will silently fail
-to save files and will report permission errors in edit mode.
+This only needs to be done once. Without it the visualizer will fail to save
+files and will report permission errors in edit mode.
 
 ## Step 5 — build and start the containers
 
