@@ -62,6 +62,12 @@ const isValidJobIdMap = (map: unknown): boolean => {
 /**
  * Store for mapping scheduler job IDs to internal job metadata.
  * Used by JobsTable to resolve the touch-dir path and to gate the Nodes Status button.
+ *
+ * Scheduler IDs are accepted as `number | string` throughout because call sites produce
+ * them in different forms: remote paths parse a string out of sbatch stdout via regex;
+ * local paths receive a number over IPC. JS object keys are always strings internally,
+ * so both forms resolve to the same slot (e.g. `obj[123]` and `obj["123"]` are identical).
+ * The read path (JobsTable) always has strings since the job list is `string[][]`.
  */
 export const jobIdMapState = {
   get current(): Record<string, JobIdEntry> {
@@ -83,7 +89,7 @@ export const jobIdMapState = {
    * @param backendKind - Backend used for this run.
    */
   async add(
-    jobIdScheduler: number,
+    jobIdScheduler: number | string,
     jobIdInternal: number,
     backendKind: 'coral' | 'executable'
   ): Promise<void> {
@@ -94,7 +100,7 @@ export const jobIdMapState = {
    * @param jobIdScheduler - The scheduler job ID to look up.
    * @returns The internal job ID, or undefined if not found.
    */
-  getJobIdInternal(jobIdScheduler: number): number | undefined {
+  getJobIdInternal(jobIdScheduler: string): number | undefined {
     return jobIdMap[jobIdScheduler]?.internalId
   },
   /**
@@ -102,7 +108,7 @@ export const jobIdMapState = {
    * @returns The backend kind, or undefined if not found.
    */
   getJobBackendKind(
-    jobIdScheduler: number
+    jobIdScheduler: string
   ): 'coral' | 'executable' | undefined {
     return jobIdMap[jobIdScheduler]?.backendKind
   },

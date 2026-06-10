@@ -180,7 +180,7 @@ const exportAndEvalGraphLocal = async (
   })
 
   const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(Number(jobId), internalJobId, 'coral')
+  await jobIdMapState.add(jobId, internalJobId, 'coral')
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
   const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
@@ -266,7 +266,7 @@ const exportAndEvalExecutableRemote = async (
 
   const jobId = resultExecute.match(/\d+/)?.[0]
   if (!jobId) throw new Error('Job ID not found')
-  await jobIdMapState.add(Number(jobId), internalJobId, 'executable')
+  await jobIdMapState.add(jobId, internalJobId, 'executable')
 
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
   toastState.add({
