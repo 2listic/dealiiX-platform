@@ -247,7 +247,7 @@
     width: 24px;
     height: 24px;
     cursor: pointer;
-    fill: #f44;
+    fill: var(--button-delete-bg);
     transition: transform 0.3s ease;
   }
 

@@ -611,7 +611,7 @@
 
   .radio-option.active {
     background: var(--button-action-bg);
-    color: #fff;
+    color: white;
   }
 
   .execution-grid {

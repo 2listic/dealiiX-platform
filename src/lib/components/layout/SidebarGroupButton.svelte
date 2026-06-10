@@ -85,6 +85,7 @@
     border-radius: 10px;
     cursor: pointer;
     margin: 0.5rem 0.2rem;
+    color: inherit;
   }
 
   .element-label:hover:not(.disabled) {

@@ -69,7 +69,7 @@
   .btn-default {
     background-color: var(--secondary-color);
     border-color: var(--ternary-color);
-    color: #383838;
+    color: var(--ternary-color);
   }
 
   .btn-default:hover:not(:disabled) {
