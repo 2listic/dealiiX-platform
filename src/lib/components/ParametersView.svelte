@@ -9,28 +9,26 @@
     ParameterTree,
     ParameterNode,
   } from '../types/parameterTypes'
+  import {
+    isParameterLeaf,
+    isParameterTree,
+    parseParametersFileWithFormat,
+    serializeParametersFile,
+  } from '../utils/parameterFileFormat'
 
   let parameters = $derived(parametersState.value)
   let fileInput = $state<HTMLInputElement | null>(null)
-  let isExecutableMode = $derived(settingsState.isExecutableMode)
-  let lastParametersFilePath = $state('')
-  let expandedSections = $state<Record<string, boolean>>({})
+  let lastParametersFilePath = ''
   let duplicateModalName = $state('')
-  let duplicateModalKey = $state('')
-  let duplicateModalPath = $state<string[]>([])
+  let duplicateModalKey = ''
+  let duplicateModalPath: string[] = []
   const duplicateSectionModalId = 'duplicate-parameters-section-modal'
 
-  function isLeaf(obj: unknown): obj is ParameterLeaf {
-    return (
-      typeof obj === 'object' &&
-      obj !== null &&
-      'value' in obj &&
-      'pattern_description' in obj
-    )
-  }
-
-  function isTree(obj: unknown): obj is ParameterTree {
-    return typeof obj === 'object' && obj !== null && !isLeaf(obj)
+  // Action: sets open once on mount, then lets the browser own the state.
+  // No update() → Svelte never re-applies this on re-renders, so user-opened
+  // sections stay open when the tree is mutated (e.g. after a duplication).
+  function setInitialOpen(node: HTMLDetailsElement, open: boolean) {
+    node.open = open
   }
 
   function isExtraNode(obj: unknown): boolean {
@@ -40,7 +38,7 @@
   }
 
   function coerceUploadedLeaf(value: unknown): ParameterLeaf {
-    if (isLeaf(value)) {
+    if (isParameterLeaf(value)) {
       return { ...value, __extra: true }
     }
 
@@ -55,11 +53,11 @@
   }
 
   function includeExtraNode(node: unknown): ParameterNode {
-    if (isLeaf(node)) {
+    if (isParameterLeaf(node)) {
       return { ...node, __extra: true }
     }
 
-    if (isTree(node)) {
+    if (isParameterTree(node)) {
       const entries = Object.entries(node)
         .filter(([key]) => key !== '__extra')
         .map(([key, value]) => [key, includeExtraNode(value)])
@@ -73,7 +71,7 @@
   }
 
   function cloneNodeAsExtra(node: ParameterNode): ParameterNode {
-    if (isLeaf(node)) {
+    if (isParameterLeaf(node)) {
       return { ...node, __extra: true }
     }
 
@@ -92,6 +90,12 @@
     } as ParameterTree
   }
 
+  /**
+   * Returns the subtree at `path`, or null if any segment is missing or a leaf.
+   * `path` points to the PARENT — the node itself is `getTreeAtPath(root, path)[key]`.
+   * @param root - The root of the tree to navigate.
+   * @param path - Array of keys from the root to the target's parent.
+   */
   function getTreeAtPath(
     root: ParameterTree,
     path: string[]
@@ -99,7 +103,7 @@
     let current: ParameterTree = root
     for (const segment of path) {
       const next = current[segment]
-      if (!isTree(next)) {
+      if (!isParameterTree(next)) {
         return null
       }
       current = next
@@ -107,23 +111,13 @@
     return current
   }
 
-  function getSectionPathKey(path: string[], key: string): string {
-    return [...path, key].join('.')
-  }
-
-  function isSectionOpen(path: string[], key: string, depth: number): boolean {
-    const sectionPath = getSectionPathKey(path, key)
-    return expandedSections[sectionPath] ?? depth < 1
-  }
-
-  function toggleSection(path: string[], key: string, depth: number) {
-    expandedSections[getSectionPathKey(path, key)] = !isSectionOpen(
-      path,
-      key,
-      depth
-    )
-  }
-
+  /**
+   * Opens the duplicate modal pre-filled with a suggested name.
+   * The path/key split is intentional: mutation requires a handle to the parent
+   * (to insert a sibling), not to the node itself.
+   * @param path - Path to the parent tree, e.g. `["Geometry"]` for a section inside Geometry.
+   * @param key  - Name of the section within its parent, e.g. `"Mesh"`.
+   */
   function duplicateSection(path: string[], key: string) {
     if (!parametersState.value) return
 
@@ -134,15 +128,20 @@
     getModal(duplicateSectionModalId)?.open()
   }
 
+  /**
+   * Commits the duplication after the user confirms the name in the modal.
+   */
   function confirmDuplicateSection() {
     if (!parametersState.value || !duplicateModalKey) return
 
-    const nextParameters = JSON.parse(
-      JSON.stringify(parametersState.value)
+    // Deep-clone so intermediate mutations don't touch the live reactive store.
+    const nextParameters = $state.snapshot(
+      parametersState.value
     ) as ParameterTree
+    // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
-    if (!parentTree || !isTree(sourceNode)) {
+    if (!parentTree || !isParameterTree(sourceNode)) {
       toastState.add({
         message: `Section ${duplicateModalKey} could not be duplicated`,
         type: 'error',
@@ -162,24 +161,15 @@
       return
     }
 
+    // mutation here propagates back to nextParameters.
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
+    // only this final assignment triggers Svelte reactivity.
     parametersState.value = nextParameters
-    expandedSections[getSectionPathKey(duplicateModalPath, newName)] = true
     toastState.add({
       message: `Section ${duplicateModalKey} duplicated as ${newName}`,
       type: 'success',
     })
     getModal(duplicateSectionModalId)?.close()
-  }
-
-  function handleSectionContextMenu(
-    event: MouseEvent,
-    path: string[],
-    key: string
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    duplicateSection(path, key)
   }
 
   function resetDuplicateSectionModal() {
@@ -188,6 +178,38 @@
     duplicateModalPath = []
   }
 
+  /**
+   * Deletes an extra node (section or leaf) after user confirmation.
+   * Only nodes marked __extra are deletable; template nodes are read-only.
+   * @param path - Path to the parent tree.
+   * @param key  - Key of the node to delete within its parent.
+   */
+  function deleteExtraNode(path: string[], key: string) {
+    if (!parametersState.value) return
+    if (!window.confirm(`Delete "${key}"? This cannot be undone.`)) return
+    // Deep-clone so intermediate mutations don't touch the live reactive store.
+    const next = $state.snapshot(parametersState.value) as ParameterTree
+    // parent is a reference into next — mutations propagate back via JS reference semantics.
+    const parent = getTreeAtPath(next, path)
+    if (!parent) return
+    // mutation here propagates back to next.
+    delete parent[key]
+    // only this final assignment triggers Svelte reactivity.
+    parametersState.value = next
+    toastState.add({ message: `${key} removed`, type: 'success' })
+  }
+
+  /**
+   * Merges an uploaded file onto the canonical template tree.
+   * The template is the authority for structure and metadata; the upload only contributes `value` fields.
+   * Designed to be called twice from `loadFile` when extra keys are detected: first with
+   * `includeExtras=false` (dry run), then with `includeExtras=true` if the user confirms.
+   * @param template      - Canonical parameter tree (authority for structure and metadata).
+   * @param uploaded      - Parsed content of the user's file (untrusted, arbitrary shape).
+   * @param currentPath   - Dot-separated path of the current subtree for building `extraPaths`. Pass `''` at root.
+   * @param includeExtras - Whether to include keys not present in the template.
+   * @returns Merged tree and list of dotted paths that were in the upload but not the template.
+   */
   function mergeParametersTemplate(
     template: ParameterTree,
     uploaded: unknown,
@@ -195,6 +217,7 @@
     includeExtras = false
   ): { merged: ParameterTree; extraPaths: string[] } {
     const extraPaths: string[] = []
+    // Phase 1: walk every key in the template, taking values from the upload when present.
     const mergedEntries: [string, ParameterNode][] = Object.entries(template)
       .filter(([key]) => key !== '__extra')
       .map(([key, templateValue]) => {
@@ -204,28 +227,19 @@
             ? (uploaded as Record<string, unknown>)[key]
             : undefined
 
-        if (isLeaf(templateValue)) {
-          if (uploadedValue && isLeaf(uploadedValue)) {
-            return [
-              key,
-              {
-                ...templateValue,
-                value: uploadedValue.value,
-              },
-            ]
+        if (isParameterLeaf(templateValue)) {
+          // Uploaded is a full leaf (JSON format): take its value, keep template metadata.
+          if (uploadedValue && isParameterLeaf(uploadedValue)) {
+            return [key, { ...templateValue, value: uploadedValue.value }]
           }
+          // Uploaded is a bare primitive (PRM format): stringify it into the template leaf.
           if (
             uploadedValue !== undefined &&
             (typeof uploadedValue !== 'object' || uploadedValue === null)
           ) {
-            return [
-              key,
-              {
-                ...templateValue,
-                value: String(uploadedValue),
-              },
-            ]
+            return [key, { ...templateValue, value: String(uploadedValue) }]
           }
+          // No uploaded value: keep the template default unchanged.
           return [key, { ...templateValue }]
         }
 
@@ -239,7 +253,9 @@
           path,
           includeExtras
         )
+        // Bubble up extra paths from nested levels.
         extraPaths.push(...nested.extraPaths)
+        // Preserve __extra flag if the template subtree was itself already extra.
         return [
           key,
           isExtraNode(templateValue)
@@ -248,6 +264,8 @@
         ]
       })
 
+    // Phase 2: find keys in the upload that don't exist in the template.
+    // Phase 1 only walks template keys, so this second pass is needed to catch upload-only keys.
     if (uploaded && typeof uploaded === 'object') {
       for (const [key, value] of Object.entries(
         uploaded as Record<string, unknown>
@@ -271,64 +289,81 @@
     }
   }
 
+  /**
+   * Reads the selected file and loads it into the parameter state.
+   * Without a template snapshot, the file becomes the new state directly.
+   * With a template, the file is merged onto it so template metadata is preserved.
+   * When the file contains keys absent from the template, prompts the user before including them.
+   *
+   * @param event - The change event from the hidden file input.
+   */
   function loadFile(event: Event) {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return
-    lastParametersFilePath = window.electron?.getFilePath
-      ? window.electron.getFilePath(file)
-      : lastParametersFilePath
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const parsed = JSON.parse(e.target?.result as string)
+        const { data: uploadedTree } = parseParametersFileWithFormat(
+          e.target?.result as string,
+          file.name
+        )
+        lastParametersFilePath = window.electron?.getFilePath?.(file) ?? ''
+
+        // Currently always takes the else branch — ParametersView is only rendered in executable mode,
+        // and a probe should always run before this function is reachable (button not visible).
+        // Kept as defensive code in case context changes.
         if (!parametersState.snapshot) {
-          parametersState.value = parsed
-          return
-        }
-
-        const baseTemplate = parametersState.snapshot
-        const initialMerge = mergeParametersTemplate(baseTemplate, parsed)
-        let merged = initialMerge.merged
-        const { extraPaths } = initialMerge
-
-        if (extraPaths.length > 0) {
-          const preview = extraPaths.slice(0, 5).join(', ')
-          const suffix =
-            extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
-          const includeExtras = window.confirm(
-            `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
+          parametersState.value = uploadedTree
+        } else {
+          const baseTemplate = parametersState.snapshot
+          const initialMerge = mergeParametersTemplate(
+            baseTemplate,
+            uploadedTree
           )
-          if (includeExtras) {
-            merged = mergeParametersTemplate(
-              baseTemplate,
-              parsed,
-              '',
-              true
-            ).merged
-            toastState.add({
-              message: 'Extra sections were added to the parameters table',
-              type: 'info',
-              timeout: 8000,
-            })
-          } else {
-            toastState.add({
-              message:
-                'Extra sections were ignored and only template entries were loaded',
-              type: 'info',
-              timeout: 8000,
-            })
-          }
-        }
+          let merged = initialMerge.merged
+          const { extraPaths } = initialMerge
 
-        parametersState.value = merged
+          if (extraPaths.length > 0) {
+            const preview = extraPaths.slice(0, 5).join(', ')
+            const suffix =
+              extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
+            const includeExtras = window.confirm(
+              `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
+            )
+            if (includeExtras) {
+              // Second merge pass with includeExtras=true to include the extra keys.
+              merged = mergeParametersTemplate(
+                baseTemplate,
+                uploadedTree,
+                '',
+                true
+              ).merged
+              toastState.add({
+                message: 'Extra sections were added to the parameters table',
+                type: 'info',
+                timeout: 8000,
+              })
+            } else {
+              toastState.add({
+                message:
+                  'Extra sections were ignored and only template entries were loaded',
+                type: 'info',
+                timeout: 8000,
+              })
+            }
+          }
+
+          parametersState.value = merged
+        }
       } catch {
         toastState.add({
-          message: 'Invalid parameters JSON file',
+          message: 'Invalid parameters file',
           type: 'error',
         })
       }
 
+      // Reset so the same file path can trigger onChange again on re-selection.
       input.value = ''
     }
     reader.readAsText(file)
@@ -355,12 +390,17 @@
 
   async function saveParameters() {
     if (!parameters) return
-    const json = JSON.stringify(parametersState.snapshot, null, 4)
+    const snapshot = parametersState.snapshot
+    if (!snapshot) return
+    const defaultPath =
+      lastParametersFilePath ||
+      settingsState.activeParametersFileName ||
+      'template_parameters.json'
 
     if (window.electron?.invoke) {
-      const result = await window.electron.invoke('save-json-file', {
-        defaultPath: lastParametersFilePath || 'template_parameters.json',
-        content: json,
+      const result = await window.electron.invoke('save-parameters-file', {
+        defaultPath,
+        parameters: snapshot,
         title: 'Save Parameters File',
       })
       if (!result?.canceled && result?.filePath) {
@@ -373,14 +413,12 @@
       return
     }
 
-    const blob = new Blob([json], { type: 'application/json' })
+    const content = serializeParametersFile(snapshot, defaultPath)
+    const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = lastParametersFilePath
-      ? lastParametersFilePath.split(/[/\\]/).pop() ||
-        'template_parameters.json'
-      : 'template_parameters.json'
+    a.download = defaultPath.split(/[/\\]/).pop() || 'template_parameters.json'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -395,37 +433,26 @@
 <div class="parameters-view">
   {#if !parameters}
     <div class="empty-state">
-      {#if isExecutableMode}
-        <div class="empty-state-copy">
-          <strong>No backend template synced yet</strong>
-          <span>
-            Save the executable configuration from Settings to probe the backend
-            and load its parameters template.
-          </span>
-        </div>
-      {:else}
-        <input
-          bind:this={fileInput}
-          type="file"
-          accept=".json"
-          onchange={loadFile}
-          hidden
-        />
-        <Button onclick={() => fileInput.click()}>Load Parameters File</Button>
-      {/if}
+      <div class="empty-state-copy">
+        <strong>No backend template synced yet</strong>
+        <span>
+          Save the executable configuration from Settings to probe the backend
+          and load its parameters template.
+        </span>
+      </div>
     </div>
   {:else}
     <input
       bind:this={fileInput}
       type="file"
-      accept=".json"
+      accept=".json,.prm"
       onchange={loadFile}
       hidden
     />
     <div class="tree">
       {#snippet renderTree(tree: ParameterTree, depth: number, path: string[])}
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
-          {#if isLeaf(val)}
+          {#if isParameterLeaf(val)}
             {@const inputType = parsePatternType(val.pattern_description)}
             <div class="param-leaf">
               {#if val.documentation}
@@ -481,33 +508,37 @@
               </label>
             </div>
           {:else}
-            <div class="section-block">
-              <button
-                type="button"
-                class="section-header"
-                class:extra={isExtraNode(val)}
-                onclick={() => toggleSection(path, key, depth)}
-                oncontextmenu={(event) =>
-                  handleSectionContextMenu(event, path, key)}
-              >
-                <span class="section-chevron">
-                  {#if isSectionOpen(path, key, depth)}
-                    ▾
-                  {:else}
-                    ▸
-                  {/if}
-                </span>
-                <span>{key}</span>
-              </button>
-              {#if isSectionOpen(path, key, depth)}
-                <div class="section-content">
-                  {@render renderTree(val as ParameterTree, depth + 1, [
-                    ...path,
-                    key,
-                  ])}
-                </div>
-              {/if}
-            </div>
+            <details use:setInitialOpen={depth < 1}>
+              <summary class:extra={isExtraNode(val)}>
+                {key}
+                <button
+                  type="button"
+                  class="duplicate-btn"
+                  title="Duplicate section"
+                  onclick={(e) => {
+                    e.stopPropagation()
+                    duplicateSection(path, key)
+                  }}>⧉ Copy</button
+                >
+                {#if isExtraNode(val)}
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    title="Delete section"
+                    onclick={(e) => {
+                      e.stopPropagation()
+                      deleteExtraNode(path, key)
+                    }}>× Delete</button
+                  >
+                {/if}
+              </summary>
+              <div class="section-content">
+                {@render renderTree(val as ParameterTree, depth + 1, [
+                  ...path,
+                  key,
+                ])}
+              </div>
+            </details>
           {/if}
         {/each}
       {/snippet}
@@ -518,11 +549,11 @@
       <Button
         size="small"
         title="Merge new fields from file"
-        onclick={() => fileInput?.click()}>Add from file</Button
+        onclick={() => fileInput?.click()}>Merge from file</Button
       >
       <Button
         size="small"
-        title="Download parameters as a JSON file"
+        title="Download parameters as a JSON or PRM file"
         onclick={saveParameters}>Download params</Button
       >
     </div>
@@ -597,12 +628,11 @@
     padding: 7rem 2rem 2rem 1rem;
   }
 
-  .section-block {
+  details {
     margin: 0.25rem 0;
   }
 
-  .section-header {
-    width: 100%;
+  summary {
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -611,21 +641,73 @@
     padding: 0.4rem 0.25rem;
     border-radius: 3px;
     user-select: none;
-    border: none;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    font: inherit;
+    list-style: none;
   }
 
-  .section-header:hover {
+  /* Chrome/Safari render their own disclosure triangle on <summary> by default.
+     list-style:none (above) removes it in Firefox; this removes it in WebKit. */
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* ::before inserts a virtual first child with no HTML node.
+     Because summary is a flex container, it becomes the leftmost flex item. */
+  summary::before {
+    content: '▸';
+    flex: 0 0 auto;
+    width: 1rem;
+    text-align: center;
+  }
+
+  /* details[open] matches when the browser has set the open attribute.
+     The > child combinator ensures we only target the direct summary, not nested ones. */
+  details[open] > summary::before {
+    content: '▾';
+  }
+
+  summary:hover {
     background: var(--background-color-secondary);
   }
 
-  .section-chevron {
-    width: 1rem;
-    text-align: center;
+  .duplicate-btn {
+    margin-left: auto;
+    opacity: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
     flex: 0 0 auto;
+  }
+
+  summary:hover .duplicate-btn {
+    opacity: 1;
+  }
+
+  summary:hover .duplicate-btn:hover {
+    border-color: var(--ternary-color);
+  }
+
+  .delete-btn {
+    opacity: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    flex: 0 0 auto;
+  }
+
+  summary:hover .delete-btn {
+    opacity: 1;
+  }
+
+  summary:hover .delete-btn:hover {
+    border-color: var(--ternary-color);
   }
 
   .section-content {
@@ -634,7 +716,7 @@
     margin-left: 0.5rem;
   }
 
-  .section-header.extra,
+  summary.extra,
   .param-name.extra,
   .param-doc.extra {
     color: #1f6feb;
@@ -648,8 +730,9 @@
       column-gap: 1.5rem;
     }
 
-    .section-content :global(.section-block) {
-      grid-column: 1 / -1; /* make <details> span from column 1 to the last column */
+    /* :global() needed because <details> rendered inside a snippet */
+    .section-content :global(details) {
+      grid-column: 1 / -1; /* span both columns so a section never splits across them */
     }
   }
 
@@ -730,7 +813,6 @@
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     background: var(--secondary-color);
-    color: var(--ternary-color);
     font: inherit;
   }
 

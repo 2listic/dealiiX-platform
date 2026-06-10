@@ -1,6 +1,6 @@
 # Run a Custom Executable Remotely (SSH)
 
-This approach uses the **remote + executable** execution mode to run any deal.II-based program that follows the DealiiX executable contract on a remote machine over SSH — without Coral as an intermediary.
+This approach uses the **remote + executable** execution mode to run any deal.II-based program that follows the DealiiX executable contract on a remote machine over SSH — without Coral as an intermediary. Parameter files can be JSON (`.json`) or deal.II-style PRM (`.prm`).
 
 ## Prerequisites
 
@@ -42,8 +42,8 @@ Open **Settings** and set the following under **Execution Mode**:
 | Path to private SSH key | private key matching `docker-compose.yml` |
 | Working directory       | `/app/shared-data`                        |
 | Executable path         | `/app/shared-data/step-70/build/step-70`  |
-| Parameters file name    | `parameters.json`                         |
+| Parameters file name    | `parameters.json` or `parameters.prm`     |
 
-Click **Save & Sync Execution** — the app probes the remote binary via SSH, reads back the JSON parameter template, and populates the Parameters panel as an editable tree.
+Click **Save & Sync Execution** — the app probes the remote binary via SSH, reads back the JSON or PRM parameter template, and populates the Parameters panel as an editable tree.
 
 For everything else — the dimension suffix convention, parameter editing, and the smoke test — follow [run-executable-local.md](run-executable-local.md). The only difference is that the executable and output files live on the remote machine under `/app/shared-data/`.

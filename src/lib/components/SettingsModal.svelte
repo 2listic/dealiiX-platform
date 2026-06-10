@@ -345,7 +345,7 @@
                           bind:value={remoteExecutableParametersFileName}
                           class="input-field"
                           type="text"
-                          placeholder="parameters.json"
+                          placeholder="parameters.json or parameters.prm"
                           required
                         />
                       </label>
@@ -363,7 +363,7 @@
                           bind:value={localExecutableParametersFileName}
                           class="input-field"
                           type="text"
-                          placeholder="parameters.json"
+                          placeholder="parameters.json or parameters.prm"
                           required
                         />
                       </label>

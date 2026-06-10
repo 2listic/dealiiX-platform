@@ -2,7 +2,7 @@
 
 This approach uses the **local + executable** execution mode with any deal.II-based program that follows the DealiiX executable contract.
 
-The contract is simple: when called with a JSON file path that **does not exist**, the binary writes a JSON template with all parameters and exits. When the file **exists**, it reads it and runs the simulation.
+The contract is simple: when called with a parameters file path that **does not exist**, the binary writes a template with all parameters and exits. When the file **exists**, it reads it and runs the simulation. DealiiX accepts either JSON (`.json`) or deal.II-style text parameters (`.prm`) and translates between the two formats internally.
 
 ## Example: deal.II step-70 (Stokes immersed boundary)
 
@@ -24,23 +24,26 @@ cmake --build build -j4
 
 step-70 (and DealiiX-compatible executables in general) pick up the spatial dimension from a numeric suffix on the parameters file name. For example:
 
-| File name           | Dimension      |
-| ------------------- | -------------- |
-| `parameters.json`   | default (2D)   |
-| `parameters2.json`  | 2D             |
-| `parameters3.json`  | 3D             |
-| `parameters23.json` | 2D in 3D space |
+| File name                                 | Dimension      |
+| ----------------------------------------- | -------------- |
+| `parameters.json` or `parameters.prm`     | default (2D)   |
+| `parameters2.json` or `parameters2.prm`   | 2D             |
+| `parameters3.json` or `parameters3.prm`   | 3D             |
+| `parameters23.json` or `parameters23.prm` | 2D in 3D space |
 
 ### Manually verify the executable contract
 
 ```bash
 cd local_runs/step-70/build
 
-# Probe: file does not exist → deal.II writes a JSON template and exits
+# Probe: file does not exist -> deal.II writes a template and exits
 ./step-70 parameters.json
 cat parameters.json   # valid JSON with all parameters and their defaults
 
-# Run: file exists → reads it and runs the simulation
+./step-70 parameters.prm
+cat parameters.prm    # valid PRM with the same parameters
+
+# Run: file exists -> reads it and runs the simulation
 ./step-70 parameters.json
 ```
 
@@ -48,15 +51,15 @@ cat parameters.json   # valid JSON with all parameters and their defaults
 
 Open **Settings** and set the following under **Execution Mode**:
 
-| Setting              | Value                                                         |
-| -------------------- | ------------------------------------------------------------- |
-| Location             | `local`                                                       |
-| Backend kind         | `executable`                                                  |
-| Working directory    | `<repo>/local_runs/step-70/build` (or any writable directory) |
-| Executable path      | `<repo>/local_runs/step-70/build/step-70`                     |
-| Parameters file name | `parameters.json` (generated on first probe if absent)        |
+| Setting              | Value                                                                      |
+| -------------------- | -------------------------------------------------------------------------- |
+| Location             | `local`                                                                    |
+| Backend kind         | `executable`                                                               |
+| Working directory    | `<repo>/local_runs/step-70/build` (or any writable directory)              |
+| Executable path      | `<repo>/local_runs/step-70/build/step-70`                                  |
+| Parameters file name | `parameters.json` or `parameters.prm` (generated on first probe if absent) |
 
-Click **Save & Sync** — the app probes the binary, reads back the JSON template, and populates the Parameters panel with all step-70 parameters as an editable tree. Edit the values as needed, then click **Execute** to run the simulation.
+Click **Save & Sync** — the app probes the binary, reads back the JSON or PRM template, and populates the Parameters panel with all step-70 parameters as an editable tree. Edit the values as needed, then click **Execute** to run the simulation. The same Parameters panel can import or download either `.json` or `.prm` files.
 
 ### Smoke test (fast 2D run)
 

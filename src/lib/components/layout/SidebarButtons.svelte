@@ -8,12 +8,7 @@
   } from '../../stores/nodes.svelte'
   import { setRegistry } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../utils/graphParser'
-  import {
-    exportAndEvalGraph,
-    buildGraphPayload,
-    openNewWindow,
-    type JobConfig,
-  } from '../../utils/sshMessages'
+  import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -75,22 +70,6 @@
 
   const handleExecution = () => {
     getModal(JobConfigModalId)?.open()
-  }
-
-  const handleJobConfirm = (config: JobConfig) => {
-    executeGraph(config)
-  }
-
-  const executeGraph = async (config?: JobConfig) => {
-    try {
-      await exportAndEvalGraph(getNodesSnapshot(), getEdgesSnapshot(), config)
-    } catch (error) {
-      console.error('Failed to execute graph:', error)
-      toastState.add({
-        message: error.message || 'Failed to execute graph',
-        type: 'error',
-      })
-    }
   }
 
   /**
@@ -373,7 +352,7 @@
     <span class="button-text">Run</span>
   </div>
 
-  <JobConfigModal modalId={JobConfigModalId} onConfirm={handleJobConfirm} />
+  <JobConfigModal modalId={JobConfigModalId} />
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">

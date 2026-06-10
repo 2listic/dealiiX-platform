@@ -28,6 +28,19 @@ To rebuild images (e.g. after updating the `coral` submodule or changing `Docker
 docker compose up -d --build
 ```
 
+## Set permissions on the shared data directory
+
+The visualizer container runs as `mambauser` (a non-root user baked into the
+image) whose UID does not match the host user, so the shared data directory
+needs to be world-writable:
+
+```bash
+chmod a+w containers/shared-data
+```
+
+This only needs to be done once. Without it the visualizer will fail to save
+files and will report permission errors in edit mode.
+
 ## Build Coral inside the container
 
 Connect via SSH:

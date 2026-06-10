@@ -14,6 +14,10 @@ import {
 } from './utils/sshConnections.js'
 import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
+  getParameterFileFilters,
+  serializeParametersFile,
+} from '../src/lib/utils/parameterFileFormat.js'
+import {
   getLocalNodeStatusFiles,
   getLocalRunLog,
   getLocalRunState,
@@ -71,23 +75,40 @@ export function registerIpcHandlers(): void {
     return filePaths?.[0] ?? null
   })
 
+  /**
+   * Shows a native save dialog and writes the parameter file.
+   * @param defaultPath - Pre-filled filename shown in the dialog.
+   * @param parameters  - ParameterTree to serialise. Takes precedence over `content`.
+   * @param content     - Pre-serialised string fallback, used only when `parameters` is absent.
+   * @param title       - Dialog window title.
+   * @returns { canceled, filePath } — filePath is null when canceled.
+   */
   ipcMain.handle(
-    'save-json-file',
+    'save-parameters-file',
     async (
       _event,
-      { defaultPath, content, title = 'Save Parameters File' }
+      { defaultPath, parameters, content, title = 'Save Parameters File' }
     ) => {
       const result = await dialog.showSaveDialog({
         title,
         defaultPath,
-        filters: [{ name: 'JSON', extensions: ['json'] }],
+        filters: getParameterFileFilters(),
       })
 
       if (result.canceled || !result.filePath) {
         return { canceled: true, filePath: null }
       }
 
-      await fs.promises.writeFile(result.filePath, content, 'utf8')
+      // Format derived from the confirmed path extension: .prm → PRM text, otherwise JSON.
+      // On Linux (GTK) the filter dropdown does not append the extension automatically.
+      const fileContent =
+        parameters !== undefined
+          ? serializeParametersFile(parameters, result.filePath)
+          : content
+      if (typeof fileContent !== 'string') {
+        throw new Error('No parameters content was provided')
+      }
+      await fs.promises.writeFile(result.filePath, fileContent, 'utf8')
       return { canceled: false, filePath: result.filePath }
     }
   )

@@ -38,6 +38,14 @@ export const probeAndSaveExecution = async (execution: ExecutionSettings) => {
 
   await applySyncedMetadata(probeResult)
   await settingsState.saveExecution(execution, probeResult)
+  if (
+    probeResult.metadata?.kind === 'parametersTemplate' &&
+    probeResult.metadata.parametersFileName
+  ) {
+    await settingsState.saveParametersFileName(
+      probeResult.metadata.parametersFileName
+    )
+  }
   return probeResult
 }
 

@@ -58,6 +58,9 @@ export const settingsState = {
   get isCoralMode() {
     return settings.execution.backendKind === 'coral'
   },
+  get activeParametersFileName() {
+    return settings.execution[settings.execution.location].parametersFileName
+  },
   async saveUrlVisualizer(url: string) {
     await persistSettings({ ...settings, urlVisualizer: url })
   },
@@ -69,6 +72,19 @@ export const settingsState = {
     lastProbe: NonNullable<AppSettings['lastProbe']>
   ) {
     await persistSettings({ ...settings, execution, lastProbe })
+  },
+  async saveParametersFileName(parametersFileName: string) {
+    const location = settings.execution.location
+    await persistSettings({
+      ...settings,
+      execution: {
+        ...settings.execution,
+        [location]: {
+          ...settings.execution[location],
+          parametersFileName,
+        },
+      },
+    })
   },
 }
 

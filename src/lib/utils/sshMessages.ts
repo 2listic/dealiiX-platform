@@ -3,7 +3,9 @@
  * Builds and uploads the graph JSON and sbatch script, submits the job,
  * polls for completion, and reports results via toast notifications.
  *
- * Entry point: exportAndEvalGraph(nodes, edges, config?)
+ * Two entry points depending on the execution mode:
+ * exportAndEvalCoralGraph(nodes, edges, config?) and
+ * exportAndEvalExecutable(config?)
  */
 
 import type { Edge, Node } from '@xyflow/svelte'
@@ -24,6 +26,7 @@ import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
 import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
+import { serializeParametersFile } from './parameterFileFormat'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -58,12 +61,21 @@ export const executeWithKey = async (): Promise<void> => {
   toastState.add({ message: 'Command was sent' })
 }
 
-export type JobConfig = {
+export type CoralJobConfig = {
+  kind: 'coral'
   nodes: number
   tasksPerNode: number
   timeLimit: string
   useMpi: boolean
 }
+
+export type ExecutableJobConfig = {
+  kind: 'executable'
+  timeLimit?: string
+  parametersFileName?: string
+}
+
+export type JobConfig = CoralJobConfig | ExecutableJobConfig
 
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
@@ -75,34 +87,34 @@ export type JobConfig = {
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
-export const exportAndEvalGraph = async (
+export const exportAndEvalCoralGraph = async (
   nodes: Node[],
   edges: Edge[],
-  config?: JobConfig
+  config?: CoralJobConfig
 ): Promise<void> => {
-  const execution = settingsState.execution
-  if (execution.backendKind === 'coral') {
-    if (execution.location === 'local') {
-      await exportAndEvalGraphLocal(nodes, edges, config)
-      return
-    } else if (execution.location === 'remote') {
-      await exportAndEvalGraphRemote(nodes, edges, config)
-      return
-    }
-  } else if (execution.backendKind === 'executable') {
-    if (execution.location === 'local') {
-      await exportAndEvalExecutableLocal()
-      return
-    } else if (execution.location === 'remote') {
-      await exportAndEvalExecutableRemote(config)
-    }
+  const { location } = settingsState.execution
+  if (location === 'local') {
+    await exportAndEvalGraphLocal(nodes, edges, config)
+  } else if (location === 'remote') {
+    await exportAndEvalGraphRemote(nodes, edges, config)
+  }
+}
+
+export const exportAndEvalExecutable = async (
+  config?: ExecutableJobConfig
+): Promise<void> => {
+  const { location } = settingsState.execution
+  if (location === 'local') {
+    await exportAndEvalExecutableLocal(config)
+  } else if (location === 'remote') {
+    await exportAndEvalExecutableRemote(config)
   }
 }
 
 const exportAndEvalGraphRemote = async (
   nodes: Node[],
   edges: Edge[],
-  config?: JobConfig
+  config?: CoralJobConfig
 ): Promise<void> => {
   const useMpi = config?.useMpi ?? false
   const remoteSettings = settingsState.remote
@@ -152,7 +164,7 @@ const exportAndEvalGraphRemote = async (
 const exportAndEvalGraphLocal = async (
   nodes: Node[],
   edges: Edge[],
-  config?: JobConfig
+  config?: CoralJobConfig
 ): Promise<void> => {
   const useMpi = config?.useMpi ?? false
   const internalJobId = jobIdMapState.getNextKey()
@@ -189,14 +201,17 @@ const getExecutableParametersPayload = () => {
   return parametersPayload
 }
 
-const exportAndEvalExecutableLocal = async (): Promise<void> => {
+const exportAndEvalExecutableLocal = async (
+  config?: ExecutableJobConfig
+): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
   const localSettings = settingsState.local
   await window.electron.invoke('start-local-executable-run', {
     executablePath: localSettings.executablePath,
     workingDirectory: localSettings.workingDirectory,
     parametersPayload: getExecutableParametersPayload(),
-    parametersFileName: localSettings.parametersFileName,
+    parametersFileName:
+      config?.parametersFileName || localSettings.parametersFileName,
     internalJobId,
   })
 
@@ -217,18 +232,20 @@ const exportAndEvalExecutableLocal = async (): Promise<void> => {
 }
 
 const exportAndEvalExecutableRemote = async (
-  config?: JobConfig
+  config?: ExecutableJobConfig
 ): Promise<void> => {
   const remoteSettings = settingsState.remote
   const internalJobId = jobIdMapState.getNextKey()
   const parametersPayload = getExecutableParametersPayload()
   const parametersFileName =
-    remoteSettings.parametersFileName || 'parameters.json'
+    config?.parametersFileName ||
+    remoteSettings.parametersFileName ||
+    'parameters.json'
   const parametersRemotePath = `${remoteSettings.workingDirectory}/${parametersFileName}`
   const jobScriptRemotePath = `${remoteSettings.workingDirectory}/job.sh`
 
   await uploadFileSsh(
-    JSON.stringify(parametersPayload, null, 2),
+    serializeParametersFile(parametersPayload, parametersFileName),
     parametersRemotePath
   )
 
@@ -285,7 +302,7 @@ const buildBatchScript = (
   useMpi: boolean,
   internalJobId: number,
   remoteSettings: RemoteExecutionSettings,
-  config?: JobConfig
+  config?: CoralJobConfig
 ): string => {
   const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
   let script = template
@@ -318,7 +335,7 @@ const buildExecutableBatchScript = (
   workingDirectory: string,
   executablePath: string,
   parametersFileName: string,
-  config?: JobConfig
+  config?: ExecutableJobConfig
 ): string => {
   const timeLimit = config?.timeLimit ?? '01:00:00'
   const parametersPath = `${workingDirectory}/${parametersFileName}`
