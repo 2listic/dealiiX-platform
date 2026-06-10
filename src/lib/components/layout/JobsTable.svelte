@@ -244,7 +244,7 @@
   .jobs-table-wrapper {
     display: flex;
     gap: 0.5rem;
-    background-color: var(--primary-color);
+    background-color: var(--surface-color);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 5px;
   }

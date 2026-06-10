@@ -1,12 +1,16 @@
 :root,
 :root.light {
   --primary-color: white;
-  --secondary-color: #efefef;
+  --secondary-color: #e0e0e0;
   --background-color: white;
   --background-color-secondary: linear-gradient(#f2f2f2, white);
   --ternary-color: #383838;
+  --surface-color: #f5f5f5;
+  --border-color: #d0d0d0;
   --border-color-hover: #646cff;
   --handle-color: #383838;
+  --link-color: #1f6feb;
+  --slider-bg: #ccc;
 
   /* Button variants */
   --button-action-bg: #646cff;
@@ -20,15 +24,24 @@
 
 :root.dark {
   --primary-color: #1f1f1f;
-  --secondary-color: #efefef;
+  --secondary-color: #383838;
   --background-color: black;
   --background-color-secondary: linear-gradient(#1f1f1f, #383838);
   --ternary-color: #ececec;
-  --text-color-backup: #c9c9c9;
+  --surface-color: #2a2a2a;
+  --border-color: #3d3d3d;
   --border-color-hover: #646cff;
   --handle-color: #646cff;
+  --link-color: #58a6ff;
+  --slider-bg: #555;
 
   color: var(--ternary-color);
+}
+
+/* Terminal/code block — always dark regardless of theme */
+:root {
+  --code-surface: #1f1f1f;
+  --code-text: #efefef;
 }
 
 /* Handle styling */
@@ -59,4 +72,5 @@ select,
 button {
   font-family: inherit;
   font-size: inherit;
+  color: var(--ternary-color);
 }

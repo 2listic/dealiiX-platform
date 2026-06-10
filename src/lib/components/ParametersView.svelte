@@ -719,7 +719,7 @@
   summary.extra,
   .param-name.extra,
   .param-doc.extra {
-    color: #1f6feb;
+    color: var(--link-color);
   }
 
   @media (min-width: 900px) {

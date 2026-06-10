@@ -8,7 +8,6 @@
     Background,
     MiniMap,
     type NodeTypes,
-    Controls,
     Panel,
     useSvelteFlow,
     type OnConnectEnd,
@@ -23,6 +22,7 @@
     setEdges,
     addEdge,
     addNode,
+    removeNodes,
   } from '../stores/nodes.svelte'
   import {
     getAvailableNodes,
@@ -89,7 +89,7 @@
   }
 
   let selectedNodes = $derived(getNodes().filter((node) => node.selected))
-  let canCreateSubnetworkFromSelection = $derived(selectedNodes.length > 1)
+  let hasMultiSelection = $derived(selectedNodes.length > 1)
   let canMergeSubgraphsFromSelection = $derived(
     selectedNodes.some((node) => node.data.node_type === NodeType.NETWORK)
   )
@@ -141,6 +141,11 @@
         type: 'error',
       })
     }
+  }
+
+  const deleteSelectedNodes = () => {
+    removeNodes(selectedNodes.map((n) => n.id))
+    clearConnectionCache()
   }
 
   const openCreateSelectionNetworkModal = (
@@ -425,7 +430,7 @@
         </div>
       </div>
     </Panel>
-    {#if canCreateSubnetworkFromSelection}
+    {#if hasMultiSelection}
       <Panel position="bottom-center">
         <div class="selection-actions">
           <Button
@@ -444,10 +449,12 @@
               Merge Subgraphs
             </Button>
           {/if}
+          <Button variant="delete" size="small" onclick={deleteSelectedNodes}>
+            Delete Selected
+          </Button>
         </div>
       </Panel>
     {/if}
-    <Controls position="bottom-center" orientation="horizontal" />
     <MiniMap />
     <Background />
   </SvelteFlow>
@@ -485,7 +492,7 @@
     gap: 0.75rem;
     padding: 0.5rem 1rem;
     border-radius: 5px;
-    background-color: var(--primary-color);
+    background-color: var(--surface-color);
     font-weight: bold;
   }
 
@@ -529,7 +536,7 @@
 
   .selection-actions {
     padding: 0.5rem 0.75rem;
-    background: var(--primary-color);
+    background: var(--surface-color);
     border-radius: 62rem;
     box-shadow: 0 0.2rem 0.8rem
       color-mix(in srgb, var(--ternary-color) 8%, transparent);

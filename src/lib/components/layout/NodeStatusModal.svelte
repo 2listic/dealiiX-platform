@@ -174,7 +174,7 @@
     display: flex;
     justify-content: space-between;
     padding: 0.3vh 0.5vh;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
   }
   .node-id {
     display: flex;
@@ -194,7 +194,7 @@
     gap: 0.4em;
   }
   .failed {
-    color: #ff4444;
+    color: var(--button-delete-bg);
   }
   .running {
     animation: pulse 1.5s ease-in-out infinite;

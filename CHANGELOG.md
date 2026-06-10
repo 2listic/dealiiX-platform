@@ -6,6 +6,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#102](https://github.com/2listic/dealiiX-platform/issues/102) Complete colour-palette overhaul: all hard-coded hex values replaced with semantic CSS variables. Dark-mode depth hierarchy established (primary → surface → secondary → ternary). All 16 SVG icon components migrated to `currentColor` so they adapt automatically to the active theme. Form elements given explicit `color: var(--ternary-color)` to override the UA-stylesheet reset. Node action buttons and elementary constructor inputs styled to match the active theme. Zoom controls panel removed as it didn't provide any real value and a complex fix was needed to style it properly.
+- [#169](https://github.com/2listic/dealiiX-platform/issues/169) When multiple nodes are selected on the canvas a "Delete Selected" button appears in the bottom-centre panel, removing all selected nodes and their connected edges in a single operation.
+- [#112](https://github.com/2listic/dealiiX-platform/issues/112) The Project button group is now disabled when the user is not logged in, in addition to when no remote server is configured.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
 

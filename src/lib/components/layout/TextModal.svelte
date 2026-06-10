@@ -58,8 +58,8 @@
   }
 
   .text-modal-content {
-    color: #efefef;
-    background-color: #1f1f1f;
+    color: var(--code-text);
+    background-color: var(--code-surface);
     white-space: pre-wrap;
     text-align: left;
     max-height: 60vh;

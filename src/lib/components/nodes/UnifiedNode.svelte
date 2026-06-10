@@ -359,10 +359,20 @@
     display: flex;
     align-items: center;
     align-self: flex-start;
+    background-color: var(--secondary-color);
   }
 
   .node-button:hover {
     border: 1px solid var(--border-color-hover);
+  }
+
+  input[type='text'] {
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   input.invalid {

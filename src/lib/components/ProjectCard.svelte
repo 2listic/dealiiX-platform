@@ -195,6 +195,7 @@
   .project-card {
     display: flex;
     flex-direction: column;
+    background-color: var(--surface-color);
     border: 1px solid var(--ternary-color);
     border-radius: 8px;
     padding: 1rem;

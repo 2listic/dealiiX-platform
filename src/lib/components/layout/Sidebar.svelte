@@ -203,7 +203,7 @@
     width: 20px;
     height: 20px;
     cursor: pointer;
-    fill: #f44;
+    fill: var(--button-delete-bg);
     transition: transform 0.3s ease;
   }
 
