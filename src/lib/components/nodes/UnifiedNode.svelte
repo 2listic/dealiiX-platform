@@ -88,13 +88,13 @@
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
-  let color = $derived(nodeColors[type])
+  let color = $derived(nodeColors[type as keyof typeof nodeColors])
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
-  const isValidNum = (value) => {
+  const isValidNum = (value: string) => {
     const numValue = Number(value)
     switch (data.type) {
       case Type.UNSIGNED_INT:
@@ -299,7 +299,7 @@
 <EditNodeNameModal
   modalId={editNodeModalId}
   nodeId={id}
-  currentName={hasCustomName ? data.name : data.type}
+  currentName={hasCustomName ? (data.name ?? data.type) : data.type}
 />
 
 <style>

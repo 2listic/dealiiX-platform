@@ -31,7 +31,7 @@
     name = project.name
     description = project.description
   })
-  let formElement
+  let formElement: HTMLFormElement
 
   const validateAndSubmit = async () => {
     if (!formElement.checkValidity()) {
@@ -53,7 +53,8 @@
     } catch (error) {
       console.error('Failed to update project:', error)
       toastState.add({
-        message: error.message || 'Failed to update project',
+        message:
+          error instanceof Error ? error.message : 'Failed to update project',
         type: 'error',
       })
     }

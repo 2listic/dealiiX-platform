@@ -147,7 +147,8 @@ export const jobsState = {
     } catch (error) {
       console.error('Error updating jobs state:', error)
       toastState.add({
-        message: error,
+        message:
+          error instanceof Error ? error.message : 'Failed to refresh job list',
         type: 'error',
       })
     }

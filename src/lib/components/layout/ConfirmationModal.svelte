@@ -29,14 +29,14 @@
 
   const handleConfirm = () => {
     onConfirm()
-    getModal(modalId).close()
+    getModal(modalId)?.close()
   }
 
   const handleCancel = () => {
     if (onCancel) {
       onCancel()
     }
-    getModal(modalId).close()
+    getModal(modalId)?.close()
   }
 
   onMount(() => {

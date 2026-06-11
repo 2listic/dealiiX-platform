@@ -70,7 +70,7 @@
       getModal(outLogModalId)?.open()
     } catch (error) {
       toastState.add({
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }
@@ -94,7 +94,7 @@
       getModal(nodeStatusModalId)?.open()
     } catch (error) {
       toastState.add({
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }

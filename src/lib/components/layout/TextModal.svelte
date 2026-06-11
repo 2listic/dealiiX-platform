@@ -30,7 +30,7 @@
   const htmlMessage = $derived(ansiUp.ansi_to_html(message))
 
   const handleClose = () => {
-    getModal(modalId).close()
+    getModal(modalId)?.close()
   }
 </script>
 

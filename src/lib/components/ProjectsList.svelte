@@ -5,12 +5,13 @@
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
   import SaveProjectForm from './SaveProjectForm.svelte'
+  import type { ApiProject } from '../stores/currentProjectStore.svelte'
 
   let { modalId }: { modalId: string } = $props()
 
   const newProjectModalId = 'new-project-modal'
 
-  let projects = $state([])
+  let projects = $state<ApiProject[]>([])
   let isLoading = $state(false)
 
   // Load projects when modal opens
@@ -36,7 +37,7 @@
       }
     } catch (err) {
       toastState.add({
-        message: err.message || 'Failed to load projects',
+        message: err instanceof Error ? err.message : 'Failed to load projects',
         type: 'error',
       })
       console.error('Error loading projects:', err)
@@ -51,7 +52,7 @@
   }
 
   function handleNewProject() {
-    getModal(newProjectModalId).open()
+    getModal(newProjectModalId)?.open()
   }
 
   function handleProjectDeleted(projectId: number) {

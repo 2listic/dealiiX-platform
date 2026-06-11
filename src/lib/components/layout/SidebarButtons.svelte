@@ -57,9 +57,9 @@
 
   const handleLoginLogout = () => {
     if (token) {
-      getModal(logoutConfirmModalId).open()
+      getModal(logoutConfirmModalId)?.open()
     } else {
-      getModal(loginModalId).open()
+      getModal(loginModalId)?.open()
     }
   }
 
@@ -102,7 +102,8 @@
     } catch (error) {
       console.error('Failed to load graph:', error)
       toastState.add({
-        message: error.message || 'Failed to load graph',
+        message:
+          error instanceof Error ? error.message : 'Failed to load graph',
         type: 'error',
       })
     }
@@ -147,13 +148,13 @@
   }
 
   const handleLoadProjects = () => {
-    getModal(projectsModalId).open()
+    getModal(projectsModalId)?.open()
   }
 
   const handleSaveProject = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
-      getModal(subnetworkWarningModalId).open()
+      getModal(subnetworkWarningModalId)?.open()
       return
     }
     if (currentProjectState.id) {
@@ -174,7 +175,8 @@
       } catch (error) {
         console.error('Failed to update project:', error)
         toastState.add({
-          message: error.message || 'Failed to update project',
+          message:
+            error instanceof Error ? error.message : 'Failed to update project',
           type: 'error',
         })
       }
@@ -204,7 +206,10 @@
     } catch (error) {
       console.error('Failed to auto-layout graph:', error)
       toastState.add({
-        message: error.message || 'Failed to auto-layout graph',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to auto-layout graph',
         type: 'error',
       })
     }
@@ -213,7 +218,7 @@
   const handleGraphDownload = () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
-      getModal(subnetworkWarningModalId).open()
+      getModal(subnetworkWarningModalId)?.open()
       return
     }
     try {
@@ -244,7 +249,8 @@
     } catch (error) {
       console.error('Failed to download graph:', error)
       toastState.add({
-        message: error.message || 'Failed to download graph',
+        message:
+          error instanceof Error ? error.message : 'Failed to download graph',
         type: 'error',
       })
     }
@@ -434,7 +440,7 @@
     </label>
     <button
       id="settings-button"
-      onclick={() => getModal(settingsModalId).open()}
+      onclick={() => getModal(settingsModalId)?.open()}
       style="display: none"
       aria-label="Settings"
     ></button>

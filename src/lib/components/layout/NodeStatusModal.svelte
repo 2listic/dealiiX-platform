@@ -112,7 +112,7 @@
   })
 
   const handleClose = () => {
-    getModal(modalId).close()
+    getModal(modalId)?.close()
   }
 </script>
 

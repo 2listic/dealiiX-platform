@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { login } from '../requests/authentication'
   import { toastState } from '../stores/toastsStore.svelte'
   import Button from './layout/Button.svelte'
@@ -6,9 +6,9 @@
 
   let { modalId } = $props()
 
-  let username = $state()
-  let password = $state()
-  let formElement
+  let username = $state('')
+  let password = $state('')
+  let formElement: HTMLFormElement
 
   const validateAndSubmit = async () => {
     if (formElement.checkValidity()) {
@@ -24,7 +24,7 @@
         })
         return
       }
-      getModal(modalId).close()
+      getModal(modalId)?.close()
       toastState.add({ message: 'Logged in' })
     } else {
       formElement.reportValidity()
