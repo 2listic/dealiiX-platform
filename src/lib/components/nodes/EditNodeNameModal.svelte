@@ -2,6 +2,7 @@
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
+  import { graphHistoryState } from '../../stores/graphStack.svelte'
 
   interface Props {
     modalId: string
@@ -17,6 +18,7 @@
   const { updateNodeData } = useSvelteFlow()
 
   const handleSave = () => {
+    graphHistoryState.checkpoint()
     updateNodeData(nodeId, { name: editedName })
     getModal(modalId)?.close()
   }

@@ -16,6 +16,7 @@
   import Settings from '../SettingsModal.svelte'
   import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
+  import { graphHistoryState } from '../../stores/graphStack.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
@@ -31,6 +32,7 @@
   import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
+  import UndoIcon from '../icons/UndoIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -195,6 +197,7 @@
         getEdgesSnapshot(),
         direction
       )
+      graphHistoryState.checkpoint()
       setNodes(layoutedNodes)
       toastState.add({
         message:
@@ -379,6 +382,30 @@
     ></button>
     <span class="button-text">Visualiz.</span>
   </div>
+
+  <!-- Undo / Redo group -->
+  {#if isCoralMode}
+    <SidebarGroupButton
+      title="History"
+      disabled={!graphHistoryState.canUndo && !graphHistoryState.canRedo}
+    >
+      {#snippet icon()}
+        <UndoIcon width="28px" height="28px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Undo (Ctrl+Z)"
+          disabled={!graphHistoryState.canUndo}
+          onclick={() => graphHistoryState.undo()}
+        />
+        <SidebarGroupButtonItem
+          label="Redo (Ctrl+Shift+Z)"
+          disabled={!graphHistoryState.canRedo}
+          onclick={() => graphHistoryState.redo()}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+  {/if}
 
   <!-- Auto Layout group -->
   {#if isCoralMode}

@@ -5,14 +5,16 @@
     label,
     onclick,
     icon,
+    disabled = false,
   }: {
     label: string
     onclick?: () => void
     icon?: Snippet
+    disabled?: boolean
   } = $props()
 </script>
 
-<button class="popover-item" {onclick}>
+<button class="popover-item" class:disabled {onclick} {disabled}>
   {#if icon}
     <span class="popover-item-icon">
       {@render icon()}
@@ -38,9 +40,14 @@
     text-align: left;
   }
 
-  .popover-item:hover {
+  .popover-item:hover:not(.disabled) {
     border: 1px solid var(--border-color-hover);
     border-radius: 5px;
+  }
+
+  .popover-item.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .popover-item-icon {

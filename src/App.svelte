@@ -11,10 +11,31 @@
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
   import { settingsState } from './lib/stores/settingsStore.svelte'
+  import { graphHistoryState } from './lib/stores/graphStack.svelte'
 
   let isCoralMode = $derived(settingsState.isCoralMode)
   let executionLocation = $derived(settingsState.execution.location)
   let backendKind = $derived(settingsState.execution.backendKind)
+
+  // Undo: Ctrl/Cmd+Z — Redo: Ctrl/Cmd+Shift+Z or Ctrl+Y
+  // Skip when focus is inside a text field so normal editing shortcuts are unaffected.
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const mod = e.metaKey || e.ctrlKey
+    if (!mod) return
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement
+    )
+      return
+    const key = e.key.toLowerCase()
+    if (key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      graphHistoryState.undo()
+    } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+      e.preventDefault()
+      graphHistoryState.redo()
+    }
+  }
 
   let isExpanded = $derived(sideBarState.isExpanded)
   let sidebarWrapperElem = $state<HTMLDivElement>()
@@ -35,6 +56,8 @@
     }
   })
 </script>
+
+<svelte:window onkeydown={handleKeyDown} />
 
 <main>
   <ToastsWrapper></ToastsWrapper>

@@ -72,6 +72,7 @@
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
+  import { graphHistoryState } from '../../stores/graphStack.svelte'
   import { explodeNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
@@ -144,6 +145,7 @@
 
   const handleExplodeSubnetwork = () => {
     try {
+      graphHistoryState.checkpoint()
       const exploded = explodeNetworkNodeInGraph(
         id,
         getNodesSnapshot(),
@@ -211,7 +213,14 @@
           <EditIcon width="20px" height="20px" />
         </button>
       {/if}
-      <button class="node-button" title="Delete" onclick={() => removeNode(id)}>
+      <button
+        class="node-button"
+        title="Delete"
+        onclick={() => {
+          graphHistoryState.checkpoint()
+          removeNode(id)
+        }}
+      >
         <TrashIcon width="20px" height="20px" />
       </button>
     </div>
@@ -275,6 +284,7 @@
           type="checkbox"
           value={data.value}
           oninput={(evt) => {
+            graphHistoryState.checkpoint()
             updateNodeData(id, {
               value: evt.currentTarget.checked ? 'true' : 'false',
             })
@@ -283,10 +293,13 @@
         <span>{data.value === 'true' ? 'true' : 'false'}</span>
       {:else}
         <!-- All other elementary constructors -->
+        <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
         <input
           type="text"
           class={isValid ? '' : 'invalid'}
           value={data.value}
+          onfocus={() => graphHistoryState.begin()}
+          onblur={() => graphHistoryState.commit()}
           oninput={(evt) => {
             updateNodeData(id, { value: evt.currentTarget.value })
           }}

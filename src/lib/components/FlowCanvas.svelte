@@ -31,7 +31,10 @@
   } from '../stores/registryStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { dndNodeDataState } from '../stores/dndStore.svelte'
-  import { graphStackState } from '../stores/graphStack.svelte'
+  import {
+    graphStackState,
+    graphHistoryState,
+  } from '../stores/graphStack.svelte'
   import {
     loadParentGraph,
     renameCurrentSubnetwork,
@@ -108,6 +111,16 @@
     }
   }
 
+  // At every node drag/move, snapshot to history.
+  const onnodedragstart = () => graphHistoryState.begin()
+  const onnodedragstop = () => graphHistoryState.commit()
+
+  // Intercept @xyflow's native keyboard delete completes, snapshot to history.
+  const onbeforedelete = async () => {
+    graphHistoryState.checkpoint()
+    return true
+  }
+
   $effect(() => {
     if (!graphStackState.canGoBack) {
       isEditingBreadcrumb = false
@@ -145,6 +158,7 @@
   }
 
   const deleteSelectedNodes = () => {
+    graphHistoryState.checkpoint()
     removeNodes(selectedNodes.map((n) => n.id))
     clearConnectionCache()
   }
@@ -160,6 +174,7 @@
     name: string,
     mode: SelectionSubgraphMode = 'create'
   ) => {
+    graphHistoryState.checkpoint()
     const { newNodes, newEdges } = await collapseSelectionToSubnetwork(
       name,
       mode
@@ -308,6 +323,7 @@
     }
 
     try {
+      graphHistoryState.checkpoint()
       const newNode = createCanvasNode(
         option.nodeDefinition,
         connectedNodeDraft.position,
@@ -373,6 +389,7 @@
     {isValidConnection}
     onconnectstart={handleConnectStart}
     onconnect={() => {
+      graphHistoryState.checkpoint()
       connectStartParams = null
     }}
     onconnectend={handleConnectEnd}
@@ -385,6 +402,9 @@
       )}
     colorMode={colorModeState.value}
     {ondelete}
+    {onnodedragstart}
+    {onnodedragstop}
+    {onbeforedelete}
   >
     <Panel position="bottom-left">
       <div class="graph-nav">

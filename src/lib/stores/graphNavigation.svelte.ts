@@ -68,6 +68,8 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
       parentNodeId: nodeId,
       nodes: cloneNodes(nextNodes),
       edges: cloneEdges(nextEdges),
+      past: [],
+      future: [],
     })
 
     // Replace the canvas with the inner graph.
