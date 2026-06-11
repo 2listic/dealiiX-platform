@@ -33,7 +33,16 @@ Rules:
 - No `Co-Authored-By` trailer, no "Generated with Claude Code" attribution
 - Keep the subject line concise — detail goes in the PR description, not the commit
 - Use sentence case, no trailing period
-- PR descriptions use `## Summary` (bullet list) and `## Test plan` (markdown checklist) sections
+
+## Pull Request Procedure
+
+Open PRs with `gh pr create`. Use the template at `.github/PULL_REQUEST_TEMPLATE.md` as the body — it has:
+
+- `It closes #<issue>` — issue reference at the top
+- `## Overview` — high-level goal, motivation, and any constraints a reviewer needs
+- `## Summary` — bullet list of concrete changes, each prefixed with a conventional commit type
+- `## Test plan` — markdown checklist of steps to verify the change
+- `- [ ] Update CHANGELOG` — reminder checklist item
 
 ## Changelog
 
@@ -73,7 +82,7 @@ The application uses two JSON protocols to communicate with CORAL:
 
 ### State Management
 
-Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
+Stores use Svelte 5 runes (`.svelte.ts` files):
 
 - `nodes.svelte.ts` - Central store for flow nodes/edges. Exports `getNodes()`, `getNodesSnapshot()`, `setNodes()`, `getEdges()`, `getEdgesSnapshot()`, `setEdges()`, `addNode()`, `addEdge()`, `removeNode()`, `updateLastNodeId()`.
 - `registryStore.svelte.ts` - Registry for available node types (both standard and network). Exports `setRegistry()`, `getNodeData(type)`, `getAvailableNodes()`, `isNodeInRegistry(type)` for standard nodes; and `addNetworkNode(key, data)`, `removeNetworkNode(name)`, `getNetworkNodeDefinition(name)`, `getStoredNetworkNodes()`, `isNodeInNetworkNodes(name)` for subgraph nodes. Both registries are persisted in electron-store and loaded at startup.
@@ -82,12 +91,12 @@ Stores use Svelte 5 runes (`.svelte.js` / `.svelte.ts` files):
 - `nodeIdCounter.svelte.ts` - Isolated store for generating unique node IDs (`getNextNodeId()`). Kept separate from `nodes.svelte.ts` to avoid importing electron side-effects in utility/test contexts.
 - `colorModeStore.svelte.ts` - Light/dark theme state. `colorModeState.value` (get/set) and `colorModeState.toggle()`. Setting automatically syncs to electron IPC (`set-theme`) and persists to electron-store under `colorMode`.
 - `parametersStore.svelte.ts` - Transient store for the CORAL parameter tree (loaded from a run). `parametersState.value` (get/set) and `parametersState.snapshot` (non-reactive copy).
-- `auth.svelte.js` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
-- `settingsStore.svelte.js` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
-- `currentProjectStore.svelte.js` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`.
-- `jobsStore.svelte.js` - Slurm job tracking. `jobsState` has `isEmpty`/`oneOrLess` getters, `update()` refreshes from SSH. `jobIdMapState` maps Slurm scheduler IDs → internal incremental job IDs (used in touch-dir paths).
-- `toastsStore.svelte.js` - Toast notifications. Use `toastState.add({ message, type })` to show a toast. Supports `'error'`/`'success'` types with auto-dismissal.
-- `dndStore.svelte.js` - Drag-and-drop state (`dndNodeDataState.current`) for tracking which sidebar node is being dragged onto the canvas.
+- `auth.svelte.ts` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
+- `settingsStore.svelte.ts` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
+- `currentProjectStore.svelte.ts` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`. Exports `ApiProject` interface for use in components.
+- `jobsStore.svelte.ts` - Slurm job tracking. `jobsState` has `isEmpty`/`oneOrLess` getters, `update()` refreshes from SSH. `jobIdMapState` maps Slurm scheduler IDs → internal incremental job IDs (used in touch-dir paths).
+- `toastsStore.svelte.ts` - Toast notifications. Use `toastState.add({ message, type })` to show a toast. Supports `'error'`/`'success'` types with auto-dismissal.
+- `dndStore.svelte.ts` - Drag-and-drop state (`dndNodeDataState.current`) for tracking which sidebar node is being dragged onto the canvas.
 
 ### Node Type System
 
