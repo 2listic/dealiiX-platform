@@ -42,7 +42,11 @@ Open PRs with `gh pr create`. Use the template at `.github/PULL_REQUEST_TEMPLATE
 - `## Overview` — high-level goal, motivation, and any constraints a reviewer needs
 - `## Summary` — bullet list of concrete changes, each prefixed with a conventional commit type
 - `## Test plan` — markdown checklist of steps to verify the change
-- `- [ ] Update CHANGELOG` — reminder checklist item
+- `- [ ] Update CHANGELOG` — reminder checklist item (appears just after the issue reference, before `## Overview`)
+
+## Working files
+
+Temporary files produced during a session — plans, drafts, issue breakdowns, scratch notes — go in `.ai/`. The directory is gitignored, so nothing there is ever committed.
 
 ## Changelog
 

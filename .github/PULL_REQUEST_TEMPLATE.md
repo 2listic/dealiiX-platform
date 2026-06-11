@@ -1,5 +1,7 @@
 It closes #
 
+- [ ] Update CHANGELOG
+
 ## Overview
 
 <!--
@@ -22,5 +24,3 @@ Bullet list of concrete changes. Prefix each with a conventional commit type:
 ## Test plan
 
 - [ ] 
-
-- [ ] Update CHANGELOG

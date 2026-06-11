@@ -39,6 +39,9 @@ dist-electron/
 # Containers' shared folder
 containers/shared-data/*
 
+# AI-generated working files (plans, drafts, issues, scratch)
+/.ai/
+
 # Test files
 test_files/legacy/*
 
