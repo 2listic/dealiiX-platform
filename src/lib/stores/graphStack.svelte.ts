@@ -51,24 +51,16 @@ let graphStack = $state<GraphContext[]>([
  *  Discarded on any navigation action to prevent cross-level contamination. */
 let _stagedEntry: HistoryEntry | null = null
 
-/** Deep-copies nodes via $state.snapshot so mutations on the canvas don't affect saved contexts. */
-const cloneNodes = (nodes: Node[]): Node[] =>
-  $state.snapshot(nodes) as unknown as Node[]
-
-/** Deep-copies edges via $state.snapshot so mutations on the canvas don't affect saved contexts. */
-const cloneEdges = (edges: Edge[]): Edge[] =>
-  $state.snapshot(edges) as unknown as Edge[]
-
 /** Label for the root graph: the loaded project name, or 'Unsaved Project' when project is not yet loaded or saved. */
 const rootLabel = (): string =>
   currentProjectState.id ? currentProjectState.name : 'Unsaved Project'
 
 // ── Private helpers ──
 
-/** Returns a deep snapshot of the current live canvas. */
-const captureEntry = (): HistoryEntry => ({
-  nodes: cloneNodes(getNodesSnapshot()),
-  edges: cloneEdges(getEdgesSnapshot()),
+/** Returns a plain snapshot of the live canvas. */
+const snapshotCanvas = (): HistoryEntry => ({
+  nodes: getNodesSnapshot(),
+  edges: getEdgesSnapshot(),
 })
 
 /** Returns true when two history entries represent identical canvas states. */
@@ -141,7 +133,7 @@ export const graphStackState = {
    * Note: updates GraphContext.current only — not the undo/redo history.
    */
   syncCurrent(): void {
-    this.updateTopContext({ current: captureEntry() })
+    this.updateTopContext({ current: snapshotCanvas() })
   },
 
   /** Resets the context stack to a single empty root context. */
@@ -222,7 +214,7 @@ export const graphHistoryState = {
    * Note: distinct from syncCurrent(), which updates GraphContext.current
    */
   checkpoint(): void {
-    pushToPast(captureEntry())
+    pushToPast(snapshotCanvas())
   },
 
   /**
@@ -232,7 +224,7 @@ export const graphHistoryState = {
    * Pair with commit() at the end of the gesture.
    */
   begin(): void {
-    _stagedEntry = captureEntry()
+    _stagedEntry = snapshotCanvas()
   },
 
   /**
@@ -243,7 +235,7 @@ export const graphHistoryState = {
    */
   commit(): void {
     if (!_stagedEntry) return
-    const liveState = captureEntry()
+    const liveState = snapshotCanvas()
     if (!entriesEqual(_stagedEntry, liveState)) {
       pushToPast(_stagedEntry)
     }
@@ -258,7 +250,7 @@ export const graphHistoryState = {
     const top = graphStack.at(-1)
     if (!top || top.past.length === 0) return
     const prev = top.past.at(-1)!
-    const liveState = captureEntry()
+    const liveState = snapshotCanvas()
     graphStack[graphStack.length - 1] = {
       ...top,
       past: top.past.slice(0, -1),
@@ -275,7 +267,7 @@ export const graphHistoryState = {
     const top = graphStack.at(-1)
     if (!top || top.future.length === 0) return
     const next = top.future.at(-1)!
-    const liveState = captureEntry()
+    const liveState = snapshotCanvas()
     graphStack[graphStack.length - 1] = {
       ...top,
       past: [...top.past, liveState],

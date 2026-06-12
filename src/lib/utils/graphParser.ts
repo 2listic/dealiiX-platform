@@ -60,9 +60,7 @@ export const loadGraphFromProtocol = async (
   setEdges(xyFlowEdges)
   updateLastNodeId()
 
-  // Reset the navigation stack and re-initialize it with the freshly loaded graph.
-  // This clears any subnetwork navigation state from a previous session and ensures
-  // the undo/redo history starts clean.
+  // Discard any subnetwork navigation state and undo history from a prior session.
   graphStackState.reset()
   graphStackState.syncCurrent()
 
