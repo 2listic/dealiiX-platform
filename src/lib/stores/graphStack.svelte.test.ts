@@ -44,8 +44,9 @@ vi.mock('./nodes.svelte', () => ({
   updateLastNodeId: mockCanvas.updateLastNodeId,
 }))
 
-const { graphStackState, graphHistoryState, persistActiveCanvas } =
-  await import('./graphStack.svelte')
+const { graphStackState, graphHistoryState } = await import(
+  './graphStack.svelte'
+)
 
 /** Helper: set canvas to a given state and return simple nodes/edges arrays. */
 const setCanvas = (nodeIds: number[], edgeIds: number[] = []) => {
@@ -64,7 +65,7 @@ beforeEach(() => {
   mockCanvas.setEdges.mockClear()
   mockCanvas.updateLastNodeId.mockClear()
   // Initialize the stack with the current (empty) canvas.
-  persistActiveCanvas()
+  graphStackState.syncCurrent()
 })
 
 // ── historyCheckpoint ──────────────────────────────────────────────────────────
@@ -296,8 +297,7 @@ describe('navigation clears staged entry', () => {
     label,
     originalName: null,
     parentNodeId: null,
-    nodes: [],
-    edges: [],
+    current: { nodes: [], edges: [] },
     past: [],
     future: [],
   })
@@ -320,7 +320,7 @@ describe('navigation clears staged entry', () => {
     graphHistoryState.begin()
     setCanvas([1, 2])
     graphStackState.reset()
-    persistActiveCanvas()
+    graphStackState.syncCurrent()
 
     graphHistoryState.commit()
     expect(graphHistoryState.canUndo).toBe(false)

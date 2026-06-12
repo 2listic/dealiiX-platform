@@ -83,7 +83,6 @@
       return
     }
     try {
-      graphStackState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const { invalidEdges, registeredNetworkNodes } =

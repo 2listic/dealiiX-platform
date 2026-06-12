@@ -11,10 +11,7 @@
  */
 
 import { setEdges, setNodes, updateLastNodeId } from '../stores/nodes.svelte'
-import {
-  graphStackState,
-  persistActiveCanvas,
-} from '../stores/graphStack.svelte'
+import { graphStackState } from '../stores/graphStack.svelte'
 import {
   addNetworkNode,
   getNetworkNodeDefinition,
@@ -65,9 +62,9 @@ export const loadGraphFromProtocol = async (
 
   // Reset the navigation stack and re-initialize it with the freshly loaded graph.
   // This clears any subnetwork navigation state from a previous session and ensures
-  // the undo/redo history starts clean — the fresh root context has empty past/future.
+  // the undo/redo history starts clean.
   graphStackState.reset()
-  persistActiveCanvas()
+  graphStackState.syncCurrent()
 
   return networkNodes
 }

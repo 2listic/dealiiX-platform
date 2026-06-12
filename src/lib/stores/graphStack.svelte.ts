@@ -21,10 +21,10 @@ export type GraphContext = {
   originalName: string | null
   /** ID of the network node on the parent canvas that was clicked to enter this level, or null for the root. */
   parentNodeId: string | null
-  /** Snapshot of the canvas nodes at this level, saved before navigating away. */
-  nodes: Node[]
-  /** Snapshot of the canvas edges at this level, saved before navigating away. */
-  edges: Edge[]
+  /** Last navigation-sync snapshot of the canvas at this level.
+   *  Updated by syncCurrent() before any navigation action; restored when navigating back.
+   *  Not the live canvas state — use getNodesSnapshot()/getEdgesSnapshot() for that. */
+  current: HistoryEntry
   /** Undo stack for this navigation level — most-recent entry last.
    *  Touch only via graphHistoryState, never directly. */
   past: HistoryEntry[]
@@ -35,14 +35,13 @@ export type GraphContext = {
 
 /** The navigation stack. Starts with a root context so history and navigation are ready
  *  from the first user interaction. Nodes/edges are empty until a graph is loaded;
- *  persistActiveCanvas() syncs the real canvas state before any navigation action. */
+ *  syncCurrent() syncs the real canvas state before any navigation action. */
 let graphStack = $state<GraphContext[]>([
   {
     label: 'Unsaved Project',
     originalName: null,
     parentNodeId: null,
-    nodes: [],
-    edges: [],
+    current: { nodes: [], edges: [] },
     past: [],
     future: [],
   },
@@ -63,50 +62,6 @@ const cloneEdges = (edges: Edge[]): Edge[] =>
 /** Label for the root graph: the loaded project name, or 'Unsaved Project' when project is not yet loaded or saved. */
 const rootLabel = (): string =>
   currentProjectState.id ? currentProjectState.name : 'Unsaved Project'
-
-const isInitialized = (): boolean => graphStack.length > 0
-
-/**
- * Re-creates the root context when the stack has been emptied by reset().
- * No-op when the stack already has at least one entry.
- */
-const safelyInitGraphStack = () => {
-  if (isInitialized()) return
-
-  graphStack = [
-    {
-      label: rootLabel(),
-      originalName: null,
-      parentNodeId: null,
-      nodes: cloneNodes(getNodesSnapshot()),
-      edges: cloneEdges(getEdgesSnapshot()),
-      past: [],
-      future: [],
-    },
-  ]
-}
-
-/**
- * Snapshots the live canvas state into the top entry of the context stack,
- * preserving any unsaved edits before a navigation action takes place.
- *
- * The reactive @xyflow canvas state is the source of truth while the user
- * is editing. This function bridges it back into the stack so that
- * `enterSubnetwork`, `loadParentGraph`, and `renameCurrentSubnetwork` always work
- * from an up-to-date snapshot rather than a stale one.
- *
- * Note: this updates the navigation snapshot (GraphContext.nodes/edges), not
- * the undo/redo history. Use graphHistoryState.checkpoint() to record a history entry.
- */
-export const persistActiveCanvas = () => {
-  safelyInitGraphStack()
-
-  graphStack[graphStack.length - 1] = {
-    ...graphStack[graphStack.length - 1],
-    nodes: cloneNodes(getNodesSnapshot()),
-    edges: cloneEdges(getEdgesSnapshot()),
-  }
-}
 
 // ── Private helpers ──
 
@@ -179,9 +134,28 @@ export const graphStackState = {
 
   // ---- Mutators ----
 
-  /** Clears the entire context stack, returning to the uninitialized state. */
+  /**
+   * Syncs the live canvas state into the top entry of the context stack.
+   * Call this before any navigation action.
+   *
+   * Note: updates GraphContext.current only — not the undo/redo history.
+   */
+  syncCurrent(): void {
+    this.updateTopContext({ current: captureEntry() })
+  },
+
+  /** Resets the context stack to a single empty root context. */
   reset(): void {
-    graphStack = []
+    graphStack = [
+      {
+        label: rootLabel(),
+        originalName: null,
+        parentNodeId: null,
+        current: { nodes: [], edges: [] },
+        past: [],
+        future: [],
+      },
+    ]
     _stagedEntry = null
   },
 
@@ -243,11 +217,9 @@ export const graphHistoryState = {
 
   /**
    * Snapshots the current canvas and pushes it onto the undo stack immediately.
-   * Use before discrete actions (add node, delete, connect, auto-layout, etc.)
-   * where the full mutation happens in a single step.
+   * Use before discrete actions where the full mutation happens in a single step.
    *
-   * Note: distinct from persistActiveCanvas(), which updates the navigation
-   * snapshot (GraphContext.nodes/edges), not the undo/redo history.
+   * Note: distinct from syncCurrent(), which updates GraphContext.current
    */
   checkpoint(): void {
     pushToPast(captureEntry())
@@ -271,8 +243,8 @@ export const graphHistoryState = {
    */
   commit(): void {
     if (!_stagedEntry) return
-    const current = captureEntry()
-    if (!entriesEqual(_stagedEntry, current)) {
+    const liveState = captureEntry()
+    if (!entriesEqual(_stagedEntry, liveState)) {
       pushToPast(_stagedEntry)
     }
     _stagedEntry = null
@@ -286,11 +258,11 @@ export const graphHistoryState = {
     const top = graphStack.at(-1)
     if (!top || top.past.length === 0) return
     const prev = top.past.at(-1)!
-    const current = captureEntry()
+    const liveState = captureEntry()
     graphStack[graphStack.length - 1] = {
       ...top,
       past: top.past.slice(0, -1),
-      future: [...top.future, current],
+      future: [...top.future, liveState],
     }
     applyEntry(prev)
   },
@@ -303,10 +275,10 @@ export const graphHistoryState = {
     const top = graphStack.at(-1)
     if (!top || top.future.length === 0) return
     const next = top.future.at(-1)!
-    const current = captureEntry()
+    const liveState = captureEntry()
     graphStack[graphStack.length - 1] = {
       ...top,
-      past: [...top.past, current],
+      past: [...top.past, liveState],
       future: top.future.slice(0, -1),
     }
     applyEntry(next)

@@ -27,7 +27,7 @@ import type {
   SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { toastState } from './toastsStore.svelte.js'
-import { graphStackState, persistActiveCanvas } from './graphStack.svelte'
+import { graphStackState } from './graphStack.svelte'
 
 /**
  * Drills into a subnetwork node, replacing the canvas with its inner graph.
@@ -49,7 +49,7 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
     }
 
     // Snapshot the current canvas into the top of the stack before leaving.
-    persistActiveCanvas()
+    graphStackState.syncCurrent()
 
     // Convert the subnetwork's stored protocol graph to @xyflow format.
     const networkNodeData = getNetworkNodeDefinition(targetNode.data.name)
@@ -66,8 +66,7 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
       label: targetNode.data.name,
       originalName: targetNode.data.name,
       parentNodeId: nodeId,
-      nodes: cloneNodes(nextNodes),
-      edges: cloneEdges(nextEdges),
+      current: { nodes: cloneNodes(nextNodes), edges: cloneEdges(nextEdges) },
       past: [],
       future: [],
     })
@@ -103,7 +102,7 @@ export const loadParentGraph = async (): Promise<void> => {
   }
 
   // Snapshot any unsaved edits from the live canvas into the current context.
-  persistActiveCanvas()
+  graphStackState.syncCurrent()
 
   const currentContext = graphStackState.getTopContext()
   const parentContext = graphStackState.getParentContext()
@@ -113,7 +112,7 @@ export const loadParentGraph = async (): Promise<void> => {
 
   try {
     // Empty subnetwork: remove the node from the parent and clean up the store.
-    if (currentContext.nodes.length === 0) {
+    if (currentContext.current.nodes.length === 0) {
       if (
         currentContext.originalName &&
         isNodeInNetworkNodes(currentContext.originalName)
@@ -122,10 +121,10 @@ export const loadParentGraph = async (): Promise<void> => {
       }
 
       // Strip the subnetwork node and all its connected edges from the parent.
-      const parentNodes = cloneNodes(parentContext.nodes).filter(
+      const parentNodes = cloneNodes(parentContext.current.nodes).filter(
         (node) => node.id !== currentContext.parentNodeId
       )
-      const parentEdges = cloneEdges(parentContext.edges).filter(
+      const parentEdges = cloneEdges(parentContext.current.edges).filter(
         (edge) =>
           edge.source !== currentContext.parentNodeId &&
           edge.target !== currentContext.parentNodeId
@@ -133,8 +132,7 @@ export const loadParentGraph = async (): Promise<void> => {
 
       graphStackState.collapseToParent({
         ...parentContext,
-        nodes: parentNodes,
-        edges: parentEdges,
+        current: { nodes: parentNodes, edges: parentEdges },
       })
       applyCanvasState(parentNodes, parentEdges)
       toastState.add({
@@ -147,8 +145,8 @@ export const loadParentGraph = async (): Promise<void> => {
     // Rebuild the network node definition from the current subnetwork's graph.
     const updatedNetworkNode = createNetworkNodeDefinition(
       currentContext.label,
-      currentContext.nodes,
-      currentContext.edges
+      currentContext.current.nodes,
+      currentContext.current.edges
     )
 
     // If the name changed during editing, remove the stale store entry.
@@ -166,7 +164,7 @@ export const loadParentGraph = async (): Promise<void> => {
     // Update the subnetwork's canvas node in the parent context so its
     // handle interface (arguments, inputs, outputs) stays in sync.
     let parentNodeFound = false
-    const parentNodes = cloneNodes(parentContext.nodes).map((node) => {
+    const parentNodes = cloneNodes(parentContext.current.nodes).map((node) => {
       if (
         node.id !== currentContext.parentNodeId ||
         !isNetworkCanvasNode(node)
@@ -194,7 +192,7 @@ export const loadParentGraph = async (): Promise<void> => {
     // Remove edges that became stale because the subnetwork interface changed
     // (out-of-bounds handle indices or type mismatches after boundary rebuild).
     const [validParentEdges, removedEdgesCount] = filterStaleParentEdges(
-      cloneEdges(parentContext.edges),
+      cloneEdges(parentContext.current.edges),
       parentNodes,
       currentContext.parentNodeId!,
       updatedNetworkNode
@@ -203,8 +201,7 @@ export const loadParentGraph = async (): Promise<void> => {
     // Pop current context and update parent context with new subnetwork definition and validated edges
     graphStackState.collapseToParent({
       ...parentContext,
-      nodes: parentNodes,
-      edges: validParentEdges,
+      current: { nodes: parentNodes, edges: validParentEdges },
     })
     // Restore the parent graph on canvas
     applyCanvasState(parentNodes, validParentEdges)
@@ -261,7 +258,7 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   }
 
   // Snapshot edits so the rebuilt definition includes any recent canvas changes.
-  persistActiveCanvas()
+  graphStackState.syncCurrent()
 
   // Re-read after persist — nodes/edges may have been updated.
   const refreshedCurrentContext = graphStackState.getTopContext()
@@ -272,8 +269,8 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
 
   const updatedNetworkNode = createNetworkNodeDefinition(
     trimmedName,
-    refreshedCurrentContext.nodes,
-    refreshedCurrentContext.edges
+    refreshedCurrentContext.current.nodes,
+    refreshedCurrentContext.current.edges
   )
 
   // If the name changed, remove the stale store entry before adding the new one.
@@ -289,7 +286,7 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
 
   // Update the subnetwork's canvas node in the parent context so its
   // handle interface (arguments, inputs, outputs) stays in sync.
-  const parentNodes = cloneNodes(parentContext.nodes).map((node) => {
+  const parentNodes = cloneNodes(parentContext.current.nodes).map((node) => {
     if (
       node.id !== refreshedCurrentContext.parentNodeId ||
       !isNetworkCanvasNode(node)
@@ -310,7 +307,9 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   })
 
   // Update both contexts: parent gets the new node data, current gets the new name.
-  graphStackState.updateParentContext({ nodes: parentNodes })
+  graphStackState.updateParentContext({
+    current: { nodes: parentNodes, edges: parentContext.current.edges },
+  })
   graphStackState.updateTopContext({
     label: updatedNetworkNode.name,
     originalName: updatedNetworkNode.name,
