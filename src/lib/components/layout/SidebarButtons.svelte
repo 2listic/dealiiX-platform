@@ -56,7 +56,6 @@
   let importGraphInput: HTMLInputElement | undefined = $state()
   let importNodesInput: HTMLInputElement | undefined = $state()
 
-
   const handleLoginLogout = () => {
     if (token) {
       getModal(logoutConfirmModalId)?.open()
