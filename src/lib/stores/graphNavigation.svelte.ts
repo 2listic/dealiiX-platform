@@ -257,23 +257,27 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
     return
   }
 
-  // Snapshot edits so the rebuilt definition includes any recent canvas changes.
+  // Flush any unsaved canvas edits into the top context before rebuilding the
+  // definition — otherwise changes made since the last navigation sync are lost.
   graphStackState.syncCurrent()
 
-  // Re-read after persist — nodes/edges may have been updated.
+  // Re-read the top context: syncCurrent() just replaced it in the stack.
   const refreshedCurrentContext = graphStackState.getTopContext()
   const parentContext = graphStackState.getParentContext()
   if (!refreshedCurrentContext || !parentContext) {
     return
   }
 
+  // Rebuild the full network node definition under the new name.
+  // createNetworkNodeDefinition recomputes arguments/inputs/outputs from the
+  // boundary analysis, so this is not a simple key rename in the store.
   const updatedNetworkNode = createNetworkNodeDefinition(
     trimmedName,
     refreshedCurrentContext.current.nodes,
     refreshedCurrentContext.current.edges
   )
 
-  // If the name changed, remove the stale store entry before adding the new one.
+  // Swap the store entry: remove the old key (if it exists) then write the new one.
   if (
     refreshedCurrentContext.originalName &&
     refreshedCurrentContext.originalName !== updatedNetworkNode.name &&
@@ -281,11 +285,11 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   ) {
     await removeNetworkNode(refreshedCurrentContext.originalName)
   }
-
   await addNetworkNode(updatedNetworkNode.name, updatedNetworkNode)
 
-  // Update the subnetwork's canvas node in the parent context so its
-  // handle interface (arguments, inputs, outputs) stays in sync.
+  // Patch the subnetwork's canvas node in the parent context.
+  // The parent stores name + the full handle interface (arguments, inputs, outputs),
+  // so all four fields must be updated together to keep handles in sync.
   const parentNodes = cloneNodes(parentContext.current.nodes).map((node) => {
     if (
       node.id !== refreshedCurrentContext.parentNodeId ||
@@ -306,7 +310,7 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
     }
   })
 
-  // Update both contexts: parent gets the new node data, current gets the new name.
+  // Persist both sides of the rename: parent canvas node and current breadcrumb label.
   graphStackState.updateParentContext({
     current: { nodes: parentNodes, edges: parentContext.current.edges },
   })

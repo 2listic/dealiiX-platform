@@ -32,7 +32,6 @@
   import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
-  import UndoIcon from '../icons/UndoIcon.svelte'
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -56,6 +55,7 @@
 
   let importGraphInput: HTMLInputElement | undefined = $state()
   let importNodesInput: HTMLInputElement | undefined = $state()
+
 
   const handleLoginLogout = () => {
     if (token) {
@@ -382,31 +382,7 @@
     <span class="button-text">Visualiz.</span>
   </div>
 
-  <!-- Undo / Redo group -->
-  {#if isCoralMode}
-    <SidebarGroupButton
-      title="History"
-      disabled={!graphHistoryState.canUndo && !graphHistoryState.canRedo}
-    >
-      {#snippet icon()}
-        <UndoIcon width="28px" height="28px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Undo (Ctrl+Z)"
-          disabled={!graphHistoryState.canUndo}
-          onclick={() => graphHistoryState.undo()}
-        />
-        <SidebarGroupButtonItem
-          label="Redo (Ctrl+Shift+Z)"
-          disabled={!graphHistoryState.canRedo}
-          onclick={() => graphHistoryState.redo()}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-  {/if}
-
-  <!-- Auto Layout group -->
+  <!-- Layout group (auto-layout + undo/redo) -->
   {#if isCoralMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
@@ -420,6 +396,16 @@
         <SidebarGroupButtonItem
           label="Vertical"
           onclick={() => handleAutoLayout('TB')}
+        />
+        <SidebarGroupButtonItem
+          label="Undo"
+          disabled={!graphHistoryState.canUndo}
+          onclick={() => graphHistoryState.undo()}
+        />
+        <SidebarGroupButtonItem
+          label="Redo"
+          disabled={!graphHistoryState.canRedo}
+          onclick={() => graphHistoryState.redo()}
         />
       {/snippet}
     </SidebarGroupButton>
