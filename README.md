@@ -61,7 +61,7 @@ Run `npm run build:electron` to compile into `dist-electron/`, or use `npm run c
 
 ### Unit tests (Vitest)
 
-Run all unit tests with `npm run test`, or a single file with `npx vitest run <path>`.  
+Run all unit tests with `npm run test`, or a single file with `npx vitest run <path>`.
 
 Test files follow the pattern `src/**/*.test.{js,ts}` and cover utility functions and Svelte stores — no component rendering.
 

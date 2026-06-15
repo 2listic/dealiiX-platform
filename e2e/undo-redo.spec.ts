@@ -2,7 +2,9 @@ import { test, expect } from './fixtures'
 import { simulateDragToCanvas } from './helpers'
 
 test('undo removes a node and redo restores it', async ({ page }) => {
-  await expect(page.locator('[data-testid="sidebar-node"]').first()).toBeVisible()
+  await expect(
+    page.locator('[data-testid="sidebar-node"]').first()
+  ).toBeVisible()
 
   await simulateDragToCanvas(page, '[data-testid="sidebar-node"]')
 
