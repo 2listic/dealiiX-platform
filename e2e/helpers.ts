@@ -82,6 +82,7 @@ export async function connectHandles(
 
   await page.mouse.move(sx, sy)
   await page.mouse.down()
-  await page.mouse.move(tx, ty)
+  // Move in steps so xyflow's pointermove tracking follows the drag path.
+  await page.mouse.move(tx, ty, { steps: 20 })
   await page.mouse.up()
 }
