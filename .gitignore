@@ -45,6 +45,10 @@ containers/shared-data/*
 # Test files
 test_files/legacy/*
 
+# Playwright E2E test artifacts
+test-results/
+playwright-report/
+
 # Local runs folder — ignore generated outputs but track step-70 source files
 /local_runs/*
 !/local_runs/step-70

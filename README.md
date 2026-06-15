@@ -59,8 +59,23 @@ Run `npm run build:electron` to compile into `dist-electron/`, or use `npm run c
 
 ## Testing
 
-Run unit tests
-`npm run test`
+### Unit tests (Vitest)
+
+Run all unit tests with `npm run test`, or a single file with `npx vitest run <path>`.  
+
+Test files follow the pattern `src/**/*.test.{js,ts}` and cover utility functions and Svelte stores — no component rendering.
+
+### E2E tests — Tier 1 (Playwright + Electron)
+
+Tier 1 covers pure frontend scenarios with no backend.
+
+```bash
+# Build the app first — E2E tests drive the compiled output
+npm run build:electron && npm run build
+
+# Run all E2E tests
+npm run test:e2e
+```
 
 ## Debugging
 
@@ -140,7 +155,7 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
-- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), and unit tests (`npm run test`), either failing blocks the merge.
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), unit tests (`npm run test`), and renderer-only E2E tests (`npm run test:e2e`).
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release

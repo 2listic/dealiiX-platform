@@ -273,6 +273,16 @@ npx vitest run src/lib/utils/graphParser.test.ts      # Run a single test file
 
 Test files follow the pattern `src/**/*.test.{js,ts}`. Tests run in a Node environment with Svelte plugin and `browser` resolve conditions (no globals — use explicit imports from `vitest`).
 
+### E2E Tests (Tier 1 — Playwright + Electron)
+
+```bash
+npm run build:electron && npm run build   # required before running E2E tests
+npm run test:e2e                          # run all E2E tests
+npx playwright test e2e/canvas.spec.ts   # run a single spec file
+```
+
+Tests live in `e2e/`. Shared fixtures (Electron launch + window ready) are in `e2e/fixtures.ts`.
+
 ### Docker (SSH + Slurm testing)
 
 ```bash
