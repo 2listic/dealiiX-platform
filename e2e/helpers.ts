@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 /**
  * Simulates an HTML5 drag-and-drop from a sidebar node onto the SvelteFlow canvas.
@@ -14,6 +14,8 @@ export async function simulateDragToCanvas(
   page: Page,
   sourceSelector: string
 ): Promise<void> {
+  // page.evaluate runs inside the Electron renderer — the only place where
+  // real DragEvent / DataTransfer objects exist.
   await page.evaluate((src: string) => {
     const source = document.querySelector(src)
     const target = document.querySelector('.svelte-flow')
@@ -51,4 +53,35 @@ export async function simulateDragToCanvas(
       new DragEvent('dragend', { dataTransfer: dt, bubbles: true })
     )
   }, sourceSelector)
+}
+
+/**
+ * Simulates a pointer drag between two SvelteFlow handles to create an edge.
+ *
+ * @param page - The Playwright Page object for the Electron window under test.
+ * @param source - Locator for the output handle to drag from.
+ * @param target - Locator for the input handle to drag to.
+ * @returns A promise that resolves once the mouse-up event has been dispatched.
+ * @throws If either handle's bounding box cannot be determined.
+ */
+export async function connectHandles(
+  page: Page,
+  source: Locator,
+  target: Locator
+): Promise<void> {
+  // page.mouse operates on real pointer events in the renderer.
+  const srcBox = await source.boundingBox()
+  const tgtBox = await target.boundingBox()
+  if (!srcBox || !tgtBox)
+    throw new Error('connectHandles: could not get bounding box for handle')
+
+  const sx = srcBox.x + srcBox.width / 2
+  const sy = srcBox.y + srcBox.height / 2
+  const tx = tgtBox.x + tgtBox.width / 2
+  const ty = tgtBox.y + tgtBox.height / 2
+
+  await page.mouse.move(sx, sy)
+  await page.mouse.down()
+  await page.mouse.move(tx, ty)
+  await page.mouse.up()
 }

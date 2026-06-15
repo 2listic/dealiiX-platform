@@ -1,0 +1,15 @@
+{
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "dealii::Triangulation<2, 2>",
+        "position": { "x": 153, "y": 160 }
+      },
+      "3": {
+        "type": "GridGenerator::generate_from_name_and_arguments<2>",
+        "position": { "x": 625, "y": 240 }
+      }
+    },
+    "edges": {}
+  }
+}

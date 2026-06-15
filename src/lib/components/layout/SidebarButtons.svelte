@@ -432,6 +432,7 @@
   <!-- Hidden file inputs -->
   <input
     bind:this={importGraphInput}
+    data-testid="import-graph-input"
     type="file"
     onchange={loadGraphFromFile}
     accept=".json"
