@@ -69,7 +69,26 @@ export async function connectHandles(
   source: Locator,
   target: Locator
 ): Promise<void> {
-  // page.mouse operates on real pointer events in the renderer.
+  // xyflow's fitView fires asynchronously via ResizeObserver after nodes land
+  // in the DOM — the source handle can still be mid-transition when toHaveCount()
+  // resolves. Poll animation frames until the bounding box is stable.
+  let prevBox = await source.boundingBox()
+  for (let i = 0; i < 30; i++) {
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    )
+    const currBox = await source.boundingBox()
+    if (
+      prevBox &&
+      currBox &&
+      Math.abs(prevBox.x - currBox.x) < 0.5 &&
+      Math.abs(prevBox.y - currBox.y) < 0.5
+    )
+      break
+    prevBox = currBox
+  }
+
   const srcBox = await source.boundingBox()
   const tgtBox = await target.boundingBox()
   if (!srcBox || !tgtBox)

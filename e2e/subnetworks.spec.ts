@@ -17,7 +17,10 @@ test('collapsing a selection into a subnetwork and exploding it restores the nod
   await nodes.first().click()
   await nodes.last().click({ modifiers: ['Control'] })
 
-  await page.getByRole('button', { name: 'Create Subnetwork' }).click()
+  // force: the button may be hidden by the minimap in CI's smaller windows
+  await page
+    .getByRole('button', { name: 'Create Subnetwork' })
+    .click({ force: true })
   await page.locator('#network-node-name-input').fill('test-net')
   await page.getByRole('button', { name: 'Create', exact: true }).click()
 
