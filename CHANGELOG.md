@@ -30,7 +30,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Testing
 
-- [#193](https://github.com/2listic/dealiiX-platform/issues/193) Tier 1 E2E test suite added using Playwright and Electron. Tests cover app launch, sidebar node loading, drag-and-drop node creation, undo/redo, JSON graph import, edge connection between handles, and subnetwork collapse/explode. Each test establishes its own canvas state via graph import to remain independent of execution order. CI runs the suite headlessly via `xvfb-run` after the frontend build step.
+- [#193](https://github.com/2listic/dealiiX-platform/issues/193) Tier 1 E2E test suite added using Playwright and Electron. Tests cover app launch, sidebar node loading, drag-and-drop node creation, undo/redo, JSON graph import, edge connection between handles, and subnetwork collapse/explode. Tests run sequentially with one worker so a single Electron instance is shared across all tests, matching CI behaviour. A fixed 1280×800 window is enforced via the `E2E_TEST` env var for reproducible bounding-box calculations. CI runs the suite headlessly via `xvfb-run` and uploads traces and screenshots as artifacts on failure.
 
 ### Project-Structure
 
