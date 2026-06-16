@@ -6,5 +6,6 @@ export default defineConfig({
   use: {
     video: 'on-first-retry',
     screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
 })

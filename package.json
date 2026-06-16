@@ -32,6 +32,7 @@
     "make:dmg": "electron-forge make --targets=@electron-forge/maker-zip,@electron-forge/maker-dmg",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:build": "npm run build && npm run test:e2e",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check": "svelte-check --tsconfig ./tsconfig.json",

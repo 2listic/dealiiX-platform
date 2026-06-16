@@ -276,8 +276,8 @@ Test files follow the pattern `src/**/*.test.{js,ts}`. Tests run in a Node envir
 ### E2E Tests (Tier 1 — Playwright + Electron)
 
 ```bash
-npm run build:electron && npm run build   # required before running E2E tests
-npm run test:e2e                          # run all E2E tests
+npm run test:e2e:build                    # build + run (recommended locally)
+npm run test:e2e                          # run only (CI, or after a manual build)
 npx playwright test e2e/canvas.spec.ts   # run a single spec file
 ```
 

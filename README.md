@@ -70,11 +70,11 @@ Test files follow the pattern `src/**/*.test.{js,ts}` and cover utility function
 Tier 1 covers pure frontend scenarios with no backend.
 
 ```bash
-# Build the app first — E2E tests drive the compiled output
-npm run build:electron && npm run build
+# Build + run in one shot (recommended locally)
+npm run test:e2e:build
 
-# Run all E2E tests
-npm run test:e2e
+# Or run a single spec file — remember to build first with `npm run build`
+npx playwright test e2e/canvas.spec.ts
 ```
 
 ## Debugging
