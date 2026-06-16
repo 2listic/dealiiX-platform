@@ -283,6 +283,18 @@ npx playwright test e2e/canvas.spec.ts   # run a single spec file
 
 Tests live in `e2e/`. Shared fixtures (Electron launch + window ready) are in `e2e/fixtures.ts`.
 
+**Key config** (`playwright.config.ts`): `workers: 1` — one Electron instance shared across all tests (cold-start paid once); `retries: 1` — one automatic retry per test. On failure Playwright writes screenshot, video (first retry), and trace to `test-results/`.
+
+**Retrieving CI artifacts** via gh CLI:
+
+```bash
+gh run list --branch <branch>                          # find the run ID
+gh run download <run-id> --name e2e-test-results       # download artifact
+npx playwright show-trace test-results/<dir>/trace.zip # view trace
+```
+
+Artifacts are retained 7 days and are also available under the **Artifacts** section of each run in the GitHub Actions UI.
+
 ### Docker (SSH + Slurm testing)
 
 ```bash

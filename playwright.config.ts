@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
+  workers: 1,
+  retries: 1,
   use: {
     video: 'on-first-retry',
     screenshot: 'only-on-failure',

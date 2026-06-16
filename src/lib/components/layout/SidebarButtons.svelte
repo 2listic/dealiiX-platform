@@ -32,6 +32,9 @@
   import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
+  import { useSvelteFlow } from '@xyflow/svelte'
+
+  const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
   const logoutConfirmModalId = 'logout-confirm-modal'
@@ -99,6 +102,8 @@
       console.log('imported graph nodes', getNodes())
       console.log('imported graph edges', getEdges())
       toastState.add({ message: 'New graph was loaded' })
+      // Force a fit view to ensure the graph is visible
+      fitView({ maxZoom: 1, minZoom: 1 })
     } catch (error) {
       console.error('Failed to load graph:', error)
       toastState.add({

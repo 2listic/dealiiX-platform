@@ -13,11 +13,14 @@ test('collapsing a selection into a subnetwork and exploding it restores the nod
   const nodes = page.locator('.svelte-flow__node')
   await expect(nodes).toHaveCount(2)
 
-  // Select both nodes: click first, then Ctrl+click second
-  await nodes.first().click()
-  await nodes.last().click({ modifiers: ['Control'] })
+  // force: bypasses Playwright's actionability wait so nodes can be selected
+  // even when they appear small or partially covered at the fitView zoom level.
+  await nodes.first().click({ force: true })
+  await page.keyboard.down('Control')
+  await nodes.last().click({ force: true })
+  await page.keyboard.up('Control')
 
-  // force: the button may be hidden by the minimap in CI's smaller windows
+  // force: the button may overlap with the minimap at small window sizes
   await page
     .getByRole('button', { name: 'Create Subnetwork' })
     .click({ force: true })

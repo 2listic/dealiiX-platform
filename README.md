@@ -73,9 +73,16 @@ Tier 1 covers pure frontend scenarios with no backend.
 # Build + run in one shot (recommended locally)
 npm run test:e2e:build
 
-# Or run a single spec file — remember to build first with `npm run build`
+# Run only (after a manual build)
+npm run test:e2e
+
+# Run a single spec file — build first with `npm run build`
 npx playwright test e2e/canvas.spec.ts
 ```
+
+The suite runs with **one worker** (`workers: 1` in `playwright.config.ts`), matching CI behaviour (tests are run sequentially). Therefore a single Electron instance is launched and shared across all tests, avoiding multiple long cold-starts and reducing total time. Tests also have **one automatic retry** (`retries: 1`).
+
+On failure, Playwright saves a **screenshot**, **video**, and **trace** to `test-results/`. To retrieve failure artifacts from a CI run, go to the **Actions** tab on GitHub → select the run → scroll to the **Artifacts** section at the bottom.
 
 ## Debugging
 

@@ -59,8 +59,8 @@ export async function simulateDragToCanvas(
  * Simulates a pointer drag between two SvelteFlow handles to create an edge.
  *
  * @param page - The Playwright Page object for the Electron window under test.
- * @param source - Locator for the output handle to drag from.
- * @param target - Locator for the input handle to drag to.
+ * @param source - Locator for the output (right) handle to drag from.
+ * @param target - Locator for the input (left) handle to drag to.
  * @returns A promise that resolves once the mouse-up event has been dispatched.
  * @throws If either handle's bounding box cannot be determined.
  */
@@ -69,39 +69,19 @@ export async function connectHandles(
   source: Locator,
   target: Locator
 ): Promise<void> {
-  // xyflow's fitView fires asynchronously via ResizeObserver after nodes land
-  // in the DOM — the source handle can still be mid-transition when toHaveCount()
-  // resolves. Poll animation frames until the bounding box is stable.
-  let prevBox = await source.boundingBox()
-  for (let i = 0; i < 30; i++) {
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    )
-    const currBox = await source.boundingBox()
-    if (
-      prevBox &&
-      currBox &&
-      Math.abs(prevBox.x - currBox.x) < 0.5 &&
-      Math.abs(prevBox.y - currBox.y) < 0.5
-    )
-      break
-    prevBox = currBox
-  }
-
   const srcBox = await source.boundingBox()
   const tgtBox = await target.boundingBox()
   if (!srcBox || !tgtBox)
-    throw new Error('connectHandles: could not get bounding box for handle')
+    throw new Error('connectHandles: could not read handle bounding box')
 
-  const sx = srcBox.x + srcBox.width / 2
+  // Offset 2px inward from each handle centre so the click lands on the node body.
+  const sx = srcBox.x + srcBox.width / 2 - 2
   const sy = srcBox.y + srcBox.height / 2
-  const tx = tgtBox.x + tgtBox.width / 2
+  const tx = tgtBox.x + tgtBox.width / 2 + 2
   const ty = tgtBox.y + tgtBox.height / 2
 
   await page.mouse.move(sx, sy)
   await page.mouse.down()
-  // Move in steps so xyflow's pointermove tracking follows the drag path.
   await page.mouse.move(tx, ty, { steps: 20 })
   await page.mouse.up()
 }

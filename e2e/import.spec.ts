@@ -12,4 +12,5 @@ test('importing a JSON graph populates the canvas', async ({ page }) => {
 
   await expect(page.locator('.svelte-flow__node').first()).toBeVisible()
   expect(await page.locator('.svelte-flow__node').count()).toBeGreaterThan(0)
+  await expect(page.locator('.svelte-flow__edge').first()).toBeVisible()
 })
