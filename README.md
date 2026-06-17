@@ -59,8 +59,30 @@ Run `npm run build:electron` to compile into `dist-electron/`, or use `npm run c
 
 ## Testing
 
-Run unit tests
-`npm run test`
+### Unit tests (Vitest)
+
+Run all unit tests with `npm run test`, or a single file with `npx vitest run <path>`.
+
+Test files follow the pattern `src/**/*.test.{js,ts}` and cover utility functions and Svelte stores — no component rendering.
+
+### E2E tests — Tier 1 (Playwright + Electron)
+
+Tier 1 covers pure frontend scenarios with no backend.
+
+```bash
+# Build + run in one shot (recommended locally)
+npm run test:e2e:build
+
+# Run only (after a manual build)
+npm run test:e2e
+
+# Run a single spec file — build first with `npm run build`
+npx playwright test e2e/canvas.spec.ts
+```
+
+The suite runs with **one worker** (`workers: 1` in `playwright.config.ts`), matching CI behaviour (tests are run sequentially). Therefore a single Electron instance is launched and shared across all tests, avoiding multiple long cold-starts and reducing total time. Tests also have **one automatic retry** (`retries: 1`).
+
+On failure, Playwright saves **context** and **trace** to `test-results/`. To retrieve failure artifacts from a CI run, go to the **Actions** tab on GitHub → select the run → scroll to the **Artifacts** section at the bottom.
 
 ## Debugging
 
@@ -140,7 +162,7 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
-- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), and unit tests (`npm run test`), either failing blocks the merge.
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), unit tests (`npm run test`), and renderer-only E2E tests (`npm run test:e2e`).
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release

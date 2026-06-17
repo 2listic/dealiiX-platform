@@ -273,6 +273,28 @@ npx vitest run src/lib/utils/graphParser.test.ts      # Run a single test file
 
 Test files follow the pattern `src/**/*.test.{js,ts}`. Tests run in a Node environment with Svelte plugin and `browser` resolve conditions (no globals — use explicit imports from `vitest`).
 
+### E2E Tests (Tier 1 — Playwright + Electron)
+
+```bash
+npm run test:e2e:build                    # build + run (recommended locally)
+npm run test:e2e                          # run only (CI, or after a manual build)
+npx playwright test e2e/canvas.spec.ts   # run a single spec file
+```
+
+Tests live in `e2e/`. Shared fixtures (Electron launch + window ready) are in `e2e/fixtures.ts`.
+
+**Key config** (`playwright.config.ts`): `workers: 1` — one Electron instance shared across all tests (cold-start paid once); `retries: 1` — one automatic retry per test. On failure Playwright writes screenshot, video (first retry), and trace to `test-results/`.
+
+**Retrieving CI artifacts** via gh CLI:
+
+```bash
+gh run list --branch <branch>                          # find the run ID
+gh run download <run-id> --name e2e-test-results       # download artifact
+npx playwright show-trace test-results/<dir>/trace.zip # view trace
+```
+
+Artifacts are retained 7 days and are also available under the **Artifacts** section of each run in the GitHub Actions UI.
+
 ### Docker (SSH + Slurm testing)
 
 ```bash

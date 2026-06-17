@@ -14,10 +14,14 @@ function createWindow() {
   // app.getAppPath() (project root) for resources that live outside dist-electron/.
   const appPath = app.getAppPath()
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  // Use a fixed size in E2E tests so bounding-box calculations and fitView
+  // results are identical across machines and CI environments.
+  const windowWidth = process.env.E2E_TEST ? 1280 : Math.round(width * 0.8)
+  const windowHeight = process.env.E2E_TEST ? 800 : Math.round(height * 0.8)
 
   mainWindow = new BrowserWindow({
-    width: Math.round(width * 0.8),
-    height: Math.round(height * 0.8),
+    width: windowWidth,
+    height: windowHeight,
     icon: path.join(appPath, 'electron/assets/coral-orange.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -28,7 +32,7 @@ function createWindow() {
   })
 
   mainWindow.loadFile(path.join(appPath, 'dist/index.html'))
-  mainWindow.webContents.openDevTools() // open devTools by default
+  // mainWindow.webContents.openDevTools() // open devTools by default
 }
 
 app.whenReady().then(() => {

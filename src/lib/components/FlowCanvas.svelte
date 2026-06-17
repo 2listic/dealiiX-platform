@@ -380,7 +380,7 @@
   }
 </script>
 
-<div class="flow-canvas" bind:this={canvasElement}>
+<div class="flow-canvas" data-testid="flow-canvas" bind:this={canvasElement}>
   <SvelteFlow
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}

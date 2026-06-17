@@ -61,6 +61,7 @@
 </script>
 
 <aside
+  data-testid="sidebar"
   onmouseenter={() => (isMouseOver = true)}
   onmouseleave={() => (isMouseOver = false)}
 >
@@ -79,6 +80,8 @@
         <div
           style="--borderColor: {returnNodeColor(node.node_type)}"
           class="node"
+          data-testid="sidebar-node"
+          data-node-type={node.node_type}
           ondragstart={(event) => onDragStart(event, node)}
           draggable={true}
         >
@@ -108,6 +111,7 @@
         >
         <input
           class="search-input"
+          data-testid="sidebar-search"
           type="text"
           placeholder="Filter by type..."
           bind:value={searchQuery}
@@ -119,6 +123,8 @@
         <div
           style="--borderColor: {returnNodeColor(node.node_type)}"
           class="node"
+          data-testid="sidebar-node"
+          data-node-type={node.node_type}
           ondragstart={(event) => onDragStart(event, node)}
           draggable={true}
         >
