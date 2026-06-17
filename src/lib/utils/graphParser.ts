@@ -11,6 +11,7 @@
  */
 
 import { setEdges, setNodes, updateLastNodeId } from '../stores/nodes.svelte'
+import { graphStackState } from '../stores/graphStack.svelte'
 import {
   addNetworkNode,
   getNetworkNodeDefinition,
@@ -58,6 +59,10 @@ export const loadGraphFromProtocol = async (
   const xyFlowEdges = edgesFromProtocolToFlow(edges)
   setEdges(xyFlowEdges)
   updateLastNodeId()
+
+  // Discard any subnetwork navigation state and undo history from a prior session.
+  graphStackState.reset()
+  graphStackState.syncCurrent()
 
   return networkNodes
 }

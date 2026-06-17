@@ -4,6 +4,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Canvas-graph
+
+- [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
+
 ### UI/UX
 
 - [#102](https://github.com/2listic/dealiiX-platform/issues/102) Complete colour-palette overhaul: all hard-coded hex values replaced with semantic CSS variables. Dark-mode depth hierarchy established (primary → surface → secondary → ternary). All 16 SVG icon components migrated to `currentColor` so they adapt automatically to the active theme. Form elements given explicit `color: var(--ternary-color)` to override the UA-stylesheet reset. Node action buttons and elementary constructor inputs styled to match the active theme. Zoom controls panel removed as it didn't provide any real value and a complex fix was needed to style it properly.

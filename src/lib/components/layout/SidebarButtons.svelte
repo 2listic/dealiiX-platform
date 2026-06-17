@@ -16,6 +16,7 @@
   import Settings from '../SettingsModal.svelte'
   import ProjectsList from '../ProjectsList.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
+  import { graphHistoryState } from '../../stores/graphStack.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
@@ -81,7 +82,6 @@
       return
     }
     try {
-      graphStackState.reset()
       const importedGraphAsText = await readFileAsText(files[0])
       const importedGraph = JSON.parse(importedGraphAsText)
       const { invalidEdges, registeredNetworkNodes } =
@@ -195,6 +195,7 @@
         getEdgesSnapshot(),
         direction
       )
+      graphHistoryState.checkpoint()
       setNodes(layoutedNodes)
       toastState.add({
         message:
@@ -380,7 +381,7 @@
     <span class="button-text">Visualiz.</span>
   </div>
 
-  <!-- Auto Layout group -->
+  <!-- Layout group (auto-layout + undo/redo) -->
   {#if isCoralMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
@@ -394,6 +395,16 @@
         <SidebarGroupButtonItem
           label="Vertical"
           onclick={() => handleAutoLayout('TB')}
+        />
+        <SidebarGroupButtonItem
+          label="Undo"
+          disabled={!graphHistoryState.canUndo}
+          onclick={() => graphHistoryState.undo()}
+        />
+        <SidebarGroupButtonItem
+          label="Redo"
+          disabled={!graphHistoryState.canRedo}
+          onclick={() => graphHistoryState.redo()}
         />
       {/snippet}
     </SidebarGroupButton>

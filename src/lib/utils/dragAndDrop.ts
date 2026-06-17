@@ -5,6 +5,7 @@
 
 import type { XYPosition } from '@xyflow/svelte'
 import { addNode } from '../stores/nodes.svelte'
+import { graphHistoryState } from '../stores/graphStack.svelte'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { createCanvasNode } from './canvasNodeUtils'
 
@@ -31,6 +32,6 @@ export const onDrop = (
     y: event.clientY,
   })
   const newNode = createCanvasNode(draggedNodeData, position)
-
+  graphHistoryState.checkpoint()
   addNode(newNode)
 }
