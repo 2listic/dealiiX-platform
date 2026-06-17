@@ -17,7 +17,7 @@
 
   let name = $state('')
   let description = $state('')
-  let formElement
+  let formElement: HTMLFormElement
 
   const validateAndSubmit = async () => {
     if (!formElement.checkValidity()) {
@@ -49,7 +49,8 @@
     } catch (error) {
       console.error('Failed to save project:', error)
       toastState.add({
-        message: error.message || 'Failed to save project',
+        message:
+          error instanceof Error ? error.message : 'Failed to save project',
         type: 'error',
       })
     }

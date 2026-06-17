@@ -36,25 +36,26 @@
     node: StandardNodeDefinition | SubGraphNodeDefinition
   ) => {
     if (!event.dataTransfer) {
-      return null
+      return
     }
     dndNodeDataState.current = node
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const returnNodeColor = (nodeTypeName) => {
+  const returnNodeColor = (nodeTypeName: keyof typeof nodeColors) => {
     return nodeColors[nodeTypeName]
   }
 
-  const handleDelete = async (networkNodeName) => {
+  const handleDelete = async (networkNodeName: string) => {
     try {
       await removeNetworkNode(networkNodeName)
     } catch (e) {
-      toastState.add({
-        message: e.message || `Failed to delete node ${networkNodeName}`,
-        type: 'error',
-      })
-      console.error(`Failed to delete node ${networkNodeName}`, e.message)
+      const msg =
+        e instanceof Error
+          ? e.message
+          : `Failed to delete node ${networkNodeName}`
+      toastState.add({ message: msg, type: 'error' })
+      console.error(`Failed to delete node ${networkNodeName}`, msg)
     }
   }
 </script>

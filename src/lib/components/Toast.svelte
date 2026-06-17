@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { fade } from 'svelte/transition'
   import CloseIcon from './icons/CloseIcon.svelte'
   import ErrorIcon from './icons/ErrorIcon.svelte'

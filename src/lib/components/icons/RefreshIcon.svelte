@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   let { width, height, rotation } = $props()
   let resolvedRotation = $derived.by(() =>
     typeof rotation === 'number' ? rotation : (rotation?.current ?? 0)

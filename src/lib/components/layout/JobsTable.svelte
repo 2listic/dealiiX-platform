@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { fade, slide } from 'svelte/transition'
   import { Tween } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
@@ -36,7 +36,7 @@
   // The 'sv' (Swedish) locale is used because its date/time format is "YYYY-MM-DD HH:MM:SS" —
   // identical to ISO-8601 but in local time and without the T separator. This avoids pulling in a
   // date library while still producing a consistent, readable format across all system locales.
-  const formatDate = (str) => {
+  const formatDate = (str: string | null | undefined) => {
     if (!str) return str
     const d = new Date(str)
     if (isNaN(d.getTime())) return str
@@ -60,23 +60,23 @@
 
   let nodeStatusMap = $state(new Map())
   let currentStatusJobId = $state('')
-  let currentJobIdInternal = $state(undefined)
+  let currentJobIdInternal = $state<number | undefined>(undefined)
   const nodeStatusModalId = 'node-status-modal'
 
-  const handleLogClick = async (jobId) => {
+  const handleLogClick = async (jobId: string) => {
     try {
       currentJobId = jobId
       outLogText = await getOutFileContent(jobId)
       getModal(outLogModalId)?.open()
     } catch (error) {
       toastState.add({
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }
   }
 
-  const handleNodesExecutionStatus = async (jobIdSlurm) => {
+  const handleNodesExecutionStatus = async (jobIdSlurm: string) => {
     try {
       const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
       if (jobIdInternal === undefined) {
@@ -94,7 +94,7 @@
       getModal(nodeStatusModalId)?.open()
     } catch (error) {
       toastState.add({
-        message: error,
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }
@@ -165,7 +165,7 @@
         </table>
       </div>
 
-      {#snippet jobRow(line)}
+      {#snippet jobRow(line: string[])}
         <tr>
           {#each line as bodyCell, i (i)}
             <td>

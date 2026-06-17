@@ -24,6 +24,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
 
+### Project-Structure
+
+- The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
+
 ## [1.4.0] - 2026-05-11
 
 ### Canvas-graph

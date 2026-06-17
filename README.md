@@ -47,7 +47,7 @@ Prettier is used for formatting. Run the following to format the code or use you
 
 ### Renderer (Frontend UI - Svelte)
 
-In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check`.
+In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check` using [`tsconfig.json`](tsconfig.json), which enables `strict` mode. All Svelte component `<script>` blocks use `lang="ts"`.
 
 ### Electron (Backend Main Process and Preload)
 

@@ -48,7 +48,7 @@
   let showCoralSettings = $derived(backendKind === 'coral')
   let showExecutableSettings = $derived(backendKind === 'executable')
 
-  const closeModal = () => getModal(modalId).close()
+  const closeModal = () => getModal(modalId)?.close()
 
   const saveAndSyncExecution = async () => {
     const execution: ExecutionSettings = {

@@ -51,7 +51,8 @@
     } catch (error) {
       console.error('Error fetching users:', error)
       toastState.add({
-        message: error.message || 'Failed to fetch users',
+        message:
+          error instanceof Error ? error.message : 'Failed to fetch users',
         type: 'error',
       })
     } finally {
@@ -79,7 +80,8 @@
     } catch (error) {
       console.error('Error sharing project:', error)
       toastState.add({
-        message: error.message || 'Failed to share project',
+        message:
+          error instanceof Error ? error.message : 'Failed to share project',
         type: 'error',
       })
     }

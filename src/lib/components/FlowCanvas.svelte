@@ -8,6 +8,7 @@
     Background,
     MiniMap,
     type NodeTypes,
+    type Edge,
     Panel,
     useSvelteFlow,
     type OnConnectEnd,
@@ -29,7 +30,7 @@
     getStoredNetworkNodes,
   } from '../stores/registryStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
-  import { dndNodeDataState } from '../stores/dndStore.svelte.js'
+  import { dndNodeDataState } from '../stores/dndStore.svelte'
   import { graphStackState } from '../stores/graphStack.svelte'
   import {
     loadParentGraph,
@@ -101,7 +102,7 @@
    * results referencing handles that no longer exist.
    * @param deletedEdges - The edges that were removed from the canvas.
    */
-  const ondelete = ({ edges: deletedEdges }) => {
+  const ondelete = ({ edges: deletedEdges }: { edges: Edge[] }) => {
     if (deletedEdges && deletedEdges.length > 0) {
       clearConnectionCache()
     }

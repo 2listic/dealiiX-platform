@@ -53,7 +53,7 @@
   const handleDeleteConfirm = async () => {
     try {
       await deleteProject(project.id)
-      getModal(deleteModalId).close()
+      getModal(deleteModalId)?.close()
       toastState.add({
         message: `Project "${project.name}" deleted successfully`,
         type: 'success',
@@ -65,10 +65,11 @@
     } catch (error) {
       console.error('Error deleting project:', error)
       toastState.add({
-        message: error.message || 'Failed to delete project',
+        message:
+          error instanceof Error ? error.message : 'Failed to delete project',
         type: 'error',
       })
-      getModal(deleteModalId).close()
+      getModal(deleteModalId)?.close()
     }
   }
 
@@ -101,7 +102,8 @@
     } catch (error) {
       console.error('Error loading project:', error)
       toastState.add({
-        message: error.message || 'Failed to load project',
+        message:
+          error instanceof Error ? error.message : 'Failed to load project',
         type: 'error',
       })
     }
@@ -138,7 +140,7 @@
       </div>
     </div>
 
-    {#if project.shared_users?.length > 0}
+    {#if (project.shared_users?.length ?? 0) > 0}
       <div class="shared-users">
         <strong>Shared with:</strong>
         <ul>

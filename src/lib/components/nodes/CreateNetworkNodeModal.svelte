@@ -35,7 +35,10 @@
     } catch (error) {
       console.error('Failed to create network node:', error)
       toastState.add({
-        message: error.message || 'Failed to create network node',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create network node',
         type: 'error',
       })
     }

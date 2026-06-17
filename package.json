@@ -33,7 +33,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "svelte-check --tsconfig ./jsconfig.json",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:electron": "tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.electron.preload.json --noEmit",
     "format": "prettier . --write",
     "prepare": "husky"

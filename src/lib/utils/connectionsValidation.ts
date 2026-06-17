@@ -17,7 +17,7 @@ import type { NodeDefinitions } from '../types/nodeTypes'
 
 let connectionCache = new Map<string, boolean>()
 
-const isValidConnection = (connection: Connection): boolean => {
+const isValidConnection = (connection: Connection | Edge): boolean => {
   // Create a cache key from the connection
   const cacheKey = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`
   // Return cached result if available

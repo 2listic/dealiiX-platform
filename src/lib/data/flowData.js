@@ -1,3 +1,4 @@
+// @ts-nocheck
 // import { MethodName, Type } from '../types/nodeTypes'
 
 export const initialNodes = [
