@@ -21,7 +21,9 @@ test.describe('Auth', () => {
     await expect(page.locator('#login-username')).toBeVisible()
     await page.locator('#login-username').fill(TEST_USER.username)
     await page.locator('#login-password').fill(TEST_USER.password)
-    await page.locator('[data-testid="login-form"] button[type="submit"]').click()
+    await page
+      .locator('[data-testid="login-form"] button[type="submit"]')
+      .click()
 
     await expect(page.locator('[data-testid="login-status"]')).toHaveText(
       TEST_USER.username,

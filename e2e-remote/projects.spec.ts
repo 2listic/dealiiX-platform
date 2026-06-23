@@ -33,8 +33,12 @@ test.describe('Projects', () => {
     await nameInput.fill(newName)
     await page.getByRole('button', { name: 'Update' }).click()
 
-    await expect(page.locator('[role="alert"]').filter({ hasText: 'saved' })).toBeVisible()
-    await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 15_000 })
+    await expect(
+      page.locator('[role="alert"]').filter({ hasText: 'saved' })
+    ).toBeVisible()
+    await expect(page.locator('[role="alert"]')).toHaveCount(0, {
+      timeout: 15_000,
+    })
 
     // onUpdate() refreshes the list in place — the projects modal stays open.
     await expect(
@@ -85,7 +89,9 @@ test.describe('Projects', () => {
     ).toBeVisible({ timeout: 10_000 })
 
     // Cleanup
-    await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.locator('[role="alert"]')).toHaveCount(0, {
+      timeout: 15_000,
+    })
     await openLoadProjects(page)
     await deleteProjectByName(page, name)
     await page.keyboard.press('Escape')
@@ -112,7 +118,9 @@ async function createProject(page: Page, name: string): Promise<void> {
   await expect(
     page.locator('[role="alert"]').filter({ hasText: 'saved successfully' })
   ).toBeVisible()
-  await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.locator('[role="alert"]')).toHaveCount(0, {
+    timeout: 15_000,
+  })
 }
 
 async function openLoadProjects(page: Page): Promise<void> {
@@ -124,7 +132,9 @@ async function openLoadProjects(page: Page): Promise<void> {
   // Wait until the modal header is visible.
   await expect(page.locator('h2', { hasText: 'Projects' })).toBeVisible()
   // Info toast appears when there are no projects — wait for it to clear.
-  await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.locator('[role="alert"]')).toHaveCount(0, {
+    timeout: 15_000,
+  })
 }
 
 async function deleteProjectByName(page: Page, name: string): Promise<void> {
@@ -137,5 +147,7 @@ async function deleteProjectByName(page: Page, name: string): Promise<void> {
   await expect(
     page.locator('[role="alert"]').filter({ hasText: 'deleted' })
   ).toBeVisible()
-  await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.locator('[role="alert"]')).toHaveCount(0, {
+    timeout: 15_000,
+  })
 }
