@@ -28,9 +28,14 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
 
+### Settings
+
+- [#201](https://github.com/2listic/dealiiX-platform/pull/201) Default settings now pre-fill `urlRemoteServer` (`http://localhost:8080`) and `urlVisualizer` (`http://localhost:8008`) for first-time users, matching the standard local Docker setup. The spurious "settings invalid or outdated" error toast on first launch (caused by treating an absent key the same as a corrupt value) has been removed.
+
 ### Testing
 
 - [#193](https://github.com/2listic/dealiiX-platform/issues/193) Tier 1 E2E test suite added using Playwright and Electron. Tests cover app launch, sidebar node loading, drag-and-drop node creation, undo/redo, JSON graph import, edge connection between handles, and subnetwork collapse/explode. Tests run sequentially with one worker so a single Electron instance is shared across all tests, matching CI behaviour. A fixed 1280×800 window is enforced via the `E2E_TEST` env var for reproducible bounding-box calculations. CI runs the suite headlessly via `xvfb-run` and uploads traces and screenshots as artifacts on failure.
+- [#201](https://github.com/2listic/dealiiX-platform/pull/201) Tier 2 E2E test suite added covering auth and project-management flows that require `coral-remote-server`. Tests cover login, logout, project creation, rename, deletion, and round-trip graph save and load. A separate `playwright.remote.config.ts` config and `e2e-remote.yml` workflow run Tier 2 tests on every push to main and on manual dispatch, keeping the fast Docker-free `ci.yml` unchanged. Both tiers run against an isolated temporary electron-store so the developer's real settings and registered nodes are never touched.
 
 ### Project-Structure
 

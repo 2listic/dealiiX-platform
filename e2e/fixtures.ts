@@ -1,5 +1,9 @@
-import { test as base, expect, _electron as electron } from '@playwright/test'
+import { test as base, _electron as electron } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
+import { mkdtempSync, rmSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+import { clearCanvas, waitForToasts } from './helpers'
 
 type WorkerFixtures = {
   electronApp: ElectronApplication
@@ -13,49 +17,50 @@ type TestFixtures = {
  *  to hand it to the test, then tears it down after `use` resolves.
  */
 export const test = base.extend<TestFixtures, WorkerFixtures>({
-  // This fixture launches the Electron application.
-  // It is a worker-scoped fixture meaning it is shared across all tests in the same
-  // worker process, so that it avoids several cold starts speeding up the test execution.
+  /**
+   * Worker-scoped fixture: shared across all tests in the worker.
+   *
+   * Launches the Electron app with an isolated userData directory so the real
+   * electron-store is never read or written. The app starts from a clean state:
+   * - registered_nodes falls back to defaultNodes.json (built-in fallback)
+   * - settings falls back to createDefaultSettings() — backendKind: 'coral',
+   *   so FlowCanvas renders and [data-testid="flow-canvas"] is always present
+   *
+   * The cold-start wait (up to 60 s) is paid once per worker; subsequent tests
+   * share the same Electron instance.
+   */
   electronApp: [
     async ({}, use) => {
+      // Isolated userData dir.
+      const tempUserData = mkdtempSync(join(tmpdir(), 'dealiix-e2e-'))
+
       const app = await electron.launch({
         args: ['.'], // same way as `npm run dev` does: `electron .`
-        env: { ...process.env, E2E_TEST: '1' },
+        env: { ...process.env, E2E_TEST: '1', ELECTRON_USERDATA: tempUserData },
       })
+
+      await app.firstWindow().then((page) =>
+        page.waitForSelector('[data-testid="flow-canvas"]', {
+          timeout: 60_000, // cold-start (~30 s in CI).
+        })
+      )
+
       await use(app)
+
       await app.close()
+      rmSync(tempUserData, { recursive: true, force: true })
     },
     { scope: 'worker' }, // Worker scope fixture definition.
   ],
 
-  // The first BrowserWindow opened by the Electron application.
-  // This is a test-scoped fixture, meaning it runs once per test.
+  /**
+   * Test-scoped fixture: each test gets a fresh page instance with a clean canvas.
+   */
   page: async ({ electronApp }, use) => {
-    // Receive the shared electronApp and wait for the canvas to mount.
+    // Receive the shared electronApp.
     const page = await electronApp.firstWindow()
-    await page.waitForSelector('[data-testid="flow-canvas"]', {
-      timeout: 60_000, // 60 s covers the cold-start (~30 s in CI), only paid once.
-    })
-    // Clear any nodes left by the previous test.
-    const pane = page.locator('.svelte-flow__pane')
-    const box = await pane.boundingBox()
-    if (box) {
-      await page.mouse.move(box.x + 2, box.y + 2)
-      await page.mouse.down()
-      await page.mouse.move(box.x + box.width - 2, box.y + box.height - 2, {
-        steps: 5,
-      })
-      await page.mouse.up()
-      await page.keyboard.press('Backspace')
-      // Wait for the deletion to propagate through Svelte reactivity.
-      await expect(page.locator('.svelte-flow__node'))
-        .toHaveCount(0, { timeout: 5_000 })
-        .catch(() => {})
-    }
-    // Wait for any toasts from the previous test to fully fade out.
-    await expect(page.locator('[role="alert"]')).toHaveCount(0, {
-      timeout: 15_000,
-    })
+    await clearCanvas(page)
+    await waitForToasts(page)
     await use(page)
   },
 })
