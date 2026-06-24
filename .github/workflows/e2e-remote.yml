@@ -35,9 +35,13 @@ jobs:
 
       - name: Build coral-remote-server Docker image
         run: docker compose build coral-remote-server
+        env:
+          SSH_PUB_KEY_PATH: /dev/null
 
       - name: Start coral-remote-server
         run: docker compose up -d coral-remote-server
+        env:
+          SSH_PUB_KEY_PATH: /dev/null
 
       - name: Build app for E2E
         run: npm run build
