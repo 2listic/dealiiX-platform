@@ -189,7 +189,7 @@ Only works on macOS systems
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
 - **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), unit tests (`npm run test`), and Tier 1 E2E tests (`npm run test:e2e`). No Docker required.
-- **[e2e-remote.yml](.github/workflows/e2e-remote.yml)**: runs on every push and pull request to `main` — builds the `coral-remote-server` Docker image, starts the container, and runs Tier 2 E2E tests (`npm run test:e2e:remote`) covering auth and project-management flows.
+- **[e2e-remote.yml](.github/workflows/e2e-remote.yml)**: runs on every push and pull request to `main` — checks out the `coral-remote-server` submodule using a read-only SSH deploy key (stored as the `CORAL_REMOTE_SERVER_DEPLOY_KEY` repository secret), builds its Docker image, starts the container, and runs Tier 2 E2E tests (`npm run test:e2e:remote`) covering auth and project-management flows.
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release
