@@ -14,10 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Load coral-remote-server deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CORAL_REMOTE_SERVER_DEPLOY_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Init coral-remote-server submodule
+        run: git submodule update --init coral-remote-server
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
