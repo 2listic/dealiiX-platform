@@ -87,13 +87,19 @@ export const jobIdMapState = {
    * @param jobIdScheduler - Slurm ID for remote jobs; equals internalJobId for local jobs.
    * @param jobIdInternal - The touch-dir counter used in nodes-exec-status/<id>/.
    * @param backendKind - Backend used for this run.
+   * @param workingDirectory - Remote dir holding this job's logs and touch-dir.
    */
   async add(
     jobIdScheduler: number | string,
     jobIdInternal: number,
-    backendKind: 'coral' | 'executable'
+    backendKind: 'coral' | 'executable',
+    workingDirectory?: string
   ): Promise<void> {
-    jobIdMap[jobIdScheduler] = { internalId: jobIdInternal, backendKind }
+    jobIdMap[jobIdScheduler] = {
+      internalId: jobIdInternal,
+      backendKind,
+      workingDirectory,
+    }
     await window.electron?.store?.set('jobIdMap', $state.snapshot(jobIdMap))
   },
   /**
@@ -111,6 +117,24 @@ export const jobIdMapState = {
     jobIdScheduler: string
   ): 'coral' | 'executable' | undefined {
     return jobIdMap[jobIdScheduler]?.backendKind
+  },
+  /**
+   * @param jobIdScheduler - The scheduler job ID to look up.
+   * @returns The job's stored working directory, or undefined if not recorded.
+   */
+  getJobWorkingDirectory(jobIdScheduler: string): string | undefined {
+    return jobIdMap[jobIdScheduler]?.workingDirectory
+  },
+  /**
+   * Resolves the full job entry by internal id (used by node-status lookups, which
+   * only carry the internal id, to recover both backend kind and working directory).
+   * @param jobIdInternal - The internal job ID.
+   * @returns The matching entry, or undefined if not found.
+   */
+  getEntryByInternal(jobIdInternal: number): JobIdEntry | undefined {
+    return Object.values(jobIdMap).find(
+      (entry) => entry.internalId === jobIdInternal
+    )
   },
 }
 

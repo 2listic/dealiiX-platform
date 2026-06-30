@@ -23,6 +23,7 @@
   import CubeIcon from '../icons/CubeIcon.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
+  import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
@@ -46,6 +47,7 @@
   let isCoralMode = $derived(settingsState.isCoralMode)
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
+  let isSingleMode = $derived(viewModeState.value === 'single')
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -310,7 +312,7 @@
   />
 
   <!-- Project group -->
-  {#if isCoralMode}
+  {#if isCoralMode && isSingleMode}
     <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
       {#snippet icon()}
         <svg
@@ -351,20 +353,26 @@
   {/if}
 
   <!-- Execute Graph (standalone) -->
-  <div class="button-container">
-    <label for="execute-graph-button" class="element-label" title="Run new job">
-      <ExecuteIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="execute-graph-button"
-      onclick={handleExecution}
-      style="display: none"
-      aria-label="Run new job"
-    ></button>
-    <span class="button-text">Run</span>
-  </div>
+  {#if isSingleMode}
+    <div class="button-container">
+      <label
+        for="execute-graph-button"
+        class="element-label"
+        title="Run new job"
+      >
+        <ExecuteIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="execute-graph-button"
+        onclick={handleExecution}
+        style="display: none"
+        aria-label="Run new job"
+      ></button>
+      <span class="button-text">Run</span>
+    </div>
 
-  <JobConfigModal modalId={JobConfigModalId} />
+    <JobConfigModal modalId={JobConfigModalId} />
+  {/if}
 
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">
@@ -387,7 +395,7 @@
   </div>
 
   <!-- Layout group (auto-layout + undo/redo) -->
-  {#if isCoralMode}
+  {#if isCoralMode && isSingleMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -416,7 +424,7 @@
   {/if}
 
   <!-- Import group -->
-  {#if isCoralMode}
+  {#if isCoralMode && isSingleMode}
     <SidebarGroupButton title="Import">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
