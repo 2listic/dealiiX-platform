@@ -43,14 +43,24 @@
   const handleConfirm = () => {
     getModal(modalId)?.close()
 
+    // Settings are read once, at this UI boundary, and flow in as explicit args.
+    // The submit primitives no longer fall back to settingsState — the config is
+    // the complete, serializable argument bag for the run.
+    const target = isRemoteExecution
+      ? settingsState.remote
+      : settingsState.local
+
     // Close first so the modal doesn't block the UI during the long-running job.
     const run = isExecutableMode
       ? exportAndEvalExecutable({
           kind: 'executable',
+          executablePath: target.executablePath,
           parametersFileName,
         } satisfies ExecutableJobConfig)
       : exportAndEvalCoralGraph(getNodesSnapshot(), getEdgesSnapshot(), {
           kind: 'coral',
+          coralBinaryPath: target.coralBinaryPath,
+          coralPluginPath: target.coralPluginPath,
           nodes,
           tasksPerNode,
           timeLimit,

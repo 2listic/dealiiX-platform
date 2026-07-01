@@ -7,6 +7,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Pipelines
 
 - New pipeline editor: a higher-level visual DAG whose nodes are whole CORAL graphs or standalone executables, connected by ordering dependencies. A central "Pipeline editor" view (toggled from the top-right) lets you add stages (a CORAL graph from a file or the current canvas, or an executable), configure each stage's own resources (MPI nodes/tasks, time limit), and run the whole pipeline. On execution each stage is submitted as its own Slurm job chained after its predecessors, so stages run in the correct order, independent branches run in parallel, and the run continues even if the app is closed. Connections that would create a cycle are rejected. This first version runs in remote (Slurm) mode only and passes ordering between stages (no file hand-off yet).
+- Fixed a bug where firing off single coral/executable runs back-to-back (remote or local) could clobber the previous run's job files. Each run now gets its own isolated working subdirectory, matching the isolation pipeline stages already had.
 
 ### Canvas-graph
 

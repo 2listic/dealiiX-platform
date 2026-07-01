@@ -27,6 +27,7 @@
   import { settingsState } from '../stores/settingsStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import { jobsState } from '../stores/jobsStore.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import Button from './layout/Button.svelte'
   import CoralStageNode from './nodes/CoralStageNode.svelte'
@@ -95,7 +96,15 @@
         return
       }
       const name = file.name.replace(/\.json$/i, '')
-      pipelineState.addCoralStage({ name, graph })
+      // Capture the coral install paths at stage creation (symmetric to the
+      // executable path capture) so the stage is a self-contained execution
+      // request — the submit primitive no longer reads settingsState.
+      pipelineState.addCoralStage({
+        name,
+        graph,
+        coralBinaryPath: settingsState.remote.coralBinaryPath,
+        coralPluginPath: settingsState.remote.coralPluginPath,
+      })
     } catch (error) {
       toastState.add({
         message:
@@ -116,6 +125,8 @@
     pipelineState.addCoralStage({
       name: currentProjectState.name || 'canvas graph',
       graph,
+      coralBinaryPath: settingsState.remote.coralBinaryPath,
+      coralPluginPath: settingsState.remote.coralPluginPath,
     })
   }
 
@@ -141,7 +152,22 @@
     // Expose the pipeline snapshot for inspection.
     console.log('[pipeline canvas]', JSON.parse(JSON.stringify(pipeline)))
 
-    runPipelineRemote(pipeline)
+    // Toasts and jobsState.update() are side effects of the caller, reported
+    // through the progress callbacks.
+    runPipelineRemote(pipeline, (event) => {
+      if (event.type === 'info' || event.type === 'success') {
+        toastState.add({ message: event.message, type: event.type })
+      } else if (event.type === 'error') {
+        toastState.add({ message: event.message, type: 'error' })
+      } else if (event.type === 'stageTerminal') {
+        jobsState.update()
+      }
+    }).catch((error) => {
+      toastState.add({
+        message: error instanceof Error ? error.message : 'Pipeline run failed',
+        type: 'error',
+      })
+    })
   }
 </script>
 

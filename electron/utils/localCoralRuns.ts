@@ -143,13 +143,20 @@ export const startLocalExecutableRun = async ({
   internalJobId,
 }: ExecutableRunPayload): Promise<{ jobId: string }> => {
   const jobId = String(internalJobId)
+  // Wrap each run in a per-run subdir so back-to-back runs with the same
+  // parametersFileName don't clobber a shared parameters.json. The bare
+  // filename is deliberate: some deal.II programs (e.g. step-70) sniff their
+  // dimension from the file path, so a `${jobId}-` filename prefix would be
+  // unsafe — the subdir isolates without renaming (same rationale as the remote
+  // executable batch script's `--chdir` + bare filename).
+  const runDir = path.join(workingDirectory, `run-${jobId}`)
   const parametersPath = path.join(
-    workingDirectory,
-    parametersFileName || `template_parameters-${jobId}.json`
+    runDir,
+    parametersFileName || 'parameters.json'
   )
-  const logPath = path.join(workingDirectory, `local-${jobId}.out`)
+  const logPath = path.join(runDir, 'local.out')
 
-  await ensureDir(workingDirectory)
+  await ensureDir(runDir)
   const parametersContent = serializeParametersFile(
     parametersPayload,
     parametersFileName
@@ -158,7 +165,7 @@ export const startLocalExecutableRun = async ({
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(executablePath, [parametersPath], {
-    cwd: workingDirectory,
+    cwd: runDir,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
