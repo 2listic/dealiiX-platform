@@ -588,7 +588,8 @@ export const getOutFileContent = async (
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
-  // Resolve the job's own directory (per-stage for pipelines, root for single runs).
+  // Resolve the job's own directory (every run/stage gets one), falling back
+  // to global settings only for jobs recorded before per-run directories existed.
   const outputDirectory =
     jobIdMapState.getJobWorkingDirectory(String(jobId)) ??
     execution.remote.workingDirectory
