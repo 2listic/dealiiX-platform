@@ -25,6 +25,7 @@
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
+  let runName = $state('')
   // Writable derived: pre-filled from settings, temporarily overridable per run.
   // Resets to the stored value automatically if settings change.
   let parametersFileName = $derived(settingsState.activeParametersFileName)
@@ -51,21 +52,31 @@
       : settingsState.local
 
     // Close first so the modal doesn't block the UI during the long-running job.
+    const trimmedRunName = runName.trim() || undefined
+
     const run = isExecutableMode
-      ? exportAndEvalExecutable({
-          kind: 'executable',
-          executablePath: target.executablePath,
-          parametersFileName,
-        } satisfies ExecutableJobConfig)
-      : exportAndEvalCoralGraph(getNodesSnapshot(), getEdgesSnapshot(), {
-          kind: 'coral',
-          coralBinaryPath: target.coralBinaryPath,
-          coralPluginPath: target.coralPluginPath,
-          nodes,
-          tasksPerNode,
-          timeLimit,
-          useMpi,
-        } satisfies CoralJobConfig)
+      ? exportAndEvalExecutable(
+          {
+            kind: 'executable',
+            executablePath: target.executablePath,
+            parametersFileName,
+          } satisfies ExecutableJobConfig,
+          trimmedRunName
+        )
+      : exportAndEvalCoralGraph(
+          getNodesSnapshot(),
+          getEdgesSnapshot(),
+          {
+            kind: 'coral',
+            coralBinaryPath: target.coralBinaryPath,
+            coralPluginPath: target.coralPluginPath,
+            nodes,
+            tasksPerNode,
+            timeLimit,
+            useMpi,
+          } satisfies CoralJobConfig,
+          trimmedRunName
+        )
 
     run.catch((error) => {
       console.error('Failed to execute graph:', error)
@@ -92,6 +103,22 @@
     }}
   >
     <h2>Run job</h2>
+    <div class="inputs-container">
+      <div class="input-container">
+        <label for="run-name">Run name (optional)</label>
+        <input
+          id="run-name"
+          type="text"
+          bind:value={runName}
+          class="input-field"
+          placeholder="e.g. poisson-convergence"
+        />
+        <span class="hint-message">
+          Used to name the run's output folder; left blank keeps the default
+          timestamp name
+        </span>
+      </div>
+    </div>
     {#if isCoralMode && (useMpi || isRemoteExecution)}
       <div class="inputs-container">
         {#if useMpi}

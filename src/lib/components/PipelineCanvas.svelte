@@ -30,6 +30,8 @@
   import { jobsState } from '../stores/jobsStore.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import Button from './layout/Button.svelte'
+  import { getModal } from './layout/Modal.svelte'
+  import PipelineRunNameModal from './PipelineRunNameModal.svelte'
   import CoralStageNode from './nodes/CoralStageNode.svelte'
   import ExecutableStageNode from './nodes/ExecutableStageNode.svelte'
 
@@ -37,6 +39,8 @@
     coralStage: CoralStageNode as unknown as NodeTypes[string],
     executableStage: ExecutableStageNode as unknown as NodeTypes[string],
   }
+
+  const RUN_NAME_MODAL_ID = 'pipeline-run-name-modal'
 
   let coralGraphInput: HTMLInputElement | undefined = $state()
 
@@ -139,7 +143,7 @@
     })
   }
 
-  const handleRun = () => {
+  const handleOpenRunModal = () => {
     if (!validation.runnable) {
       toastState.add({
         message: `Cannot run: ${validation.issues.join('; ')}`,
@@ -147,6 +151,10 @@
       })
       return
     }
+    getModal(RUN_NAME_MODAL_ID)?.open()
+  }
+
+  const handleRun = (name: string) => {
     const pipeline = pipelineState.toPipeline()
 
     // Expose the pipeline snapshot for inspection.
@@ -154,7 +162,7 @@
 
     // Toasts and jobsState.update() are side effects of the caller, reported
     // through the progress callbacks.
-    runPipelineRemote(pipeline, (event) => {
+    runPipelineRemote(pipeline, name || undefined, (event) => {
       if (event.type === 'info' || event.type === 'success') {
         toastState.add({ message: event.message, type: event.type })
       } else if (event.type === 'error') {
@@ -205,7 +213,7 @@
             size="small"
             variant="action"
             disabled={!isRemote || !validation.runnable}
-            onclick={handleRun}
+            onclick={handleOpenRunModal}
           >
             Run pipeline
           </Button>
@@ -229,6 +237,8 @@
     onchange={handleAddCoralFromFile}
   />
 </div>
+
+<PipelineRunNameModal modalId={RUN_NAME_MODAL_ID} onConfirm={handleRun} />
 
 <style>
   .pipeline-canvas {

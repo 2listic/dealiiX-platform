@@ -135,19 +135,21 @@
       <div transition:slide>
         <table transition:fade>
           <colgroup>
-            <col style="width: 10%;" />
+            <col style="width: 8%;" />
+            <col style="width: 12%;" />
+            <col style="width: 16%;" />
             <col style="width: 16%;" />
             <col style="width: 22%;" />
-            <col style="width: 22%;" />
-            <col style="width: 12%;" />
-            <col style="width: 9%;" />
-            <col style="width: 9%;" />
+            <col style="width: 10%;" />
+            <col style="width: 8%;" />
+            <col style="width: 8%;" />
           </colgroup>
           <thead>
             <tr>
               {#each jobsData[0] as headCell, i (i)}
                 <th>{headCell}</th>
               {/each}
+              <th>Working Directory</th>
               <th>Backend</th>
               <th>Logs</th>
               <th>Nodes Status</th>
@@ -180,6 +182,12 @@
               </span>
             </td>
           {/each}
+          <td
+            class="working-directory"
+            title={jobIdMapState.getJobWorkingDirectory(line[0]) || undefined}
+          >
+            {jobIdMapState.getJobWorkingDirectory(line[0]) || '—'}
+          </td>
           <td>{jobIdMapState.getJobBackendKind(line[0]) ?? '—'}</td>
           <td>
             {#if isTerminalStatus(normalizeJobStatus(line[1]))}
@@ -276,7 +284,7 @@
     flex-direction: column;
     max-height: 8vh;
     overflow: hidden;
-    width: 50vw;
+    width: 60vw;
     transition: all 1s ease-in-out;
   }
   .container-table-jobs.expanded {
@@ -294,5 +302,23 @@
     text-align: center;
     vertical-align: top; /* first line always visible when content wraps */
     padding: 0.4vh;
+  }
+
+  td.working-directory {
+    max-width: 0; /* let overflow rules take effect regardless of table-layout: auto */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Collapsed view has no scroll (fixed 8vh, overflow: hidden), so a wrapped
+     path would just get clipped — only wrap once expanded, where overflow-y:
+     scroll accommodates the taller row. */
+  .container-table-jobs.expanded td.working-directory {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    word-break: break-all;
   }
 </style>
