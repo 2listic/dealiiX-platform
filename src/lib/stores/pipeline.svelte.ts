@@ -10,6 +10,7 @@ import type {
   CoralStageData,
   ExecutableStageData,
   Pipeline,
+  PipelineFile,
   PipelineStage,
   StageData,
 } from '../types/pipelineTypes'
@@ -25,7 +26,6 @@ const DEFAULT_CORAL_CONFIG = (
   coralBinaryPath: string,
   coralPluginPath: string
 ): CoralJobConfig => ({
-  kind: 'coral',
   coralBinaryPath,
   coralPluginPath,
   nodes: 1,
@@ -38,7 +38,6 @@ const DEFAULT_EXECUTABLE_CONFIG = (
   executablePath: string,
   parametersFileName: string
 ): ExecutableJobConfig => ({
-  kind: 'executable',
   executablePath,
   parametersFileName,
   timeLimit: '01:00:00',
@@ -89,7 +88,6 @@ export const pipelineState = {
   }): void {
     const data: CoralStageData = {
       name,
-      kind: 'coral',
       graph,
       config: DEFAULT_CORAL_CONFIG(coralBinaryPath, coralPluginPath),
     }
@@ -116,7 +114,6 @@ export const pipelineState = {
   }): void {
     const data: ExecutableStageData = {
       name,
-      kind: 'executable',
       parameters: null,
       config: DEFAULT_EXECUTABLE_CONFIG(executablePath, parametersFileName),
     }
@@ -188,22 +185,46 @@ export const pipelineState = {
   },
 
   /**
-   * Builds the plain {@link Pipeline} for the orchestrator from the current canvas.
-   * @returns The pipeline (stages + ordering edges).
+   * Replaces the canvas with an imported pipeline file, rebuilding xyflow nodes
+   * from the flat file nodes and resyncing the stage-id counter so subsequently
+   * added stages don't collide with the imported ones. The metadata envelope on
+   * the file is ignored.
+   * @param file - A previously exported pipeline file ({@link PipelineFile}).
+   */
+  load(file: PipelineFile): void {
+    nodes = file.pipeline.nodes.map(({ id, type, position, ...data }) => ({
+      id,
+      type,
+      position,
+      data,
+    })) as unknown as Node[]
+    edges = file.pipeline.edges.map((edge) => ({
+      id: `xy-edge__${edge.source}-${edge.target}`,
+      source: edge.source,
+      target: edge.target,
+    })) as unknown as Edge[]
+    counter = nextStageCounter(nodes)
+  },
+
+  /**
+   * Builds the flat {@link Pipeline} from the current canvas: each node's
+   * `id`/`type`/`position` + `data` payload, plus the ordering edges. This is both
+   * the orchestrator input (which ignores `position`) and, once wrapped under a
+   * `pipeline` key with an export envelope, the download format.
+   * @returns The pipeline the orchestrator consumes.
    */
   toPipeline(): Pipeline {
-    const snapshotNodes = getNodesSnapshot()
-    const snapshotEdges = getEdgesSnapshot()
-    const stages: PipelineStage[] = snapshotNodes.map(
-      (node) =>
-        ({
-          id: node.id,
-          ...(node.data as unknown as StageData),
-        }) as PipelineStage
-    )
     return {
-      stages,
-      edges: snapshotEdges.map((edge) => ({
+      nodes: getNodesSnapshot().map(
+        (node) =>
+          ({
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            ...(node.data as unknown as StageData),
+          }) as PipelineStage
+      ),
+      edges: getEdgesSnapshot().map((edge) => ({
         source: edge.source,
         target: edge.target,
       })),
@@ -216,15 +237,15 @@ export const pipelineState = {
    */
   get validation(): { runnable: boolean; issues: string[] } {
     const issues: string[] = []
-    const { stages } = this.toPipeline()
+    const { nodes: stages } = this.toPipeline()
     if (stages.length === 0) issues.push('Add at least one stage')
 
     for (const stage of stages) {
-      if (stage.kind === 'coral') {
+      if (stage.type === 'coralStage') {
         if (!stage.graph) issues.push(`${stage.name}: no graph loaded`)
         if (!isValidSlurmTime(stage.config.timeLimit))
           issues.push(`${stage.name}: invalid time limit`)
-      } else if (stage.kind === 'executable') {
+      } else if (stage.type === 'executableStage') {
         if (!stage.config.executablePath.trim())
           issues.push(`${stage.name}: no executable path`)
         if (!stage.parameters)
@@ -238,6 +259,10 @@ export const pipelineState = {
 }
 
 // ── Private helpers ──
+
+/** Next unused stage counter value given a set of already-present nodes (ids like `p0`, `p1`, ...). */
+const nextStageCounter = (nodes: Node[]): number =>
+  1 + Math.max(0, ...nodes.map((n) => parseInt(n.id.slice(1), 10) || 0))
 
 /** Appends a new stage node, cascading its position when none is given. */
 const addStageNode = (

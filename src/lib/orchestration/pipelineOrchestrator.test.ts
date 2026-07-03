@@ -39,14 +39,14 @@ vi.mock('../stores/settingsStore.svelte', () => ({
 
 const { runPipelineRemote } = await import('./pipelineOrchestrator')
 
-/** Builds a coral stage with a complete (widened) config. */
+/** Builds a coral stage with a complete config. */
 const coralStage = (id: string): PipelineStage => ({
   id,
+  type: 'coralStage',
+  position: { x: 0, y: 0 },
   name: id,
-  kind: 'coral',
   graph: { workflow: id },
   config: {
-    kind: 'coral',
     coralBinaryPath: '/coral',
     coralPluginPath: '/plugin',
     nodes: 1,
@@ -56,14 +56,14 @@ const coralStage = (id: string): PipelineStage => ({
   },
 })
 
-/** Builds an executable stage with a complete (widened) config. */
+/** Builds an executable stage with a complete config. */
 const executableStage = (id: string): PipelineStage => ({
   id,
+  type: 'executableStage',
+  position: { x: 0, y: 0 },
   name: id,
-  kind: 'executable',
   parameters: { kind: 'group', children: {} } as never,
   config: {
-    kind: 'executable',
     executablePath: '/exe',
     parametersFileName: 'parameters.json',
     timeLimit: '01:00:00',
@@ -74,7 +74,7 @@ const pipeline = (
   stages: PipelineStage[],
   edges: [string, string][]
 ): Pipeline => ({
-  stages,
+  nodes: stages,
   edges: edges.map(([source, target]) => ({ source, target })),
 })
 
@@ -159,7 +159,7 @@ describe('runPipelineRemote', () => {
   it('rejects an empty pipeline without submitting', async () => {
     const events: string[] = []
 
-    await runPipelineRemote({ stages: [], edges: [] }, undefined, (e) => {
+    await runPipelineRemote({ nodes: [], edges: [] }, undefined, (e) => {
       if (e.type === 'error') events.push(e.message)
     })
 

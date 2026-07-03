@@ -35,6 +35,7 @@ import {
   type QualifiedNetwork,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
+import { buildExportMeta } from './exportMeta'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -365,9 +366,7 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       nodes: nodesGraph,
       edges: edgesGraph,
     },
-    version: 1,
-    author: 'dealiix-platform',
-    date_time_utc: new Date().toISOString(),
+    ...buildExportMeta(),
   }
 }
 

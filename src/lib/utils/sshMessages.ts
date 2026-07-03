@@ -63,7 +63,6 @@ export const executeWithKey = async (): Promise<void> => {
 }
 
 export type CoralJobConfig = {
-  kind: 'coral'
   /** Remote/local path to the coral binary (captured at stage creation, not read from settings at submit). */
   coralBinaryPath: string
   /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
@@ -75,7 +74,6 @@ export type CoralJobConfig = {
 }
 
 export type ExecutableJobConfig = {
-  kind: 'executable'
   /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
   executablePath: string
   /** Params filename (extension selects JSON/PRM); captured at stage creation. */

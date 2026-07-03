@@ -55,7 +55,7 @@ export const runPipelineRemote = async (
 ): Promise<void> => {
   const emit = (event: PipelineProgress) => onProgress?.(event)
 
-  if (pipeline.stages.length === 0) {
+  if (pipeline.nodes.length === 0) {
     emit({ type: 'error', message: 'Pipeline has no stages' })
     return
   }
@@ -88,14 +88,14 @@ export const runPipelineRemote = async (
     )
 
     let slurmId: string
-    if (stage.kind === 'coral') {
+    if (stage.type === 'coralStage') {
       slurmId = await submitCoralStageRemote({
         graph: stage.graph as object,
         stageDir,
         config: stage.config,
         dependencyJobIds,
       })
-    } else if (stage.kind === 'executable') {
+    } else if (stage.type === 'executableStage') {
       if (!stage.parameters)
         throw new Error(
           `Executable stage "${stage.name}" has no parameters loaded`
@@ -108,7 +108,7 @@ export const runPipelineRemote = async (
       })
     } else {
       throw new Error(
-        `Unknown stage kind for stage ${(stage as { id: string }).id}`
+        `Unknown stage type for stage ${(stage as { id: string }).id}`
       )
     }
 

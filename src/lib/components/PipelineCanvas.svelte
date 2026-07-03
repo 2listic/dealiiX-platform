@@ -17,6 +17,7 @@
     getEdgesSnapshot,
     pipelineState,
   } from '../stores/pipeline.svelte'
+  import { buildExportMeta } from '../utils/exportMeta'
   import {
     getNodesSnapshot as getGraphNodesSnapshot,
     getEdgesSnapshot as getGraphEdgesSnapshot,
@@ -43,6 +44,7 @@
   const RUN_NAME_MODAL_ID = 'pipeline-run-name-modal'
 
   let coralGraphInput: HTMLInputElement | undefined = $state()
+  let pipelineImportInput: HTMLInputElement | undefined = $state()
 
   let isRemote = $derived(settingsState.execution.location === 'remote')
   let validation = $derived(pipelineState.validation)
@@ -72,7 +74,7 @@
 
     const pipeline = pipelineState.toPipeline()
     const candidate = {
-      ...pipeline,
+      nodes: pipeline.nodes,
       edges: [...pipeline.edges, { source, target }],
     }
     try {
@@ -117,6 +119,59 @@
       })
     } finally {
       if (coralGraphInput) coralGraphInput.value = ''
+    }
+  }
+
+  /**
+   * Downloads the current pipeline as a JSON file: `toPipeline()` wrapped under
+   * `pipeline` plus a metadata envelope stamped now, so positions and per-stage
+   * configs round-trip exactly on re-import.
+   */
+  const handleExportPipeline = () => {
+    const payload = {
+      pipeline: pipelineState.toPipeline(),
+      ...buildExportMeta(),
+    }
+    const jsonString = JSON.stringify(payload, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `pipeline-${Date.now()}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
+  /** Replaces the canvas with a previously exported pipeline file. */
+  const handleImportPipeline = async () => {
+    const file = pipelineImportInput?.files?.[0]
+    if (!file) return
+    try {
+      const parsed = JSON.parse(await file.text())
+      if (
+        !Array.isArray(parsed?.pipeline?.nodes) ||
+        !Array.isArray(parsed?.pipeline?.edges)
+      ) {
+        toastState.add({
+          message:
+            'This file does not look like a pipeline export (no pipeline.nodes/edges array).',
+          type: 'error',
+        })
+        return
+      }
+      pipelineState.load(parsed)
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to read pipeline file',
+        type: 'error',
+      })
+    } finally {
+      if (pipelineImportInput) pipelineImportInput.value = ''
     }
   }
 
@@ -209,6 +264,12 @@
           >
         </div>
         <div class="actions">
+          <Button size="small" onclick={handleExportPipeline}>
+            Export pipeline
+          </Button>
+          <Button size="small" onclick={() => pipelineImportInput?.click()}>
+            Import pipeline
+          </Button>
           <Button
             size="small"
             variant="action"
@@ -235,6 +296,13 @@
     accept=".json"
     style="display: none"
     onchange={handleAddCoralFromFile}
+  />
+  <input
+    bind:this={pipelineImportInput}
+    type="file"
+    accept=".json"
+    style="display: none"
+    onchange={handleImportPipeline}
   />
 </div>
 

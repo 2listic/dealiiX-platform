@@ -57,7 +57,6 @@
     const run = isExecutableMode
       ? exportAndEvalExecutable(
           {
-            kind: 'executable',
             executablePath: target.executablePath,
             parametersFileName,
           } satisfies ExecutableJobConfig,
@@ -67,7 +66,6 @@
           getNodesSnapshot(),
           getEdgesSnapshot(),
           {
-            kind: 'coral',
             coralBinaryPath: target.coralBinaryPath,
             coralPluginPath: target.coralPluginPath,
             nodes,
