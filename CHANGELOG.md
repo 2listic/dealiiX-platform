@@ -15,6 +15,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#112](https://github.com/2listic/dealiiX-platform/issues/112) The Project button group is now disabled when the user is not logged in, in addition to when no remote server is configured.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
+- The local **Coral plugin path** setting is now a free-text field with a Browse button (previously a file picker only), so it accepts either a plugin file path or an arbitrary value passed to the backend's `-p` flag (e.g. a comma-separated list of modules). The local probe no longer requires the plugin path to be an existing file on disk.
 
 ### Electron-Backend
 
