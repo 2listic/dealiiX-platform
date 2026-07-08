@@ -56,6 +56,7 @@
   import {
     nodeColors,
     NodeType,
+    NodeTypePyBackend,
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
@@ -95,8 +96,10 @@
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
-  const isValidNum = (value: string) => {
-    const numValue = Number(value)
+  const isValidNum = (value: string | null | undefined) => {
+    // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
+    const safeValue = value ?? ''
+    const numValue = Number(safeValue)
     switch (data.type) {
       case Type.UNSIGNED_INT:
       case Type.UNSIGNED:
@@ -104,14 +107,16 @@
           !isNaN(numValue) &&
           Number.isInteger(numValue) &&
           numValue >= 0 &&
-          value.trim() !== ''
+          safeValue.trim() !== ''
         )
       case Type.INT:
         return (
-          !isNaN(numValue) && Number.isInteger(numValue) && value.trim() !== ''
+          !isNaN(numValue) &&
+          Number.isInteger(numValue) &&
+          safeValue.trim() !== ''
         )
       case (Type.DOUBLE, Type.FLOAT):
-        return !isNaN(numValue) && value.trim() !== ''
+        return !isNaN(numValue) && safeValue.trim() !== ''
     }
   }
 
@@ -276,8 +281,8 @@
     </div>
   {/if}
 
-  <!-- Elementary constructors input fields -->
-  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR}
+  <!-- Elementary constructor / primitive literal input fields -->
+  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || (data.node_type as string) === NodeTypePyBackend.PRIMITIVE}
     <div>
       {#if data.type === Type.BOOLEAN}
         <input

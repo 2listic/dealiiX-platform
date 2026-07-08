@@ -16,6 +16,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
 - The local **Coral plugin path** setting is now a free-text field with a Browse button (previously a file picker only), so it accepts either a plugin file path or an arbitrary value passed to the backend's `-p` flag (e.g. a comma-separated list of modules). The local probe no longer requires the plugin path to be an existing file on disk.
+- Nodes with `node_type: "primitive"` now render an editable literal field (a text box, or a checkbox for booleans) like elementary constructors, so registries that use the `primitive` node type are fully usable on the canvas. Numeric value validation is also null-safe, so it no longer errors when a value is empty.
 
 ### Electron-Backend
 
