@@ -6,7 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
-- Loading a graph no longer drops edges whose target input is typed `any`: import validation now accepts an `any` target input, matching the live connection validation used while drawing edges.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) Loading a graph no longer drops edges whose target input is typed `any`: import validation now accepts an `any` target input, matching the live connection validation used while drawing edges.
 - [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
 
 ### UI/UX
@@ -16,9 +16,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#112](https://github.com/2listic/dealiiX-platform/issues/112) The Project button group is now disabled when the user is not logged in, in addition to when no remote server is configured.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
-- The local **Coral plugin path** setting is now a free-text field with a Browse button (previously a file picker only), so it accepts either a plugin file path or an arbitrary value passed to the backend's `-p` flag (e.g. a comma-separated list of modules). The local probe no longer requires the plugin path to be an existing file on disk.
-- Nodes with `node_type: "primitive"` now render an editable literal field (a text box, or a checkbox for booleans) like elementary constructors, so registries that use the `primitive` node type are fully usable on the canvas. Numeric value validation is also null-safe, so it no longer errors when a value is empty.
-- The **Download Graph** action moved from the Project group into the renamed **Import / Export** group, next to Import Graph. It no longer requires being logged in to a remote server, so the current graph can be exported to JSON while working locally.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The local **Coral plugin path** setting is now a free-text field with a Browse button (previously a file picker only), so it accepts either a plugin file path or an arbitrary value passed to the backend's `-p` flag (e.g. a comma-separated list of modules). The local probe no longer requires the plugin path to be an existing file on disk.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) Nodes with `node_type: "primitive"` now render an editable literal field (a text box, or a checkbox for booleans) like elementary constructors, so registries that use the `primitive` node type are fully usable on the canvas. Numeric value validation is also null-safe, so it no longer errors when a value is empty.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The **Download Graph** action moved from the Project group into the renamed **Import / Export** group, next to Import Graph. It no longer requires being logged in to a remote server, so the current graph can be exported to JSON while working locally.
 
 ### Electron-Backend
 
