@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- Loading a graph no longer drops edges whose target input is typed `any`: import validation now accepts an `any` target input, matching the live connection validation used while drawing edges.
 - [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
 
 ### UI/UX
