@@ -36,6 +36,9 @@ dist-electron/
 # Local environment variables (machine-specific paths)
 .env
 
+# Personal multi-root workspace config (machine-specific sibling paths)
+*.code-workspace
+
 # Containers' shared folder
 containers/shared-data/*
 
