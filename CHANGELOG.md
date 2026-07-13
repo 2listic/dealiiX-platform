@@ -26,11 +26,11 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
-- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
+- [#187](https://github.com/2listic/dealiiX-platform/pull/187) Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
 
 ### Docker
 
-- `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
+- [#187](https://github.com/2listic/dealiiX-platform/pull/187) `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
 
 ### Settings
 
@@ -43,7 +43,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
-- The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
+- [#194](https://github.com/2listic/dealiiX-platform/pull/194) The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
 - [#209](https://github.com/2listic/dealiiX-platform/pull/209) The Husky pre-commit hook now runs Prettier through `lint-staged`, formatting only staged files and re-staging the result, so formatting changes land in the commit itself instead of being left as unstaged edits afterward.
 
 ## [1.4.0] - 2026-05-11
