@@ -39,7 +39,7 @@ Eslint is used for linting. Run the following to lint
 Prettier is used for formatting. Run the following to format the code or use your IDE  
 `npm run format`
 
-### Automatic checks with Husky
+### Automatic checks with Husky/lint-staged
 
 [Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; [lint-staged](https://github.com/lint-staged/lint-staged) then runs Prettier on the staged files only and re-stages the formatted result, so the formatting is included in the same commit.
 
@@ -48,6 +48,8 @@ Prettier is used for formatting. Run the following to format the code or use you
 ### Renderer (Frontend UI - Svelte)
 
 In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check` using [`tsconfig.json`](tsconfig.json), which enables `strict` mode. All Svelte component `<script>` blocks use `lang="ts"`.
+
+Run `npm run check` for a type-check-only pass.
 
 ### Electron (Backend Main Process and Preload)
 
