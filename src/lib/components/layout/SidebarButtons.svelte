@@ -282,7 +282,7 @@
         style="display: none"
         aria-label="Login"
       ></button>
-      <span class="button-text">
+      <span class="button-text" data-testid="login-status">
         {loginText}
       </span>
     </div>

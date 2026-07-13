@@ -1,0 +1,67 @@
+name: E2E Remote
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  e2e-tier2:
+    runs-on: ubuntu-latest
+    env:
+      # docker compose parses the full docker-compose.yml, including the 
+      # coral-ssh-slurm volume (not started here) that requires this variable.
+      # /dev/null satisfies the :? constraint.
+      SSH_PUB_KEY_PATH: /dev/null
+
+    steps:
+      - name: Load coral-remote-server deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CORAL_REMOTE_SERVER_DEPLOY_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Init coral-remote-server submodule
+        run: git submodule update --init coral-remote-server
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build coral-remote-server Docker image
+        run: docker compose build coral-remote-server
+
+      - name: Start coral-remote-server
+        run: docker compose up -d coral-remote-server
+
+      - name: Build app for E2E
+        run: npm run build
+
+      - name: Run Tier 2 E2E tests
+        # xvfb-run provides an in-memory X Virtual Framebuffer so Electron can
+        # open BrowserWindows without a real display — effectively headless CI.
+        run: xvfb-run --auto-servernum npm run test:e2e:remote
+        env:
+          ELECTRON_DISABLE_SANDBOX: "1"
+
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-remote-test-results
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
