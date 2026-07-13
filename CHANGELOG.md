@@ -44,6 +44,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Project-Structure
 
 - The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The Husky pre-commit hook now runs Prettier through `lint-staged`, formatting only staged files and re-staging the result, so formatting changes land in the commit itself instead of being left as unstaged edits afterward.
 
 ## [1.4.0] - 2026-05-11
 

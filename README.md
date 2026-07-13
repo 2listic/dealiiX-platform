@@ -41,7 +41,7 @@ Prettier is used for formatting. Run the following to format the code or use you
 
 ### Automatic checks with Husky
 
-[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; Prettier then auto-formats (a new commit is needed to include those last changes).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; [lint-staged](https://github.com/lint-staged/lint-staged) then runs Prettier on the staged files only and re-stages the formatted result, so the formatting is included in the same commit.
 
 ## TypeScript
 
