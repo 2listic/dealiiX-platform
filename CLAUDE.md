@@ -104,13 +104,15 @@ Stores use Svelte 5 runes (`.svelte.ts` files):
 
 ### Node Type System
 
-Defined in `src/lib/types/nodeTypes.ts`. Node types from CORAL:
+Defined in `src/lib/types/nodeTypes.ts`. A single `NodeType` enum covers every `node_type` string emitted by either backend (C++ coral and coral-python):
 
-- `ELEMENTARY_CONSTRUCTOR` - Primitive types (int, double, string)
+- `ELEMENTARY_CONSTRUCTOR` / `PRIMITIVE` - Literal-value leaf nodes holding a directly-entered value (int, double, string, bool). C++ coral emits `elementary_constructor`; coral-python emits `primitive`. Both render an editable literal input field.
 - `CONSTRUCTOR` / `EMPTY_CONSTRUCTOR` - Class constructors
 - `ABSTRACT` - Abstract base classes
-- `VOID_METHOD` / `VOID_CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations
+- `VOID_METHOD` / `VOID_CONST_METHOD` / `METHOD` / `CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations (member functions and free functions, void and non-void)
 - `NETWORK` - Encapsulated computational graphs (see Network Nodes below)
+
+`node_type` is only a rendering hint: it selects the canvas component (`FlowCanvas.svelte` `nodeTypes` map) and colour (`nodeColors` in `nodeTypes.ts`). Neither backend dispatches execution on it — nodes are identified by their `type` string. (coral-python's `primitive` vs C++ coral's `elementary_constructor` for the same literal-leaf concept is a known naming divergence; see `.ai/coral-python-integration/node-type-vocabulary-unification.md`.)
 
 Connection validation (`src/lib/utils/connectionsValidation.ts`) enforces type compatibility between node outputs and inputs.
 

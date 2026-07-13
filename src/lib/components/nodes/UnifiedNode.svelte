@@ -56,7 +56,6 @@
   import {
     nodeColors,
     NodeType,
-    NodeTypePyBackend,
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
@@ -282,7 +281,7 @@
   {/if}
 
   <!-- Elementary constructor / primitive literal input fields -->
-  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || (data.node_type as string) === NodeTypePyBackend.PRIMITIVE}
+  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || data.node_type === NodeType.PRIMITIVE}
     <div>
       {#if data.type === Type.BOOLEAN}
         <input

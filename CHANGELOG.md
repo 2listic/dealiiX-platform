@@ -6,6 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The canvas now recognises the full set of CORAL node types. Non-void and `const` member functions (`method`, `const_method`) — previously unmapped and rendered as a broken generic node — now render and colour like the other methods. The coral-python `primitive` type is handled through the same unified node-type list.
 - [#209](https://github.com/2listic/dealiiX-platform/pull/209) Loading a graph no longer drops edges whose target input is typed `any`: import validation now accepts an `any` target input, matching the live connection validation used while drawing edges.
 - [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
 
