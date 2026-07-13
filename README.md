@@ -110,6 +110,12 @@ npx playwright test --config playwright.remote.config.ts e2e-remote/auth.spec.ts
 
 The global setup (`e2e-remote/global-setup.ts`) polls until the server is ready (up to 30 s) and then registers a shared test user (`e2etest`). The user is created idempotently, so re-running against the same container is safe.
 
+### Store isolation in E2E tests
+
+Both tiers launch Electron with `ELECTRON_USERDATA` pointing at a fresh temp directory (see `e2e/fixtures.ts` / `e2e-remote/fixtures.ts`), and [electron/main.ts](electron/main.ts) calls `app.setPath('userData', …)` with it before anything else runs. This keeps the developer's real settings, registered nodes, and auth token untouched by test runs.
+
+For the redirect to actually take effect, `ipcHandlers` (which pulls in the `electron-store` singleton via `storage.ts`) must **not** be statically imported in `main.ts`: ES module static imports are fully evaluated before the importing module's own top-level code runs, which would construct the store — and resolve its file path — before `app.setPath` runs. `ipcHandlers` is therefore imported dynamically inside `app.whenReady()`.
+
 ## Debugging
 
 ### Debugging Electron

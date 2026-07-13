@@ -2,7 +2,7 @@ import { test, expect, TEST_USER } from './fixtures'
 
 test.describe('Auth', () => {
   test('login button is visible and shows "Login" when logged out', async ({
-    remotePage: page,
+    unauthedPage: page,
   }) => {
     await expect(page.locator('[data-testid="login-status"]')).toHaveText(
       'Login'
@@ -14,7 +14,7 @@ test.describe('Auth', () => {
   })
 
   test('user can log in with valid credentials', async ({
-    remotePage: page,
+    unauthedPage: page,
   }) => {
     await page.locator('label[for="login-button"]').click()
 
