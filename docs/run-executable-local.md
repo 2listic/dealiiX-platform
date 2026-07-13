@@ -55,7 +55,7 @@ Open **Settings** and set the following under **Execution Mode**:
 | -------------------- | -------------------------------------------------------------------------- |
 | Location             | `local`                                                                    |
 | Backend kind         | `executable`                                                               |
-| Working directory    | `<repo>/local_runs/step-70/build` (or any writable directory)              |
+| Working directory    | `<repo>/local_runs/step-70/` (or any writable directory)                   |
 | Executable path      | `<repo>/local_runs/step-70/build/step-70`                                  |
 | Parameters file name | `parameters.json` or `parameters.prm` (generated on first probe if absent) |
 
