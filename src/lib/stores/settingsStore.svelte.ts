@@ -11,10 +11,14 @@ let settings = $state(createDefaultSettings())
 // Load initial settings from electron-store.
 const loadSettings = async () => {
   if (window.electron?.store) {
-    const storedSettings = await window.electron.store.get('settings', {})
-    if (isValidAppSettings(storedSettings)) {
+    const storedSettings = await window.electron.store.get('settings')
+    if (storedSettings === undefined) {
+      // Key absent — first launch or isolated E2E store. Silently use defaults.
+      settings = createDefaultSettings()
+    } else if (isValidAppSettings(storedSettings)) {
       settings = storedSettings
     } else {
+      // Key present but schema is wrong (e.g. after an app upgrade).
       settings = createDefaultSettings()
       toastState.add({
         message: 'Saved settings were invalid or outdated — defaults restored.',

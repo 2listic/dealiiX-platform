@@ -7,6 +7,8 @@ import type {
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
+import validCoralpyGraphFuncs from '../../../test_files/network-coralpy-functions.json'
+import coralpyMathRegistry from '../data/coralpyMathNodes.json'
 
 const mockStore = vi.hoisted(() => ({
   nodeDataByType: {} as Record<string, StandardNodeDefinition>,
@@ -111,6 +113,26 @@ describe('validateGraphData', () => {
       expect(Object.keys(validEdges)).toHaveLength(8)
       expect(invalidEdges).toHaveLength(1)
       expect(invalidEdges[0].edgeId).toBe('1')
+    })
+  })
+
+  describe('coral-python lean graph with an "any"-typed input', () => {
+    beforeEach(() => {
+      mockStore.nodeDataByType =
+        coralpyMathRegistry as unknown as RegisteredNodes
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+    })
+
+    it('keeps the edge into print_result (input typed "any"); all edges valid', () => {
+      // Edge "4" wires multiply's output into print_result, whose input is typed "any".
+      // Before the fix this was dropped as a type mismatch on load.
+      const [validEdges, invalidEdges] = validateGraphData(
+        validCoralpyGraphFuncs as unknown as Network
+      )
+      expect(invalidEdges).toHaveLength(0)
+      expect(Object.keys(validEdges)).toHaveLength(
+        Object.keys(validCoralpyGraphFuncs.workflow.edges).length
+      )
     })
   })
 

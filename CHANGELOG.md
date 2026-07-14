@@ -8,8 +8,12 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - New pipeline editor: a higher-level visual DAG whose nodes are whole CORAL graphs or standalone executables, connected by ordering dependencies. A central "Pipeline editor" view (toggled from the top-right) lets you add stages (a CORAL graph from a file or the current canvas, or an executable), configure each stage's own resources (MPI nodes/tasks, time limit), and run the whole pipeline. On execution each stage is submitted as its own Slurm job chained after its predecessors, so stages run in the correct order, independent branches run in parallel, and the run continues even if the app is closed. Connections that would create a cycle are rejected. This first version runs in remote (Slurm) mode only and passes ordering between stages (no file hand-off yet).
 
+## [1.4.1] - 2026-07-14
+
 ### Canvas-graph
 
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The canvas now recognises the full set of CORAL node types. Non-void and `const` member functions (`method`, `const_method`) — previously unmapped and rendered as a broken generic node — now render and colour like the other methods. The coral-python `primitive` type is handled through the same unified node-type list.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) Loading a graph no longer drops edges whose target input is typed `any`: import validation now accepts an `any` target input, matching the live connection validation used while drawing edges.
 - [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
 
 ### UI/UX
@@ -19,6 +23,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#112](https://github.com/2listic/dealiiX-platform/issues/112) The Project button group is now disabled when the user is not logged in, in addition to when no remote server is configured.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) Parameter section duplicate logis is via a new duplicate button instead of via right-click. Duplicated sections can be deleted with a new delete button. Sections are set back to native `<details>`/`<summary>` elements for collapsible behaviour.
 - [#185](https://github.com/2listic/dealiiX-platform/pull/185) The execution modal now includes an editable parameters file name field, letting users override the file path per run without changing the global settings.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The local **Coral plugin path** setting is now a free-text field with a Browse button (previously a file picker only), so it accepts either a plugin file path or an arbitrary value passed to the backend's `-p` flag (e.g. a comma-separated list of modules). The local probe no longer requires the plugin path to be an existing file on disk.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) Nodes with `node_type: "primitive"` now render an editable literal field (a text box, or a checkbox for booleans) like elementary constructors, so registries that use the `primitive` node type are fully usable on the canvas. Numeric value validation is also null-safe, so it no longer errors when a value is empty.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The **Download Graph** action moved from the Project group into the renamed **Import / Export** group, next to Import Graph. It no longer requires being logged in to a remote server, so the current graph can be exported to JSON while working locally.
 
 ### Electron-Backend
 
@@ -26,19 +33,25 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
-- Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
+- [#187](https://github.com/2listic/dealiiX-platform/pull/187) Added support for connecting to CORAL + Slurm containers running on a real remote machine over SSH. SSH access into the container is enabled on port 2222 via public key authentication using a volume-mounted authorised key. The SSH public key path is configured via a gitignored `.env` file so the same `docker-compose.yml` works on any machine. A step-by-step setup guide is available at `docs/remote-setup.md`.
 
 ### Docker
 
-- `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
+- [#187](https://github.com/2listic/dealiiX-platform/pull/187) `coral-remote-server` is now included in the main `docker-compose.yml` alongside `coral-ssh-slurm` and `coral-visualizer`, so a single `docker compose up` starts the full stack. The database is persisted in `coral-remote-server/data/coral.db` via a directory volume mount.
+
+### Settings
+
+- [#201](https://github.com/2listic/dealiiX-platform/pull/201) Default settings now pre-fill `urlRemoteServer` (`http://localhost:8080`) and `urlVisualizer` (`http://localhost:8008`) for first-time users, matching the standard local Docker setup. The spurious "settings invalid or outdated" error toast on first launch (caused by treating an absent key the same as a corrupt value) has been removed.
 
 ### Testing
 
 - [#193](https://github.com/2listic/dealiiX-platform/issues/193) Tier 1 E2E test suite added using Playwright and Electron. Tests cover app launch, sidebar node loading, drag-and-drop node creation, undo/redo, JSON graph import, edge connection between handles, and subnetwork collapse/explode. Tests run sequentially with one worker so a single Electron instance is shared across all tests, matching CI behaviour. A fixed 1280×800 window is enforced via the `E2E_TEST` env var for reproducible bounding-box calculations. CI runs the suite headlessly via `xvfb-run` and uploads traces and screenshots as artifacts on failure.
+- [#201](https://github.com/2listic/dealiiX-platform/pull/201) Tier 2 E2E test suite added covering auth and project-management flows that require `coral-remote-server`. Tests cover login, logout, project creation, rename, deletion, and round-trip graph save and load. A separate `playwright.remote.config.ts` config and `e2e-remote.yml` workflow run Tier 2 tests on every push to main and on manual dispatch, keeping the fast Docker-free `ci.yml` unchanged. Both tiers run against an isolated temporary electron-store so the developer's real settings and registered nodes are never touched.
 
 ### Project-Structure
 
-- The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
+- [#194](https://github.com/2listic/dealiiX-platform/pull/194) The renderer is now fully strict TypeScript. `jsconfig.json` renamed to `tsconfig.json` with `"strict": true` enabled; all Svelte component `<script>` blocks use `lang="ts"`; all stores converted from `.svelte.js` to `.svelte.ts`; entry point renamed from `main.js` to `main.ts`. The codebase passes `svelte-check` with zero errors under strict mode.
+- [#209](https://github.com/2listic/dealiiX-platform/pull/209) The Husky pre-commit hook now runs Prettier through `lint-staged`, formatting only staged files and re-staging the result, so formatting changes land in the commit itself instead of being left as unstaged edits afterward.
 
 ## [1.4.0] - 2026-05-11
 

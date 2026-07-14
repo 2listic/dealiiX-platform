@@ -34,6 +34,7 @@
 
 <div style="padding: 1rem">
   <form
+    data-testid="login-form"
     bind:this={formElement}
     onsubmit={(event) => {
       event.preventDefault()

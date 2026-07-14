@@ -89,9 +89,6 @@ const fileMustExist = (filePath: string | undefined, label: string): void => {
 const probeLocalPaths = (execution: ExecutionSettings): void => {
   if (execution.backendKind === 'coral') {
     fileMustExist(execution.local.coralBinaryPath, 'Coral binary')
-    if (execution.local.coralPluginPath) {
-      fileMustExist(execution.local.coralPluginPath, 'Coral plugin')
-    }
   } else if (execution.backendKind === 'executable') {
     fileMustExist(execution.local.executablePath, 'Executable')
   }
