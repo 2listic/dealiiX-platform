@@ -4,6 +4,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-07-14
+
 ### Canvas-graph
 
 - [#175](https://github.com/2listic/dealiiX-platform/issues/175) Per-level undo/redo history for the canvas. Each navigation level (root graph and each open subnetwork) keeps its own independent undo/redo stacks, capped at 50 entries. Undo (Ctrl/⌘+Z) and Redo (Ctrl/⌘+Shift+Z) are available as keyboard shortcuts and as items inside the Layout sidebar group button.
