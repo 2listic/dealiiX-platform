@@ -26,11 +26,14 @@ export type OutputIndex = typeof SELF | number
 
 export enum NodeType {
   ELEMENTARY_CONSTRUCTOR = 'elementary_constructor',
+  PRIMITIVE = 'primitive',
   EMPTY_CONSTRUCTOR = 'empty_constructor',
   CONSTRUCTOR = 'constructor',
   ABSTRACT = 'abstract',
   VOID_METHOD = 'void_method',
   VOID_CONST_METHOD = 'void_const_method',
+  METHOD = 'method',
+  CONST_METHOD = 'const_method',
   VOID_FUNCTION = 'void_function',
   FUNCTION = 'function',
   NETWORK = 'network',
@@ -38,11 +41,6 @@ export enum NodeType {
 
 export enum TypeField {
   CORAL_NETWORK = 'coral::Network',
-}
-
-export enum NodeTypePyBackend {
-  PRIMITIVE = 'primitive',
-  METHOD = 'method',
 }
 
 /**
@@ -62,11 +60,12 @@ export const nodeColors = {
   [NodeType.ABSTRACT]: 'gray',
   [NodeType.VOID_METHOD]: 'skyblue',
   [NodeType.VOID_CONST_METHOD]: 'skyblue',
+  [NodeType.METHOD]: 'skyblue',
+  [NodeType.CONST_METHOD]: 'skyblue',
   [NodeType.VOID_FUNCTION]: 'skyblue',
   [NodeType.FUNCTION]: 'skyblue',
   [NodeType.NETWORK]: 'darkorchid',
-  [NodeTypePyBackend.PRIMITIVE]: 'yellowgreen',
-  [NodeTypePyBackend.METHOD]: 'skyblue',
+  [NodeType.PRIMITIVE]: 'yellowgreen',
 }
 
 export enum Type {

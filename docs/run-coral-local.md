@@ -41,6 +41,10 @@ Open **Settings** and set the following under **Execution Mode**:
 | Coral binary path | `<repo>/coral/build/core/coral`                                 |
 | Coral plugin path | `<repo>/coral/build/backends/dealii/libcoral_backend_dealii.so` |
 
+> The **Coral plugin path** field accepts a plugin file path (use **Browse**) or any free-text value
+> passed to the backend's `-p` flag — for example a comma-separated list of module names. Type it
+> directly when it isn't a file on disk.
+
 Click **Save & Sync** to probe the binary, load the node registry into the sidebar, and confirm everything works.
 
 ## Manual testing
