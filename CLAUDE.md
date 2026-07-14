@@ -116,13 +116,15 @@ The pipeline editor composes whole CORAL graphs and standalone executables as no
 
 ### Node Type System
 
-Defined in `src/lib/types/nodeTypes.ts`. Node types from CORAL:
+Defined in `src/lib/types/nodeTypes.ts`. A single `NodeType` enum covers every `node_type` string emitted by either backend (C++ coral and coral-python):
 
-- `ELEMENTARY_CONSTRUCTOR` - Primitive types (int, double, string)
+- `ELEMENTARY_CONSTRUCTOR` / `PRIMITIVE` - Literal-value leaf nodes holding a directly-entered value (int, double, string, bool). C++ coral emits `elementary_constructor`; coral-python emits `primitive`. Both render an editable literal input field.
 - `CONSTRUCTOR` / `EMPTY_CONSTRUCTOR` - Class constructors
 - `ABSTRACT` - Abstract base classes
-- `VOID_METHOD` / `VOID_CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations
+- `VOID_METHOD` / `VOID_CONST_METHOD` / `METHOD` / `CONST_METHOD` / `VOID_FUNCTION` / `FUNCTION` - Operations (member functions and free functions, void and non-void)
 - `NETWORK` - Encapsulated computational graphs (see Network Nodes below)
+
+`node_type` is only a rendering hint: it selects the canvas component (`FlowCanvas.svelte` `nodeTypes` map) and colour (`nodeColors` in `nodeTypes.ts`). Neither backend dispatches execution on it — nodes are identified by their `type` string. (coral-python's `primitive` vs C++ coral's `elementary_constructor` for the same literal-leaf concept is a known naming divergence; see `.ai/coral-python-integration/node-type-vocabulary-unification.md`.)
 
 Connection validation (`src/lib/utils/connectionsValidation.ts`) enforces type compatibility between node outputs and inputs.
 
@@ -328,7 +330,7 @@ cd /app && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 - **IPC channels**: `execute-ssh-with-key`, `export-graph-ssh`, `set-theme`, `open-external-url`, `upload-file-ssh`, `store:get`, `store:set`, `store:remove`
 - **Electron storage keys** (`electron/utils/storage.ts`): `access_token`, `username`, `settings`, `colorMode` (default: `'light'`), `registered_nodes`, `registered_network_nodes`, `jobs`, `jobIdMap`
 - **Electron TypeScript build**: `electron/**/*.ts` files are compiled by `tsc` (not Vite) to `dist-electron/`. The main process uses `tsconfig.electron.json` (ESM output); the preload uses `tsconfig.electron.preload.json` (CJS output, required by Electron's sandboxed preload context). `dist-electron/` is gitignored. Type declarations for `ssh2` (which ships no `.d.ts`) live in `electron/types/ssh2.d.ts`.
-- **Git hooks (Husky)**: On commit — `npm run lint` and `npm run check:electron` (failures abort), then Prettier auto-formats.
+- **Git hooks (Husky)**: On commit — `npm run lint` and `npm run check:electron` (failures abort), then `lint-staged` runs Prettier on staged files only and re-stages the formatted result, so formatting changes land in the same commit.
 - **CI (GitHub Actions)**: All workflows run `npm run check` (svelte-check), `npm run check:electron` (electron tsc), and `npm test`. Workflow files: `.github/workflows/ci.yml`, `.github/workflows/release-linux.yml`, `.github/workflows/release-macos.yml`.
 - **API requests**: All authenticated requests go through `src/lib/requests/api.js` which auto-attaches the Bearer token. Throws `ApiError` (with `.status` and `.data`) on non-2xx responses. Project CRUD ops are in `src/lib/requests/projects.js`.
 - **Canvas node creation**: `createCanvasNode(template, position, options?)` in `src/lib/utils/canvasNodeUtils.ts` creates a new @xyflow Node from a registry template. `getOutputTypeAndName(sourceNode, sourceHandle)` resolves the type/name for a source handle during drag-to-connect.

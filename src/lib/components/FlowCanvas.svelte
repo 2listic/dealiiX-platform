@@ -45,7 +45,7 @@
     isTargetHandleConnected,
   } from '../utils/connectionsValidation'
   import { onDragOver, onDrop } from '../utils/dragAndDrop'
-  import { NodeType, NodeTypePyBackend } from '../types/nodeTypes'
+  import { NodeType } from '../types/nodeTypes'
   import { returnNodeName } from '../utils/canvasNodeUtils'
   import EditIcon from './icons/EditIcon.svelte'
   import Button from './layout/Button.svelte'
@@ -85,11 +85,12 @@
     [NodeType.ABSTRACT]: UnifiedNode,
     [NodeType.VOID_METHOD]: UnifiedNode,
     [NodeType.VOID_CONST_METHOD]: UnifiedNode,
+    [NodeType.METHOD]: UnifiedNode,
+    [NodeType.CONST_METHOD]: UnifiedNode,
     [NodeType.VOID_FUNCTION]: UnifiedNode,
     [NodeType.FUNCTION]: UnifiedNode,
     [NodeType.NETWORK]: UnifiedNode,
-    [NodeTypePyBackend.PRIMITIVE]: UnifiedNode,
-    [NodeTypePyBackend.METHOD]: UnifiedNode,
+    [NodeType.PRIMITIVE]: UnifiedNode,
   }
 
   let selectedNodes = $derived(getNodes().filter((node) => node.selected))

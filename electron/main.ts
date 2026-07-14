@@ -2,10 +2,15 @@ import { app, BrowserWindow, screen } from 'electron/main'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { registerIpcHandlers } from './ipcHandlers.js'
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+// Must run before any dynamic import that reaches storage.ts / electron-store,
+// because electron-store reads app.getPath('userData') at construction time.
+// Static imports are hoisted in ESM, so ipcHandlers is imported dynamically below.
+if (process.env.ELECTRON_USERDATA) {
+  app.setPath('userData', process.env.ELECTRON_USERDATA)
+}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -35,7 +40,8 @@ function createWindow() {
   // mainWindow.webContents.openDevTools() // open devTools by default
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const { registerIpcHandlers } = await import('./ipcHandlers.js')
   registerIpcHandlers()
   createWindow()
 

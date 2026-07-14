@@ -65,8 +65,8 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
 })
 
 export const createDefaultSettings = (): AppSettings => ({
-  urlVisualizer: '',
-  urlRemoteServer: '',
+  urlVisualizer: 'http://localhost:8008',
+  urlRemoteServer: 'http://localhost:8080',
   execution: {
     location: 'remote',
     backendKind: 'coral',
