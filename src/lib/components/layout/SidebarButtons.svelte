@@ -242,7 +242,7 @@
       // Create blob with JSON data + filename
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
-      const filename = `${currentProjectState.name}.json`
+      const filename = `${currentProjectState.name || 'graph'}.json`
 
       // Create temporary anchor and trigger download
       const anchor = document.createElement('a')
@@ -284,7 +284,7 @@
         style="display: none"
         aria-label="Login"
       ></button>
-      <span class="button-text">
+      <span class="button-text" data-testid="login-status">
         {loginText}
       </span>
     </div>
@@ -336,10 +336,6 @@
         <SidebarGroupButtonItem
           label="Load Projects"
           onclick={handleLoadProjects}
-        />
-        <SidebarGroupButtonItem
-          label="Download Graph"
-          onclick={handleGraphDownload}
         />
       {/snippet}
     </SidebarGroupButton>
@@ -425,7 +421,7 @@
 
   <!-- Import group -->
   {#if isCoralMode && isSingleMode}
-    <SidebarGroupButton title="Import">
+    <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
       {/snippet}
@@ -437,6 +433,10 @@
         <SidebarGroupButtonItem
           label="Import Nodes"
           onclick={() => importNodesInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Download Graph"
+          onclick={handleGraphDownload}
         />
       {/snippet}
     </SidebarGroupButton>

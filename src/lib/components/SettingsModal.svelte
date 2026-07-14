@@ -304,7 +304,7 @@
                       {/if}
                     </div>
                     <div class="field">
-                      <span>Coral plugin path</span>
+                      <span>Coral plugin path or module list</span>
                       {#if showRemoteSettings}
                         <input
                           bind:value={remoteCoralPluginPath}
@@ -314,12 +314,20 @@
                         />
                       {:else}
                         <div class="input-line-save">
-                          <div>
-                            {localCoralPluginPath || 'No file selected'}
-                          </div>
-                          <Button onclick={pickLocalCoralPlugin}>Edit</Button>
+                          <input
+                            bind:value={localCoralPluginPath}
+                            class="input-field"
+                            type="text"
+                            required
+                            placeholder="path/to/plugin.so or module1,module2,module3"
+                          />
+                          <Button onclick={pickLocalCoralPlugin}>Browse</Button>
                         </div>
                       {/if}
+                      <p class="field-hint">
+                        A plugin path (.so) — use Browse — or a comma-separated
+                        module list (e.g. module1,module2,module3).
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -668,6 +676,12 @@
     font-size: 0.85rem;
     opacity: 0.7;
     padding: 0 1rem;
+  }
+
+  .field-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    opacity: 0.7;
   }
 
   .button-container {

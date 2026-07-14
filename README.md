@@ -39,15 +39,17 @@ Eslint is used for linting. Run the following to lint
 Prettier is used for formatting. Run the following to format the code or use your IDE  
 `npm run format`
 
-### Automatic checks with Husky
+### Automatic checks with Husky/lint-staged
 
-[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; Prettier then auto-formats (a new commit is needed to include those last changes).
+[Husky](https://typicode.github.io/husky/) runs automatic checks at commit time ([.husky/pre-commit](.husky/pre-commit)): ESLint and `check:electron` (Electron TypeScript type check) abort the commit on errors; [lint-staged](https://github.com/lint-staged/lint-staged) then runs Prettier on the staged files only and re-stages the formatted result, so the formatting is included in the same commit.
 
 ## TypeScript
 
 ### Renderer (Frontend UI - Svelte)
 
 In the renderer part (`src/`) the TypeScript code is transpiled to JavaScript and bundled into the `dist/` folder by Vite. Typechecking is done with `svelte-check` using [`tsconfig.json`](tsconfig.json), which enables `strict` mode. All Svelte component `<script>` blocks use `lang="ts"`.
+
+Run `npm run check` for a type-check-only pass.
 
 ### Electron (Backend Main Process and Preload)
 
@@ -83,6 +85,38 @@ npx playwright test e2e/canvas.spec.ts
 The suite runs with **one worker** (`workers: 1` in `playwright.config.ts`), matching CI behaviour (tests are run sequentially). Therefore a single Electron instance is launched and shared across all tests, avoiding multiple long cold-starts and reducing total time. Tests also have **one automatic retry** (`retries: 1`).
 
 On failure, Playwright saves **context** and **trace** to `test-results/`. To retrieve failure artifacts from a CI run, go to the **Actions** tab on GitHub → select the run → scroll to the **Artifacts** section at the bottom.
+
+### E2E tests — Tier 2 (Playwright + Electron + coral-remote-server)
+
+Tier 2 covers auth and project-management flows that require `coral-remote-server` to be running. Tests live in `e2e-remote/` and use a separate Playwright config (`playwright.remote.config.ts`), so Tier 1 in `e2e/` is completely unaffected.
+
+**Prerequisites:** Docker must be installed and the `coral-remote-server` image must be built and running.
+
+```bash
+# Build the image and start the container (first run builds; subsequent runs are fast)
+docker compose up -d coral-remote-server
+```
+
+Once the server is up:
+
+```bash
+# Build + run in one shot (recommended locally)
+npm run test:e2e:remote:build
+
+# Run only (after a manual build, or when the server is already running)
+npm run test:e2e:remote
+
+# Run a single spec file
+npx playwright test --config playwright.remote.config.ts e2e-remote/auth.spec.ts
+```
+
+The global setup (`e2e-remote/global-setup.ts`) polls until the server is ready (up to 30 s) and then registers a shared test user (`e2etest`). The user is created idempotently, so re-running against the same container is safe.
+
+### Store isolation in E2E tests
+
+Both tiers launch Electron with `ELECTRON_USERDATA` pointing at a fresh temp directory (see `e2e/fixtures.ts` / `e2e-remote/fixtures.ts`), and [electron/main.ts](electron/main.ts) calls `app.setPath('userData', …)` with it before anything else runs. This keeps the developer's real settings, registered nodes, and auth token untouched by test runs.
+
+For the redirect to actually take effect, `ipcHandlers` (which pulls in the `electron-store` singleton via `storage.ts`) must **not** be statically imported in `main.ts`: ES module static imports are fully evaluated before the importing module's own top-level code runs, which would construct the store — and resolve its file path — before `app.setPath` runs. `ipcHandlers` is therefore imported dynamically inside `app.whenReady()`.
 
 ## Debugging
 
@@ -162,7 +196,8 @@ Only works on macOS systems
 
 The GitHub Actions workflows are defined in the [.github/workflows](.github/workflows) directory:
 
-- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), unit tests (`npm run test`), and renderer-only E2E tests (`npm run test:e2e`).
+- **[ci.yml](.github/workflows/ci.yml)**: runs on every push and pull request to `main` — Svelte type check (`npm run check`), Electron type check (`npm run check:electron`), unit tests (`npm run test`), and Tier 1 E2E tests (`npm run test:e2e`). No Docker required.
+- **[e2e-remote.yml](.github/workflows/e2e-remote.yml)**: runs on every push and pull request to `main` — checks out the `coral-remote-server` submodule using a read-only SSH deploy key (stored as the `CORAL_REMOTE_SERVER_DEPLOY_KEY` repository secret), builds its Docker image, starts the container, and runs Tier 2 E2E tests (`npm run test:e2e:remote`) covering auth and project-management flows.
 - **[release-linux.yml](.github/workflows/release-linux.yml)** / **[release-macos.yml](.github/workflows/release-macos.yml)**: triggered on version tags (`v*`) or manually — runs the full check/test/build pipeline and uploads artifacts to the GitHub Release.
 
 ### Creating a Release
