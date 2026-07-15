@@ -296,7 +296,10 @@
     }
     // Merge into the active location's registry (imported keys win) rather than
     // replacing it, so nodes added by an earlier import survive.
-    const skippedKeys = await mergeRegistry(importedNodes)
+    const skippedKeys = await mergeRegistry(
+      importedNodes,
+      executionSelectionState.location
+    )
     skippedKeys.forEach((key) => {
       toastState.add({
         message: `Registry key '${key}' is not a valid node and was skipped`,

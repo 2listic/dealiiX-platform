@@ -116,32 +116,38 @@ export const setActiveLocation = (location: ExecutionLocation): void => {
 }
 
 /**
- * Replace the active location's registry with the given nodes.
- * Filters out entries that are not valid StandardNodeDefinition objects.
+ * Replace the given location's registry with the given nodes (does not change
+ * the active location). Filters out entries that are not valid
+ * StandardNodeDefinition objects.
  * @param data - Dictionary of node data to register.
+ * @param location - The execution location whose registry to replace.
  * @returns List of keys that were skipped due to invalid structure.
  */
 export const setRegistry = async (
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  location: ExecutionLocation
 ): Promise<string[]> => {
   const [filtered, skipped] = filterValidNodes(data)
-  registries[activeLocation] = sortRegistry(filtered)
+  registries[location] = sortRegistry(filtered)
   await persistStoreValue('registered_nodes', $state.snapshot(registries))
   return skipped
 }
 
 /**
- * Merge the given nodes into the active location's registry (imported keys win),
- * preserving nodes already registered for that location.
+ * Merge the given nodes into the given location's registry (imported keys win),
+ * preserving nodes already registered for that location. Does not change the
+ * active location.
  * @param data - Dictionary of node data to merge in.
+ * @param location - The execution location whose registry to merge into.
  * @returns List of keys that were skipped due to invalid structure.
  */
 export const mergeRegistry = async (
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  location: ExecutionLocation
 ): Promise<string[]> => {
   const [filtered, skipped] = filterValidNodes(data)
-  registries[activeLocation] = sortRegistry({
-    ...registries[activeLocation],
+  registries[location] = sortRegistry({
+    ...registries[location],
     ...filtered,
   })
   await persistStoreValue('registered_nodes', $state.snapshot(registries))

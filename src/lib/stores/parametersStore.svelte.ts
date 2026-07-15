@@ -48,6 +48,20 @@ export const setActiveLocation = (location: ExecutionLocation): void => {
   activeLocation = location
 }
 
+/**
+ * Write a location's parameter tree without changing the active location.
+ * Used when validating/syncing a non-active target from Settings.
+ * @param location - The execution location whose tree to set.
+ * @param value - The parameter tree (or null to clear).
+ */
+export const setValueFor = (
+  location: ExecutionLocation,
+  value: ParameterTree | null
+): void => {
+  paramsByLocation[location] = value
+  void persist()
+}
+
 export const parametersState = {
   get value() {
     return paramsByLocation[activeLocation]

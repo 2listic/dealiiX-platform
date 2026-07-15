@@ -17,12 +17,10 @@ const node = (type: string) => ({
 
 describe('registryStore per-location isolation', () => {
   it('keeps each location registry independent', async () => {
-    setActiveLocation('local')
-    await setRegistry({ Local: node('Local') })
+    await setRegistry({ Local: node('Local') }, 'local')
+    await setRegistry({ Remote: node('Remote') }, 'remote')
 
     setActiveLocation('remote')
-    await setRegistry({ Remote: node('Remote') })
-
     expect(isNodeInRegistry('Remote')).toBe(true)
     expect(isNodeInRegistry('Local')).toBe(false)
 
@@ -31,11 +29,20 @@ describe('registryStore per-location isolation', () => {
     expect(isNodeInRegistry('Remote')).toBe(false)
   })
 
-  it('merges into the active location without dropping existing nodes', async () => {
-    setActiveLocation('local')
-    await setRegistry({ A: node('A') })
-    await mergeRegistry({ B: node('B') })
+  it('writes target an explicit location without moving the active cursor', async () => {
+    await setRegistry({ RemoteOnly: node('RemoteOnly') }, 'remote')
+    setActiveLocation('remote')
+    // Writing 'local' must not change what the active ('remote') reads resolve to.
+    await setRegistry({ LocalOnly: node('LocalOnly') }, 'local')
+    expect(isNodeInRegistry('RemoteOnly')).toBe(true)
+    expect(isNodeInRegistry('LocalOnly')).toBe(false)
+  })
 
+  it('merges into the given location without dropping existing nodes', async () => {
+    await setRegistry({ A: node('A') }, 'local')
+    await mergeRegistry({ B: node('B') }, 'local')
+
+    setActiveLocation('local')
     const types = getAvailableNodes().map((n) => n.type)
     expect(types).toContain('A')
     expect(types).toContain('B')

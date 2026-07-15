@@ -8,12 +8,8 @@ import type {
   ProbeResult,
 } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
-import { parametersState } from '../stores/parametersStore.svelte'
-import { setActiveLocation as setParamsLocation } from '../stores/parametersStore.svelte'
-import {
-  setRegistry,
-  setActiveLocation as setRegistryLocation,
-} from '../stores/registryStore.svelte'
+import { setValueFor as setParamsFor } from '../stores/parametersStore.svelte'
+import { setRegistry } from '../stores/registryStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 
@@ -104,13 +100,11 @@ const applySyncedMetadata = async (
   if (!metadata) return
 
   if (metadata.kind === 'nodeRegistry') {
-    setRegistryLocation(location)
-    await setRegistry(metadata.data)
+    await setRegistry(metadata.data, location)
     return
   }
 
   if (metadata.kind === 'parametersTemplate') {
-    setParamsLocation(location)
-    parametersState.value = metadata.data as unknown as ParameterTree
+    setParamsFor(location, metadata.data as unknown as ParameterTree)
   }
 }

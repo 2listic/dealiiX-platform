@@ -1,6 +1,12 @@
 <script lang="ts">
   import { slide } from 'svelte/transition'
-  import type { ExecutionSettings } from '../types/settingsTypes'
+  import {
+    EXECUTION_LOCATIONS,
+    BACKEND_KINDS,
+    type ExecutionSettings,
+    type ExecutionLocation,
+    type BackendKind,
+  } from '../types/settingsTypes'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
@@ -21,8 +27,11 @@
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $derived(settingsState.urlRemoteServer)
   let isEditingRemote = $state(false)
-  let executionLocation = $derived(executionSelectionState.location)
-  let backendKind = $derived(executionSelectionState.backendKind)
+  // Which combo the modal edits/validates — seeded from the active selection when
+  // the accordion opens, then independent. Does NOT change the active mode (that
+  // stays driven by the top-right dropdowns).
+  let editLocation = $state<ExecutionLocation>(executionSelectionState.location)
+  let editBackendKind = $state<BackendKind>(executionSelectionState.backendKind)
   let remoteHost = $derived(settingsState.remote.host)
   let remotePort = $derived(settingsState.remote.port)
   let remoteUsername = $derived(settingsState.remote.username)
@@ -41,11 +50,11 @@
     settingsState.remote.parametersFileName
   )
   let isSavingExecution = $state(false)
-  let showRemoteSettings = $derived(executionLocation === 'remote')
-  let showCoralSettings = $derived(backendKind === 'coral')
-  let showExecutableSettings = $derived(backendKind === 'executable')
+  let showRemoteSettings = $derived(editLocation === 'remote')
+  let showCoralSettings = $derived(editBackendKind === 'coral')
+  let showExecutableSettings = $derived(editBackendKind === 'executable')
   let activeProbe = $derived(
-    settingsState.getProbe(executionLocation, backendKind)
+    settingsState.getProbe(editLocation, editBackendKind)
   )
 
   const closeModal = () => getModal(modalId)?.close()
@@ -82,8 +91,8 @@
     isSavingExecution = true
     try {
       const result = await probeAndSaveExecution(
-        executionLocation,
-        backendKind,
+        editLocation,
+        editBackendKind,
         execution
       )
       if (!result?.ok) {
@@ -104,6 +113,9 @@
   }
 
   const resetForm = () => {
+    // Collapse the paths accordion so it re-seeds the edit target from the active
+    // selection the next time it is expanded.
+    executionOpen = false
     isEditingVisualizer = false
     isEditingRemote = false
     urlVisualizer = settingsState.urlVisualizer
@@ -171,7 +183,14 @@
       <div class="input-container accordion-section">
         <button
           class="accordion-summary"
-          onclick={() => (executionOpen = !executionOpen)}
+          onclick={() => {
+            executionOpen = !executionOpen
+            // Default the edit target to the active selection each time it opens.
+            if (executionOpen) {
+              editLocation = executionSelectionState.location
+              editBackendKind = executionSelectionState.backendKind
+            }
+          }}
           aria-expanded={executionOpen}>Execution paths</button
         >
         {#if executionOpen}
@@ -182,10 +201,44 @@
                 saveAndSyncExecution()
               }}
             >
-              <div class="mode-hint">
-                Editing paths for <strong>{executionLocation}</strong> /
-                <strong>{backendKind}</strong> — switch mode from the top-right selector.
+              <div class="radio-controls">
+                <div class="radio-group">
+                  {#each EXECUTION_LOCATIONS as loc (loc)}
+                    <label
+                      class="radio-option"
+                      class:active={editLocation === loc}
+                    >
+                      <input
+                        type="radio"
+                        name="edit-location"
+                        checked={editLocation === loc}
+                        onchange={() => (editLocation = loc)}
+                      />
+                      <span>{loc}</span>
+                    </label>
+                  {/each}
+                </div>
+                <div class="radio-group">
+                  {#each BACKEND_KINDS as kind (kind)}
+                    <label
+                      class="radio-option"
+                      class:active={editBackendKind === kind}
+                    >
+                      <input
+                        type="radio"
+                        name="edit-backend-kind"
+                        checked={editBackendKind === kind}
+                        onchange={() => (editBackendKind = kind)}
+                      />
+                      <span>{kind}</span>
+                    </label>
+                  {/each}
+                </div>
               </div>
+              <p class="mode-hint">
+                Configure and validate this combination. This does not change
+                the active mode — set that from the top-right selector.
+              </p>
               {#if showRemoteSettings}
                 <div class="subsection">
                   <div class="subsection-title">Execution remote host</div>
@@ -549,9 +602,55 @@
     padding-top: 1vh;
   }
 
+  .radio-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0 0.5rem;
+  }
+
+  .radio-group {
+    display: flex;
+    border: 1px solid color-mix(in srgb, var(--ternary-color) 30%, transparent);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .radio-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.6rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+    user-select: none;
+    background: var(--primary-color);
+    color: var(--ternary-color);
+    border-right: 1px solid
+      color-mix(in srgb, var(--ternary-color) 30%, transparent);
+  }
+
+  .radio-option:last-child {
+    border-right: none;
+  }
+
+  .radio-option input[type='radio'] {
+    display: none;
+  }
+
+  .radio-option.active {
+    background: var(--button-action-bg);
+    color: white;
+  }
+
   .mode-hint {
-    padding: 0.75rem 0 1rem;
-    font-size: 0.9rem;
+    padding: 0 0 1rem;
+    font-size: 0.85rem;
     color: var(--ternary-color);
     text-align: center;
   }
