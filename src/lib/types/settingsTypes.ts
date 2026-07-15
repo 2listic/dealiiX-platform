@@ -67,6 +67,16 @@ export type ProbeResponse = {
   metadata: ExecutionMetadata
 }
 
+/**
+ * The minimal, structured-cloneable payload sent to the probe IPC: only the
+ * active target plus which location/kind it is, not the whole settings object.
+ */
+export type ProbeRequest = {
+  location: ExecutionLocation
+  backendKind: BackendKind
+  target: ExecutionTargetSettings | RemoteExecutionSettings
+}
+
 export type AppSettings = {
   urlVisualizer: string
   urlRemoteServer: string

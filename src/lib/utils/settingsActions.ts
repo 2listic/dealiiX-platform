@@ -3,6 +3,7 @@ import type {
   ExecutionLocation,
   ExecutionMetadata,
   BackendKind,
+  ProbeRequest,
   ProbeResponse,
   ProbeResult,
 } from '../types/settingsTypes'
@@ -36,11 +37,19 @@ export const probeAndSaveExecution = async (
     }
   }
 
+  // Send only the active target (not the whole settings object) so the probe IPC
+  // is decoupled from the full settings shape.
+  const request: ProbeRequest = {
+    location: execution.location,
+    backendKind: execution.backendKind,
+    target: execution[execution.location],
+  }
+
   let response: ProbeResponse
   try {
     response = await window.electron.invoke(
       'probe-sync-execution-settings',
-      execution
+      request
     )
   } catch (error) {
     return {
