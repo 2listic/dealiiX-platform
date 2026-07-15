@@ -6,9 +6,14 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import { setRegistry } from '../../stores/registryStore.svelte'
+  import { mergeRegistry } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../utils/graphParser'
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
+  import { pipelineState } from '../../stores/pipeline.svelte'
+  import { runPipelineRemote } from '../../orchestration/pipelineOrchestrator'
+  import { buildExportMeta } from '../../utils/exportMeta'
+  import { jobsState } from '../../stores/jobsStore.svelte'
+  import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -44,10 +49,14 @@
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
+  const runNameModalId = 'pipeline-run-name-modal'
   let isCoralMode = $derived(settingsState.isCoralMode)
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
+  let isPipelineMode = $derived(viewModeState.value === 'pipeline')
+  let isRemote = $derived(settingsState.execution.location === 'remote')
+  let pipelineValidation = $derived(pipelineState.validation)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -60,6 +69,8 @@
 
   let importGraphInput: HTMLInputElement | undefined = $state()
   let importNodesInput: HTMLInputElement | undefined = $state()
+  let coralGraphInput: HTMLInputElement | undefined = $state()
+  let pipelineImportInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = () => {
     if (token) {
@@ -74,8 +85,159 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
+  /**
+   * Unified Run entry point. In single mode it opens the job-config modal; in
+   * pipeline mode it validates and opens the run-name modal.
+   */
   const handleExecution = () => {
+    if (isPipelineMode) {
+      if (!isRemote) {
+        toastState.add({
+          message: 'Pipelines run in remote mode only — switch location first.',
+          type: 'error',
+        })
+        return
+      }
+      if (!pipelineValidation.runnable) {
+        toastState.add({
+          message: `Cannot run: ${pipelineValidation.issues.join('; ')}`,
+          type: 'error',
+        })
+        return
+      }
+      getModal(runNameModalId)?.open()
+      return
+    }
     getModal(JobConfigModalId)?.open()
+  }
+
+  const handleAddCoralFromFile = async () => {
+    const file = coralGraphInput?.files?.[0]
+    if (!file) return
+    try {
+      const graph = JSON.parse(await file.text())
+      if (!graph || typeof graph !== 'object' || !('workflow' in graph)) {
+        toastState.add({
+          message:
+            'This file does not look like a CORAL graph (no "workflow").',
+          type: 'error',
+        })
+        return
+      }
+      const name = file.name.replace(/\.json$/i, '')
+      // Capture the coral install paths at stage creation so the stage is a
+      // self-contained execution request — the submit primitive no longer reads
+      // settingsState.
+      pipelineState.addCoralStage({
+        name,
+        graph,
+        coralBinaryPath: settingsState.remote.coralBinaryPath,
+        coralPluginPath: settingsState.remote.coralPluginPath,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error ? error.message : 'Failed to read graph file',
+        type: 'error',
+      })
+    } finally {
+      if (coralGraphInput) coralGraphInput.value = ''
+    }
+  }
+
+  const handleAddCoralFromCanvas = () => {
+    const graph = buildGraphPayload(
+      getNodesSnapshot(),
+      getEdgesSnapshot(),
+      false
+    )
+    pipelineState.addCoralStage({
+      name: currentProjectState.name || 'canvas graph',
+      graph,
+      coralBinaryPath: settingsState.remote.coralBinaryPath,
+      coralPluginPath: settingsState.remote.coralPluginPath,
+    })
+  }
+
+  const handleAddExecutable = () => {
+    pipelineState.addExecutableStage({
+      name: 'executable',
+      executablePath: settingsState.remote.executablePath,
+      parametersFileName:
+        settingsState.remote.parametersFileName || 'parameters.json',
+    })
+  }
+
+  /**
+   * Downloads the current pipeline as a JSON file: `toPipeline()` wrapped under
+   * `pipeline` plus a metadata envelope, so positions and per-stage configs
+   * round-trip exactly on re-import.
+   */
+  const handleExportPipeline = () => {
+    const payload = {
+      pipeline: pipelineState.toPipeline(),
+      ...buildExportMeta(),
+    }
+    const jsonString = JSON.stringify(payload, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `pipeline-${Date.now()}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
+  /** Replaces the canvas with a previously exported pipeline file. */
+  const handleImportPipeline = async () => {
+    const file = pipelineImportInput?.files?.[0]
+    if (!file) return
+    try {
+      const parsed = JSON.parse(await file.text())
+      if (
+        !Array.isArray(parsed?.pipeline?.nodes) ||
+        !Array.isArray(parsed?.pipeline?.edges)
+      ) {
+        toastState.add({
+          message:
+            'This file does not look like a pipeline export (no pipeline.nodes/edges array).',
+          type: 'error',
+        })
+        return
+      }
+      pipelineState.load(parsed)
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to read pipeline file',
+        type: 'error',
+      })
+    } finally {
+      if (pipelineImportInput) pipelineImportInput.value = ''
+    }
+  }
+
+  /** Runs the pipeline remotely, surfacing progress events as toasts. */
+  const handleRunPipeline = (name: string) => {
+    const pipeline = pipelineState.toPipeline()
+    runPipelineRemote(pipeline, name || undefined, (event) => {
+      if (event.type === 'info' || event.type === 'success') {
+        toastState.add({ message: event.message, type: event.type })
+      } else if (event.type === 'error') {
+        toastState.add({ message: event.message, type: 'error' })
+      } else if (event.type === 'stageTerminal') {
+        jobsState.update()
+      }
+    }).catch((error) => {
+      toastState.add({
+        message: error instanceof Error ? error.message : 'Pipeline run failed',
+        type: 'error',
+      })
+    })
   }
 
   /**
@@ -131,7 +293,9 @@
       })
       return
     }
-    const skippedKeys = await setRegistry(importedNodes)
+    // Merge into the active location's registry (imported keys win) rather than
+    // replacing it, so nodes added by an earlier import survive.
+    const skippedKeys = await mergeRegistry(importedNodes)
     skippedKeys.forEach((key) => {
       toastState.add({
         message: `Registry key '${key}' is not a valid node and was skipped`,
@@ -348,26 +512,82 @@
     </Modal>
   {/if}
 
-  <!-- Execute Graph (standalone) -->
-  {#if isSingleMode}
-    <div class="button-container">
-      <label
-        for="execute-graph-button"
-        class="element-label"
-        title="Run new job"
-      >
-        <ExecuteIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="execute-graph-button"
-        onclick={handleExecution}
-        style="display: none"
-        aria-label="Run new job"
-      ></button>
-      <span class="button-text">Run</span>
-    </div>
+  <!-- Run (unified: single job or pipeline) -->
+  <div class="button-container">
+    <label
+      for="execute-graph-button"
+      class="element-label"
+      title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+    >
+      <ExecuteIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="execute-graph-button"
+      onclick={handleExecution}
+      style="display: none"
+      aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+    ></button>
+    <span class="button-text">Run</span>
+  </div>
 
-    <JobConfigModal modalId={JobConfigModalId} />
+  <JobConfigModal modalId={JobConfigModalId} />
+  <PipelineRunNameModal
+    modalId={runNameModalId}
+    onConfirm={handleRunPipeline}
+  />
+
+  <!-- Pipeline composition (pipeline mode only) -->
+  {#if isPipelineMode}
+    <SidebarGroupButton title="Add stage">
+      {#snippet icon()}
+        <GridIcon width="28px" height="28px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Coral (file)"
+          onclick={() => coralGraphInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Coral (canvas)"
+          onclick={handleAddCoralFromCanvas}
+        />
+        <SidebarGroupButtonItem
+          label="Executable"
+          onclick={handleAddExecutable}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+
+    <SidebarGroupButton title="Pipeline I/O">
+      {#snippet icon()}
+        <UploadIcon width="30px" height="30px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Export pipeline"
+          onclick={handleExportPipeline}
+        />
+        <SidebarGroupButtonItem
+          label="Import pipeline"
+          onclick={() => pipelineImportInput?.click()}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+
+    <input
+      bind:this={coralGraphInput}
+      type="file"
+      accept=".json"
+      style="display: none"
+      onchange={handleAddCoralFromFile}
+    />
+    <input
+      bind:this={pipelineImportInput}
+      type="file"
+      accept=".json"
+      style="display: none"
+      onchange={handleImportPipeline}
+    />
   {/if}
 
   <!-- VTK Visualizer (standalone) -->

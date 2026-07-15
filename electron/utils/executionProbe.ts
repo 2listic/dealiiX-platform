@@ -1,6 +1,6 @@
 import type {
   ExecutionSettings,
-  ProbeResult,
+  ProbeResponse,
   NodeRegistryMetadata,
   ParametersTemplateMetadata,
 } from '../../src/lib/types/settingsTypes.js'
@@ -276,7 +276,7 @@ const getExecutableTemplateMetadataRemote = async (
  */
 export const probeAndSyncExecutionSettings = async (
   execution: ExecutionSettings
-): Promise<ProbeResult> => {
+): Promise<ProbeResponse> => {
   try {
     validateExecutionSettings(execution)
 
@@ -298,15 +298,20 @@ export const probeAndSyncExecutionSettings = async (
     }
 
     return {
-      ok: true,
-      message: 'Configuration validated successfully',
+      status: {
+        ok: true,
+        message: 'Configuration validated successfully',
+        syncedAt: new Date().toISOString(),
+      },
       metadata,
-      syncedAt: new Date().toISOString(),
     }
   } catch (error) {
     return {
-      ok: false,
-      message: (error as Error)?.message || 'Configuration probe failed',
+      status: {
+        ok: false,
+        message: (error as Error)?.message || 'Configuration probe failed',
+      },
+      metadata: null,
     }
   }
 }

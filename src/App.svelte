@@ -14,11 +14,19 @@
   import { settingsState } from './lib/stores/settingsStore.svelte'
   import { graphHistoryState } from './lib/stores/graphStack.svelte'
   import { viewModeState } from './lib/stores/viewModeStore.svelte'
+  import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
+  import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
 
   let isCoralMode = $derived(settingsState.isCoralMode)
   let viewMode = $derived(viewModeState.value)
-  let executionLocation = $derived(settingsState.execution.location)
-  let backendKind = $derived(settingsState.execution.backendKind)
+
+  // Keep the per-location registry/params stores pointed at the active location
+  // (covers the async settings load and any location switch).
+  $effect(() => {
+    const location = settingsState.execution.location
+    setRegistryLocation(location)
+    setParamsLocation(location)
+  })
 
   // Undo: Ctrl/Cmd+Z — Redo: Ctrl/Cmd+Shift+Z or Ctrl+Y
   // Skip when focus is inside a text field so normal editing shortcuts are unaffected.
@@ -84,16 +92,7 @@
           <JobsTable />
         </div>
         <div class="top-right-overlay">
-          <ExecutionBadge location={executionLocation} {backendKind} />
-          <button
-            class="view-toggle"
-            onclick={() => viewModeState.toggle()}
-            title={viewMode === 'pipeline'
-              ? 'Open single stage view'
-              : 'Go to pipeline view'}
-          >
-            {viewMode === 'pipeline' ? 'Single stage' : 'Pipeline'}
-          </button>
+          <ExecutionBadge />
           <ButtonToggleDarkMode />
         </div>
         <div class="flow-wrapper">
@@ -180,20 +179,5 @@
     width: 100%;
     height: 100%;
     position: relative;
-  }
-
-  .view-toggle {
-    background: var(--primary-color);
-    color: var(--ternary-color);
-    border: 1px solid var(--ternary-color);
-    border-radius: 8px;
-    padding: 0.4rem 0.7rem;
-    font-size: 0.8rem;
-    font-weight: bold;
-    cursor: pointer;
-  }
-
-  .view-toggle:hover {
-    border-color: var(--border-color-hover);
   }
 </style>

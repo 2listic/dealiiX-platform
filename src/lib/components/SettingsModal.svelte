@@ -1,10 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition'
-  import {
-    BACKEND_KINDS,
-    EXECUTION_LOCATIONS,
-    type ExecutionSettings,
-  } from '../types/settingsTypes'
+  import type { ExecutionSettings } from '../types/settingsTypes'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { probeAndSaveExecution } from '../utils/settingsActions'
@@ -60,6 +56,10 @@
         coralPluginPath: localCoralPluginPath,
         executablePath: localExecutablePath,
         parametersFileName: localExecutableParametersFileName,
+        // Plain empty object (not the reactive proxy) so this object stays
+        // structured-cloneable across the probe IPC; saveExecutionPaths restores
+        // the real per-target probe status from live settings.
+        probes: {},
       },
       remote: {
         host: remoteHost,
@@ -71,6 +71,8 @@
         executablePath: remoteExecutablePath,
         parametersFileName: remoteExecutableParametersFileName,
         sshKeyPath: sshPath,
+        // See the note on `local.probes` above.
+        probes: {},
       },
     }
 
@@ -101,8 +103,6 @@
     urlVisualizer = settingsState.urlVisualizer
     urlRemoteServer = settingsState.urlRemoteServer
     sshPath = settingsState.remote.sshKeyPath
-    executionLocation = settingsState.execution.location
-    backendKind = settingsState.execution.backendKind
     remoteHost = settingsState.remote.host
     remotePort = settingsState.remote.port
     remoteUsername = settingsState.remote.username
@@ -166,7 +166,7 @@
         <button
           class="accordion-summary"
           onclick={() => (executionOpen = !executionOpen)}
-          aria-expanded={executionOpen}>Execution Mode</button
+          aria-expanded={executionOpen}>Execution paths</button
         >
         {#if executionOpen}
           <div class="accordion-body" transition:slide={{ duration: 300 }}>
@@ -176,39 +176,9 @@
                 saveAndSyncExecution()
               }}
             >
-              <div class="radio-controls">
-                <div class="radio-group">
-                  {#each EXECUTION_LOCATIONS as location (location)}
-                    <label
-                      class="radio-option"
-                      class:active={executionLocation === location}
-                    >
-                      <input
-                        type="radio"
-                        name="execution-location"
-                        checked={executionLocation === location}
-                        onchange={() => (executionLocation = location)}
-                      />
-                      <span>{location}</span>
-                    </label>
-                  {/each}
-                </div>
-                <div class="radio-group">
-                  {#each BACKEND_KINDS as kind (kind)}
-                    <label
-                      class="radio-option"
-                      class:active={backendKind === kind}
-                    >
-                      <input
-                        type="radio"
-                        name="backend-kind"
-                        checked={backendKind === kind}
-                        onchange={() => (backendKind = kind)}
-                      />
-                      <span>{kind}</span>
-                    </label>
-                  {/each}
-                </div>
+              <div class="mode-hint">
+                Editing paths for <strong>{executionLocation}</strong> /
+                <strong>{backendKind}</strong> — switch mode from the top-right selector.
               </div>
               {#if showRemoteSettings}
                 <div class="subsection">
@@ -381,13 +351,13 @@
               {/if}
               <div class="probe-info">
                 <div>
-                  {settingsState.current.lastProbe?.message ||
-                    'No successful probe yet'}
+                  {settingsState.activeProbe?.message ||
+                    'Not validated for this mode yet'}
                 </div>
-                {#if settingsState.current.lastProbe?.syncedAt}
+                {#if settingsState.activeProbe?.syncedAt}
                   <div class="probe-subtle">
                     Last sync: {new Date(
-                      settingsState.current.lastProbe.syncedAt
+                      settingsState.activeProbe.syncedAt
                     ).toLocaleString()}
                   </div>
                 {/if}
@@ -398,7 +368,7 @@
                   type="submit"
                   disabled={isSavingExecution}
                 >
-                  {isSavingExecution ? 'Saving...' : 'Save & Sync Execution'}
+                  {isSavingExecution ? 'Validating...' : 'Validate & Sync'}
                 </Button>
               </div>
             </form>
@@ -576,50 +546,11 @@
     padding-top: 1vh;
   }
 
-  .radio-controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 0 1.25rem;
-  }
-
-  .radio-group {
-    display: flex;
-    border: 1px solid color-mix(in srgb, var(--ternary-color) 30%, transparent);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .radio-option {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 1.6rem;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      background-color 0.15s,
-      color 0.15s;
-    user-select: none;
-    background: var(--primary-color);
+  .mode-hint {
+    padding: 0.75rem 0 1rem;
+    font-size: 0.9rem;
     color: var(--ternary-color);
-    border-right: 1px solid
-      color-mix(in srgb, var(--ternary-color) 30%, transparent);
-  }
-
-  .radio-option:last-child {
-    border-right: none;
-  }
-
-  .radio-option input[type='radio'] {
-    display: none;
-  }
-
-  .radio-option.active {
-    background: var(--button-action-bg);
-    color: white;
+    text-align: center;
   }
 
   .execution-grid {

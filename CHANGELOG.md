@@ -11,6 +11,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 - [#208](https://github.com/2listic/dealiiX-platform/pull/208) You can now give a single run or a pipeline run a custom name before submitting (remote mode); it's used to name the run's output folder instead of a bare timestamp, making it easy to find on disk or in the visualizer. Leaving the name blank keeps today's timestamp-based naming. If the same name is submitted twice, the second run gets a unique suffix instead of overwriting the first. The Jobs table also gains a "Working Directory" column so you can see where each job's files landed.
 - [#207](https://github.com/2listic/dealiiX-platform/issues/207) The Pipeline editor gains "Export pipeline" and "Import pipeline" buttons: export downloads the current pipeline (all stages, connections, and per-stage settings) as a JSON file; import loads one back in, replacing the canvas.
 
+### UI/UX
+
+- [#204](https://github.com/2listic/dealiiX-platform/issues/204) Execution mode is now chosen from an always-visible selector in the top-right corner instead of the Settings modal: one dropdown picks the location (local/remote) and another picks the mode (coral, executable, or pipeline). Switching is instant and no longer re-probes the backend. Pipeline mode is available only in remote (and disables the local option), matching that pipelines run remotely. Each location now keeps its own validated node registry and parameters, so switching between local and remote — or between coral and executable — never runs one target's configuration against another's; importing nodes merges into the current location's registry rather than replacing it. A configuration that hasn't been validated yet prompts you to open Settings, where "Save & Sync Execution" is now an explicit **Validate & Sync** action for the current mode's paths. The separate Run controls are unified into a single sidebar Run button that runs the graph in single mode and the pipeline in pipeline mode; the pipeline editor's own toolbar (add stage, import/export, run) moved into the sidebar.
+
 ## [1.4.1] - 2026-07-14
 
 ### Canvas-graph

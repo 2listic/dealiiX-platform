@@ -42,6 +42,17 @@
   )
 
   const handleConfirm = () => {
+    // Block runs for a mode that was never validated — switching mode no longer
+    // probes, so the paths/payload for this combination may be unset.
+    const { location, backendKind } = settingsState.execution
+    if (!settingsState.getProbe(location, backendKind)?.ok) {
+      toastState.add({
+        message: `Configuration for ${location}/${backendKind} is not validated — open Settings and Validate & Sync.`,
+        type: 'error',
+      })
+      return
+    }
+
     getModal(modalId)?.close()
 
     // Settings are read once, at this UI boundary, and flow in as explicit args.

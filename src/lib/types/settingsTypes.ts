@@ -26,6 +26,10 @@ export type ExecutionTargetSettings = {
   executablePath: string
   parametersFileName: string
   workingDirectory: string
+  // Probe status per backend kind for this target (paths/reachability differ per
+  // target, so status is stored here; the validated payload lives in the
+  // per-location registry/parameters store).
+  probes: Partial<Record<BackendKind, ProbeResult>>
 }
 
 export type RemoteExecutionSettings = ExecutionTargetSettings & {
@@ -42,18 +46,31 @@ export type ExecutionSettings = {
   remote: RemoteExecutionSettings
 }
 
+/**
+ * A single validation outcome for one target × backend kind. Status only — the
+ * heavy payload (node registry / parameters template) is routed to its own
+ * per-location store, not stored here.
+ */
 export type ProbeResult = {
   ok: boolean
   message: string
-  metadata?: ExecutionMetadata
   syncedAt?: string
+}
+
+/**
+ * The renderer-facing return of a probe: the small persisted {@link ProbeResult}
+ * status plus the transient {@link ExecutionMetadata} payload to apply to the
+ * per-location registry/parameters store.
+ */
+export type ProbeResponse = {
+  status: ProbeResult
+  metadata: ExecutionMetadata
 }
 
 export type AppSettings = {
   urlVisualizer: string
   urlRemoteServer: string
   execution: ExecutionSettings
-  lastProbe: ProbeResult | null
 }
 
 const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
@@ -62,6 +79,7 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
   executablePath: '',
   parametersFileName: 'parameters.json',
   workingDirectory: '',
+  probes: {},
 })
 
 export const createDefaultSettings = (): AppSettings => ({
@@ -82,7 +100,6 @@ export const createDefaultSettings = (): AppSettings => ({
       coralPluginPath: '/app/build/backends/dealii/libcoral_backend_dealii.so',
     },
   },
-  lastProbe: null,
 })
 
 /**
