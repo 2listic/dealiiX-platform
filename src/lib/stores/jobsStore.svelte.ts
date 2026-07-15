@@ -1,5 +1,5 @@
 import { fetchRemoteJobs, JOB_LIST_DAYS } from '../utils/sshMessages'
-import { settingsState } from './settingsStore.svelte'
+import { executionSelectionState } from './executionSelection.svelte'
 import { toastState } from './toastsStore.svelte'
 import type { JobIdEntry } from '../types/jobTypes'
 
@@ -161,7 +161,7 @@ export const jobsState = {
   /** Refreshes the job list from the appropriate source for the current execution location. */
   async update(): Promise<void> {
     try {
-      const isLocal = settingsState.execution.location === 'local'
+      const isLocal = executionSelectionState.location === 'local'
       jobs = isLocal
         ? await window.electron.invoke('list-local-runs', {
             numDays: JOB_LIST_DAYS,

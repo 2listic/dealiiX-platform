@@ -3,6 +3,7 @@
   import Modal, { getModal } from './layout/Modal.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type {
     ParameterLeaf,
@@ -394,7 +395,7 @@
     if (!snapshot) return
     const defaultPath =
       lastParametersFilePath ||
-      settingsState.activeParametersFileName ||
+      settingsState.getParametersFileName(executionSelectionState.location) ||
       'template_parameters.json'
 
     if (window.electron?.invoke) {

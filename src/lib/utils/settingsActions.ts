@@ -16,17 +16,20 @@ import {
 } from '../stores/registryStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { viewModeState } from '../stores/viewModeStore.svelte'
 
 /**
- * Probes the backend with the given execution settings, routes any synced payload
- * (node registry or parameters template) to the active location's store, records
- * the probe status for that location × backend kind, and persists the paths.
+ * Probes the given target, routes any synced payload (node registry or parameters
+ * template) to the location's store, records the probe status for that
+ * location × backend kind, and persists the paths.
  *
- * @param execution - The execution settings to probe and save.
+ * @param location - The execution location being validated.
+ * @param backendKind - The backend kind being validated.
+ * @param execution - The full runner config (both targets) to persist.
  * @returns The probe status, or an error status if the probe could not run.
  */
 export const probeAndSaveExecution = async (
+  location: ExecutionLocation,
+  backendKind: BackendKind,
   execution: ExecutionSettings
 ): Promise<ProbeResult> => {
   if (!window.electron?.invoke || !window.electron?.store) {
@@ -40,9 +43,9 @@ export const probeAndSaveExecution = async (
   // Send only the active target (not the whole settings object) so the probe IPC
   // is decoupled from the full settings shape.
   const request: ProbeRequest = {
-    location: execution.location,
-    backendKind: execution.backendKind,
-    target: execution[execution.location],
+    location,
+    backendKind,
+    target: execution[location],
   }
 
   let response: ProbeResponse
@@ -61,71 +64,26 @@ export const probeAndSaveExecution = async (
   const { status, metadata } = response
   if (!status.ok) return status
 
-  await applySyncedMetadata(execution, metadata)
+  await applySyncedMetadata(location, metadata)
   await settingsState.saveExecutionPaths(execution)
-  await settingsState.recordProbe(
-    execution.location,
-    execution.backendKind,
-    status
-  )
+  await settingsState.recordProbe(location, backendKind, status)
   if (metadata?.kind === 'parametersTemplate' && metadata.parametersFileName) {
-    await settingsState.saveParametersFileName(metadata.parametersFileName)
+    await settingsState.saveParametersFileName(
+      location,
+      metadata.parametersFileName
+    )
   }
   return status
 }
 
 /**
- * Switches the active execution location (lightweight — no probe) and warns if
- * the resulting combination has never been validated. The per-location stores
- * follow `settingsState.execution.location` via a sync effect in `App.svelte`.
+ * Toasts a hint when the given location × backend kind has no successful probe
+ * recorded yet, pointing the user to Settings. Call after a mode/location switch.
  *
- * @param location - The execution location to switch to.
+ * @param location - The execution location just selected.
+ * @param backendKind - The backend kind just selected.
  */
-export const switchLocation = async (location: ExecutionLocation) => {
-  await settingsState.setExecutionLocation(location)
-  if (viewModeState.value === 'single') {
-    warnIfUnvalidated(location, settingsState.execution.backendKind)
-  }
-}
-
-/**
- * Switches the active mode (lightweight — no probe). `pipeline` selects the
- * pipeline view; `coral`/`executable` select the single-stage view and set the
- * backend kind, warning if the resulting combination has never been validated.
- *
- * @param mode - `'coral'`, `'executable'`, or `'pipeline'`.
- */
-export const switchMode = async (mode: BackendKind | 'pipeline') => {
-  if (mode === 'pipeline') {
-    viewModeState.value = 'pipeline'
-    return
-  }
-  viewModeState.value = 'single'
-  await settingsState.setBackendKind(mode)
-  warnIfUnvalidated(settingsState.execution.location, mode)
-}
-
-// ── Private helpers ──
-
-const applySyncedMetadata = async (
-  execution: ExecutionSettings,
-  metadata: ExecutionMetadata
-) => {
-  if (!metadata) return
-
-  if (metadata.kind === 'nodeRegistry') {
-    setRegistryLocation(execution.location)
-    await setRegistry(metadata.data)
-    return
-  }
-
-  if (metadata.kind === 'parametersTemplate') {
-    setParamsLocation(execution.location)
-    parametersState.value = metadata.data as unknown as ParameterTree
-  }
-}
-
-const warnIfUnvalidated = (
+export const warnIfUnvalidated = (
   location: ExecutionLocation,
   backendKind: BackendKind
 ) => {
@@ -134,5 +92,25 @@ const warnIfUnvalidated = (
       message: `Configuration for ${location}/${backendKind} not validated yet — open Settings and Validate & Sync.`,
       type: 'error',
     })
+  }
+}
+
+// ── Private helpers ──
+
+const applySyncedMetadata = async (
+  location: ExecutionLocation,
+  metadata: ExecutionMetadata
+) => {
+  if (!metadata) return
+
+  if (metadata.kind === 'nodeRegistry') {
+    setRegistryLocation(location)
+    await setRegistry(metadata.data)
+    return
+  }
+
+  if (metadata.kind === 'parametersTemplate') {
+    setParamsLocation(location)
+    parametersState.value = metadata.data as unknown as ParameterTree
   }
 }

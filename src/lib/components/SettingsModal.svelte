@@ -2,6 +2,7 @@
   import { slide } from 'svelte/transition'
   import type { ExecutionSettings } from '../types/settingsTypes'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { probeAndSaveExecution } from '../utils/settingsActions'
   import { jobsState } from '../stores/jobsStore.svelte'
@@ -20,8 +21,8 @@
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $derived(settingsState.urlRemoteServer)
   let isEditingRemote = $state(false)
-  let executionLocation = $derived(settingsState.execution.location)
-  let backendKind = $derived(settingsState.execution.backendKind)
+  let executionLocation = $derived(executionSelectionState.location)
+  let backendKind = $derived(executionSelectionState.backendKind)
   let remoteHost = $derived(settingsState.remote.host)
   let remotePort = $derived(settingsState.remote.port)
   let remoteUsername = $derived(settingsState.remote.username)
@@ -43,13 +44,14 @@
   let showRemoteSettings = $derived(executionLocation === 'remote')
   let showCoralSettings = $derived(backendKind === 'coral')
   let showExecutableSettings = $derived(backendKind === 'executable')
+  let activeProbe = $derived(
+    settingsState.getProbe(executionLocation, backendKind)
+  )
 
   const closeModal = () => getModal(modalId)?.close()
 
   const saveAndSyncExecution = async () => {
     const execution: ExecutionSettings = {
-      location: executionLocation,
-      backendKind,
       local: {
         workingDirectory: localWorkingDirectory,
         coralBinaryPath: localCoralBinaryPath,
@@ -79,7 +81,11 @@
     console.log('Saving execution settings:', execution)
     isSavingExecution = true
     try {
-      const result = await probeAndSaveExecution(execution)
+      const result = await probeAndSaveExecution(
+        executionLocation,
+        backendKind,
+        execution
+      )
       if (!result?.ok) {
         toastState.add({
           message: result?.message || 'Configuration probe failed',
@@ -351,14 +357,11 @@
               {/if}
               <div class="probe-info">
                 <div>
-                  {settingsState.activeProbe?.message ||
-                    'Not validated for this mode yet'}
+                  {activeProbe?.message || 'Not validated for this mode yet'}
                 </div>
-                {#if settingsState.activeProbe?.syncedAt}
+                {#if activeProbe?.syncedAt}
                   <div class="probe-subtle">
-                    Last sync: {new Date(
-                      settingsState.activeProbe.syncedAt
-                    ).toLocaleString()}
+                    Last sync: {new Date(activeProbe.syncedAt).toLocaleString()}
                   </div>
                 {/if}
               </div>

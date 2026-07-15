@@ -59,19 +59,9 @@ export const settingsState = {
   get local() {
     return settings.execution.local
   },
-  get isExecutableMode() {
-    return settings.execution.backendKind === 'executable'
-  },
-  get isCoralMode() {
-    return settings.execution.backendKind === 'coral'
-  },
-  get activeParametersFileName() {
-    return settings.execution[settings.execution.location].parametersFileName
-  },
-  /** Probe status recorded for the currently-active location × backend kind. */
-  get activeProbe(): ProbeResult | undefined {
-    const { location, backendKind } = settings.execution
-    return settings.execution[location].probes?.[backendKind]
+  /** Parameters file name configured for the given location's target. */
+  getParametersFileName(location: ExecutionLocation): string {
+    return settings.execution[location].parametersFileName
   },
   /** Probe status recorded for a specific location × backend kind. */
   getProbe(
@@ -85,20 +75,6 @@ export const settingsState = {
   },
   async saveUrlRemoteServer(url: string) {
     await persistSettings({ ...settings, urlRemoteServer: url })
-  },
-  /** Lightweight mode switch: persist just the execution location (no probe). */
-  async setExecutionLocation(location: ExecutionLocation) {
-    await persistSettings({
-      ...settings,
-      execution: { ...settings.execution, location },
-    })
-  },
-  /** Lightweight mode switch: persist just the backend kind (no probe). */
-  async setBackendKind(backendKind: BackendKind) {
-    await persistSettings({
-      ...settings,
-      execution: { ...settings.execution, backendKind },
-    })
   },
   /** Persist the edited path fields, preserving each target's probe status. */
   async saveExecutionPaths(execution: ExecutionSettings) {
@@ -132,8 +108,10 @@ export const settingsState = {
       },
     })
   },
-  async saveParametersFileName(parametersFileName: string) {
-    const location = settings.execution.location
+  async saveParametersFileName(
+    location: ExecutionLocation,
+    parametersFileName: string
+  ) {
     await persistSettings({
       ...settings,
       execution: {

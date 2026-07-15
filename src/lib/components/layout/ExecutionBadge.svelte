@@ -5,29 +5,40 @@
     type ExecutionLocation,
     type BackendKind,
   } from '../../types/settingsTypes'
-  import { settingsState } from '../../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
-  import { switchLocation, switchMode } from '../../utils/settingsActions'
+  import { warnIfUnvalidated } from '../../utils/settingsActions'
 
   // Two orthogonal-ish selectors: location, and mode (backend kind + pipeline view).
-  let location = $derived(settingsState.execution.location)
+  let location = $derived(executionSelectionState.location)
   let mode = $derived(
     viewModeState.value === 'pipeline'
       ? 'pipeline'
-      : settingsState.execution.backendKind
+      : executionSelectionState.backendKind
   )
 
-  const onLocationChange = (event: Event) => {
+  // Selection lives in two leaf stores; the dropdowns write them directly and
+  // hint (in single mode) when the resulting combination isn't validated yet.
+  const onLocationChange = async (event: Event) => {
     const value = (event.currentTarget as HTMLSelectElement)
       .value as ExecutionLocation
-    void switchLocation(value)
+    await executionSelectionState.setLocation(value)
+    if (viewModeState.value === 'single') {
+      warnIfUnvalidated(value, executionSelectionState.backendKind)
+    }
   }
 
-  const onModeChange = (event: Event) => {
+  const onModeChange = async (event: Event) => {
     const value = (event.currentTarget as HTMLSelectElement).value as
       | BackendKind
       | 'pipeline'
-    void switchMode(value)
+    if (value === 'pipeline') {
+      viewModeState.value = 'pipeline'
+      return
+    }
+    viewModeState.value = 'single'
+    await executionSelectionState.setBackendKind(value)
+    warnIfUnvalidated(executionSelectionState.location, value)
   }
 </script>
 

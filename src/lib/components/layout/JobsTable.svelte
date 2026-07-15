@@ -10,6 +10,7 @@
     JOB_LIST_DAYS,
   } from '../../utils/sshMessages'
   import { normalizeJobStatus, isTerminalStatus } from '../../types/jobTypes'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -66,7 +67,10 @@
   const handleLogClick = async (jobId: string) => {
     try {
       currentJobId = jobId
-      outLogText = await getOutFileContent(jobId)
+      outLogText = await getOutFileContent(
+        executionSelectionState.location,
+        jobId
+      )
       getModal(outLogModalId)?.open()
     } catch (error) {
       toastState.add({
@@ -87,7 +91,10 @@
       console.log(
         `Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`
       )
-      const result = await getNodesExecutionStatus(jobIdInternal)
+      const result = await getNodesExecutionStatus(
+        executionSelectionState.location,
+        jobIdInternal
+      )
       nodeStatusMap = result
       currentStatusJobId = jobIdSlurm
       currentJobIdInternal = jobIdInternal

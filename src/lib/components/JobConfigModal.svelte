@@ -12,6 +12,7 @@
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { isValidSlurmTime, SLURM_TIME_HINT } from '../utils/slurmTime'
 
@@ -26,15 +27,16 @@
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
   let runName = $state('')
+  let location = $derived(executionSelectionState.location)
   // Writable derived: pre-filled from settings, temporarily overridable per run.
   // Resets to the stored value automatically if settings change.
-  let parametersFileName = $derived(settingsState.activeParametersFileName)
-  let hasParameters = $derived(parametersState.value !== null)
-  let isExecutableMode = $derived(settingsState.isExecutableMode)
-  let isCoralMode = $derived(settingsState.isCoralMode)
-  let isRemoteExecution = $derived(
-    settingsState.execution.location === 'remote'
+  let parametersFileName = $derived(
+    settingsState.getParametersFileName(location)
   )
+  let hasParameters = $derived(parametersState.value !== null)
+  let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
+  let isCoralMode = $derived(executionSelectionState.isCoralMode)
+  let isRemoteExecution = $derived(location === 'remote')
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   let timeLimitError = $derived(
@@ -44,7 +46,7 @@
   const handleConfirm = () => {
     // Block runs for a mode that was never validated — switching mode no longer
     // probes, so the paths/payload for this combination may be unset.
-    const { location, backendKind } = settingsState.execution
+    const backendKind = executionSelectionState.backendKind
     if (!settingsState.getProbe(location, backendKind)?.ok) {
       toastState.add({
         message: `Configuration for ${location}/${backendKind} is not validated — open Settings and Validate & Sync.`,
@@ -67,6 +69,7 @@
 
     const run = isExecutableMode
       ? exportAndEvalExecutable(
+          location,
           {
             executablePath: target.executablePath,
             parametersFileName,
@@ -74,6 +77,7 @@
           trimmedRunName
         )
       : exportAndEvalCoralGraph(
+          location,
           getNodesSnapshot(),
           getEdgesSnapshot(),
           {

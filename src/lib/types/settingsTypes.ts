@@ -40,8 +40,6 @@ export type RemoteExecutionSettings = ExecutionTargetSettings & {
 }
 
 export type ExecutionSettings = {
-  location: ExecutionLocation
-  backendKind: BackendKind
   local: ExecutionTargetSettings
   remote: RemoteExecutionSettings
 }
@@ -96,8 +94,6 @@ export const createDefaultSettings = (): AppSettings => ({
   urlVisualizer: 'http://localhost:8008',
   urlRemoteServer: 'http://localhost:8080',
   execution: {
-    location: 'remote',
-    backendKind: 'coral',
     local: defaultExecutionTargetSettings(),
     remote: {
       ...defaultExecutionTargetSettings(),
@@ -124,8 +120,7 @@ export const isValidAppSettings = (value: unknown): value is AppSettings => {
   const v = value as Record<string, unknown>
   if (!v.execution || typeof v.execution !== 'object') return false
   const exec = v.execution as Record<string, unknown>
-  if (exec.location !== 'local' && exec.location !== 'remote') return false
-  if (exec.backendKind !== 'coral' && exec.backendKind !== 'executable')
-    return false
+  if (!exec.local || typeof exec.local !== 'object') return false
+  if (!exec.remote || typeof exec.remote !== 'object') return false
   return true
 }

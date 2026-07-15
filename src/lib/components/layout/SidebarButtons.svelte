@@ -27,6 +27,7 @@
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
@@ -50,12 +51,12 @@
   const JobConfigModalId = 'job-config-modal'
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const runNameModalId = 'pipeline-run-name-modal'
-  let isCoralMode = $derived(settingsState.isCoralMode)
+  let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
-  let isRemote = $derived(settingsState.execution.location === 'remote')
+  let isRemote = $derived(executionSelectionState.location === 'remote')
   let pipelineValidation = $derived(pipelineState.validation)
 
   const token = $derived(auth.token)

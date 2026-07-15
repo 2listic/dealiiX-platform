@@ -11,19 +11,19 @@
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
-  import { settingsState } from './lib/stores/settingsStore.svelte'
+  import { executionSelectionState } from './lib/stores/executionSelection.svelte'
   import { graphHistoryState } from './lib/stores/graphStack.svelte'
   import { viewModeState } from './lib/stores/viewModeStore.svelte'
   import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
   import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
 
-  let isCoralMode = $derived(settingsState.isCoralMode)
+  let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let viewMode = $derived(viewModeState.value)
 
   // Keep the per-location registry/params stores pointed at the active location
-  // (covers the async settings load and any location switch).
+  // (covers the async load and any location switch).
   $effect(() => {
-    const location = settingsState.execution.location
+    const location = executionSelectionState.location
     setRegistryLocation(location)
     setParamsLocation(location)
   })
