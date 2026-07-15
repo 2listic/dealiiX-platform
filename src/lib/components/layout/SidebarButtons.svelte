@@ -39,6 +39,7 @@
   import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
+  import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
 
   const { fitView } = useSvelteFlow()
@@ -544,7 +545,7 @@
   {#if isPipelineMode}
     <SidebarGroupButton title="Add stage">
       {#snippet icon()}
-        <GridIcon width="28px" height="28px" />
+        <PlusIcon width="30px" height="30px" />
       {/snippet}
       {#snippet items()}
         <SidebarGroupButtonItem
@@ -562,7 +563,7 @@
       {/snippet}
     </SidebarGroupButton>
 
-    <SidebarGroupButton title="Pipeline I/O">
+    <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
       {/snippet}

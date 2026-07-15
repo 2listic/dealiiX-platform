@@ -92,8 +92,8 @@
           <JobsTable />
         </div>
         <div class="top-right-overlay">
-          <ExecutionBadge />
           <ButtonToggleDarkMode />
+          <ExecutionBadge />
         </div>
         <div class="flow-wrapper">
           {#if viewMode === 'pipeline'}
