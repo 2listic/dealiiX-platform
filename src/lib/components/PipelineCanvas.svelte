@@ -2,10 +2,10 @@
   import {
     SvelteFlow,
     Background,
-    Controls,
     type NodeTypes,
     type Connection,
     type Edge,
+    MiniMap,
   } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/base.css'
   import {
@@ -74,8 +74,8 @@
     colorMode={colorModeState.value}
     fitView
   >
+    <MiniMap />
     <Background />
-    <Controls />
   </SvelteFlow>
 </div>
 
