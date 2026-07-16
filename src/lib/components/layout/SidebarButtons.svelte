@@ -569,12 +569,12 @@
       {/snippet}
       {#snippet items()}
         <SidebarGroupButtonItem
-          label="Export pipeline"
-          onclick={handleExportPipeline}
-        />
-        <SidebarGroupButtonItem
           label="Import pipeline"
           onclick={() => pipelineImportInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Download pipeline"
+          onclick={handleExportPipeline}
         />
       {/snippet}
     </SidebarGroupButton>
