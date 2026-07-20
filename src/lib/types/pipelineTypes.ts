@@ -21,7 +21,7 @@
  * `position` are node-level in xyflow, so they are not duplicated into `data`.
  */
 
-import type { CoralJobConfig, ExecutableJobConfig } from '../utils/sshMessages'
+import type { CoralJobConfig, ExecutableJobConfig } from './jobConfigTypes'
 import type { ParameterTree } from './parameterTypes'
 
 /** A pipeline stage that runs a whole CORAL graph. */

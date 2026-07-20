@@ -19,6 +19,10 @@ import {
   isTerminalStatus,
 } from '../types/jobTypes'
 import type { ParameterTree } from '../types/parameterTypes'
+import type {
+  CoralJobConfig,
+  ExecutableJobConfig,
+} from '../types/jobConfigTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
@@ -62,27 +66,6 @@ export const executeWithKey = async (): Promise<void> => {
   console.log('SSH Connection Result:', result)
   toastState.add({ message: 'Command was sent' })
 }
-
-export type CoralJobConfig = {
-  /** Remote/local path to the coral binary (captured at stage creation, not read from settings at submit). */
-  coralBinaryPath: string
-  /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
-  coralPluginPath: string
-  nodes: number
-  tasksPerNode: number
-  timeLimit: string
-  useMpi: boolean
-}
-
-export type ExecutableJobConfig = {
-  /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
-  executablePath: string
-  /** Params filename (extension selects JSON/PRM); captured at stage creation. */
-  parametersFileName: string
-  timeLimit?: string
-}
-
-export type JobConfig = CoralJobConfig | ExecutableJobConfig
 
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.

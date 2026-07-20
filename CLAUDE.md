@@ -28,6 +28,8 @@ Fix/refactor: short summary of the overall change
 - chore: tooling, config, or dependency change
 ```
 
+If the change is self-contained and the subject line already says everything a reader needs, skip the bullet list — a single-line commit message is enough.
+
 Rules:
 
 - No `Co-Authored-By` trailer, no "Generated with Claude Code" attribution

@@ -4,7 +4,7 @@
   import type {
     CoralJobConfig,
     ExecutableJobConfig,
-  } from '../utils/sshMessages'
+  } from '../types/jobConfigTypes'
   import {
     exportAndEvalCoralGraph,
     exportAndEvalExecutable,
