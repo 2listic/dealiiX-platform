@@ -21,7 +21,7 @@ import {
 } from '../utils/sshMessages'
 import { buildDirName } from '../utils/slugify'
 import { settingsState } from '../stores/settingsStore.svelte'
-import type { Pipeline, PipelineStage } from '../types/pipelineTypes'
+import type { Pipeline } from '../types/pipelineTypes'
 
 const POLL_INTERVAL_MS = 10 * 1000
 const POLL_TIMEOUT_MS = 24 * 60 * 60 * 1000
@@ -31,12 +31,6 @@ export type PipelineProgress =
   | { type: 'info'; message: string }
   | { type: 'success'; message: string }
   | { type: 'error'; message: string }
-  | {
-      type: 'stageTerminal'
-      stage: PipelineStage
-      slurmId: string
-      finalState: string
-    }
 
 /**
  * Submits every stage of a pipeline to the remote Slurm scheduler in dependency
@@ -120,8 +114,9 @@ export const runPipelineRemote = async (
     message: `Submitted ${order.length} stage(s) to Slurm`,
   })
 
-  // Poll all stages concurrently for live feedback; Slurm runs them in order regardless.
-  const results = await Promise.all(
+  // Poll all stages concurrently; each stage reports as soon as it finishes,
+  // rather than waiting for the whole pipeline to reach a terminal state.
+  await Promise.all(
     order.map(async (stage) => {
       const slurmId = slurmIdByStage.get(stage.id)!
       const finalState = await jobPolling(
@@ -129,20 +124,10 @@ export const runPipelineRemote = async (
         POLL_INTERVAL_MS,
         POLL_TIMEOUT_MS
       )
-      return { stage, slurmId, finalState }
+      emit({
+        type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+        message: `${stage.name} (job ${slurmId}): ${finalState}`,
+      })
     })
   )
-
-  for (const { stage, slurmId, finalState } of results) {
-    emit({
-      type: 'stageTerminal',
-      stage,
-      slurmId,
-      finalState,
-    })
-    emit({
-      type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-      message: `${stage.name} (job ${slurmId}): ${finalState}`,
-    })
-  }
 }

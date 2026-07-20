@@ -139,12 +139,9 @@ describe('runPipelineRemote', () => {
     await runPipelineRemote(p, undefined, (event) => {
       if (event.type === 'success') events.push(`success:${event.message}`)
       if (event.type === 'error') events.push(`error:${event.message}`)
-      if (event.type === 'stageTerminal')
-        events.push(`terminal:${event.stage.id}:${event.finalState}`)
     })
 
-    expect(events).toContain('terminal:a:COMPLETED')
-    expect(events.some((e) => e.startsWith('success:'))).toBe(true)
+    expect(events).toContain('success:a (job 100): COMPLETED')
   })
 
   it('dispatches coral vs executable stages to the right submit primitive', async () => {

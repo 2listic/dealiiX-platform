@@ -496,7 +496,7 @@ const uploadFileSsh = async (
  * @param jobId - The ID of the job to poll.
  * @param interval - The interval (in milliseconds) between polling attempts.
  * @param timeout - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
- * @returns A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
+ * @returns A promise that resolves to the job's terminal {@link JobStatus} once it reaches one.
  * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
 export const jobPolling = async (

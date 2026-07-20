@@ -10,7 +10,10 @@
   import { importGraphFromProtocol } from '../../utils/graphParser'
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
-  import { runPipelineRemote } from '../../orchestration/pipelineOrchestrator'
+  import {
+    runPipelineRemote,
+    type PipelineProgress,
+  } from '../../orchestration/pipelineOrchestrator'
   import { buildExportMeta } from '../../utils/exportMeta'
   import { jobsState } from '../../stores/jobsStore.svelte'
   import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
@@ -223,18 +226,24 @@
     }
   }
 
+  /** Surfaces a pipeline progress event as a toast; success/error also refreshes the jobs table. */
+  const handlePipelineProgress = (event: PipelineProgress) => {
+    if (event.type === 'info' || event.type === 'success') {
+      toastState.add({ message: event.message, type: event.type })
+    } else {
+      toastState.add({ message: event.message, type: 'error' })
+    }
+    if (event.type !== 'info') jobsState.update()
+  }
+
   /** Runs the pipeline remotely, surfacing progress events as toasts. */
   const handleRunPipeline = (name: string) => {
     const pipeline = pipelineState.toPipeline()
-    runPipelineRemote(pipeline, name || undefined, (event) => {
-      if (event.type === 'info' || event.type === 'success') {
-        toastState.add({ message: event.message, type: event.type })
-      } else if (event.type === 'error') {
-        toastState.add({ message: event.message, type: 'error' })
-      } else if (event.type === 'stageTerminal') {
-        jobsState.update()
-      }
-    }).catch((error) => {
+    runPipelineRemote(
+      pipeline,
+      name || undefined,
+      handlePipelineProgress
+    ).catch((error) => {
       toastState.add({
         message: error instanceof Error ? error.message : 'Pipeline run failed',
         type: 'error',
