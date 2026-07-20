@@ -62,7 +62,7 @@ const executableStage = (id: string): PipelineStage => ({
   type: 'executableStage',
   position: { x: 0, y: 0 },
   name: id,
-  parameters: { kind: 'group', children: {} } as never,
+  parameters: {},
   config: {
     executablePath: '/exe',
     parametersFileName: 'parameters.json',

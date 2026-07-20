@@ -1,0 +1,629 @@
+{
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "p0",
+        "type": "coralStage",
+        "position": {
+          "x": -100,
+          "y": 8.5
+        },
+        "name": "network-mwe-simplified-qualified-3D",
+        "graph": {
+          "workflow": {
+            "nodes": {
+              "1": {
+                "type": "std::string",
+                "position": {
+                  "x": 196.77935374072024,
+                  "y": 252.33953477647702
+                },
+                "value": "hyper_cube",
+                "qualified_id": "1"
+              },
+              "2": {
+                "type": "std::string",
+                "position": {
+                  "x": 226.58351413548948,
+                  "y": 394.1625891347088
+                },
+                "value": "0: 1: false",
+                "qualified_id": "2"
+              },
+              "6": {
+                "type": "unsigned int",
+                "position": {
+                  "x": 628.7557690245317,
+                  "y": 480.7436973992339
+                },
+                "value": "1",
+                "qualified_id": "6"
+              },
+              "8": {
+                "type": "dealii::GridOut",
+                "position": {
+                  "x": 696.7456324270305,
+                  "y": 646.0977060400126
+                },
+                "qualified_id": "8"
+              },
+              "9": {
+                "type": "std::string",
+                "position": {
+                  "x": 709.0481811728362,
+                  "y": 769.3800519906857
+                },
+                "value": "grid-1-3D-1ref.vtk",
+                "qualified_id": "9"
+              },
+              "10": {
+                "type": "std::ofstream",
+                "position": {
+                  "x": 759.4506318169646,
+                  "y": 900.9714692153324
+                },
+                "base": "std::ostream",
+                "qualified_id": "10"
+              },
+              "12": {
+                "type": "dealii::Triangulation<3, 3>",
+                "position": {
+                  "x": 399.6331012369461,
+                  "y": 69.66858098337129
+                },
+                "qualified_id": "12"
+              },
+              "13": {
+                "type": "GridGenerator::generate_from_name_and_arguments<3>",
+                "position": {
+                  "x": 999.3609913823213,
+                  "y": 5.826579774347358
+                },
+                "qualified_id": "13"
+              },
+              "14": {
+                "type": "Triangulation<3>::refine_global",
+                "position": {
+                  "x": 1293.246644902423,
+                  "y": 351.7803069791099
+                },
+                "qualified_id": "14"
+              },
+              "15": {
+                "type": "GridOut::write_vtk<3>",
+                "position": {
+                  "x": 1374.2664277228623,
+                  "y": 677.6981432016877
+                },
+                "qualified_id": "15"
+              }
+            },
+            "edges": {
+              "0": {
+                "source": 9,
+                "target": 10,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "1": {
+                "source": 12,
+                "target": 13,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "2": {
+                "source": 1,
+                "target": 13,
+                "source_output": 0,
+                "target_input": 1
+              },
+              "3": {
+                "source": 2,
+                "target": 13,
+                "source_output": 0,
+                "target_input": 2
+              },
+              "4": {
+                "source": 13,
+                "target": 14,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "5": {
+                "source": 6,
+                "target": 14,
+                "source_output": 0,
+                "target_input": 1
+              },
+              "6": {
+                "source": 14,
+                "target": 15,
+                "source_output": 0,
+                "target_input": 1
+              },
+              "7": {
+                "source": 8,
+                "target": 15,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "8": {
+                "source": 10,
+                "target": 15,
+                "source_output": 0,
+                "target_input": 2
+              }
+            }
+          },
+          "version": 1,
+          "author": "dealiix-platform",
+          "date_time_utc": "2026-03-09T10:52:00.120Z"
+        },
+        "config": {
+          "coralBinaryPath": "/app/build/core/coral",
+          "coralPluginPath": "/app/build/backends/dealii/libcoral_backend_dealii.so",
+          "nodes": 1,
+          "tasksPerNode": 4,
+          "timeLimit": "01:00:00",
+          "useMpi": false
+        }
+      },
+      {
+        "id": "p1",
+        "type": "executableStage",
+        "position": {
+          "x": 271,
+          "y": 42
+        },
+        "name": "executable",
+        "parameters": {
+          "Stokes Immersed Problem": {
+            "Final time": {
+              "value": "1",
+              "default_value": "1",
+              "documentation": "",
+              "pattern": "4",
+              "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+              "actions": "4"
+            },
+            "Fluid bounding boxes extraction level": {
+              "value": "1",
+              "default_value": "1",
+              "documentation": "Extraction level of the rtree used to construct global bounding boxes",
+              "pattern": "9",
+              "pattern_description": "[Integer]",
+              "actions": "9"
+            },
+            "Homogeneous Dirichlet boundary ids": {
+              "value": "0",
+              "default_value": "0",
+              "documentation": "Boundary Ids over which homogeneous Dirichlet boundary conditions are applied",
+              "pattern": "11",
+              "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+              "actions": "11"
+            },
+            "Initial fluid refinement": {
+              "value": "5",
+              "default_value": "5",
+              "documentation": "Initial mesh refinement used for the fluid domain Omega",
+              "pattern": "7",
+              "pattern_description": "[Integer]",
+              "actions": "7"
+            },
+            "Initial solid refinement": {
+              "value": "5",
+              "default_value": "5",
+              "documentation": "Initial mesh refinement used for the solid domain Gamma",
+              "pattern": "8",
+              "pattern_description": "[Integer]",
+              "actions": "8"
+            },
+            "Nitsche penalty term": {
+              "value": "100",
+              "default_value": "100",
+              "documentation": "",
+              "pattern": "6",
+              "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+              "actions": "6"
+            },
+            "Number of time steps": {
+              "value": "1",
+              "default_value": "501",
+              "documentation": "",
+              "pattern": "1",
+              "pattern_description": "[Integer]",
+              "actions": "1"
+            },
+            "Output directory": {
+              "value": ".",
+              "default_value": ".",
+              "documentation": "",
+              "pattern": "3",
+              "pattern_description": "[Anything]",
+              "actions": "3"
+            },
+            "Output frequency": {
+              "value": "1",
+              "default_value": "1",
+              "documentation": "",
+              "pattern": "2",
+              "pattern_description": "[Integer]",
+              "actions": "2"
+            },
+            "Particle insertion refinement": {
+              "value": "3",
+              "default_value": "3",
+              "documentation": "Refinement of the volumetric mesh used to insert the particles",
+              "pattern": "10",
+              "pattern_description": "[Integer]",
+              "actions": "10"
+            },
+            "Velocity degree": {
+              "value": "2",
+              "default_value": "2",
+              "documentation": "",
+              "pattern": "0",
+              "pattern_description": "[Integer range 1...2147483647 (inclusive)]",
+              "actions": "0"
+            },
+            "Viscosity": {
+              "value": "1",
+              "default_value": "1",
+              "documentation": "",
+              "pattern": "5",
+              "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+              "actions": "5"
+            },
+            "Angular velocity": {
+              "Function constants": {
+                "value": "",
+                "default_value": "",
+                "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+                "pattern": "33",
+                "pattern_description": "[Anything]"
+              },
+              "Function expression": {
+                "value": "t < .500001 ? 6.283185 : -6.283185",
+                "default_value": "0",
+                "documentation": "The formula that denotes the function you want to evaluate for particular values of the independent variables. This expression may contain any of the usual operations such as addition or multiplication, as well as all of the common functions such as `sin' or `cos'. In addition, it may contain expressions like `if(x>0, 1, -1)' where the expression evaluates to the second argument if the first argument is true, and to the third argument otherwise. For a full overview of possible expressions accepted see the documentation of the muparser library at http://muparser.beltoforion.de/.\n\nIf the function you are describing represents a vector-valued function with multiple components, then separate the expressions for individual components by a semicolon.",
+                "pattern": "32",
+                "pattern_description": "[Anything]"
+              },
+              "Variable names": {
+                "value": "x,y,t",
+                "default_value": "x,y,t",
+                "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+                "pattern": "31",
+                "pattern_description": "[Anything]"
+              }
+            },
+            "Grid generation": {
+              "Fluid grid generator": {
+                "value": "hyper_cube",
+                "default_value": "hyper_cube",
+                "documentation": "",
+                "pattern": "12",
+                "pattern_description": "[Anything]",
+                "actions": "12"
+              },
+              "Fluid grid generator arguments": {
+                "value": "-1: 1: false",
+                "default_value": "-1: 1: false",
+                "documentation": "",
+                "pattern": "13",
+                "pattern_description": "[Anything]",
+                "actions": "13"
+              },
+              "Particle grid generator": {
+                "value": "hyper_ball",
+                "default_value": "hyper_ball",
+                "documentation": "",
+                "pattern": "16",
+                "pattern_description": "[Anything]",
+                "actions": "16"
+              },
+              "Particle grid generator arguments": {
+                "value": "0.3, 0.3: 0.1: false",
+                "default_value": "0.3, 0.3: 0.1: false",
+                "documentation": "",
+                "pattern": "17",
+                "pattern_description": "[Anything]",
+                "actions": "17"
+              },
+              "Solid grid generator": {
+                "value": "hyper_rectangle",
+                "default_value": "hyper_rectangle",
+                "documentation": "",
+                "pattern": "14",
+                "pattern_description": "[Anything]",
+                "actions": "14"
+              },
+              "Solid grid generator arguments": {
+                "value": "-.5, -.1: .5, .1: false",
+                "default_value": "-.5, -.1: .5, .1: false",
+                "documentation": "",
+                "pattern": "15",
+                "pattern_description": "[Anything]",
+                "actions": "15"
+              }
+            },
+            "Refinement and remeshing": {
+              "Maximum number of cells": {
+                "value": "20000",
+                "default_value": "20000",
+                "documentation": "",
+                "pattern": "24",
+                "pattern_description": "[Integer]",
+                "actions": "24"
+              },
+              "Refinement coarsening fraction": {
+                "value": "0.3",
+                "default_value": "0.3",
+                "documentation": "",
+                "pattern": "22",
+                "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+                "actions": "22"
+              },
+              "Refinement fraction": {
+                "value": "0.3",
+                "default_value": "0.3",
+                "documentation": "",
+                "pattern": "23",
+                "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+                "actions": "23"
+              },
+              "Refinement maximal level": {
+                "value": "8",
+                "default_value": "8",
+                "documentation": "",
+                "pattern": "19",
+                "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]",
+                "actions": "19"
+              },
+              "Refinement minimal level": {
+                "value": "5",
+                "default_value": "5",
+                "documentation": "",
+                "pattern": "20",
+                "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]",
+                "actions": "20"
+              },
+              "Refinement step frequency": {
+                "value": "5",
+                "default_value": "5",
+                "documentation": "",
+                "pattern": "18",
+                "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]",
+                "actions": "18"
+              },
+              "Refinement strategy": {
+                "value": "fixed_fraction",
+                "default_value": "fixed_fraction",
+                "documentation": "",
+                "pattern": "21",
+                "pattern_description": "[Selection fixed_fraction|fixed_number ]",
+                "actions": "21"
+              }
+            },
+            "Right hand side": {
+              "Function constants": {
+                "value": "",
+                "default_value": "",
+                "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+                "pattern": "30",
+                "pattern_description": "[Anything]"
+              },
+              "Function expression": {
+                "value": "0; 0; 0",
+                "default_value": "0; 0; 0",
+                "documentation": "The formula that denotes the function you want to evaluate for particular values of the independent variables. This expression may contain any of the usual operations such as addition or multiplication, as well as all of the common functions such as `sin' or `cos'. In addition, it may contain expressions like `if(x>0, 1, -1)' where the expression evaluates to the second argument if the first argument is true, and to the third argument otherwise. For a full overview of possible expressions accepted see the documentation of the muparser library at http://muparser.beltoforion.de/.\n\nIf the function you are describing represents a vector-valued function with multiple components, then separate the expressions for individual components by a semicolon.",
+                "pattern": "29",
+                "pattern_description": "[Anything]"
+              },
+              "Variable names": {
+                "value": "x,y,t",
+                "default_value": "x,y,t",
+                "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+                "pattern": "28",
+                "pattern_description": "[Anything]"
+              }
+            }
+          }
+        },
+        "config": {
+          "executablePath": "/app/shared-data/step-70/build/step-70",
+          "parametersFileName": "parameters.json",
+          "timeLimit": "01:00:00"
+        }
+      },
+      {
+        "id": "p2",
+        "type": "coralStage",
+        "position": {
+          "x": 76,
+          "y": 264.5
+        },
+        "name": "laplace-mpi-step40",
+        "graph": {
+          "plugin": {
+            "MPI": {
+              "enabled": true,
+              "max_num_threads": 1
+            }
+          },
+          "workflow": {
+            "nodes": {
+              "1": {
+                "type": "LaplaceProblem<2>",
+                "position": {
+                  "x": 50.38064200000011,
+                  "y": -47.119423999999924
+                },
+                "qualified_id": "1"
+              },
+              "2": {
+                "type": "unsigned int",
+                "position": {
+                  "x": 17.534818000000172,
+                  "y": 294.775744
+                },
+                "value": "5",
+                "qualified_id": "2"
+              },
+              "3": {
+                "type": "std::string",
+                "position": {
+                  "x": 24.99977800000015,
+                  "y": 52.91104000000003
+                },
+                "value": "hyper_cube",
+                "qualified_id": "3"
+              },
+              "4": {
+                "type": "std::string",
+                "position": {
+                  "x": 20.520802000000145,
+                  "y": 175.33638400000004
+                },
+                "value": "0.0 : 1.0 : false",
+                "qualified_id": "4"
+              },
+              "5": {
+                "type": "std::string",
+                "position": {
+                  "x": 747.607906,
+                  "y": 472.441792
+                },
+                "value": "if(y > 0.5 + 0.25 * sin(4 * pi * x), 1.0, -1.0)",
+                "qualified_id": "5"
+              },
+              "7": {
+                "type": "LaplaceProblem::make_grid_from_generator<2>",
+                "position": {
+                  "x": 611.745634,
+                  "y": 58.88300800000006
+                },
+                "qualified_id": "7"
+              },
+              "8": {
+                "type": "LaplaceProblem::run<2>",
+                "position": {
+                  "x": 1213.4214099999997,
+                  "y": 227.59110400000003
+                },
+                "qualified_id": "8"
+              },
+              "9": {
+                "type": "std::string",
+                "position": {
+                  "x": 749.1008979999999,
+                  "y": 588.895168
+                },
+                "value": "amg",
+                "qualified_id": "9"
+              },
+              "10": {
+                "type": "unsigned int",
+                "position": {
+                  "x": 747.6079059999998,
+                  "y": 354.49542399999996
+                },
+                "value": "4",
+                "qualified_id": "10"
+              },
+              "11": {
+                "type": "std::string",
+                "position": {
+                  "x": 752.086882,
+                  "y": 706.8415359999999
+                },
+                "value": "/app/build/output",
+                "qualified_id": "11"
+              }
+            },
+            "edges": {
+              "0": {
+                "source": 1,
+                "target": 7,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "1": {
+                "source": 3,
+                "target": 7,
+                "source_output": 0,
+                "target_input": 1
+              },
+              "2": {
+                "source": 4,
+                "target": 7,
+                "source_output": 0,
+                "target_input": 2
+              },
+              "3": {
+                "source": 2,
+                "target": 7,
+                "source_output": 0,
+                "target_input": 3
+              },
+              "4": {
+                "source": 7,
+                "target": 8,
+                "source_output": 0,
+                "target_input": 0
+              },
+              "5": {
+                "source": 10,
+                "target": 8,
+                "source_output": 0,
+                "target_input": 1
+              },
+              "6": {
+                "source": 5,
+                "target": 8,
+                "source_output": 0,
+                "target_input": 2
+              },
+              "7": {
+                "source": 9,
+                "target": 8,
+                "source_output": 0,
+                "target_input": 3
+              },
+              "8": {
+                "source": 11,
+                "target": 8,
+                "source_output": 0,
+                "target_input": 4
+              }
+            }
+          },
+          "version": 1,
+          "author": "dealiix-platform",
+          "date_time_utc": "2026-04-27T09:17:09.753Z"
+        },
+        "config": {
+          "coralBinaryPath": "/app/build/core/coral",
+          "coralPluginPath": "/app/build/backends/dealii/libcoral_backend_dealii.so",
+          "nodes": 1,
+          "tasksPerNode": 4,
+          "timeLimit": "01:00:00",
+          "useMpi": true
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "p0",
+        "target": "p1"
+      },
+      {
+        "source": "p1",
+        "target": "p2"
+      }
+    ]
+  },
+  "version": 1,
+  "author": "dealiix-platform",
+  "date_time_utc": "2026-07-15T09:50:43.243Z"
+}
