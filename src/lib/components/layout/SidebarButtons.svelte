@@ -8,6 +8,11 @@
   } from '../../stores/nodes.svelte'
   import { mergeRegistry } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../utils/graphParser'
+  import {
+    mergeParametersFromFile,
+    downloadParameters,
+  } from '../../utils/parametersFileActions'
+  import { parametersState } from '../../stores/parametersStore.svelte'
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import {
@@ -26,6 +31,7 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import { graphHistoryState } from '../../stores/graphStack.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
+  import DownloadIcon from '../icons/DownloadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
@@ -56,6 +62,10 @@
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const runNameModalId = 'pipeline-run-name-modal'
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
+  let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
+  let hasParams = $derived(parametersState.value != null)
+  const paramsSyncHint =
+    'No parameters loaded — sync an executable from Settings first'
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
@@ -76,6 +86,7 @@
   let importNodesInput: HTMLInputElement | undefined = $state()
   let coralGraphInput: HTMLInputElement | undefined = $state()
   let pipelineImportInput: HTMLInputElement | undefined = $state()
+  let paramsFileInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = () => {
     if (token) {
@@ -319,6 +330,14 @@
     toastState.add({ message: 'New nodes were loaded' })
   }
 
+  /** Merges the selected parameters file (JSON or PRM) into the active location's tree. */
+  const handleMergeParams = async () => {
+    const file = paramsFileInput?.files?.[0]
+    if (!file) return
+    await mergeParametersFromFile(file)
+    if (paramsFileInput) paramsFileInput.value = ''
+  }
+
   const readFileAsText = (file: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -445,7 +464,7 @@
 
 <aside>
   <!-- Login (standalone) -->
-  {#if isCoralMode}
+  {#if isCoralMode && isSingleMode}
     <div class="button-container">
       <label
         for="login-button"
@@ -550,60 +569,6 @@
     onConfirm={handleRunPipeline}
   />
 
-  <!-- Pipeline composition (pipeline mode only) -->
-  {#if isPipelineMode}
-    <SidebarGroupButton title="Add stage">
-      {#snippet icon()}
-        <PlusIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Coral (file)"
-          onclick={() => coralGraphInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Coral (canvas)"
-          onclick={handleAddCoralFromCanvas}
-        />
-        <SidebarGroupButtonItem
-          label="Executable"
-          onclick={handleAddExecutable}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <SidebarGroupButton title="Import / Export">
-      {#snippet icon()}
-        <UploadIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Import pipeline"
-          onclick={() => pipelineImportInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Download pipeline"
-          onclick={handleExportPipeline}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <input
-      bind:this={coralGraphInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleAddCoralFromFile}
-    />
-    <input
-      bind:this={pipelineImportInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleImportPipeline}
-    />
-  {/if}
-
   <!-- VTK Visualizer (standalone) -->
   <div class="button-container">
     <label
@@ -692,6 +657,112 @@
     accept=".json"
     style="display: none"
   />
+
+  <!-- Parameters actions (executable single mode only) -->
+  {#if isExecutableMode && isSingleMode}
+    <div class="button-container">
+      <label
+        for="add-params-button"
+        class="element-label"
+        class:disabled={!hasParams}
+        title={hasParams ? 'Add fields from a parameters file' : paramsSyncHint}
+      >
+        <PlusIcon width="26px" height="26px" />
+      </label>
+      <button
+        id="add-params-button"
+        onclick={() => paramsFileInput?.click()}
+        disabled={!hasParams}
+        style="display: none"
+        aria-label="Add parameter fields from file"
+      ></button>
+      <span class="button-text">Add params</span>
+    </div>
+
+    <div class="button-container">
+      <label
+        for="download-params-button"
+        class="element-label"
+        class:disabled={!hasParams}
+        title={hasParams
+          ? 'Download parameters as a JSON or PRM file'
+          : paramsSyncHint}
+      >
+        <DownloadIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="download-params-button"
+        onclick={downloadParameters}
+        disabled={!hasParams}
+        style="display: none"
+        aria-label="Download parameters"
+      ></button>
+      <span class="button-text">Export</span>
+    </div>
+
+    <input
+      bind:this={paramsFileInput}
+      type="file"
+      accept=".json,.prm"
+      onchange={handleMergeParams}
+      style="display: none"
+    />
+  {/if}
+
+  <!-- Pipeline composition (pipeline mode only) -->
+  {#if isPipelineMode}
+    <SidebarGroupButton title="Add stage">
+      {#snippet icon()}
+        <PlusIcon width="30px" height="30px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Coral (file)"
+          onclick={() => coralGraphInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Coral (canvas)"
+          onclick={handleAddCoralFromCanvas}
+        />
+        <SidebarGroupButtonItem
+          label="Executable"
+          onclick={handleAddExecutable}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+
+    <SidebarGroupButton title="Import / Export">
+      {#snippet icon()}
+        <UploadIcon width="30px" height="30px" />
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Import pipeline"
+          onclick={() => pipelineImportInput?.click()}
+        />
+        <SidebarGroupButtonItem
+          label="Download pipeline"
+          onclick={handleExportPipeline}
+        />
+      {/snippet}
+    </SidebarGroupButton>
+
+    <input
+      bind:this={coralGraphInput}
+      type="file"
+      accept=".json"
+      style="display: none"
+      onchange={handleAddCoralFromFile}
+    />
+    <input
+      bind:this={pipelineImportInput}
+      type="file"
+      accept=".json"
+      style="display: none"
+      onchange={handleImportPipeline}
+    />
+  {/if}
+
   <!-- Settings (standalone) -->
   <div class="button-container">
     <label for="settings-button" class="element-label" title="Settings">
@@ -740,6 +811,8 @@
     border-radius: 10px;
     cursor: pointer;
     margin: 0.5rem 0.2rem;
+    /* stroke="currentColor" icons (PlusIcon/UploadIcon) inherit this */
+    color: var(--ternary-color);
   }
 
   .element-label:hover:not(.disabled) {
