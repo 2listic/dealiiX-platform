@@ -6,6 +6,12 @@
 export type JobIdEntry = {
   internalId: number
   backendKind: 'coral' | 'executable'
+  /**
+   * Remote directory holding this job's `slurm-<id>.out` and `nodes-exec-status/`.
+   * For single runs this is the root working directory; for pipeline stages it is
+   * the per-stage subdirectory. Optional for backward-compatibility and local runs.
+   */
+  workingDirectory?: string
 }
 
 /**

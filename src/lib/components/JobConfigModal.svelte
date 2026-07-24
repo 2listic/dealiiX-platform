@@ -13,6 +13,7 @@
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import { isValidSlurmTime, SLURM_TIME_HINT } from '../utils/slurmTime'
 
   interface Props {
     modalId: string
@@ -35,15 +36,8 @@
   )
   let totalProcesses = $derived(nodes * tasksPerNode)
 
-  // Slurm --time accepted formats: minutes | minutes:seconds | hours:minutes:seconds
-  // | days-hours | days-hours:minutes | days-hours:minutes:seconds | 0
-  // See: https://slurm.schedmd.com/sbatch.html#OPT_time
-  const SLURM_TIME_PATTERN =
-    /^(\d+|\d+:\d{2}(:\d{2})?|\d+-\d{2}(:\d{2}(:\d{2})?)?)$/
   let timeLimitError = $derived(
-    SLURM_TIME_PATTERN.test(timeLimit)
-      ? ''
-      : 'Use: minutes, minutes:seconds, HH:MM:SS, D-HH, D-HH:MM, D-HH:MM:SS'
+    isValidSlurmTime(timeLimit) ? '' : SLURM_TIME_HINT
   )
 
   const handleConfirm = () => {

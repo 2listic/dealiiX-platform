@@ -98,9 +98,21 @@ Stores use Svelte 5 runes (`.svelte.ts` files):
 - `auth.svelte.ts` - JWT token for coral-remote-server API. Methods: `setToken()`, `setUsername()`, `clearToken()`. Persisted in electron-store under `access_token` / `username`.
 - `settingsStore.svelte.ts` - User settings stored under a single `'settings'` key in electron-store. Exports named key constants (`SSH_PATH`, `URL_VISUALIZER`, `URL_REMOTE_SERVER`, `USE_MPI`) and a `settingsState` object with `getKey(key)` / `setKey(key, value)` methods.
 - `currentProjectStore.svelte.ts` - Current project metadata (`id`, `name`). Methods: `set()`, `clear()`, `updateName()`. Exports `ApiProject` interface for use in components.
-- `jobsStore.svelte.ts` - Slurm job tracking. `jobsState` has `isEmpty`/`oneOrLess` getters, `update()` refreshes from SSH. `jobIdMapState` maps Slurm scheduler IDs → internal incremental job IDs (used in touch-dir paths).
+- `jobsStore.svelte.ts` - Slurm job tracking. `jobsState` has `isEmpty`/`oneOrLess` getters, `update()` refreshes from SSH. `jobIdMapState` maps Slurm scheduler IDs → a `JobIdEntry` (`internalId` used in touch-dir paths, `backendKind`, and the per-job `workingDirectory`). The `workingDirectory` is the root for single runs and the per-stage subdirectory for pipeline stages; `getOutFileContent` / `getNodesExecutionStatus` resolve a job's `slurm-<id>.out` and `nodes-exec-status/` from it (via `getJobWorkingDirectory` / `getEntryByInternal`), so logs and node status work uniformly for both.
 - `toastsStore.svelte.ts` - Toast notifications. Use `toastState.add({ message, type })` to show a toast. Supports `'error'`/`'success'` types with auto-dismissal.
 - `dndStore.svelte.ts` - Drag-and-drop state (`dndNodeDataState.current`) for tracking which sidebar node is being dragged onto the canvas.
+- `viewModeStore.svelte.ts` - Which central editor is shown: `viewModeState.value` is `'graph' | 'pipeline'`, with `toggle()`. Transient (not persisted). `App.svelte` renders `PipelineCanvas` when `'pipeline'`, else the graph/parameters editor.
+- `pipeline.svelte.ts` - Transient store for the pipeline editor, holding the pipeline as xyflow `Node[]`/`Edge[]` (one node per stage, one edge per ordering dependency). Mirrors the get/set shape of `nodes.svelte.ts` (`getNodes`/`setNodes`/`getEdges`/`setEdges`) for canvas binding, plus `pipelineState` with `addCoralStage()`, `addExecutableStage()`, `updateStageData()`, `updateStageConfig()`, `setStageParameters()`, `removeStage()`, `clear()`, `toPipeline()`, and a `validation` getter.
+
+### Pipeline Orchestration
+
+The pipeline editor composes whole CORAL graphs and standalone executables as nodes of a higher-level DAG, where each edge means "target runs after source" (pure ordering — no data/artifact passing yet). This is separate from the CORAL canvas; coral itself runs one flat graph and cannot orchestrate across jobs.
+
+- `src/lib/types/pipelineTypes.ts` - `Pipeline`, `PipelineStage` (`coral` | `executable`, each carrying its own `CoralJobConfig`/`ExecutableJobConfig`), `PipelineEdge`, and the `StageData` stored on canvas nodes.
+- `src/lib/orchestration/executionOrder.ts` - Pure, unit-tested `resolveExecutionOrder(pipeline)` (Kahn topological sort; throws `PipelineCycleError` on cycles) and `parentsOf(stageId, edges)`. No app/IO dependencies — the contract a future extracted service would reimplement.
+- `src/lib/orchestration/pipelineOrchestrator.ts` - `runPipelineRemote(pipeline)`: topo-orders the DAG and submits each stage as its own Slurm job into `<workingDirectory>/pipeline-<ts>/stage-<id>`, chained via `--dependency=afterok` on its parents' Slurm ids, then polls all jobs concurrently for live feedback. Remote (Slurm) only for now.
+- Per-stage submit primitives live in `sshMessages.ts`: `submitCoralStageRemote()` / `submitExecutableStageRemote()` build+upload+submit a single stage (with `sbatch --parsable --kill-on-invalid-dep=yes [--dependency=afterok:…]`) and return the Slurm id without polling. The existing single-run remote functions route through these. `withMpiPlugin(network, useMpi)` injects the MPI plugin block; `jobPolling()` is exported for reuse.
+- UI: `PipelineCanvas.svelte` (a second `<SvelteFlow>` with a toolbar; an `isValidConnection` acyclicity guard replaces the coral canvas's type validation) plus the stage node components `nodes/CoralStageNode.svelte` and `nodes/ExecutableStageNode.svelte` (the per-stage config card is the node body).
 
 ### Node Type System
 

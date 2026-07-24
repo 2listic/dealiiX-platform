@@ -2,6 +2,7 @@
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
   import ParametersView from './lib/components/ParametersView.svelte'
+  import PipelineCanvas from './lib/components/PipelineCanvas.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
   import JobsTable from './lib/components/layout/JobsTable.svelte'
@@ -12,8 +13,10 @@
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
   import { settingsState } from './lib/stores/settingsStore.svelte'
   import { graphHistoryState } from './lib/stores/graphStack.svelte'
+  import { viewModeState } from './lib/stores/viewModeStore.svelte'
 
   let isCoralMode = $derived(settingsState.isCoralMode)
+  let viewMode = $derived(viewModeState.value)
   let executionLocation = $derived(settingsState.execution.location)
   let backendKind = $derived(settingsState.execution.backendKind)
 
@@ -63,7 +66,7 @@
   <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
-      {#if isCoralMode}
+      {#if isCoralMode && viewMode === 'single'}
         <ButtonToggleMenu />
         <div id="sidebar-wrapper" bind:this={sidebarWrapperElem}>
           <Sidebar />
@@ -82,10 +85,21 @@
         </div>
         <div class="top-right-overlay">
           <ExecutionBadge location={executionLocation} {backendKind} />
+          <button
+            class="view-toggle"
+            onclick={() => viewModeState.toggle()}
+            title={viewMode === 'pipeline'
+              ? 'Open single stage view'
+              : 'Go to pipeline view'}
+          >
+            {viewMode === 'pipeline' ? 'Single stage' : 'Pipeline'}
+          </button>
           <ButtonToggleDarkMode />
         </div>
         <div class="flow-wrapper">
-          {#if isCoralMode}
+          {#if viewMode === 'pipeline'}
+            <PipelineCanvas />
+          {:else if isCoralMode}
             <FlowCanvas />
           {:else}
             <ParametersView />
@@ -166,5 +180,20 @@
     width: 100%;
     height: 100%;
     position: relative;
+  }
+
+  .view-toggle {
+    background: var(--primary-color);
+    color: var(--ternary-color);
+    border: 1px solid var(--ternary-color);
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .view-toggle:hover {
+    border-color: var(--border-color-hover);
   }
 </style>

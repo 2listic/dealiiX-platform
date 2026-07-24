@@ -3,6 +3,7 @@
     ExecutionLocation,
     BackendKind,
   } from '../../types/settingsTypes'
+  import { viewModeState } from '../../stores/viewModeStore.svelte'
 
   interface Props {
     location: ExecutionLocation
@@ -10,12 +11,16 @@
   }
 
   let { location, backendKind }: Props = $props()
+
+  let modeLabel = $derived(
+    viewModeState.value === 'pipeline' ? 'pipeline' : backendKind
+  )
 </script>
 
 <div class="execution-badge">
   <span>{location}</span>
   <span class="badge-sep">·</span>
-  <span>{backendKind}</span>
+  <span>{modeLabel}</span>
 </div>
 
 <style>

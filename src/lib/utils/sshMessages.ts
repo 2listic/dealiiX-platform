@@ -19,6 +19,7 @@ import {
   isTerminalStatus,
 } from '../types/jobTypes'
 import type { RemoteExecutionSettings } from '../types/settingsTypes'
+import type { ParameterTree } from '../types/parameterTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
@@ -116,42 +117,15 @@ const exportAndEvalGraphRemote = async (
   edges: Edge[],
   config?: CoralJobConfig
 ): Promise<void> => {
-  const useMpi = config?.useMpi ?? false
-  const remoteSettings = settingsState.remote
-  const workingDirectory = remoteSettings.workingDirectory
-
-  // build and upload graph JSON (MPI plugin block injected when MPI is enabled)
-  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-  await uploadFileSsh(
-    JSON.stringify(graphPayload),
-    `${workingDirectory}/graph.json`
-  )
-
-  // build and upload batch script
-  const internalJobId = jobIdMapState.getNextKey()
-  const batchScript = buildBatchScript(
-    useMpi,
-    internalJobId,
-    remoteSettings,
-    config
-  )
-  await uploadFileSsh(batchScript, `${workingDirectory}/job.sh`)
-
-  // submit job
-  const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: `sbatch ${shellEscape(`${workingDirectory}/job.sh`)}`,
-    rejectOnNonZeroCode: true,
+  // Parse the canvas once without MPI; the submit primitive injects the MPI block.
+  const graph = buildGraphPayload(nodes, edges, false)
+  const jobId = await submitCoralStageRemote({
+    graph,
+    stageDir: settingsState.remote.workingDirectory,
+    config,
+    dependencyJobIds: [],
   })
-  console.log('SSH Connection Result:', resultExecute)
-  toastState.add({ message: resultExecute })
-
-  // get job id and store mapping
-  const jobId = resultExecute.match(/\d+/)?.[0]
-  if (!jobId)
-    throw new Error(
-      `sbatch did not return a job ID. Output: "${resultExecute}"`
-    )
-  await jobIdMapState.add(jobId, internalJobId, 'coral')
+  toastState.add({ message: `Submitted job ${jobId}` })
 
   // poll every 10 secs for 1 day, finally display final status
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
@@ -159,6 +133,49 @@ const exportAndEvalGraphRemote = async (
     message: `Job id ${jobId}: ${finalState}`,
     type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
   })
+}
+
+/**
+ * Builds, uploads, and submits a single CORAL-graph stage as one Slurm job, with
+ * optional `afterok` dependencies, and returns its Slurm job id without polling.
+ * @param params.graph - The CORAL network object (MPI block injected here from config).
+ * @param params.stageDir - Remote directory used as the job working directory.
+ * @param params.config - Per-stage Coral job config (MPI, nodes, time limit).
+ * @param params.dependencyJobIds - Slurm ids this stage must wait for (afterok).
+ * @returns The submitted Slurm job id.
+ * @throws {Error} If sbatch does not return a job id.
+ */
+export const submitCoralStageRemote = async ({
+  graph,
+  stageDir,
+  config,
+  dependencyJobIds,
+}: {
+  graph: object
+  stageDir: string
+  config?: CoralJobConfig
+  dependencyJobIds: string[]
+}): Promise<string> => {
+  const useMpi = config?.useMpi ?? false
+  const internalJobId = jobIdMapState.getNextKey()
+  const stageSettings = { ...settingsState.remote, workingDirectory: stageDir }
+
+  await ensureRemoteDir(stageDir)
+  await uploadFileSsh(
+    JSON.stringify(withMpiPlugin(graph, useMpi)),
+    `${stageDir}/graph.json`
+  )
+  const batchScript = buildBatchScript(
+    useMpi,
+    internalJobId,
+    stageSettings,
+    config
+  )
+  await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
+
+  const jobId = await submitSbatch(`${stageDir}/job.sh`, dependencyJobIds)
+  await jobIdMapState.add(jobId, internalJobId, 'coral', stageDir)
+  return jobId
 }
 
 const exportAndEvalGraphLocal = async (
@@ -180,7 +197,12 @@ const exportAndEvalGraphLocal = async (
   })
 
   const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(jobId, internalJobId, 'coral')
+  await jobIdMapState.add(
+    jobId,
+    internalJobId,
+    'coral',
+    localSettings.workingDirectory
+  )
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
   const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
@@ -216,7 +238,12 @@ const exportAndEvalExecutableLocal = async (
   })
 
   // local runs have no external scheduler ID — both keys are the same internalJobId
-  await jobIdMapState.add(internalJobId, internalJobId, 'executable')
+  await jobIdMapState.add(
+    internalJobId,
+    internalJobId,
+    'executable',
+    localSettings.workingDirectory
+  )
   toastState.add({ message: `Started local executable run ${internalJobId}` })
 
   const finalState = await localJobPolling(
@@ -235,38 +262,20 @@ const exportAndEvalExecutableRemote = async (
   config?: ExecutableJobConfig
 ): Promise<void> => {
   const remoteSettings = settingsState.remote
-  const internalJobId = jobIdMapState.getNextKey()
-  const parametersPayload = getExecutableParametersPayload()
   const parametersFileName =
     config?.parametersFileName ||
     remoteSettings.parametersFileName ||
     'parameters.json'
-  const parametersRemotePath = `${remoteSettings.workingDirectory}/${parametersFileName}`
-  const jobScriptRemotePath = `${remoteSettings.workingDirectory}/job.sh`
 
-  await uploadFileSsh(
-    serializeParametersFile(parametersPayload, parametersFileName),
-    parametersRemotePath
-  )
-
-  const batchScript = buildExecutableBatchScript(
-    internalJobId,
-    remoteSettings.workingDirectory,
-    remoteSettings.executablePath,
+  const jobId = await submitExecutableStageRemote({
+    executablePath: remoteSettings.executablePath,
+    parameters: getExecutableParametersPayload(),
     parametersFileName,
-    config
-  )
-  await uploadFileSsh(batchScript, jobScriptRemotePath)
-
-  const resultExecute = await window.electron.invoke('execute-ssh-with-key', {
-    command: `sbatch ${shellEscape(jobScriptRemotePath)}`,
-    rejectOnNonZeroCode: true,
+    stageDir: remoteSettings.workingDirectory,
+    config,
+    dependencyJobIds: [],
   })
-  toastState.add({ message: resultExecute })
-
-  const jobId = resultExecute.match(/\d+/)?.[0]
-  if (!jobId) throw new Error('Job ID not found')
-  await jobIdMapState.add(jobId, internalJobId, 'executable')
+  toastState.add({ message: `Submitted job ${jobId}` })
 
   const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
   toastState.add({
@@ -276,21 +285,81 @@ const exportAndEvalExecutableRemote = async (
 }
 
 /**
- * Builds the graph payload to upload, injecting the MPI plugin block when MPI is enabled.
+ * Builds, uploads, and submits a single executable stage as one Slurm job, with
+ * optional `afterok` dependencies, and returns its Slurm job id without polling.
+ * @param params.executablePath - Remote path of the binary to run.
+ * @param params.parameters - Parameter tree serialized to the params file.
+ * @param params.parametersFileName - Params filename (extension selects JSON/PRM).
+ * @param params.stageDir - Remote directory used as the job working directory.
+ * @param params.config - Per-stage executable job config (time limit).
+ * @param params.dependencyJobIds - Slurm ids this stage must wait for (afterok).
+ * @returns The submitted Slurm job id.
+ * @throws {Error} If sbatch does not return a job id.
+ */
+export const submitExecutableStageRemote = async ({
+  executablePath,
+  parameters,
+  parametersFileName,
+  stageDir,
+  config,
+  dependencyJobIds,
+}: {
+  executablePath: string
+  parameters: ParameterTree
+  parametersFileName: string
+  stageDir: string
+  config?: ExecutableJobConfig
+  dependencyJobIds: string[]
+}): Promise<string> => {
+  const internalJobId = jobIdMapState.getNextKey()
+
+  await ensureRemoteDir(stageDir)
+  await uploadFileSsh(
+    serializeParametersFile(parameters, parametersFileName),
+    `${stageDir}/${parametersFileName}`
+  )
+  const batchScript = buildExecutableBatchScript(
+    internalJobId,
+    stageDir,
+    executablePath,
+    parametersFileName,
+    config
+  )
+  await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
+
+  const jobId = await submitSbatch(`${stageDir}/job.sh`, dependencyJobIds)
+  await jobIdMapState.add(jobId, internalJobId, 'executable', stageDir)
+  return jobId
+}
+
+/**
+ * Injects the MPI plugin block into a CORAL network object when MPI is enabled.
  * The plugin block tells CORAL to initialise MPI with the given thread cap.
+ * @param network - A CORAL network object (already in protocol form).
+ * @param useMpi - Whether to prepend the MPI plugin block.
+ * @returns The network unchanged, or a copy with the MPI plugin block prepended.
+ */
+export const withMpiPlugin = (network: object, useMpi: boolean): object => {
+  if (!useMpi) return network
+  return {
+    plugin: { MPI: { enabled: true, max_num_threads: 1 } },
+    ...network,
+  }
+}
+
+/**
+ * Builds the graph payload to upload from canvas nodes/edges, injecting the MPI
+ * plugin block when MPI is enabled.
+ * @param nodes - Canvas nodes (snapshots).
+ * @param edges - Canvas edges (snapshots).
+ * @param useMpi - Whether to inject the MPI plugin block.
+ * @returns The CORAL network object ready to upload.
  */
 export const buildGraphPayload = (
   nodes: Node[],
   edges: Edge[],
   useMpi: boolean
-) => {
-  const parsedGraph = parseGraphWithQualifiedIds(nodes, edges)
-  if (!useMpi) return parsedGraph
-  return {
-    plugin: { MPI: { enabled: true, max_num_threads: 1 } },
-    ...parsedGraph,
-  }
-}
+): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
 
 /**
  * Builds the batch script content from the appropriate template, replacing all placeholders.
@@ -338,16 +407,56 @@ const buildExecutableBatchScript = (
   config?: ExecutableJobConfig
 ): string => {
   const timeLimit = config?.timeLimit ?? '01:00:00'
-  const parametersPath = `${workingDirectory}/${parametersFileName}`
 
+  // Pass the parameters file as a bare name (the job already chdir's into the
+  // working directory). This keeps the volatile directory path — e.g. the
+  // pipeline's `pipeline-<timestamp>/stage-<id>` — out of the executable's argv.
+  // Some deal.II programs (e.g. step-70) sniff their dimension from the file path,
+  // so a stray digit in the directory name would otherwise change the run.
   return `#!/bin/bash
 #SBATCH --chdir=${workingDirectory}
 #SBATCH --output=${workingDirectory}/slurm-%j.out
 #SBATCH --job-name=executable-${internalJobId}
 #SBATCH --time=${timeLimit}
 
-${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersPath)}
+${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersFileName)}
 `
+}
+
+/** Creates a remote directory (and parents) so SFTP uploads into it succeed. */
+const ensureRemoteDir = async (dir: string): Promise<void> => {
+  await window.electron.invoke('execute-ssh-with-key', {
+    command: `mkdir -p ${shellEscape(dir)}`,
+    rejectOnNonZeroCode: true,
+  })
+}
+
+/**
+ * Submits a previously-uploaded job script via `sbatch --parsable`, optionally
+ * chaining it after other jobs. `--kill-on-invalid-dep=yes` makes Slurm cascade a
+ * cancellation to this job (and its descendants) if an upstream dependency fails.
+ * @param jobScriptPath - Remote path of the uploaded sbatch script.
+ * @param dependencyJobIds - Slurm ids this job must wait for (afterok); empty for none.
+ * @returns The submitted Slurm job id.
+ * @throws {Error} If sbatch does not return a job id.
+ */
+const submitSbatch = async (
+  jobScriptPath: string,
+  dependencyJobIds: string[]
+): Promise<string> => {
+  const dependencyFlag =
+    dependencyJobIds.length > 0
+      ? ` --dependency=afterok:${dependencyJobIds.join(':')}`
+      : ''
+  const command = `sbatch --parsable --kill-on-invalid-dep=yes${dependencyFlag} ${shellEscape(jobScriptPath)}`
+  const result = await window.electron.invoke('execute-ssh-with-key', {
+    command,
+    rejectOnNonZeroCode: true,
+  })
+  const jobId = result.match(/\d+/)?.[0]
+  if (!jobId)
+    throw new Error(`sbatch did not return a job ID. Output: "${result}"`)
+  return jobId
 }
 
 /** Uploads a string as a file to the remote server via SSH. */
@@ -371,7 +480,7 @@ const uploadFileSsh = async (
  * @returns {Promise<string>} A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
  * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
-const jobPolling = async (
+export const jobPolling = async (
   jobId: string,
   interval: number,
   timeout?: number
@@ -490,7 +599,10 @@ export const getOutFileContent = async (
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
-  const outputDirectory = execution.remote.workingDirectory
+  // Resolve the job's own directory (per-stage for pipelines, root for single runs).
+  const outputDirectory =
+    jobIdMapState.getJobWorkingDirectory(String(jobId)) ??
+    execution.remote.workingDirectory
   const command = `cat ${shellEscape(`${outputDirectory}/slurm-${jobId}.out`)}`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
@@ -510,7 +622,11 @@ export const getNodesExecutionStatus = async (
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
   const execution = settingsState.execution
-  if (execution.backendKind === 'executable') {
+  // Use the job's own backend kind / directory (a pipeline can mix kinds and dirs),
+  // falling back to the global settings for jobs predating per-job tracking.
+  const entry = jobIdMapState.getEntryByInternal(jobIdInternal)
+  const backendKind = entry?.backendKind ?? execution.backendKind
+  if (backendKind === 'executable') {
     return new Map<string, string[]>()
   }
   // define the command to list the files in the touch-dir
@@ -520,9 +636,11 @@ export const getNodesExecutionStatus = async (
       jobIdInternal,
     })
   } else if (execution.location === 'remote') {
+    const statusDirectory =
+      entry?.workingDirectory ?? execution.remote.workingDirectory
     try {
       output = await window.electron.invoke('execute-ssh-with-key', {
-        command: `ls -tr ${shellEscape(`${execution.remote.workingDirectory}/nodes-exec-status/${jobIdInternal}`)}`,
+        command: `ls -tr ${shellEscape(`${statusDirectory}/nodes-exec-status/${jobIdInternal}`)}`,
         rejectOnNonZeroCode: true,
       })
     } catch {
