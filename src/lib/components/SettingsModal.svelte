@@ -1,11 +1,14 @@
 <script lang="ts">
   import { slide } from 'svelte/transition'
   import {
-    BACKEND_KINDS,
     EXECUTION_LOCATIONS,
+    BACKEND_KINDS,
     type ExecutionSettings,
+    type ExecutionLocation,
+    type BackendKind,
   } from '../types/settingsTypes'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { probeAndSaveExecution } from '../utils/settingsActions'
   import { jobsState } from '../stores/jobsStore.svelte'
@@ -24,8 +27,11 @@
   let isEditingVisualizer = $state(false)
   let urlRemoteServer = $derived(settingsState.urlRemoteServer)
   let isEditingRemote = $state(false)
-  let executionLocation = $derived(settingsState.execution.location)
-  let backendKind = $derived(settingsState.execution.backendKind)
+  // Which combo the modal edits/validates — seeded from the active selection when
+  // the accordion opens, then independent. Does NOT change the active mode (that
+  // stays driven by the top-right dropdowns).
+  let editLocation = $state<ExecutionLocation>(executionSelectionState.location)
+  let editBackendKind = $state<BackendKind>(executionSelectionState.backendKind)
   let remoteHost = $derived(settingsState.remote.host)
   let remotePort = $derived(settingsState.remote.port)
   let remoteUsername = $derived(settingsState.remote.username)
@@ -44,22 +50,27 @@
     settingsState.remote.parametersFileName
   )
   let isSavingExecution = $state(false)
-  let showRemoteSettings = $derived(executionLocation === 'remote')
-  let showCoralSettings = $derived(backendKind === 'coral')
-  let showExecutableSettings = $derived(backendKind === 'executable')
+  let showRemoteSettings = $derived(editLocation === 'remote')
+  let showCoralSettings = $derived(editBackendKind === 'coral')
+  let showExecutableSettings = $derived(editBackendKind === 'executable')
+  let activeProbe = $derived(
+    settingsState.getProbe(editLocation, editBackendKind)
+  )
 
   const closeModal = () => getModal(modalId)?.close()
 
   const saveAndSyncExecution = async () => {
     const execution: ExecutionSettings = {
-      location: executionLocation,
-      backendKind,
       local: {
         workingDirectory: localWorkingDirectory,
         coralBinaryPath: localCoralBinaryPath,
         coralPluginPath: localCoralPluginPath,
         executablePath: localExecutablePath,
         parametersFileName: localExecutableParametersFileName,
+        // Plain empty object (not the reactive proxy) so this object stays
+        // structured-cloneable across the probe IPC; saveExecutionPaths restores
+        // the real per-target probe status from live settings.
+        probes: {},
       },
       remote: {
         host: remoteHost,
@@ -71,13 +82,19 @@
         executablePath: remoteExecutablePath,
         parametersFileName: remoteExecutableParametersFileName,
         sshKeyPath: sshPath,
+        // See the note on `local.probes` above.
+        probes: {},
       },
     }
 
     console.log('Saving execution settings:', execution)
     isSavingExecution = true
     try {
-      const result = await probeAndSaveExecution(execution)
+      const result = await probeAndSaveExecution(
+        editLocation,
+        editBackendKind,
+        execution
+      )
       if (!result?.ok) {
         toastState.add({
           message: result?.message || 'Configuration probe failed',
@@ -96,13 +113,14 @@
   }
 
   const resetForm = () => {
+    // Collapse the paths accordion so it re-seeds the edit target from the active
+    // selection the next time it is expanded.
+    executionOpen = false
     isEditingVisualizer = false
     isEditingRemote = false
     urlVisualizer = settingsState.urlVisualizer
     urlRemoteServer = settingsState.urlRemoteServer
     sshPath = settingsState.remote.sshKeyPath
-    executionLocation = settingsState.execution.location
-    backendKind = settingsState.execution.backendKind
     remoteHost = settingsState.remote.host
     remotePort = settingsState.remote.port
     remoteUsername = settingsState.remote.username
@@ -165,8 +183,15 @@
       <div class="input-container accordion-section">
         <button
           class="accordion-summary"
-          onclick={() => (executionOpen = !executionOpen)}
-          aria-expanded={executionOpen}>Execution Mode</button
+          onclick={() => {
+            executionOpen = !executionOpen
+            // Default the edit target to the active selection each time it opens.
+            if (executionOpen) {
+              editLocation = executionSelectionState.location
+              editBackendKind = executionSelectionState.backendKind
+            }
+          }}
+          aria-expanded={executionOpen}>Execution paths</button
         >
         {#if executionOpen}
           <div class="accordion-body" transition:slide={{ duration: 300 }}>
@@ -178,18 +203,18 @@
             >
               <div class="radio-controls">
                 <div class="radio-group">
-                  {#each EXECUTION_LOCATIONS as location (location)}
+                  {#each EXECUTION_LOCATIONS as loc (loc)}
                     <label
                       class="radio-option"
-                      class:active={executionLocation === location}
+                      class:active={editLocation === loc}
                     >
                       <input
                         type="radio"
-                        name="execution-location"
-                        checked={executionLocation === location}
-                        onchange={() => (executionLocation = location)}
+                        name="edit-location"
+                        checked={editLocation === loc}
+                        onchange={() => (editLocation = loc)}
                       />
-                      <span>{location}</span>
+                      <span>{loc}</span>
                     </label>
                   {/each}
                 </div>
@@ -197,19 +222,23 @@
                   {#each BACKEND_KINDS as kind (kind)}
                     <label
                       class="radio-option"
-                      class:active={backendKind === kind}
+                      class:active={editBackendKind === kind}
                     >
                       <input
                         type="radio"
-                        name="backend-kind"
-                        checked={backendKind === kind}
-                        onchange={() => (backendKind = kind)}
+                        name="edit-backend-kind"
+                        checked={editBackendKind === kind}
+                        onchange={() => (editBackendKind = kind)}
                       />
                       <span>{kind}</span>
                     </label>
                   {/each}
                 </div>
               </div>
+              <p class="mode-hint">
+                Configure and validate this combination. This does not change
+                the active mode — set that from the top-right selector.
+              </p>
               {#if showRemoteSettings}
                 <div class="subsection">
                   <div class="subsection-title">Execution remote host</div>
@@ -381,14 +410,11 @@
               {/if}
               <div class="probe-info">
                 <div>
-                  {settingsState.current.lastProbe?.message ||
-                    'No successful probe yet'}
+                  {activeProbe?.message || 'Not validated for this mode yet'}
                 </div>
-                {#if settingsState.current.lastProbe?.syncedAt}
+                {#if activeProbe?.syncedAt}
                   <div class="probe-subtle">
-                    Last sync: {new Date(
-                      settingsState.current.lastProbe.syncedAt
-                    ).toLocaleString()}
+                    Last sync: {new Date(activeProbe.syncedAt).toLocaleString()}
                   </div>
                 {/if}
               </div>
@@ -398,7 +424,7 @@
                   type="submit"
                   disabled={isSavingExecution}
                 >
-                  {isSavingExecution ? 'Saving...' : 'Save & Sync Execution'}
+                  {isSavingExecution ? 'Validating...' : 'Validate & Sync'}
                 </Button>
               </div>
             </form>
@@ -581,7 +607,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 0 1.25rem;
+    padding: 1rem 0 0.5rem;
   }
 
   .radio-group {
@@ -620,6 +646,13 @@
   .radio-option.active {
     background: var(--button-action-bg);
     color: white;
+  }
+
+  .mode-hint {
+    padding: 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--ternary-color);
+    text-align: center;
   }
 
   .execution-grid {

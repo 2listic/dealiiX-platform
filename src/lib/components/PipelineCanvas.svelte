@@ -2,11 +2,10 @@
   import {
     SvelteFlow,
     Background,
-    Controls,
-    Panel,
     type NodeTypes,
     type Connection,
     type Edge,
+    MiniMap,
   } from '@xyflow/svelte'
   import '@xyflow/svelte/dist/base.css'
   import {
@@ -17,22 +16,8 @@
     getEdgesSnapshot,
     pipelineState,
   } from '../stores/pipeline.svelte'
-  import { buildExportMeta } from '../utils/exportMeta'
-  import {
-    getNodesSnapshot as getGraphNodesSnapshot,
-    getEdgesSnapshot as getGraphEdgesSnapshot,
-  } from '../stores/nodes.svelte'
-  import { buildGraphPayload } from '../utils/sshMessages'
-  import { runPipelineRemote } from '../orchestration/pipelineOrchestrator'
   import { resolveExecutionOrder } from '../orchestration/executionOrder'
-  import { settingsState } from '../stores/settingsStore.svelte'
   import { colorModeState } from '../stores/colorModeStore.svelte'
-  import { toastState } from '../stores/toastsStore.svelte'
-  import { jobsState } from '../stores/jobsStore.svelte'
-  import { currentProjectState } from '../stores/currentProjectStore.svelte'
-  import Button from './layout/Button.svelte'
-  import { getModal } from './layout/Modal.svelte'
-  import PipelineRunNameModal from './PipelineRunNameModal.svelte'
   import CoralStageNode from './nodes/CoralStageNode.svelte'
   import ExecutableStageNode from './nodes/ExecutableStageNode.svelte'
 
@@ -41,14 +26,6 @@
     executableStage: ExecutableStageNode as unknown as NodeTypes[string],
   }
 
-  const RUN_NAME_MODAL_ID = 'pipeline-run-name-modal'
-
-  let coralGraphInput: HTMLInputElement | undefined = $state()
-  let pipelineImportInput: HTMLInputElement | undefined = $state()
-
-  let isRemote = $derived(settingsState.execution.location === 'remote')
-  let validation = $derived(pipelineState.validation)
-
   /**
    * Rejects connections that would create a self-loop, duplicate an existing edge,
    * or introduce a cycle (which would make the pipeline unschedulable).
@@ -56,7 +33,6 @@
    */
   const isValidConnection = (connection: Connection | Edge): boolean => {
     const { source, target } = connection
-    // console.log('[isValidConnection]', { source, target })
     if (!source || !target || source === target) {
       console.warn(
         `Source stage ${source} and target stage ${target} are invalid: self-loop or missing endpoint`
@@ -87,151 +63,6 @@
       return false
     }
   }
-
-  const handleAddCoralFromFile = async () => {
-    const file = coralGraphInput?.files?.[0]
-    if (!file) return
-    try {
-      const graph = JSON.parse(await file.text())
-      if (!graph || typeof graph !== 'object' || !('workflow' in graph)) {
-        toastState.add({
-          message:
-            'This file does not look like a CORAL graph (no "workflow").',
-          type: 'error',
-        })
-        return
-      }
-      const name = file.name.replace(/\.json$/i, '')
-      // Capture the coral install paths at stage creation (symmetric to the
-      // executable path capture) so the stage is a self-contained execution
-      // request — the submit primitive no longer reads settingsState.
-      pipelineState.addCoralStage({
-        name,
-        graph,
-        coralBinaryPath: settingsState.remote.coralBinaryPath,
-        coralPluginPath: settingsState.remote.coralPluginPath,
-      })
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to read graph file',
-        type: 'error',
-      })
-    } finally {
-      if (coralGraphInput) coralGraphInput.value = ''
-    }
-  }
-
-  /**
-   * Downloads the current pipeline as a JSON file: `toPipeline()` wrapped under
-   * `pipeline` plus a metadata envelope stamped now, so positions and per-stage
-   * configs round-trip exactly on re-import.
-   */
-  const handleExportPipeline = () => {
-    const payload = {
-      pipeline: pipelineState.toPipeline(),
-      ...buildExportMeta(),
-    }
-    const jsonString = JSON.stringify(payload, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `pipeline-${Date.now()}.json`
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-    URL.revokeObjectURL(url)
-  }
-
-  /** Replaces the canvas with a previously exported pipeline file. */
-  const handleImportPipeline = async () => {
-    const file = pipelineImportInput?.files?.[0]
-    if (!file) return
-    try {
-      const parsed = JSON.parse(await file.text())
-      if (
-        !Array.isArray(parsed?.pipeline?.nodes) ||
-        !Array.isArray(parsed?.pipeline?.edges)
-      ) {
-        toastState.add({
-          message:
-            'This file does not look like a pipeline export (no pipeline.nodes/edges array).',
-          type: 'error',
-        })
-        return
-      }
-      pipelineState.load(parsed)
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to read pipeline file',
-        type: 'error',
-      })
-    } finally {
-      if (pipelineImportInput) pipelineImportInput.value = ''
-    }
-  }
-
-  const handleAddCoralFromCanvas = () => {
-    const graph = buildGraphPayload(
-      getGraphNodesSnapshot(),
-      getGraphEdgesSnapshot(),
-      false
-    )
-    pipelineState.addCoralStage({
-      name: currentProjectState.name || 'canvas graph',
-      graph,
-      coralBinaryPath: settingsState.remote.coralBinaryPath,
-      coralPluginPath: settingsState.remote.coralPluginPath,
-    })
-  }
-
-  const handleAddExecutable = () => {
-    pipelineState.addExecutableStage({
-      name: 'executable',
-      executablePath: settingsState.remote.executablePath,
-      parametersFileName:
-        settingsState.remote.parametersFileName || 'parameters.json',
-    })
-  }
-
-  const handleOpenRunModal = () => {
-    if (!validation.runnable) {
-      toastState.add({
-        message: `Cannot run: ${validation.issues.join('; ')}`,
-        type: 'error',
-      })
-      return
-    }
-    getModal(RUN_NAME_MODAL_ID)?.open()
-  }
-
-  const handleRun = (name: string) => {
-    const pipeline = pipelineState.toPipeline()
-
-    // Expose the pipeline snapshot for inspection.
-    console.log('[pipeline canvas]', JSON.parse(JSON.stringify(pipeline)))
-
-    // Toasts and jobsState.update() are side effects of the caller, reported
-    // through the progress callbacks.
-    runPipelineRemote(pipeline, name || undefined, (event) => {
-      if (event.type === 'info' || event.type === 'success') {
-        toastState.add({ message: event.message, type: event.type })
-      } else if (event.type === 'error') {
-        toastState.add({ message: event.message, type: 'error' })
-      } else if (event.type === 'stageTerminal') {
-        jobsState.update()
-      }
-    }).catch((error) => {
-      toastState.add({
-        message: error instanceof Error ? error.message : 'Pipeline run failed',
-        type: 'error',
-      })
-    })
-  }
 </script>
 
 <div class="pipeline-canvas" data-testid="pipeline-canvas">
@@ -243,101 +74,14 @@
     colorMode={colorModeState.value}
     fitView
   >
+    <MiniMap />
     <Background />
-    <Controls />
-    <Panel position="bottom-right">
-      <div class="toolbar">
-        {#if !isRemote}
-          <div class="banner">
-            Pipelines run in remote mode only — switch in Settings.
-          </div>
-        {/if}
-        <div class="add-buttons">
-          <Button size="small" onclick={() => coralGraphInput?.click()}>
-            + Coral (file)
-          </Button>
-          <Button size="small" onclick={handleAddCoralFromCanvas}
-            >+ Coral (canvas)</Button
-          >
-          <Button size="small" onclick={handleAddExecutable}
-            >+ Executable</Button
-          >
-        </div>
-        <div class="actions">
-          <Button size="small" onclick={handleExportPipeline}>
-            Export pipeline
-          </Button>
-          <Button size="small" onclick={() => pipelineImportInput?.click()}>
-            Import pipeline
-          </Button>
-          <Button
-            size="small"
-            variant="action"
-            disabled={!isRemote || !validation.runnable}
-            onclick={handleOpenRunModal}
-          >
-            Run pipeline
-          </Button>
-        </div>
-        {#if validation.issues.length > 0}
-          <ul class="issues">
-            {#each validation.issues as issue (issue)}
-              <li>{issue}</li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    </Panel>
   </SvelteFlow>
-
-  <input
-    bind:this={coralGraphInput}
-    type="file"
-    accept=".json"
-    style="display: none"
-    onchange={handleAddCoralFromFile}
-  />
-  <input
-    bind:this={pipelineImportInput}
-    type="file"
-    accept=".json"
-    style="display: none"
-    onchange={handleImportPipeline}
-  />
 </div>
-
-<PipelineRunNameModal modalId={RUN_NAME_MODAL_ID} onConfirm={handleRun} />
 
 <style>
   .pipeline-canvas {
     width: 100%;
     height: 100%;
-  }
-  .toolbar {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    background: var(--primary-color);
-    border: 1px solid var(--ternary-color);
-    border-radius: 10px;
-    padding: 0.6rem;
-    max-width: 320px;
-  }
-  .add-buttons,
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-  }
-  .banner {
-    color: var(--error-color, #e53935);
-    font-size: 0.8rem;
-  }
-  .issues {
-    margin: 0;
-    padding-left: 1.1rem;
-    font-size: 0.75rem;
-    color: var(--ternary-color);
   }
 </style>

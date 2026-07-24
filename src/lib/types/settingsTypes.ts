@@ -26,6 +26,10 @@ export type ExecutionTargetSettings = {
   executablePath: string
   parametersFileName: string
   workingDirectory: string
+  // Probe status per backend kind for this target (paths/reachability differ per
+  // target, so status is stored here; the validated payload lives in the
+  // per-location registry/parameters store).
+  probes: Partial<Record<BackendKind, ProbeResult>>
 }
 
 export type RemoteExecutionSettings = ExecutionTargetSettings & {
@@ -36,24 +40,45 @@ export type RemoteExecutionSettings = ExecutionTargetSettings & {
 }
 
 export type ExecutionSettings = {
-  location: ExecutionLocation
-  backendKind: BackendKind
   local: ExecutionTargetSettings
   remote: RemoteExecutionSettings
 }
 
+/**
+ * A single validation outcome for one target × backend kind. Status only — the
+ * heavy payload (node registry / parameters template) is routed to its own
+ * per-location store, not stored here.
+ */
 export type ProbeResult = {
   ok: boolean
   message: string
-  metadata?: ExecutionMetadata
   syncedAt?: string
+}
+
+/**
+ * The renderer-facing return of a probe: the small persisted {@link ProbeResult}
+ * status plus the transient {@link ExecutionMetadata} payload to apply to the
+ * per-location registry/parameters store.
+ */
+export type ProbeResponse = {
+  status: ProbeResult
+  metadata: ExecutionMetadata
+}
+
+/**
+ * The minimal, structured-cloneable payload sent to the probe IPC: only the
+ * active target plus which location/kind it is, not the whole settings object.
+ */
+export type ProbeRequest = {
+  location: ExecutionLocation
+  backendKind: BackendKind
+  target: ExecutionTargetSettings | RemoteExecutionSettings
 }
 
 export type AppSettings = {
   urlVisualizer: string
   urlRemoteServer: string
   execution: ExecutionSettings
-  lastProbe: ProbeResult | null
 }
 
 const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
@@ -62,14 +87,13 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
   executablePath: '',
   parametersFileName: 'parameters.json',
   workingDirectory: '',
+  probes: {},
 })
 
 export const createDefaultSettings = (): AppSettings => ({
   urlVisualizer: 'http://localhost:8008',
   urlRemoteServer: 'http://localhost:8080',
   execution: {
-    location: 'remote',
-    backendKind: 'coral',
     local: defaultExecutionTargetSettings(),
     remote: {
       ...defaultExecutionTargetSettings(),
@@ -82,7 +106,6 @@ export const createDefaultSettings = (): AppSettings => ({
       coralPluginPath: '/app/build/backends/dealii/libcoral_backend_dealii.so',
     },
   },
-  lastProbe: null,
 })
 
 /**
@@ -97,8 +120,7 @@ export const isValidAppSettings = (value: unknown): value is AppSettings => {
   const v = value as Record<string, unknown>
   if (!v.execution || typeof v.execution !== 'object') return false
   const exec = v.execution as Record<string, unknown>
-  if (exec.location !== 'local' && exec.location !== 'remote') return false
-  if (exec.backendKind !== 'coral' && exec.backendKind !== 'executable')
-    return false
+  if (!exec.local || typeof exec.local !== 'object') return false
+  if (!exec.remote || typeof exec.remote !== 'object') return false
   return true
 }

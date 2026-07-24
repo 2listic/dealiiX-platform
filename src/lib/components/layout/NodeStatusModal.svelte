@@ -4,6 +4,7 @@
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import ErrorIcon from '../icons/ErrorIcon.svelte'
   import { getNodesExecutionStatus } from '../../utils/sshMessages'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { ExecNodeStatus } from '../../types/jobTypes'
 
   interface Props {
@@ -96,7 +97,10 @@
 
     const interval = setInterval(async () => {
       try {
-        const result = await getNodesExecutionStatus(jobIdInternal)
+        const result = await getNodesExecutionStatus(
+          executionSelectionState.location,
+          jobIdInternal
+        )
         console.log(
           `Polling for internal jobId ${jobIdInternal}`,
           $state.snapshot(result)

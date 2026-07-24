@@ -3,7 +3,7 @@ import { dialog } from 'electron'
 import fs from 'fs'
 import type {
   AppSettings,
-  ExecutionSettings,
+  ProbeRequest,
 } from '../src/lib/types/settingsTypes.js'
 
 import {
@@ -58,8 +58,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'probe-sync-execution-settings',
-    async (_event, executionSettings: ExecutionSettings) => {
-      return await probeAndSyncExecutionSettings(executionSettings)
+    async (_event, request: ProbeRequest) => {
+      return await probeAndSyncExecutionSettings(request)
     }
   )
 

@@ -19,6 +19,10 @@ import {
   isTerminalStatus,
 } from '../types/jobTypes'
 import type { ParameterTree } from '../types/parameterTypes'
+import type {
+  CoralJobConfig,
+  ExecutableJobConfig,
+} from '../types/jobConfigTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
 // Docs: https://vite.dev/guide/assets#importing-asset-as-string
@@ -28,6 +32,7 @@ import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
 import { buildDirName } from './slugify'
+import type { ExecutionLocation } from '../types/settingsTypes'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -62,27 +67,6 @@ export const executeWithKey = async (): Promise<void> => {
   toastState.add({ message: 'Command was sent' })
 }
 
-export type CoralJobConfig = {
-  /** Remote/local path to the coral binary (captured at stage creation, not read from settings at submit). */
-  coralBinaryPath: string
-  /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
-  coralPluginPath: string
-  nodes: number
-  tasksPerNode: number
-  timeLimit: string
-  useMpi: boolean
-}
-
-export type ExecutableJobConfig = {
-  /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
-  executablePath: string
-  /** Params filename (extension selects JSON/PRM); captured at stage creation. */
-  parametersFileName: string
-  timeLimit?: string
-}
-
-export type JobConfig = CoralJobConfig | ExecutableJobConfig
-
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
@@ -95,12 +79,12 @@ export type JobConfig = CoralJobConfig | ExecutableJobConfig
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalCoralGraph = async (
+  location: ExecutionLocation,
   nodes: Node[],
   edges: Edge[],
   config: CoralJobConfig,
   runName?: string
 ): Promise<void> => {
-  const { location } = settingsState.execution
   if (location === 'local') {
     await exportAndEvalGraphLocal(nodes, edges, config)
   } else if (location === 'remote') {
@@ -109,10 +93,10 @@ export const exportAndEvalCoralGraph = async (
 }
 
 export const exportAndEvalExecutable = async (
+  location: ExecutionLocation,
   config: ExecutableJobConfig,
   runName?: string
 ): Promise<void> => {
-  const { location } = settingsState.execution
   if (location === 'local') {
     await exportAndEvalExecutableLocal(config)
   } else if (location === 'remote') {
@@ -495,7 +479,7 @@ const uploadFileSsh = async (
  * @param jobId - The ID of the job to poll.
  * @param interval - The interval (in milliseconds) between polling attempts.
  * @param timeout - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
- * @returns A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
+ * @returns A promise that resolves to the job's terminal {@link JobStatus} once it reaches one.
  * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
 export const jobPolling = async (
@@ -606,14 +590,15 @@ export const fetchRemoteJobs = async (numDays: number): Promise<string[][]> => {
 
 /**
  * Retrieves the content of the .out file for a specific job ID.
+ * @param location - Where the job ran (`local`/`remote`).
  * @param jobId - The ID of the Slurm job
  * @returns A promise that resolves to the content of the file
  */
 export const getOutFileContent = async (
+  location: ExecutionLocation,
   jobId: string | number
 ): Promise<string> => {
-  const execution = settingsState.execution
-  if (execution.location === 'local') {
+  if (location === 'local') {
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
@@ -621,7 +606,7 @@ export const getOutFileContent = async (
   // to global settings only for jobs recorded before per-run directories existed.
   const outputDirectory =
     jobIdMapState.getJobWorkingDirectory(String(jobId)) ??
-    execution.remote.workingDirectory
+    settingsState.remote.workingDirectory
   const command = `cat ${shellEscape(`${outputDirectory}/slurm-${jobId}.out`)}`
   return await window.electron.invoke('execute-ssh-with-key', {
     command: command,
@@ -638,25 +623,26 @@ export const getOutFileContent = async (
  * // Map { '9' => ['running', 'succeeded'], '12_1' => ['running', 'failed'], '12_2' => ['running'] }
  */
 export const getNodesExecutionStatus = async (
+  location: ExecutionLocation,
   jobIdInternal: number
 ): Promise<Map<string, string[]>> => {
-  const execution = settingsState.execution
-  // Use the job's own backend kind / directory (a pipeline can mix kinds and dirs),
-  // falling back to the global settings for jobs predating per-job tracking.
+  // Use the job's own backend kind / directory (a pipeline can mix kinds and dirs).
+  // Node status is a coral-only concept, so default the legacy no-entry case to
+  // 'coral' (an executable job short-circuits to an empty map).
   const entry = jobIdMapState.getEntryByInternal(jobIdInternal)
-  const backendKind = entry?.backendKind ?? execution.backendKind
+  const backendKind = entry?.backendKind ?? 'coral'
   if (backendKind === 'executable') {
     return new Map<string, string[]>()
   }
   // define the command to list the files in the touch-dir
   let output = ''
-  if (execution.location === 'local') {
+  if (location === 'local') {
     output = await window.electron.invoke('get-local-node-status-files', {
       jobIdInternal,
     })
-  } else if (execution.location === 'remote') {
+  } else if (location === 'remote') {
     const statusDirectory =
-      entry?.workingDirectory ?? execution.remote.workingDirectory
+      entry?.workingDirectory ?? settingsState.remote.workingDirectory
     try {
       output = await window.electron.invoke('execute-ssh-with-key', {
         command: `ls -tr ${shellEscape(`${statusDirectory}/nodes-exec-status/${jobIdInternal}`)}`,

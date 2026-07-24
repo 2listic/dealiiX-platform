@@ -20,6 +20,20 @@ export const isParameterLeaf = (value: unknown): value is ParameterLeaf => {
   )
 }
 
+/**
+ * Returns whether a parameter node carries the UI-only `__extra` flag, which marks
+ * sections or leaves added on top of the canonical template (e.g. via file merge
+ * or section duplication).
+ *
+ * @param value - The value to test.
+ * @returns `true` when the node is flagged as extra, `false` otherwise.
+ */
+export const isExtraNode = (value: unknown): boolean => {
+  return typeof value === 'object' && value !== null && '__extra' in value
+    ? Boolean((value as { __extra?: boolean }).__extra)
+    : false
+}
+
 export const getParameterFileFormat = (
   fileName: string | undefined
 ): ParameterFileFormat => {

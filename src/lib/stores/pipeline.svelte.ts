@@ -14,7 +14,10 @@ import type {
   PipelineStage,
   StageData,
 } from '../types/pipelineTypes'
-import type { CoralJobConfig, ExecutableJobConfig } from '../utils/sshMessages'
+import type {
+  CoralJobConfig,
+  ExecutableJobConfig,
+} from '../types/jobConfigTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { isValidSlurmTime } from '../utils/slurmTime'
 
