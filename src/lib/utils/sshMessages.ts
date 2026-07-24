@@ -27,11 +27,12 @@ import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
+import { buildDirName } from './slugify'
 
 /**
  * Executes a test SSH command using password authentication.
  * Sends a hardcoded "Hello from Electron!" command to localhost with root credentials.
- * @returns {Promise<void>} Resolves when the command execution completes.
+ * @returns Resolves when the command execution completes.
  */
 export const executeWithPassword = async (): Promise<void> => {
   const result = await window.electron.invoke(
@@ -50,7 +51,7 @@ export const executeWithPassword = async (): Promise<void> => {
 /**
  * Executes a test SSH command using key-based authentication.
  * Runs "whoami && ls -a" on the configured remote server and displays results in the panel.
- * @returns {Promise<void>} Resolves when the command execution completes.
+ * @returns Resolves when the command execution completes.
  */
 export const executeWithKey = async (): Promise<void> => {
   console.log('command', concatState.command)
@@ -62,7 +63,6 @@ export const executeWithKey = async (): Promise<void> => {
 }
 
 export type CoralJobConfig = {
-  kind: 'coral'
   /** Remote/local path to the coral binary (captured at stage creation, not read from settings at submit). */
   coralBinaryPath: string
   /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
@@ -74,7 +74,6 @@ export type CoralJobConfig = {
 }
 
 export type ExecutableJobConfig = {
-  kind: 'executable'
   /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
   executablePath: string
   /** Params filename (extension selects JSON/PRM); captured at stage creation. */
@@ -87,49 +86,55 @@ export type JobConfig = CoralJobConfig | ExecutableJobConfig
 /**
  * Exports a computational graph to the remote server and executes it via Slurm.
  * Polls the job status until completion and displays results via toast notifications.
- * @param {Node[]} nodes - Array of nodes (must be snapshots, not reactive)
- * @param {Edge[]} edges - Array of edges (must be snapshots, not reactive)
- * @param {JobConfig} [config] - Optional job configuration for template placeholders
- * @returns {Promise<void>} Resolves when the job completes or fails.
+ * @param nodes - Array of nodes (must be snapshots, not reactive)
+ * @param edges - Array of edges (must be snapshots, not reactive)
+ * @param config - Optional job configuration for template placeholders
+ * @param runName - Optional user-supplied name; slugified into the run's output folder (remote only).
+ * @returns Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
  */
 export const exportAndEvalCoralGraph = async (
   nodes: Node[],
   edges: Edge[],
-  config: CoralJobConfig
+  config: CoralJobConfig,
+  runName?: string
 ): Promise<void> => {
   const { location } = settingsState.execution
   if (location === 'local') {
     await exportAndEvalGraphLocal(nodes, edges, config)
   } else if (location === 'remote') {
-    await exportAndEvalGraphRemote(nodes, edges, config)
+    await exportAndEvalGraphRemote(nodes, edges, config, runName)
   }
 }
 
 export const exportAndEvalExecutable = async (
-  config: ExecutableJobConfig
+  config: ExecutableJobConfig,
+  runName?: string
 ): Promise<void> => {
   const { location } = settingsState.execution
   if (location === 'local') {
     await exportAndEvalExecutableLocal(config)
   } else if (location === 'remote') {
-    await exportAndEvalExecutableRemote(config)
+    await exportAndEvalExecutableRemote(config, runName)
   }
 }
 
 const exportAndEvalGraphRemote = async (
   nodes: Node[],
   edges: Edge[],
-  config: CoralJobConfig
+  config: CoralJobConfig,
+  runName?: string
 ): Promise<void> => {
   // Parse the canvas once without MPI; the submit primitive injects the MPI block.
   const graph = buildGraphPayload(nodes, edges, false)
-  // Give every single remote run a unique subdir so back-to-back runs don't
-  // clobber the shared graph.json/job.sh (the batch script reads <wd>/graph.json
-  // by absolute path at Slurm runtime, not at submit). Same isolation pipeline
-  // stages already have.
-  const runDir = `${settingsState.remote.workingDirectory}/run-${Date.now()}`
+  // Give every single remote run a unique, legible subdir so back-to-back runs
+  // don't clobber the shared graph.json/job.sh (the batch script reads
+  // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
+  // isolation pipeline stages already have.
+  const runDir = await ensureUniqueRemoteDir(
+    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
   const jobId = await submitCoralStageRemote({
     graph,
     stageDir: runDir,
@@ -255,10 +260,13 @@ const exportAndEvalExecutableLocal = async (
 }
 
 const exportAndEvalExecutableRemote = async (
-  config: ExecutableJobConfig
+  config: ExecutableJobConfig,
+  runName?: string
 ): Promise<void> => {
-  // Unique per-run subdir so back-to-back runs don't clobber a shared job.sh.
-  const runDir = `${settingsState.remote.workingDirectory}/run-${Date.now()}`
+  // Unique, legible per-run subdir so back-to-back runs don't clobber a shared job.sh.
+  const runDir = await ensureUniqueRemoteDir(
+    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
 
   const jobId = await submitExecutableStageRemote({
     parameters: getExecutableParametersPayload(),
@@ -421,6 +429,27 @@ const ensureRemoteDir = async (dir: string): Promise<void> => {
 }
 
 /**
+ * Creates a remote directory for exclusive use by a run/pipeline: if the exact
+ * path already exists (a slug was reused), retries with a timestamp-suffixed
+ * variant instead of reusing/overwriting it, rather than blocking submission.
+ * @param dir - Preferred remote directory path.
+ * @returns The remote directory path actually created (`dir` unless a collision occurred).
+ * @throws {Error} If a free directory cannot be allocated after a few attempts.
+ */
+export const ensureUniqueRemoteDir = async (dir: string): Promise<string> => {
+  let candidate = dir
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await window.electron.invoke('execute-ssh-with-key', {
+      command: `test -d ${shellEscape(candidate)} && echo EXISTS || mkdir -p ${shellEscape(candidate)}`,
+      rejectOnNonZeroCode: true,
+    })
+    if (!result.includes('EXISTS')) return candidate
+    candidate = `${dir}-${Date.now()}`
+  }
+  throw new Error(`Could not allocate a unique directory under ${dir}`)
+}
+
+/**
  * Submits a previously-uploaded job script via `sbatch --parsable`, optionally
  * chaining it after other jobs. `--kill-on-invalid-dep=yes` makes Slurm cascade a
  * cancellation to this job (and its descendants) if an upstream dependency fails.
@@ -463,10 +492,10 @@ const uploadFileSsh = async (
 
 /**
  * Polls the status of a job by executing an SSH command at regular intervals.
- * @param {string} jobId - The ID of the job to poll.
- * @param {number} interval - The interval (in milliseconds) between polling attempts.
- * @param {number} [timeout] - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
- * @returns {Promise<string>} A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
+ * @param jobId - The ID of the job to poll.
+ * @param interval - The interval (in milliseconds) between polling attempts.
+ * @param timeout - The maximum time (in milliseconds) to wait for the job to complete. If not provided, the function will poll indefinitely.
+ * @returns A promise that resolves to the job status ('COMPLETED' or 'FAILED') when the job is finished.
  * @throws {Error} Throws an error if there is a polling error or if the job times out.
  */
 export const jobPolling = async (
@@ -509,8 +538,8 @@ export const jobPolling = async (
 
 /**
  * Delays execution for a specified duration.
- * @param {number} ms - The delay duration in milliseconds.
- * @returns {Promise<void>} A promise that resolves after the specified delay.
+ * @param ms - The delay duration in milliseconds.
+ * @returns A promise that resolves after the specified delay.
  */
 const delay = (ms: number): Promise<void> => {
   return new Promise((res) => setTimeout(res, ms))
@@ -544,8 +573,8 @@ export const JOB_LIST_DAYS = 7
 
 /**
  * Fetches the job list from the remote Slurm scheduler via SSH sacct.
- * @param {number} numDays - How many days back to query.
- * @returns {Promise<string[][]>} 2D array: row 0 is headers, rows 1+ are job fields.
+ * @param numDays - How many days back to query.
+ * @returns 2D array: row 0 is headers, rows 1+ are job fields.
  * @throws {Error} Throws if the SSH command fails or returns an error string.
  * @example
  * const jobs = await fetchRemoteJobs(7)
@@ -577,8 +606,8 @@ export const fetchRemoteJobs = async (numDays: number): Promise<string[][]> => {
 
 /**
  * Retrieves the content of the .out file for a specific job ID.
- * @param {string | number} jobId - The ID of the Slurm job
- * @returns {Promise<string>} A promise that resolves to the content of the file
+ * @param jobId - The ID of the Slurm job
+ * @returns A promise that resolves to the content of the file
  */
 export const getOutFileContent = async (
   jobId: string | number
@@ -601,8 +630,8 @@ export const getOutFileContent = async (
 
 /**
  * Retrieves the execution status of nodes for a given touch-dir key.
- * @param {number} jobIdInternal - The touch-dir name equivalent to the internal job ID
- * @returns {Promise<Map<string, string[]>>} A promise that resolves to a Map where
+ * @param jobIdInternal - The touch-dir name equivalent to the internal job ID
+ * @returns A promise that resolves to a Map where
  * keys are the qualified node IDs and values are arrays of status strings
  * @example
  * const statuses = await getNodesExecutionStatus(42)
@@ -660,8 +689,8 @@ export const getNodesExecutionStatus = async (
 
 /**
  * Opens a new browser window with the specified URL.
- * @param {string} url - The URL to open in the new window
- * @returns {Promise<void>} Resolves when the operation is complete
+ * @param url - The URL to open in the new window
+ * @returns Resolves when the operation is complete
  * @throws Will display error messages via toast notifications if opening fails
  */
 export async function openNewWindow(url: string): Promise<void> {

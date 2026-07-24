@@ -8,11 +8,11 @@ import type { Pipeline, PipelineStage } from '../types/pipelineTypes'
 
 const stage = (id: string): PipelineStage => ({
   id,
+  type: 'coralStage',
+  position: { x: 0, y: 0 },
   name: id,
-  kind: 'coral',
   graph: {},
   config: {
-    kind: 'coral',
     coralBinaryPath: '/coral',
     coralPluginPath: '/plugin',
     nodes: 1,
@@ -23,7 +23,7 @@ const stage = (id: string): PipelineStage => ({
 })
 
 const pipeline = (ids: string[], edges: [string, string][]): Pipeline => ({
-  stages: ids.map(stage),
+  nodes: ids.map(stage),
   edges: edges.map(([source, target]) => ({ source, target })),
 })
 

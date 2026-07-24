@@ -17,7 +17,9 @@ import {
   submitCoralStageRemote,
   submitExecutableStageRemote,
   jobPolling,
+  ensureUniqueRemoteDir,
 } from '../utils/sshMessages'
+import { buildDirName } from '../utils/slugify'
 import { settingsState } from '../stores/settingsStore.svelte'
 import type { Pipeline, PipelineStage } from '../types/pipelineTypes'
 
@@ -41,17 +43,19 @@ export type PipelineProgress =
  * order and reports progress through `onProgress` callbacks.
  *
  * @param pipeline - The pipeline (stages + ordering edges) to execute.
+ * @param runName - Optional user-supplied name; slugified into the pipeline's output folder.
  * @param onProgress - Optional callback for progress events (toasts, job-table refresh).
  * @returns Resolves once all stages have reached a terminal state.
  * @throws {Error} If the pipeline is empty or cyclic, or if any stage fails to submit.
  */
 export const runPipelineRemote = async (
   pipeline: Pipeline,
+  runName: string | undefined,
   onProgress?: (event: PipelineProgress) => void
 ): Promise<void> => {
   const emit = (event: PipelineProgress) => onProgress?.(event)
 
-  if (pipeline.stages.length === 0) {
+  if (pipeline.nodes.length === 0) {
     emit({ type: 'error', message: 'Pipeline has no stages' })
     return
   }
@@ -60,8 +64,11 @@ export const runPipelineRemote = async (
   const order = resolveExecutionOrder(pipeline)
   // Absolute pipeline dir: stage subdirs recorded via jobIdMapState must be
   // absolute so later reads (getOutFileContent / getNodesExecutionStatus)
-  // resolve regardless of the SSH session's cwd.
-  const pipelineDir = `${settingsState.remote.workingDirectory}/pipeline-${Date.now()}`
+  // resolve regardless of the SSH session's cwd. Settled once, up front, since
+  // every stage dir nests under it.
+  const pipelineDir = await ensureUniqueRemoteDir(
+    `${settingsState.remote.workingDirectory}/${buildDirName('pipeline', runName)}`
+  )
 
   // Map each stage id to its submitted Slurm id so children can depend on parents.
   const slurmIdByStage = new Map<string, string>()
@@ -81,14 +88,14 @@ export const runPipelineRemote = async (
     )
 
     let slurmId: string
-    if (stage.kind === 'coral') {
+    if (stage.type === 'coralStage') {
       slurmId = await submitCoralStageRemote({
         graph: stage.graph as object,
         stageDir,
         config: stage.config,
         dependencyJobIds,
       })
-    } else if (stage.kind === 'executable') {
+    } else if (stage.type === 'executableStage') {
       if (!stage.parameters)
         throw new Error(
           `Executable stage "${stage.name}" has no parameters loaded`
@@ -101,7 +108,7 @@ export const runPipelineRemote = async (
       })
     } else {
       throw new Error(
-        `Unknown stage kind for stage ${(stage as { id: string }).id}`
+        `Unknown stage type for stage ${(stage as { id: string }).id}`
       )
     }
 

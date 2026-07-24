@@ -21,12 +21,16 @@ const submitExecutableStageRemote = vi.fn(
   }
 )
 const jobPolling = vi.fn(async (..._args: never[]) => pollResult)
+// Echoes the requested directory back unchanged by default; tests that care about
+// collision-suffix behavior override this per-test.
+const ensureUniqueRemoteDir = vi.fn(async (dir: string) => dir)
 
 vi.mock('../utils/sshMessages', () => ({
   submitCoralStageRemote: (args: never) => submitCoralStageRemote(args),
   submitExecutableStageRemote: (args: never) =>
     submitExecutableStageRemote(args),
   jobPolling: (...args: never[]) => jobPolling(...args),
+  ensureUniqueRemoteDir: (dir: string) => ensureUniqueRemoteDir(dir),
 }))
 
 vi.mock('../stores/settingsStore.svelte', () => ({
@@ -35,14 +39,14 @@ vi.mock('../stores/settingsStore.svelte', () => ({
 
 const { runPipelineRemote } = await import('./pipelineOrchestrator')
 
-/** Builds a coral stage with a complete (widened) config. */
+/** Builds a coral stage with a complete config. */
 const coralStage = (id: string): PipelineStage => ({
   id,
+  type: 'coralStage',
+  position: { x: 0, y: 0 },
   name: id,
-  kind: 'coral',
   graph: { workflow: id },
   config: {
-    kind: 'coral',
     coralBinaryPath: '/coral',
     coralPluginPath: '/plugin',
     nodes: 1,
@@ -52,14 +56,14 @@ const coralStage = (id: string): PipelineStage => ({
   },
 })
 
-/** Builds an executable stage with a complete (widened) config. */
+/** Builds an executable stage with a complete config. */
 const executableStage = (id: string): PipelineStage => ({
   id,
+  type: 'executableStage',
+  position: { x: 0, y: 0 },
   name: id,
-  kind: 'executable',
   parameters: { kind: 'group', children: {} } as never,
   config: {
-    kind: 'executable',
     executablePath: '/exe',
     parametersFileName: 'parameters.json',
     timeLimit: '01:00:00',
@@ -70,7 +74,7 @@ const pipeline = (
   stages: PipelineStage[],
   edges: [string, string][]
 ): Pipeline => ({
-  stages,
+  nodes: stages,
   edges: edges.map(([source, target]) => ({ source, target })),
 })
 
@@ -81,6 +85,8 @@ beforeEach(() => {
   submitCoralStageRemote.mockClear()
   submitExecutableStageRemote.mockClear()
   jobPolling.mockClear()
+  ensureUniqueRemoteDir.mockClear()
+  ensureUniqueRemoteDir.mockImplementation(async (dir: string) => dir)
 })
 
 describe('runPipelineRemote', () => {
@@ -94,7 +100,7 @@ describe('runPipelineRemote', () => {
       ]
     )
 
-    await runPipelineRemote(p)
+    await runPipelineRemote(p, undefined)
 
     // Three submits, in topo order a, b, c.
     expect(submits.map((s) => s.id)).toEqual(['100', '101', '102'])
@@ -114,7 +120,7 @@ describe('runPipelineRemote', () => {
       ]
     )
 
-    await runPipelineRemote(p)
+    await runPipelineRemote(p, undefined)
 
     // a first, then b and c (both depend only on a).
     expect(submits[0].id).toBe('100')
@@ -130,7 +136,7 @@ describe('runPipelineRemote', () => {
     pollResult = JobStatus.COMPLETED
     const events: string[] = []
 
-    await runPipelineRemote(p, (event) => {
+    await runPipelineRemote(p, undefined, (event) => {
       if (event.type === 'success') events.push(`success:${event.message}`)
       if (event.type === 'error') events.push(`error:${event.message}`)
       if (event.type === 'stageTerminal')
@@ -144,7 +150,7 @@ describe('runPipelineRemote', () => {
   it('dispatches coral vs executable stages to the right submit primitive', async () => {
     const p = pipeline([coralStage('a'), executableStage('b')], [['a', 'b']])
 
-    await runPipelineRemote(p)
+    await runPipelineRemote(p, undefined)
 
     expect(submitCoralStageRemote).toHaveBeenCalledTimes(1)
     expect(submitExecutableStageRemote).toHaveBeenCalledTimes(1)
@@ -153,12 +159,46 @@ describe('runPipelineRemote', () => {
   it('rejects an empty pipeline without submitting', async () => {
     const events: string[] = []
 
-    await runPipelineRemote({ stages: [], edges: [] }, (e) => {
+    await runPipelineRemote({ nodes: [], edges: [] }, undefined, (e) => {
       if (e.type === 'error') events.push(e.message)
     })
 
     expect(submitCoralStageRemote).not.toHaveBeenCalled()
     expect(submitExecutableStageRemote).not.toHaveBeenCalled()
     expect(events).toContain('Pipeline has no stages')
+  })
+
+  it('builds the pipeline dir from a slugified custom name', async () => {
+    const p = pipeline([coralStage('a')], [])
+
+    await runPipelineRemote(p, 'My Custom Name')
+
+    expect(ensureUniqueRemoteDir).toHaveBeenCalledWith(
+      '/app/shared-data/pipeline-my-custom-name'
+    )
+  })
+
+  it('falls back to a timestamp-based pipeline dir when no name is given', async () => {
+    const p = pipeline([coralStage('a')], [])
+
+    await runPipelineRemote(p, undefined)
+
+    const [dir] = ensureUniqueRemoteDir.mock.calls[0]
+    expect(dir).toMatch(/^\/app\/shared-data\/pipeline-\d+$/)
+  })
+
+  it('uses the collision-suffixed dir returned by ensureUniqueRemoteDir for stage subdirs', async () => {
+    ensureUniqueRemoteDir.mockImplementation(
+      async (dir: string) => `${dir}-1740000000000`
+    )
+    const p = pipeline([coralStage('a')], [])
+
+    await runPipelineRemote(p, 'dup-test')
+
+    expect(submitCoralStageRemote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stageDir: '/app/shared-data/pipeline-dup-test-1740000000000/stage-a',
+      })
+    )
   })
 })
