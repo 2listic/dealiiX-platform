@@ -149,6 +149,34 @@ sacct -j 2 -n -X -p -o State,ExitCode,Start,End
 | `-p` | pipe-delimited output              |
 | `-o` | columns to display                 |
 
+### Debug a pending job (e.g. job id 58)
+
+```bash
+scontrol show job 58
+```
+
+Check the `Reason=` field:
+
+| Reason            | Meaning                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Resources`       | Nodes exist but are busy right now — will start once they free up                                               |
+| `Dependency`      | Waiting on `--dependency=afterok:<id>` from another job (pipeline stage)                                        |
+| `PartitionConfig` | The request can never be satisfied by the partition as defined — e.g. asking for more nodes than are registered |
+
+For `PartitionConfig`, compare the request against what's actually available:
+
+```bash
+scontrol show job 58 | grep -E "Partition|NumNodes|NumCPUs|TimeLimit"
+sinfo -N -l
+scontrol show partition <partition_name> | grep -E "Nodes=|TotalNodes="
+```
+
+The single-container test cluster only registers **1 node**, so a job requesting `NumNodes=2` (e.g. an MPI job config with 2 nodes) will sit in `PartitionConfig` forever. Fix by setting the job's node count to `1` in the app's job config, then clear the stuck job and resubmit:
+
+```bash
+scancel 58
+```
+
 ### Debug Slurm controller
 
 ```bash

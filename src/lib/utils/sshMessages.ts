@@ -18,7 +18,6 @@ import {
   normalizeJobStatus,
   isTerminalStatus,
 } from '../types/jobTypes'
-import type { RemoteExecutionSettings } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 // The `?raw` Vite suffix imports the file contents as a plain string at build time.
 // It works identically in dev, built app, and packaged Electron binaries.
@@ -64,6 +63,10 @@ export const executeWithKey = async (): Promise<void> => {
 
 export type CoralJobConfig = {
   kind: 'coral'
+  /** Remote/local path to the coral binary (captured at stage creation, not read from settings at submit). */
+  coralBinaryPath: string
+  /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
+  coralPluginPath: string
   nodes: number
   tasksPerNode: number
   timeLimit: string
@@ -72,8 +75,11 @@ export type CoralJobConfig = {
 
 export type ExecutableJobConfig = {
   kind: 'executable'
+  /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
+  executablePath: string
+  /** Params filename (extension selects JSON/PRM); captured at stage creation. */
+  parametersFileName: string
   timeLimit?: string
-  parametersFileName?: string
 }
 
 export type JobConfig = CoralJobConfig | ExecutableJobConfig
@@ -91,7 +97,7 @@ export type JobConfig = CoralJobConfig | ExecutableJobConfig
 export const exportAndEvalCoralGraph = async (
   nodes: Node[],
   edges: Edge[],
-  config?: CoralJobConfig
+  config: CoralJobConfig
 ): Promise<void> => {
   const { location } = settingsState.execution
   if (location === 'local') {
@@ -102,7 +108,7 @@ export const exportAndEvalCoralGraph = async (
 }
 
 export const exportAndEvalExecutable = async (
-  config?: ExecutableJobConfig
+  config: ExecutableJobConfig
 ): Promise<void> => {
   const { location } = settingsState.execution
   if (location === 'local') {
@@ -115,13 +121,18 @@ export const exportAndEvalExecutable = async (
 const exportAndEvalGraphRemote = async (
   nodes: Node[],
   edges: Edge[],
-  config?: CoralJobConfig
+  config: CoralJobConfig
 ): Promise<void> => {
   // Parse the canvas once without MPI; the submit primitive injects the MPI block.
   const graph = buildGraphPayload(nodes, edges, false)
+  // Give every single remote run a unique subdir so back-to-back runs don't
+  // clobber the shared graph.json/job.sh (the batch script reads <wd>/graph.json
+  // by absolute path at Slurm runtime, not at submit). Same isolation pipeline
+  // stages already have.
+  const runDir = `${settingsState.remote.workingDirectory}/run-${Date.now()}`
   const jobId = await submitCoralStageRemote({
     graph,
-    stageDir: settingsState.remote.workingDirectory,
+    stageDir: runDir,
     config,
     dependencyJobIds: [],
   })
@@ -153,24 +164,18 @@ export const submitCoralStageRemote = async ({
 }: {
   graph: object
   stageDir: string
-  config?: CoralJobConfig
+  config: CoralJobConfig
   dependencyJobIds: string[]
 }): Promise<string> => {
-  const useMpi = config?.useMpi ?? false
+  const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-  const stageSettings = { ...settingsState.remote, workingDirectory: stageDir }
 
   await ensureRemoteDir(stageDir)
   await uploadFileSsh(
     JSON.stringify(withMpiPlugin(graph, useMpi)),
     `${stageDir}/graph.json`
   )
-  const batchScript = buildBatchScript(
-    useMpi,
-    internalJobId,
-    stageSettings,
-    config
-  )
+  const batchScript = buildBatchScript(useMpi, internalJobId, stageDir, config)
   await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
 
   const jobId = await submitSbatch(`${stageDir}/job.sh`, dependencyJobIds)
@@ -181,28 +186,25 @@ export const submitCoralStageRemote = async ({
 const exportAndEvalGraphLocal = async (
   nodes: Node[],
   edges: Edge[],
-  config?: CoralJobConfig
+  config: CoralJobConfig
 ): Promise<void> => {
-  const useMpi = config?.useMpi ?? false
+  const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
   const graphPayload = buildGraphPayload(nodes, edges, useMpi)
-  const localSettings = settingsState.local
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
-    coralBinaryPath: localSettings.coralBinaryPath,
-    coralPluginPath: localSettings.coralPluginPath,
-    workingDirectory: localSettings.workingDirectory,
+    coralBinaryPath: config.coralBinaryPath,
+    coralPluginPath: config.coralPluginPath,
+    workingDirectory: settingsState.local.workingDirectory,
     graphPayload,
     internalJobId,
   })
 
   const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(
-    jobId,
-    internalJobId,
-    'coral',
-    localSettings.workingDirectory
-  )
+  // Local runs resolve via the in-process localRuns registry (absolute paths),
+  // not getJobWorkingDirectory, so the recorded workingDirectory is remote-only.
+  // Pass '' to make that explicit rather than implying local resolves through it.
+  await jobIdMapState.add(jobId, internalJobId, 'coral', '')
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
   const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
@@ -224,26 +226,20 @@ const getExecutableParametersPayload = () => {
 }
 
 const exportAndEvalExecutableLocal = async (
-  config?: ExecutableJobConfig
+  config: ExecutableJobConfig
 ): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
-  const localSettings = settingsState.local
   await window.electron.invoke('start-local-executable-run', {
-    executablePath: localSettings.executablePath,
-    workingDirectory: localSettings.workingDirectory,
+    executablePath: config.executablePath,
+    workingDirectory: settingsState.local.workingDirectory,
     parametersPayload: getExecutableParametersPayload(),
-    parametersFileName:
-      config?.parametersFileName || localSettings.parametersFileName,
+    parametersFileName: config.parametersFileName,
     internalJobId,
   })
 
-  // local runs have no external scheduler ID — both keys are the same internalJobId
-  await jobIdMapState.add(
-    internalJobId,
-    internalJobId,
-    'executable',
-    localSettings.workingDirectory
-  )
+  // local runs have no external scheduler ID — both keys are the same internalJobId.
+  // Local resolves via the in-process localRuns registry, not getJobWorkingDirectory.
+  await jobIdMapState.add(internalJobId, internalJobId, 'executable', '')
   toastState.add({ message: `Started local executable run ${internalJobId}` })
 
   const finalState = await localJobPolling(
@@ -259,19 +255,14 @@ const exportAndEvalExecutableLocal = async (
 }
 
 const exportAndEvalExecutableRemote = async (
-  config?: ExecutableJobConfig
+  config: ExecutableJobConfig
 ): Promise<void> => {
-  const remoteSettings = settingsState.remote
-  const parametersFileName =
-    config?.parametersFileName ||
-    remoteSettings.parametersFileName ||
-    'parameters.json'
+  // Unique per-run subdir so back-to-back runs don't clobber a shared job.sh.
+  const runDir = `${settingsState.remote.workingDirectory}/run-${Date.now()}`
 
   const jobId = await submitExecutableStageRemote({
-    executablePath: remoteSettings.executablePath,
     parameters: getExecutableParametersPayload(),
-    parametersFileName,
-    stageDir: remoteSettings.workingDirectory,
+    stageDir: runDir,
     config,
     dependencyJobIds: [],
   })
@@ -287,31 +278,26 @@ const exportAndEvalExecutableRemote = async (
 /**
  * Builds, uploads, and submits a single executable stage as one Slurm job, with
  * optional `afterok` dependencies, and returns its Slurm job id without polling.
- * @param params.executablePath - Remote path of the binary to run.
  * @param params.parameters - Parameter tree serialized to the params file.
- * @param params.parametersFileName - Params filename (extension selects JSON/PRM).
  * @param params.stageDir - Remote directory used as the job working directory.
- * @param params.config - Per-stage executable job config (time limit).
+ * @param params.config - Per-stage executable job config (executablePath, parametersFileName, time limit).
  * @param params.dependencyJobIds - Slurm ids this stage must wait for (afterok).
  * @returns The submitted Slurm job id.
  * @throws {Error} If sbatch does not return a job id.
  */
 export const submitExecutableStageRemote = async ({
-  executablePath,
   parameters,
-  parametersFileName,
   stageDir,
   config,
   dependencyJobIds,
 }: {
-  executablePath: string
   parameters: ParameterTree
-  parametersFileName: string
   stageDir: string
-  config?: ExecutableJobConfig
+  config: ExecutableJobConfig
   dependencyJobIds: string[]
 }): Promise<string> => {
   const internalJobId = jobIdMapState.getNextKey()
+  const { executablePath, parametersFileName } = config
 
   await ensureRemoteDir(stageDir)
   await uploadFileSsh(
@@ -365,25 +351,28 @@ export const buildGraphPayload = (
  * Builds the batch script content from the appropriate template, replacing all placeholders.
  * {{WORKING_DIRECTORY}}, {{CORAL_BINARY_PATH}}, {{CORAL_PLUGIN_PATH}}, and {{TIME_LIMIT}} apply to both templates.
  * {{NODES}} and {{NTASKS_PER_NODE}} apply only to the MPI template.
- * Falls back to sensible defaults if config is not provided.
+ * @param useMpi - Whether to use the MPI template.
+ * @param internalJobId - The internal job id for the `--job-name`.
+ * @param workingDirectory - The job working directory (flows from stageDir, not config).
+ * @param config - The complete coral job config (carries coralBinaryPath/coralPluginPath).
  */
 const buildBatchScript = (
   useMpi: boolean,
   internalJobId: number,
-  remoteSettings: RemoteExecutionSettings,
-  config?: CoralJobConfig
+  workingDirectory: string,
+  config: CoralJobConfig
 ): string => {
   const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
   let script = template
     .replaceAll('{{INTERNAL_JOB_ID}}', String(internalJobId))
-    .replaceAll('{{TIME_LIMIT}}', config?.timeLimit ?? '01:00:00')
-    .replaceAll('{{WORKING_DIRECTORY}}', remoteSettings.workingDirectory)
-    .replaceAll('{{CORAL_BINARY_PATH}}', remoteSettings.coralBinaryPath)
-    .replaceAll('{{CORAL_PLUGIN_PATH}}', remoteSettings.coralPluginPath)
+    .replaceAll('{{TIME_LIMIT}}', config.timeLimit)
+    .replaceAll('{{WORKING_DIRECTORY}}', workingDirectory)
+    .replaceAll('{{CORAL_BINARY_PATH}}', config.coralBinaryPath)
+    .replaceAll('{{CORAL_PLUGIN_PATH}}', config.coralPluginPath)
   if (useMpi) {
     script = script
-      .replaceAll('{{NODES}}', String(config?.nodes ?? 1))
-      .replaceAll('{{NTASKS_PER_NODE}}', String(config?.tasksPerNode ?? 4))
+      .replaceAll('{{NODES}}', String(config.nodes))
+      .replaceAll('{{NTASKS_PER_NODE}}', String(config.tasksPerNode))
   }
 
   console.log('Generated script:', script)
@@ -599,7 +588,8 @@ export const getOutFileContent = async (
     return await window.electron.invoke('get-local-run-log', { jobId })
   }
 
-  // Resolve the job's own directory (per-stage for pipelines, root for single runs).
+  // Resolve the job's own directory (every run/stage gets one), falling back
+  // to global settings only for jobs recorded before per-run directories existed.
   const outputDirectory =
     jobIdMapState.getJobWorkingDirectory(String(jobId)) ??
     execution.remote.workingDirectory

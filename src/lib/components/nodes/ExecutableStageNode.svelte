@@ -72,9 +72,9 @@
     Binary path
     <input
       type="text"
-      value={data.executablePath}
+      value={data.config.executablePath}
       oninput={(e) =>
-        pipelineState.updateStageData(id, {
+        pipelineState.updateStageConfig(id, {
           executablePath: (e.currentTarget as HTMLInputElement).value,
         })}
     />
@@ -82,7 +82,7 @@
 
   <div class="params-row">
     <span class="params-name" class:missing={!data.parameters}>
-      {data.parameters ? data.parametersFileName : 'no parameters'}
+      {data.parameters ? data.config.parametersFileName : 'no parameters'}
     </span>
     <button class="load" onclick={() => paramsInput?.click()}
       >Load params…</button

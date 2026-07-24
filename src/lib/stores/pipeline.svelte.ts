@@ -21,16 +21,26 @@ let nodes = $state.raw<Node[]>([])
 let edges = $state.raw<Edge[]>([])
 let counter = 0
 
-const DEFAULT_CORAL_CONFIG = (): CoralJobConfig => ({
+const DEFAULT_CORAL_CONFIG = (
+  coralBinaryPath: string,
+  coralPluginPath: string
+): CoralJobConfig => ({
   kind: 'coral',
+  coralBinaryPath,
+  coralPluginPath,
   nodes: 1,
   tasksPerNode: 4,
   timeLimit: '01:00:00',
   useMpi: false,
 })
 
-const DEFAULT_EXECUTABLE_CONFIG = (): ExecutableJobConfig => ({
+const DEFAULT_EXECUTABLE_CONFIG = (
+  executablePath: string,
+  parametersFileName: string
+): ExecutableJobConfig => ({
   kind: 'executable',
+  executablePath,
+  parametersFileName,
   timeLimit: '01:00:00',
 })
 
@@ -60,22 +70,28 @@ export const pipelineState = {
    * Adds a CORAL-graph stage node.
    * @param params.name - Display name for the stage.
    * @param params.graph - The CORAL network object (from a file or canvas snapshot).
+   * @param params.coralBinaryPath - Coral binary path (captured from settings at creation).
+   * @param params.coralPluginPath - Coral plugin path (captured from settings at creation).
    * @param params.position - Optional canvas position; cascades by default.
    */
   addCoralStage({
     name,
     graph,
+    coralBinaryPath,
+    coralPluginPath,
     position,
   }: {
     name: string
     graph: unknown
+    coralBinaryPath: string
+    coralPluginPath: string
     position?: { x: number; y: number }
   }): void {
     const data: CoralStageData = {
       name,
       kind: 'coral',
       graph,
-      config: DEFAULT_CORAL_CONFIG(),
+      config: DEFAULT_CORAL_CONFIG(coralBinaryPath, coralPluginPath),
     }
     addStageNode('coralStage', data, position)
   },
@@ -83,7 +99,7 @@ export const pipelineState = {
   /**
    * Adds an executable stage node.
    * @param params.name - Display name for the stage.
-   * @param params.executablePath - Remote binary path (default from settings).
+   * @param params.executablePath - Binary path (captured from settings at creation).
    * @param params.parametersFileName - Params filename (extension selects JSON/PRM).
    * @param params.position - Optional canvas position; cascades by default.
    */
@@ -101,10 +117,8 @@ export const pipelineState = {
     const data: ExecutableStageData = {
       name,
       kind: 'executable',
-      executablePath,
-      parametersFileName,
       parameters: null,
-      config: DEFAULT_EXECUTABLE_CONFIG(),
+      config: DEFAULT_EXECUTABLE_CONFIG(executablePath, parametersFileName),
     }
     addStageNode('executableStage', data, position)
   },
@@ -145,7 +159,7 @@ export const pipelineState = {
    * Sets the loaded parameters and filename on an executable stage.
    * @param id - The stage node id.
    * @param params.parameters - The parsed parameter tree.
-   * @param params.parametersFileName - The params filename.
+   * @param params.parametersFileName - The params filename (written into config).
    */
   setStageParameters(
     id: string,
@@ -154,10 +168,8 @@ export const pipelineState = {
       parametersFileName,
     }: { parameters: ParameterTree; parametersFileName: string }
   ): void {
-    this.updateStageData(id, {
-      parameters,
-      parametersFileName,
-    } as Partial<StageData>)
+    this.updateStageData(id, { parameters } as Partial<StageData>)
+    this.updateStageConfig(id, { parametersFileName })
   },
 
   /**
@@ -213,7 +225,7 @@ export const pipelineState = {
         if (!isValidSlurmTime(stage.config.timeLimit))
           issues.push(`${stage.name}: invalid time limit`)
       } else if (stage.kind === 'executable') {
-        if (!stage.executablePath.trim())
+        if (!stage.config.executablePath.trim())
           issues.push(`${stage.name}: no executable path`)
         if (!stage.parameters)
           issues.push(`${stage.name}: no parameters loaded`)

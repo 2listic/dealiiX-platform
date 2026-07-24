@@ -22,11 +22,9 @@ export type ExecutablePipelineStage = {
   id: string
   name: string
   kind: 'executable'
-  /** Per-stage binary path (defaults from settings when the stage is created). */
-  executablePath: string
-  parametersFileName: string
   /** Parameter tree loaded from a file, serialized to disk before the run. */
   parameters: ParameterTree | null
+  /** Complete run-mechanics bag: executablePath, parametersFileName, timeLimit. */
   config: ExecutableJobConfig
 }
 
