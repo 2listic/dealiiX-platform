@@ -4,6 +4,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Project-Structure
+
+- Added a top-level `examples/` folder for sample graphs meant to be loaded and explored rather than used by the test suite; the deal.II step-40 Laplace example with MPI enabled moved there.
+
 ### Pipelines
 
 - [#208](https://github.com/2listic/dealiiX-platform/pull/208) You can now give a single run or a pipeline run a custom name before submitting (remote mode); it's used to name the run's output folder instead of a bare timestamp, making it easy to find on disk or in the visualizer. Leaving the name blank keeps today's timestamp-based naming. If the same name is submitted twice, the second run gets a unique suffix instead of overwriting the first. The Jobs table also gains a "Working Directory" column so you can see where each job's files landed.
