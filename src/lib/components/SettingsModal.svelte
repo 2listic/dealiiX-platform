@@ -11,7 +11,6 @@
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { probeAndSaveExecution } from '../utils/settingsActions'
-  import { jobsState } from '../stores/jobsStore.svelte'
   import Button from './layout/Button.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
 
@@ -106,7 +105,6 @@
         message: result.message || 'Execution settings saved',
         type: 'success',
       })
-      await jobsState.update()
     } finally {
       isSavingExecution = false
     }

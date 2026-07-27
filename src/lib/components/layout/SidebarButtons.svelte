@@ -676,7 +676,7 @@
         style="display: none"
         aria-label="Add parameter fields from file"
       ></button>
-      <span class="button-text">Add params</span>
+      <span class="button-text">Update params</span>
     </div>
 
     <div class="button-container">

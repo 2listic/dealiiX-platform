@@ -16,16 +16,22 @@
   import { viewModeState } from './lib/stores/viewModeStore.svelte'
   import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
   import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
+  import { jobsState } from './lib/stores/jobsStore.svelte'
 
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let viewMode = $derived(viewModeState.value)
 
   // Keep the per-location registry/params stores pointed at the active location
-  // (covers the async load and any location switch).
+  // (covers the async load and any location switch). Also refreshes the jobs
+  // table on switch, skipping the initial mount which would toast an SSH error for
+  // remote users without a reachable server yet.
+  let hasSyncedLocationOnce = false
   $effect(() => {
     const location = executionSelectionState.location
     setRegistryLocation(location)
     setParamsLocation(location)
+    if (hasSyncedLocationOnce) jobsState.update()
+    hasSyncedLocationOnce = true
   })
 
   // Undo: Ctrl/Cmd+Z — Redo: Ctrl/Cmd+Shift+Z or Ctrl+Y
