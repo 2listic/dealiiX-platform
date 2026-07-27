@@ -190,10 +190,12 @@ const exportAndEvalGraphLocal = async (
   })
 
   const jobId = String(resultExecute.jobId)
-  // Local runs resolve via the in-process localRuns registry (absolute paths),
-  // not getJobWorkingDirectory, so the recorded workingDirectory is remote-only.
-  // Pass '' to make that explicit rather than implying local resolves through it.
-  await jobIdMapState.add(jobId, internalJobId, 'coral', '')
+  await jobIdMapState.add(
+    jobId,
+    internalJobId,
+    'coral',
+    resultExecute.workingDirectory
+  )
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
   const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
@@ -218,17 +220,24 @@ const exportAndEvalExecutableLocal = async (
   config: ExecutableJobConfig
 ): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
-  await window.electron.invoke('start-local-executable-run', {
-    executablePath: config.executablePath,
-    workingDirectory: settingsState.local.workingDirectory,
-    parametersPayload: getExecutableParametersPayload(),
-    parametersFileName: config.parametersFileName,
-    internalJobId,
-  })
+  const resultExecute = await window.electron.invoke(
+    'start-local-executable-run',
+    {
+      executablePath: config.executablePath,
+      workingDirectory: settingsState.local.workingDirectory,
+      parametersPayload: getExecutableParametersPayload(),
+      parametersFileName: config.parametersFileName,
+      internalJobId,
+    }
+  )
 
   // local runs have no external scheduler ID — both keys are the same internalJobId.
-  // Local resolves via the in-process localRuns registry, not getJobWorkingDirectory.
-  await jobIdMapState.add(internalJobId, internalJobId, 'executable', '')
+  await jobIdMapState.add(
+    internalJobId,
+    internalJobId,
+    'executable',
+    resultExecute.workingDirectory
+  )
   toastState.add({ message: `Started local executable run ${internalJobId}` })
 
   const finalState = await localJobPolling(

@@ -62,7 +62,7 @@ const ensureDir = async (dirPath: string) => {
 
 /**
  * @param payload - Coral run configuration.
- * @returns The internal job ID of the spawned process.
+ * @returns The internal job ID and working directory of the spawned process.
  */
 export const startLocalCoralRun = async ({
   coralBinaryPath,
@@ -70,7 +70,7 @@ export const startLocalCoralRun = async ({
   workingDirectory,
   graphPayload,
   internalJobId,
-}: CoralRunPayload): Promise<{ jobId: string }> => {
+}: CoralRunPayload): Promise<{ jobId: string; workingDirectory: string }> => {
   const jobId = String(internalJobId)
   const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
   const logPath = path.join(workingDirectory, `local-${jobId}.out`)
@@ -128,12 +128,12 @@ export const startLocalCoralRun = async ({
     })
   })
 
-  return { jobId }
+  return { jobId, workingDirectory }
 }
 
 /**
  * @param payload - Executable run configuration.
- * @returns The internal job ID of the spawned process.
+ * @returns The internal job ID and per-run working directory of the spawned process.
  */
 export const startLocalExecutableRun = async ({
   executablePath,
@@ -141,7 +141,10 @@ export const startLocalExecutableRun = async ({
   parametersPayload,
   parametersFileName,
   internalJobId,
-}: ExecutableRunPayload): Promise<{ jobId: string }> => {
+}: ExecutableRunPayload): Promise<{
+  jobId: string
+  workingDirectory: string
+}> => {
   const jobId = String(internalJobId)
   // Wrap each run in a per-run subdir so back-to-back runs with the same
   // parametersFileName don't clobber a shared parameters.json. The bare
@@ -196,7 +199,7 @@ export const startLocalExecutableRun = async ({
     })
   })
 
-  return { jobId }
+  return { jobId, workingDirectory: runDir }
 }
 
 /**
