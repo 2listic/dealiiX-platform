@@ -6,7 +6,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
-- Added a top-level `examples/` folder for sample graphs meant to be loaded and explored rather than used by the test suite; the deal.II step-40 Laplace example with MPI enabled moved there.
+- Added a top-level `examples/` folder for sample graphs and parameter files meant to be loaded and explored rather than used by the test suite; the deal.II step-40 Laplace example with MPI enabled, the step-4 Poisson example (2D and 3D), and a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) moved there.
 
 ### Pipelines
 

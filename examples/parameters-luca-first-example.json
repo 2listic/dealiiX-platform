@@ -1,0 +1,791 @@
+{
+  "Error": {
+    "Enable computation of the errors": {
+      "value": "true",
+      "default_value": "true",
+      "documentation": "When set to false, no computations are performed.",
+      "pattern": "33",
+      "pattern_description": "[Bool]",
+      "actions": "33"
+    },
+    "Error file name": {
+      "value": "",
+      "default_value": "",
+      "documentation": "Set this to a filename with extension .txt, .gpl, .org, or .tex to enable writing the convergence table to a file.",
+      "pattern": "35",
+      "pattern_description": "[Anything]",
+      "actions": "35"
+    },
+    "Error precision": {
+      "value": "3",
+      "default_value": "3",
+      "documentation": "Number of digits to use when printing the error.",
+      "pattern": "34",
+      "pattern_description": "[Integer range 0...2147483647 (inclusive)]",
+      "actions": "34"
+    },
+    "Exponent for p-norms": {
+      "value": "2",
+      "default_value": "2",
+      "documentation": "The exponent to use when computing p-norms.",
+      "pattern": "37",
+      "pattern_description": "[Double 1...MAX_DOUBLE (inclusive)]",
+      "actions": "37"
+    },
+    "Extra columns": {
+      "value": "cells, dofs",
+      "default_value": "cells, dofs",
+      "documentation": "Extra columns to add to the table. Available options are dofs and cells.",
+      "pattern": "38",
+      "pattern_description": "[List of <[Selection dofs|cells ]> of length 0...4294967295 (inclusive)]",
+      "actions": "38"
+    },
+    "List of error norms to compute": {
+      "value": "L2_norm, Linfty_norm, H1_norm",
+      "default_value": "L2_norm, Linfty_norm, H1_norm",
+      "documentation": "Each component is separated by a semicolon and each norm by a comma. See the documentation of VectorTools::NormType for a list of implemented norms. If you want to skip a component, leave its entry empty.",
+      "pattern": "36",
+      "pattern_description": "[List of <[List of <[Selection mean|L1_norm|L2_norm|Lp_norm|Linfty_norm|H1_seminorm|Hdiv_seminorm|H1_norm|W1p_seminorm|W1p_norm|W1infty_seminorm|W1infty_norm ]> of length 0...4294967295 (inclusive)]> of length 0...4294967295 (inclusive) separated by <;>]",
+      "actions": "36"
+    },
+    "Rate key": {
+      "value": "dofs",
+      "default_value": "dofs",
+      "documentation": "Key to use when computing convergence rates. If this is set to a column that is not present, or to the empty string, then no error rates are computed.",
+      "pattern": "39",
+      "pattern_description": "[Anything]",
+      "actions": "39"
+    },
+    "Rate mode": {
+      "value": "reduction_rate_log2",
+      "default_value": "reduction_rate_log2",
+      "documentation": "What type of error rate to compute. Available options are reduction_rate_log2, reduction_rate, and none.",
+      "pattern": "40",
+      "pattern_description": "[Selection reduction_rate|reduction_rate_log2|none ]",
+      "actions": "40"
+    }
+  },
+  "Functions": {
+    "Dirichlet boundary conditions": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "70",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "71",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Modulation frequency": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "72",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "52"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "68",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "Exact solution": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "57",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "58",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "55",
+        "pattern_description": "[Anything]"
+      },
+      "Weight expression": {
+        "value": "1.",
+        "default_value": "1.",
+        "documentation": "",
+        "pattern": "59",
+        "pattern_description": "[Anything]",
+        "actions": "51"
+      }
+    },
+    "Initial displacement": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "62",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "63",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "60",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "Initial velocity": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "66",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "67",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "64",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "Neumann boundary conditions": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "75",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "76",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Modulation frequency": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "77",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "53"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "73",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "Right hand side": {
+      "Function constants": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+        "pattern": "52",
+        "pattern_description": "[Anything]"
+      },
+      "Function expression": {
+        "value": "0; 0",
+        "default_value": "0; 0",
+        "documentation": "",
+        "pattern": "53",
+        "pattern_description": "[List of <[Anything]> of length 2...2 (inclusive) separated by <;>]"
+      },
+      "Modulation frequency": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "54",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "50"
+      },
+      "Variable names": {
+        "value": "x,y,t",
+        "default_value": "x,y,t",
+        "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+        "pattern": "50",
+        "pattern_description": "[Anything]"
+      }
+    }
+  },
+  "Immersed Problem": {
+    "Dirichlet boundary ids": {
+      "value": "0",
+      "default_value": "0",
+      "documentation": "",
+      "pattern": "11",
+      "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+      "actions": "11"
+    },
+    "FE degree": {
+      "value": "1",
+      "default_value": "1",
+      "documentation": "",
+      "pattern": "6",
+      "pattern_description": "[Integer range 1...2147483647 (inclusive)]",
+      "actions": "6"
+    },
+    "Initial refinement": {
+      "value": "5",
+      "default_value": "5",
+      "documentation": "",
+      "pattern": "10",
+      "pattern_description": "[Integer]",
+      "actions": "10"
+    },
+    "Neumann boundary ids": {
+      "value": "",
+      "default_value": "",
+      "documentation": "",
+      "pattern": "14",
+      "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+      "actions": "14"
+    },
+    "Normal flux boundary ids": {
+      "value": "",
+      "default_value": "",
+      "documentation": "",
+      "pattern": "15",
+      "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+      "actions": "15"
+    },
+    "Output directory": {
+      "value": ".",
+      "default_value": ".",
+      "documentation": "",
+      "pattern": "7",
+      "pattern_description": "[Anything]",
+      "actions": "7"
+    },
+    "Output name": {
+      "value": "solution",
+      "default_value": "solution",
+      "documentation": "",
+      "pattern": "8",
+      "pattern_description": "[Anything]",
+      "actions": "8"
+    },
+    "Output pressure": {
+      "value": "false",
+      "default_value": "false",
+      "documentation": "",
+      "pattern": "16",
+      "pattern_description": "[Bool]",
+      "actions": "16"
+    },
+    "Output results also before solving": {
+      "value": "false",
+      "default_value": "false",
+      "documentation": "",
+      "pattern": "9",
+      "pattern_description": "[Bool]",
+      "actions": "9"
+    },
+    "Pressure coupling": {
+      "value": "false",
+      "default_value": "false",
+      "documentation": "If this is true, then we do NOT solve a saddle point problem, but we use the input data as a pressure field on the vasculature network, and we solve for the displacement field directly.",
+      "pattern": "17",
+      "pattern_description": "[Bool]",
+      "actions": "17"
+    },
+    "Weak Dirichlet boundary ids": {
+      "value": "",
+      "default_value": "",
+      "documentation": "",
+      "pattern": "12",
+      "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+      "actions": "12"
+    },
+    "Weak Dirichlet penalty coefficient": {
+      "value": "10000",
+      "default_value": "10000",
+      "documentation": "",
+      "pattern": "13",
+      "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+      "actions": "13"
+    },
+    "Grid generation": {
+      "Domain type": {
+        "value": "generate",
+        "default_value": "generate",
+        "documentation": "",
+        "pattern": "18",
+        "pattern_description": "[Selection generate|file|cheese|cylinder ]",
+        "actions": "18"
+      },
+      "Grid generator": {
+        "value": "hyper_cube",
+        "default_value": "hyper_cube",
+        "documentation": "",
+        "pattern": "19",
+        "pattern_description": "[Anything]",
+        "actions": "19"
+      },
+      "Grid generator arguments": {
+        "value": "-1: 1: false",
+        "default_value": "-1: 1: false",
+        "documentation": "",
+        "pattern": "20",
+        "pattern_description": "[Anything]",
+        "actions": "20"
+      }
+    },
+    "Immersed inclusions": {
+      "Bounding boxes extraction level": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "46",
+        "pattern_description": "[Integer]",
+        "actions": "46"
+      },
+      "Data file": {
+        "value": "",
+        "default_value": "",
+        "documentation": "",
+        "pattern": "48",
+        "pattern_description": "[Anything]",
+        "actions": "48"
+      },
+      "Inclusions": {
+        "value": "",
+        "default_value": "",
+        "documentation": "",
+        "pattern": "42",
+        "pattern_description": "[List of <[List of <[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]> of length 0...4294967295 (inclusive)]> of length 0...4294967295 (inclusive) separated by <;>]",
+        "actions": "42"
+      },
+      "Inclusions file": {
+        "value": "",
+        "default_value": "",
+        "documentation": "",
+        "pattern": "47",
+        "pattern_description": "[Anything]",
+        "actions": "47"
+      },
+      "Inclusions refinement": {
+        "value": "100",
+        "default_value": "100",
+        "documentation": "",
+        "pattern": "41",
+        "pattern_description": "[Integer]",
+        "actions": "41"
+      },
+      "Number of fourier coefficients": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "This represents the number of scalar harmonic functions used for the representation of the data (boundary data or forcing data) of the inclusion. The provided input files should contain at least a number of entries which is equal to this number multiplied by the number of vector components of the problem. Any additional entry is ignored by program. If fewer entries are specified, an exception is thrown.",
+        "pattern": "44",
+        "pattern_description": "[Integer]",
+        "actions": "44"
+      },
+      "Reference inclusion data": {
+        "value": "",
+        "default_value": "",
+        "documentation": "",
+        "pattern": "43",
+        "pattern_description": "[List of <[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]> of length 0...4294967295 (inclusive)]",
+        "actions": "43"
+      },
+      "Selection of Fourier coefficients": {
+        "value": "",
+        "default_value": "",
+        "documentation": "This allows one to select a subset of the components of the harmonic functions used for the representation of the data (boundary data or forcing data). Notice that these indices are w.r.t. to the total number of components of the problem, that is, number of Fourier coefficients x number of vector components. In particular any entry of this list must be in the set [0,n_coefficients*n_vector_components). ",
+        "pattern": "45",
+        "pattern_description": "[List of <[Integer]> of length 0...4294967295 (inclusive)]",
+        "actions": "45"
+      },
+      "Boundary data": {
+        "Function constants": {
+          "value": "",
+          "default_value": "",
+          "documentation": "Sometimes it is convenient to use symbolic constants in the expression that describes the function, rather than having to use its numeric value everywhere the constant appears. These values can be defined using this parameter, in the form `var1=value1, var2=value2, ...'.\n\nA typical example would be to set this runtime parameter to `pi=3.1415926536' and then use `pi' in the expression of the actual formula. (That said, for convenience this class actually defines both `pi' and `Pi' by default, but you get the idea.)",
+          "pattern": "108",
+          "pattern_description": "[Anything]"
+        },
+        "Function expression": {
+          "value": "0; 0",
+          "default_value": "0",
+          "documentation": "The formula that denotes the function you want to evaluate for particular values of the independent variables. This expression may contain any of the usual operations such as addition or multiplication, as well as all of the common functions such as `sin' or `cos'. In addition, it may contain expressions like `if(x>0, 1, -1)' where the expression evaluates to the second argument if the first argument is true, and to the third argument otherwise. For a full overview of possible expressions accepted see the documentation of the muparser library at http:\/\/muparser.beltoforion.de\/.\n\nIf the function you are describing represents a vector-valued function with multiple components, then separate the expressions for individual components by a semicolon.",
+          "pattern": "107",
+          "pattern_description": "[Anything]"
+        },
+        "Modulation frequency": {
+          "value": "0",
+          "default_value": "0",
+          "documentation": "",
+          "pattern": "49",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "49"
+        },
+        "Variable names": {
+          "value": "x,y,t",
+          "default_value": "x,y,t",
+          "documentation": "The names of the variables as they will be used in the function, separated by commas. By default, the names of variables at which the function will be evaluated are `x' (in 1d), `x,y' (in 2d) or `x,y,z' (in 3d) for spatial coordinates and `t' for time. You can then use these variable names in your function expression and they will be replaced by the values of these variables at which the function is currently evaluated. However, you can also choose a different set of names for the independent variables at which to evaluate your function expression. For example, if you work in spherical coordinates, you may wish to set this input parameter to `r,phi,theta,t' and then use these variable names in your function expression.",
+          "pattern": "106",
+          "pattern_description": "[Anything]"
+        }
+      }
+    },
+    "Material properties": {
+      "Material tags by material id": {
+        "value": "",
+        "default_value": "",
+        "documentation": "",
+        "pattern": "26",
+        "pattern_description": "[Map of <[Integer]>:<[Anything]> of length 0...4294967295 (inclusive)]",
+        "actions": "26"
+      },
+      "default": {
+        "Density": {
+          "value": "0",
+          "default_value": "0",
+          "documentation": "",
+          "pattern": "2",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "2"
+        },
+        "Lame lambda": {
+          "value": "1",
+          "default_value": "1",
+          "documentation": "",
+          "pattern": "1",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "1"
+        },
+        "Lame mu": {
+          "value": "1",
+          "default_value": "1",
+          "documentation": "",
+          "pattern": "0",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "0"
+        },
+        "Rayleigh alpha": {
+          "value": "0",
+          "default_value": "0",
+          "documentation": "",
+          "pattern": "4",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "4"
+        },
+        "Rayleigh beta": {
+          "value": "0",
+          "default_value": "0",
+          "documentation": "",
+          "pattern": "5",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "5"
+        },
+        "Viscosity eta": {
+          "value": "0",
+          "default_value": "0",
+          "documentation": "",
+          "pattern": "3",
+          "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+          "actions": "3"
+        }
+      }
+    },
+    "Refinement and remeshing": {
+      "Coarsening fraction": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "22",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "22"
+      },
+      "Maximum number of cells": {
+        "value": "20000",
+        "default_value": "20000",
+        "documentation": "",
+        "pattern": "24",
+        "pattern_description": "[Integer]",
+        "actions": "24"
+      },
+      "Number of refinement cycles": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "25",
+        "pattern_description": "[Integer]",
+        "actions": "25"
+      },
+      "Refinement fraction": {
+        "value": "0.3",
+        "default_value": "0.3",
+        "documentation": "",
+        "pattern": "23",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "23"
+      },
+      "Strategy": {
+        "value": "fixed_fraction",
+        "default_value": "fixed_fraction",
+        "documentation": "",
+        "pattern": "21",
+        "pattern_description": "[Selection fixed_fraction|fixed_number|global ]",
+        "actions": "21"
+      }
+    },
+    "Time dependency": {
+      "Final time": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "28",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "28"
+      },
+      "Initial time": {
+        "value": "0",
+        "default_value": "0",
+        "documentation": "",
+        "pattern": "27",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "27"
+      },
+      "Newmark beta": {
+        "value": "0.25",
+        "default_value": "0.25",
+        "documentation": "",
+        "pattern": "31",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "31"
+      },
+      "Newmark gamma": {
+        "value": "0.5",
+        "default_value": "0.5",
+        "documentation": "",
+        "pattern": "32",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "32"
+      },
+      "Refine time step": {
+        "value": "false",
+        "default_value": "false",
+        "documentation": "",
+        "pattern": "30",
+        "pattern_description": "[Bool]",
+        "actions": "30"
+      },
+      "Time step": {
+        "value": "0.005",
+        "default_value": "0.005",
+        "documentation": "",
+        "pattern": "29",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]",
+        "actions": "29"
+      }
+    }
+  },
+  "Solvers": {
+    "Augmented Lagrange": {
+      "Log frequency": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "95",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Log history": {
+        "value": "false",
+        "default_value": "false",
+        "documentation": "",
+        "pattern": "94",
+        "pattern_description": "[Bool]"
+      },
+      "Log result": {
+        "value": "true",
+        "default_value": "true",
+        "documentation": "",
+        "pattern": "96",
+        "pattern_description": "[Bool]"
+      },
+      "Max steps": {
+        "value": "100",
+        "default_value": "100",
+        "documentation": "",
+        "pattern": "92",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Reduction": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "98",
+        "pattern_description": "[Double 0...MAX_DOUBLE (inclusive)]"
+      },
+      "Tolerance": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "93",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]"
+      }
+    },
+    "Displacement": {
+      "Log frequency": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "81",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Log history": {
+        "value": "false",
+        "default_value": "false",
+        "documentation": "",
+        "pattern": "80",
+        "pattern_description": "[Bool]"
+      },
+      "Log result": {
+        "value": "true",
+        "default_value": "true",
+        "documentation": "",
+        "pattern": "82",
+        "pattern_description": "[Bool]"
+      },
+      "Max steps": {
+        "value": "100",
+        "default_value": "100",
+        "documentation": "",
+        "pattern": "78",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Reduction": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "84",
+        "pattern_description": "[Double 0...MAX_DOUBLE (inclusive)]"
+      },
+      "Tolerance": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "79",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]"
+      }
+    },
+    "Reduced mass": {
+      "Log frequency": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "88",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Log history": {
+        "value": "false",
+        "default_value": "false",
+        "documentation": "",
+        "pattern": "87",
+        "pattern_description": "[Bool]"
+      },
+      "Log result": {
+        "value": "true",
+        "default_value": "true",
+        "documentation": "",
+        "pattern": "89",
+        "pattern_description": "[Bool]"
+      },
+      "Max steps": {
+        "value": "100",
+        "default_value": "100",
+        "documentation": "",
+        "pattern": "85",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Reduction": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "91",
+        "pattern_description": "[Double 0...MAX_DOUBLE (inclusive)]"
+      },
+      "Tolerance": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "86",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]"
+      }
+    },
+    "Schur complement": {
+      "Log frequency": {
+        "value": "1",
+        "default_value": "1",
+        "documentation": "",
+        "pattern": "102",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Log history": {
+        "value": "false",
+        "default_value": "false",
+        "documentation": "",
+        "pattern": "101",
+        "pattern_description": "[Bool]"
+      },
+      "Log result": {
+        "value": "true",
+        "default_value": "true",
+        "documentation": "",
+        "pattern": "103",
+        "pattern_description": "[Bool]"
+      },
+      "Max steps": {
+        "value": "100",
+        "default_value": "100",
+        "documentation": "",
+        "pattern": "99",
+        "pattern_description": "[Integer range -2147483648...2147483647 (inclusive)]"
+      },
+      "Reduction": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "105",
+        "pattern_description": "[Double 0...MAX_DOUBLE (inclusive)]"
+      },
+      "Tolerance": {
+        "value": "1.e-10",
+        "default_value": "1.e-10",
+        "documentation": "",
+        "pattern": "100",
+        "pattern_description": "[Double -MAX_DOUBLE...MAX_DOUBLE (inclusive)]"
+      }
+    }
+  }
+}
