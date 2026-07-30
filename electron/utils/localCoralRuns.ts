@@ -60,6 +60,37 @@ const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
 }
 
+const dirExists = async (dirPath: string): Promise<boolean> => {
+  try {
+    return (await fs.promises.stat(dirPath)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Creates a local directory for exclusive use by a run: if the exact path
+ * already exists (a slug was reused), retries with a timestamp-suffixed
+ * variant instead of reusing/overwriting it, rather than blocking submission.
+ * Mirrors the remote equivalent in sshMessages.ts (`ensureUniqueRemoteDir`).
+ * @param dirPath - Preferred local directory path.
+ * @returns The local directory path actually created (`dirPath` unless a collision occurred).
+ * @throws {Error} If a free directory cannot be allocated after a few attempts.
+ */
+export const ensureUniqueLocalDir = async (
+  dirPath: string
+): Promise<string> => {
+  let candidate = dirPath
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!(await dirExists(candidate))) {
+      await ensureDir(candidate)
+      return candidate
+    }
+    candidate = `${dirPath}-${Date.now()}`
+  }
+  throw new Error(`Could not allocate a unique directory under ${dirPath}`)
+}
+
 /**
  * @param payload - Coral run configuration.
  * @returns The internal job ID and working directory of the spawned process.
@@ -146,13 +177,11 @@ export const startLocalExecutableRun = async ({
   workingDirectory: string
 }> => {
   const jobId = String(internalJobId)
-  // Wrap each run in a per-run subdir so back-to-back runs with the same
-  // parametersFileName don't clobber a shared parameters.json. The bare
-  // filename is deliberate: some deal.II programs (e.g. step-70) sniff their
-  // dimension from the file path, so a `${jobId}-` filename prefix would be
-  // unsafe — the subdir isolates without renaming (same rationale as the remote
-  // executable batch script's `--chdir` + bare filename).
-  const runDir = path.join(workingDirectory, `run-${jobId}`)
+  // Already an isolated, unique per-run directory (allocated by the caller via
+  // ensureUniqueLocalDir), so back-to-back runs never share a parameters.json.
+  const runDir = workingDirectory
+  // Bare filename, no jobId prefix: some deal.II programs (e.g. step-70) sniff
+  // their dimension from the file path, so a prefix would be unsafe.
   const parametersPath = path.join(
     runDir,
     parametersFileName || 'parameters.json'

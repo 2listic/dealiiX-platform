@@ -18,6 +18,7 @@ import {
   serializeParametersFile,
 } from '../src/lib/utils/parameterFileFormat.js'
 import {
+  ensureUniqueLocalDir,
   getLocalNodeStatusFiles,
   getLocalRunLog,
   getLocalRunState,
@@ -112,6 +113,10 @@ export function registerIpcHandlers(): void {
       return { canceled: false, filePath: result.filePath }
     }
   )
+
+  ipcMain.handle('ensure-unique-local-dir', async (_event, { dir }) => {
+    return await ensureUniqueLocalDir(dir)
+  })
 
   ipcMain.handle('start-local-coral-run', async (_event, payload) => {
     return await startLocalCoralRun(payload)

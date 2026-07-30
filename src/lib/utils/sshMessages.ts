@@ -73,7 +73,7 @@ export const executeWithKey = async (): Promise<void> => {
  * @param nodes - Array of nodes (must be snapshots, not reactive)
  * @param edges - Array of edges (must be snapshots, not reactive)
  * @param config - Optional job configuration for template placeholders
- * @param runName - Optional user-supplied name; slugified into the run's output folder (remote only).
+ * @param runName - Optional user-supplied name; slugified into the run's output folder.
  * @returns Resolves when the job completes or fails.
  * @throws {Error} Throws if export, execution, or polling fails.
  * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
@@ -86,7 +86,7 @@ export const exportAndEvalCoralGraph = async (
   runName?: string
 ): Promise<void> => {
   if (location === 'local') {
-    await exportAndEvalGraphLocal(nodes, edges, config)
+    await exportAndEvalGraphLocal(nodes, edges, config, runName)
   } else if (location === 'remote') {
     await exportAndEvalGraphRemote(nodes, edges, config, runName)
   }
@@ -98,7 +98,7 @@ export const exportAndEvalExecutable = async (
   runName?: string
 ): Promise<void> => {
   if (location === 'local') {
-    await exportAndEvalExecutableLocal(config)
+    await exportAndEvalExecutableLocal(config, runName)
   } else if (location === 'remote') {
     await exportAndEvalExecutableRemote(config, runName)
   }
@@ -172,19 +172,30 @@ export const submitCoralStageRemote = async ({
   return jobId
 }
 
+/** Local counterpart of {@link ensureUniqueRemoteDir}, backed by the local filesystem. */
+const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
+  return await window.electron.invoke('ensure-unique-local-dir', { dir })
+}
+
 const exportAndEvalGraphLocal = async (
   nodes: Node[],
   edges: Edge[],
-  config: CoralJobConfig
+  config: CoralJobConfig,
+  runName?: string
 ): Promise<void> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
   const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  // Isolate every run into its own subdir, same as remote, so back-to-back runs
+  // don't clobber each other's graph.json/log.
+  const runDir = await ensureUniqueLocalDir(
+    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
     coralBinaryPath: config.coralBinaryPath,
     coralPluginPath: config.coralPluginPath,
-    workingDirectory: settingsState.local.workingDirectory,
+    workingDirectory: runDir,
     graphPayload,
     internalJobId,
   })
@@ -217,14 +228,18 @@ const getExecutableParametersPayload = () => {
 }
 
 const exportAndEvalExecutableLocal = async (
-  config: ExecutableJobConfig
+  config: ExecutableJobConfig,
+  runName?: string
 ): Promise<void> => {
   const internalJobId = jobIdMapState.getNextKey()
+  const runDir = await ensureUniqueLocalDir(
+    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
   const resultExecute = await window.electron.invoke(
     'start-local-executable-run',
     {
       executablePath: config.executablePath,
-      workingDirectory: settingsState.local.workingDirectory,
+      workingDirectory: runDir,
       parametersPayload: getExecutableParametersPayload(),
       parametersFileName: config.parametersFileName,
       internalJobId,

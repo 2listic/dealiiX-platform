@@ -4,8 +4,13 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Project-Structure
+
+- [#213](https://github.com/2listic/dealiiX-platform/pull/213) Added a top-level `examples/` folder for sample graphs, parameter files, and executables meant to be loaded and explored rather than used by the test suite, organised into `graphs/`, `parameters/`, and `executables/` subfolders. It now holds the deal.II step-40 Laplace example with MPI enabled and the step-4 Poisson example (2D and 3D) under `graphs/`, a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) under `parameters/`, and the step-70 executable source (previously under `local_runs/step-70`) under `executables/`.
+
 ### Pipelines
 
+- [#213](https://github.com/2listic/dealiiX-platform/pull/213) Fixed local single runs not honouring the run-name field the same way remote runs do: a local coral run previously wrote its files flat into the configured working directory instead of an isolated per-run subfolder, and a local executable run's subfolder was always named after the internal job id, ignoring any run name. Both now get an isolated subfolder named from the run name (or a timestamp, if left blank), matching remote.
 - [#208](https://github.com/2listic/dealiiX-platform/pull/208) You can now give a single run or a pipeline run a custom name before submitting (remote mode); it's used to name the run's output folder instead of a bare timestamp, making it easy to find on disk or in the visualizer. Leaving the name blank keeps today's timestamp-based naming. If the same name is submitted twice, the second run gets a unique suffix instead of overwriting the first. The Jobs table also gains a "Working Directory" column so you can see where each job's files landed.
 - [#207](https://github.com/2listic/dealiiX-platform/issues/207) The Pipeline editor gains "Export pipeline" and "Import pipeline" buttons: export downloads the current pipeline (all stages, connections, and per-stage settings) as a JSON file; import loads one back in, replacing the canvas.
 - [#206](https://github.com/2listic/dealiiX-platform/pull/206) Continues decoupling pipeline orchestration and job submission from the rest of the app: each pipeline stage (and single run) now captures its own CORAL binary/plugin path or executable path at creation time instead of reading Settings when the job is submitted, so changing Settings later no longer retroactively affects an already-configured stage. Also fixed a bug where firing off single coral/executable runs back-to-back (remote or local) could clobber the previous run's job files; each run now gets its own isolated working subdirectory, matching the isolation pipeline stages already had.
