@@ -4,6 +4,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Canvas-graph
+
+- [#215](https://github.com/2listic/dealiiX-platform/issues/215) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
+
 ### Project-Structure
 
 - [#213](https://github.com/2listic/dealiiX-platform/pull/213) Added a top-level `examples/` folder for sample graphs, parameter files, and executables meant to be loaded and explored rather than used by the test suite, organised into `graphs/`, `parameters/`, and `executables/` subfolders. It now holds the deal.II step-40 Laplace example with MPI enabled and the step-4 Poisson example (2D and 3D) under `graphs/`, a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) under `parameters/`, and the step-70 executable source (previously under `local_runs/step-70`) under `executables/`.

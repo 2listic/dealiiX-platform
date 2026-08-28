@@ -101,6 +101,28 @@ export const isNumericType = (type: string): boolean => {
 }
 
 /**
+ * Checks whether a source output type may be wired into a target input type.
+ * `"any"` is a wildcard on either side, and `bool → int → float` is accepted as numeric widening.
+ * Every other pair requires an exact match.
+ * @param sourceType - The output type of the source socket.
+ * @param targetType - The input type of the target socket.
+ * @returns True if a source of `sourceType` may be wired into a target of `targetType`.
+ */
+export const isTypeCompatible = (
+  sourceType: string | null | undefined,
+  targetType: string | null | undefined
+): boolean => {
+  if (sourceType === Type.ANY || targetType === Type.ANY) return true
+  if (sourceType === targetType) return true
+
+  const sourceRank = NUMERIC_WIDENING_RANK[sourceType as Type]
+  const targetRank = NUMERIC_WIDENING_RANK[targetType as Type]
+  if (sourceRank === undefined || targetRank === undefined) return false
+
+  return sourceRank <= targetRank
+}
+
+/**
  * Full definition of a standard (non-subgraph) node from the CORAL registry.
  * Contains complete metadata for rendering and wiring the node on the canvas.
  * Stored in {@link RegisteredNodes}, keyed by node type identifier.
@@ -241,4 +263,17 @@ export const isSubGraphNodeDefinition = (
     'node_type' in node &&
     node.node_type === NodeType.NETWORK
   )
+}
+
+// ── Private helpers ──
+
+/**
+ * Widening rank for the `bool → int → float` numeric chain, used by {@link isTypeCompatible}. A
+ * source may widen into a target only if its rank is lower or equal. Other numeric types
+ * (`double`, `unsigned`, `unsigned int`) are not part of this chain and require an exact match.
+ */
+const NUMERIC_WIDENING_RANK: Partial<Record<Type, number>> = {
+  [Type.BOOLEAN]: 0,
+  [Type.INT]: 1,
+  [Type.FLOAT]: 2,
 }

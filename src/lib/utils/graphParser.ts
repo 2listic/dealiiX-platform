@@ -24,7 +24,7 @@ import {
 } from './canvasNodeUtils'
 import {
   isSubGraphNodeDefinition,
-  Type,
+  isTypeCompatible,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -265,11 +265,8 @@ export const validateGraphData = (
       )
     }
 
-    // Check if types match. A target input typed 'any' accepts any source.
-    if (
-      targetInputArg.type !== Type.ANY &&
-      sourceOutputType !== targetInputArg.type
-    ) {
+    // Check if types are compatible (wildcard 'any' on either side, or numeric widening).
+    if (!isTypeCompatible(sourceOutputType, targetInputArg.type)) {
       const errorMessage = `Edge id: ${edgeId} - Type mismatch - source output type '${sourceOutputType}' does not match target input '${targetInputArg.type}'`
       console.warn(errorMessage)
       invalidEdges.push({

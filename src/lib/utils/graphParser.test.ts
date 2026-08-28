@@ -7,8 +7,10 @@ import type {
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
-import validCoralpyGraphFuncs from '../../../test_files/network-coralpy-functions.json'
-import coralpyMathRegistry from '../data/coralpyMathNodes.json'
+import validGraphMathFunctions from '../../../test_files/network-math-functions.json'
+import mathFunctionsRegistry from '../data/mathFunctionsNodes.json'
+import validGraphCollectionsMath from '../../../test_files/network-collections-math.json'
+import collectionsMathRegistry from '../data/collectionsMathNodes.json'
 
 const mockStore = vi.hoisted(() => ({
   nodeDataByType: {} as Record<string, StandardNodeDefinition>,
@@ -116,10 +118,10 @@ describe('validateGraphData', () => {
     })
   })
 
-  describe('coral-python lean graph with an "any"-typed input', () => {
+  describe('lean graph with an "any"-typed input', () => {
     beforeEach(() => {
       mockStore.nodeDataByType =
-        coralpyMathRegistry as unknown as RegisteredNodes
+        mathFunctionsRegistry as unknown as RegisteredNodes
       vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
 
@@ -127,11 +129,31 @@ describe('validateGraphData', () => {
       // Edge "4" wires multiply's output into print_result, whose input is typed "any".
       // Before the fix this was dropped as a type mismatch on load.
       const [validEdges, invalidEdges] = validateGraphData(
-        validCoralpyGraphFuncs as unknown as Network
+        validGraphMathFunctions as unknown as Network
       )
       expect(invalidEdges).toHaveLength(0)
       expect(Object.keys(validEdges)).toHaveLength(
-        Object.keys(validCoralpyGraphFuncs.workflow.edges).length
+        Object.keys(validGraphMathFunctions.workflow.edges).length
+      )
+    })
+  })
+
+  describe('graph with an "any"-typed output feeding a concrete input', () => {
+    beforeEach(() => {
+      mockStore.nodeDataByType =
+        collectionsMathRegistry as unknown as RegisteredNodes
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+    })
+
+    it('keeps edges from an "any"-typed output (list element) into a "float" input', () => {
+      // Edges "8" and "9" wire a list-element lookup's output (typed "any") into an add
+      // node's two "float" inputs. Before the fix these were dropped as a type mismatch on load.
+      const [validEdges, invalidEdges] = validateGraphData(
+        validGraphCollectionsMath as unknown as Network
+      )
+      expect(invalidEdges).toHaveLength(0)
+      expect(Object.keys(validEdges)).toHaveLength(
+        Object.keys(validGraphCollectionsMath.workflow.edges).length
       )
     })
   })
