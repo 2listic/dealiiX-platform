@@ -11,6 +11,7 @@
     modalId: string
     statusMap: Map<string, string[]>
     jobIdInternal: number | undefined
+    isJobTerminal?: boolean
     title?: string
     onClose?: () => void
   }
@@ -19,6 +20,7 @@
     modalId,
     statusMap,
     jobIdInternal,
+    isJobTerminal = false,
     title = 'Nodes Execution Status',
     onClose,
   }: Props = $props()
@@ -79,19 +81,27 @@
     return false
   })
 
-  // Polling effect - stops when all nodes succeed, any node fails, or modal closes
+  // Polling effect - stops when the job is over, all nodes succeed, any node fails, or modal closes
   // effect runs when modal component is mounted and when reactive dependencies change
   $effect(() => {
     console.log(
       'Internal jobId',
       jobIdInternal,
+      'is job terminal?',
+      isJobTerminal,
       'all nodes succeeded?',
       allNodesSucceeded,
       'any node failed?',
       anyNodeFailed
     )
-    // early return if jobIdInternal is not set, all nodes succeeded, or any node has failed
-    if (jobIdInternal === undefined || allNodesSucceeded || anyNodeFailed)
+    // early return if jobIdInternal is not set, the job has reached a terminal state, all nodes
+    // succeeded, or any node has failed
+    if (
+      jobIdInternal === undefined ||
+      isJobTerminal ||
+      allNodesSucceeded ||
+      anyNodeFailed
+    )
       return
 
     const interval = setInterval(async () => {
@@ -155,7 +165,11 @@
       {:else}
         <div class="empty-state">
           <div class="empty-state-copy">
-            <strong>No nodes have reported yet</strong>
+            {#if isJobTerminal}
+              <strong>No node ever started</strong>
+            {:else}
+              <strong>No nodes have reported yet</strong>
+            {/if}
           </div>
         </div>
       {/each}
