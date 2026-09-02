@@ -12,7 +12,7 @@ import {
   resolveInputArgument,
   resolveOutputType,
 } from './canvasNodeUtils'
-import { Type } from '../types/nodeTypes'
+import { isTypeCompatible } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 
 let connectionCache = new Map<string, boolean>()
@@ -56,20 +56,13 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
     return false
   }
 
-  // If the expected input type is 'any', allow any connection
+  // Resolve the expected input type and the source's output type
   const targetNode = nodes.find((node) => node.id === connection.target)
   const handleIndexInput = handleIdToIndex(connection.targetHandle as string)
   const expectedInputType = resolveInputArgument(
     targetNode!.data,
     handleIndexInput
   )?.type
-  if (expectedInputType === Type.ANY) {
-    console.log(`Handle ${connection.targetHandle} accepts any type`)
-    connectionCache.set(cacheKey, true)
-    return true
-  }
-
-  // Check if the source type matches the target handle type
   const handleIndexOutput = handleIdToIndex(connection.sourceHandle as string)
   const sourceType = resolveOutputType(sourceNode.data, handleIndexOutput)
 
@@ -78,7 +71,7 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
       connection.targetHandle
     } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
-  const isValid = expectedInputType === sourceType
+  const isValid = isTypeCompatible(sourceType, expectedInputType)
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid) // Cache the result
   return isValid

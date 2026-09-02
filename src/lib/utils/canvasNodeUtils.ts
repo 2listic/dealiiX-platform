@@ -6,9 +6,9 @@
 
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
+  isTypeCompatible,
   NodeType,
   SELF,
-  Type,
   type Argument,
   type NodeDefinitions,
   type StandardNodeDefinition,
@@ -187,7 +187,7 @@ export const findCompatibleTargetNodesAsOptions = (
     ) {
       const argument = resolveInputArgument(nodeDefinition, handleIndex)
       if (!argument) continue
-      if (argument.type !== Type.ANY && argument.type !== sourceType) continue
+      if (!isTypeCompatible(sourceType, argument.type)) continue
       options.push({
         nodeDefinition,
         handleId: `input-${handleIndex}`,
@@ -279,8 +279,7 @@ export const findCompatibleSourceNodesAsOptions = (
     ) {
       const outputType = resolveOutputType(nodeDefinition, handleIndex)
       if (!outputType) continue
-      if (expectedInputType !== Type.ANY && outputType !== expectedInputType)
-        continue
+      if (!isTypeCompatible(outputType, expectedInputType)) continue
       options.push({
         nodeDefinition,
         handleId: `output-${handleIndex}`,

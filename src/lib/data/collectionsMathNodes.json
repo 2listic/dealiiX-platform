@@ -1,0 +1,90 @@
+{
+  "int": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "int"
+  },
+  "float": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "float"
+  },
+  "str": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "str"
+  },
+  "bool": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "bool"
+  },
+  "any": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "any"
+  },
+  "none": {
+    "arguments": [],
+    "value": "",
+    "inputs": [],
+    "outputs": [-1],
+    "node_type": "primitive",
+    "type": "none"
+  },
+  "list_new": {
+    "arguments": [{ "connection_type": "output", "type": "list", "name": "" }],
+    "inputs": [],
+    "outputs": [0],
+    "node_type": "function",
+    "type": "list_new"
+  },
+  "list_append": {
+    "arguments": [
+      { "connection_type": "input", "type": "list", "name": "lst" },
+      { "connection_type": "input", "type": "any", "name": "item" },
+      { "connection_type": "output", "type": "list", "name": "" }
+    ],
+    "inputs": [0, 1],
+    "outputs": [2],
+    "node_type": "function",
+    "type": "list_append"
+  },
+  "list_get": {
+    "arguments": [
+      { "connection_type": "input", "type": "list", "name": "lst" },
+      { "connection_type": "input", "type": "int", "name": "index" },
+      { "connection_type": "output", "type": "any", "name": "" }
+    ],
+    "inputs": [0, 1],
+    "outputs": [2],
+    "node_type": "function",
+    "type": "list_get"
+  },
+  "add": {
+    "arguments": [
+      { "connection_type": "input", "type": "float", "name": "a" },
+      { "connection_type": "input", "type": "float", "name": "b" },
+      { "connection_type": "output", "type": "float", "name": "" }
+    ],
+    "inputs": [0, 1],
+    "outputs": [2],
+    "node_type": "function",
+    "type": "add"
+  }
+}

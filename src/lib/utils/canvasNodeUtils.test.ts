@@ -149,6 +149,53 @@ describe('canvasNodeUtils', () => {
     expect(options).toHaveLength(0)
   })
 
+  it('matches a source typed "any" against a concrete target input', () => {
+    const anyOutputNode = {
+      type: 'list_get',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'output', type: Type.ANY, name: '' }],
+      inputs: [],
+      outputs: [0],
+    } as unknown as NodeDefinitions
+
+    const options = findCompatibleTargetNodesAsOptions(
+      [registry['dealii::FE_Q<2, 2>']] as NodeDefinitions[],
+      Type.ANY
+    )
+    expect(options).toHaveLength(1)
+
+    // And the mirror direction: a concrete target input accepts a producer with an "any" output.
+    const reverseOptions = findCompatibleSourceNodesAsOptions(
+      [anyOutputNode],
+      Type.UNSIGNED_INT
+    )
+    expect(reverseOptions).toHaveLength(1)
+  })
+
+  it('matches numeric widening (int -> float) in both compatibility directions', () => {
+    const intOutputNode = {
+      type: 'list_size',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'output', type: Type.INT, name: '' }],
+      inputs: [],
+      outputs: [0],
+    } as unknown as NodeDefinitions
+    const floatInputNode = {
+      type: 'accepts_float',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'input', type: Type.FLOAT, name: 'x' }],
+      inputs: [0],
+      outputs: [],
+    } as unknown as NodeDefinitions
+
+    expect(
+      findCompatibleTargetNodesAsOptions([floatInputNode], Type.INT)
+    ).toHaveLength(1)
+    expect(
+      findCompatibleSourceNodesAsOptions([intOutputNode], Type.FLOAT)
+    ).toHaveLength(1)
+  })
+
   it('formats suggested names for display', () => {
     expect(formatSuggestedNodeName('my_connection_name')).toBe(
       'My connection name'
