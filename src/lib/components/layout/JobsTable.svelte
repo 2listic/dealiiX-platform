@@ -64,6 +64,14 @@
   let currentJobIdInternal = $state<number | undefined>(undefined)
   const nodeStatusModalId = 'node-status-modal'
 
+  // Read from the live job list rather than captured when the modal opens, so a refresh while it
+  // is open stops its polling for a job that has since finished.
+  const isCurrentStatusJobTerminal = $derived.by(() => {
+    if (!currentStatusJobId) return false
+    const row = jobsData.slice(1).find((line) => line[0] === currentStatusJobId)
+    return row ? isTerminalStatus(normalizeJobStatus(row[1])) : false
+  })
+
   const handleLogClick = async (jobId: string) => {
     try {
       currentJobId = jobId
@@ -247,6 +255,7 @@
   modalId={nodeStatusModalId}
   statusMap={nodeStatusMap}
   jobIdInternal={currentJobIdInternal}
+  isJobTerminal={isCurrentStatusJobTerminal}
   title={`Job ${currentStatusJobId} - Nodes Status`}
   onClose={() => {
     nodeStatusMap = new Map()

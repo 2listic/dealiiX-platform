@@ -11,6 +11,7 @@
     modalId: string
     statusMap: Map<string, string[]>
     jobIdInternal: number | undefined
+    isJobTerminal?: boolean
     title?: string
     onClose?: () => void
   }
@@ -19,20 +20,20 @@
     modalId,
     statusMap,
     jobIdInternal,
+    isJobTerminal = false,
     title = 'Nodes Execution Status',
     onClose,
   }: Props = $props()
 
-  // Internal state for polling updates
+  // Shallow copy of the prop that the poll below can reassign; the writable $derived keeps that
+  // override until the prop changes — i.e. until the modal opens for another job.
+  //
+  // It must track the prop *unconditionally*: an empty statusMap is a result, not a missing one, so
+  // guarding on its size left the previous job's rows on screen and froze the poll with them (the
+  // stop condition derives from this map).
+  //
   // consider to use SvelteMap if partial updates are needed instead of full replacement
-  let internalStatusMap = $state(new Map<string, string[]>())
-
-  // Sync internal state when prop changes (only when modal opens with new data)
-  $effect(() => {
-    if (statusMap.size > 0) {
-      internalStatusMap = new Map(statusMap) // shallow copy to update indipendently from parent prop
-    }
-  })
+  let internalStatusMap = $derived(new Map<string, string[]>(statusMap))
 
   const StatusToDisplay = {
     [ExecNodeStatus.FAILED]: 'Failed',
@@ -80,36 +81,34 @@
     return false
   })
 
-  // Polling effect - stops when all nodes succeed, any node fails, or modal closes
+  // Reads the job's node statuses into internalStatusMap, leaving the rows already on screen in
+  // place if the read fails.
+  const readNodesStatus = async (jobId: number): Promise<void> => {
+    try {
+      const result = await getNodesExecutionStatus(
+        executionSelectionState.location,
+        jobId
+      )
+      // an in-flight read cannot be cancelled, so drop a result the modal has moved on from
+      if (jobId !== jobIdInternal) return
+      internalStatusMap = result
+    } catch (error) {
+      console.error('Polling error:', error)
+    }
+  }
+
+  // Polling effect - stops when the job is over, all nodes succeed, any node fails, or modal closes
   // effect runs when modal component is mounted and when reactive dependencies change
   $effect(() => {
-    console.log(
-      'Internal jobId',
-      jobIdInternal,
-      'all nodes succeeded?',
-      allNodesSucceeded,
-      'any node failed?',
-      anyNodeFailed
-    )
-    // early return if jobIdInternal is not set, all nodes succeeded, or any node has failed
-    if (jobIdInternal === undefined || allNodesSucceeded || anyNodeFailed)
-      return
+    // nothing to read: no job is selected, or the modal has been closed
+    if (jobIdInternal === undefined) return
 
-    const interval = setInterval(async () => {
-      try {
-        const result = await getNodesExecutionStatus(
-          executionSelectionState.location,
-          jobIdInternal
-        )
-        console.log(
-          `Polling for internal jobId ${jobIdInternal}`,
-          $state.snapshot(result)
-        )
-        internalStatusMap = result
-      } catch (error) {
-        console.error('Polling error:', error)
-      }
-    }, 5000)
+    if (isJobTerminal || allNodesSucceeded || anyNodeFailed) {
+      readNodesStatus(jobIdInternal)
+      return
+    }
+
+    const interval = setInterval(() => readNodesStatus(jobIdInternal), 5000)
 
     // cleanup function (stopping polling) called when the effect re-runs and when modal component is destroyed
     return () => clearInterval(interval)
@@ -153,6 +152,16 @@
             </span>
           {/if}
         </div>
+      {:else}
+        <div class="empty-state">
+          <div class="empty-state-copy">
+            {#if isJobTerminal}
+              <strong>No node ever started</strong>
+            {:else}
+              <strong>No nodes have reported yet</strong>
+            {/if}
+          </div>
+        </div>
       {/each}
     </div>
     <div class="actions">
@@ -184,6 +193,19 @@
     display: flex;
     align-items: center;
     gap: 0.5em;
+  }
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2vh 0;
+  }
+  .empty-state-copy {
+    max-width: 28rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
   }
   /* .id-part {
     font-weight: 500;
