@@ -22,6 +22,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#217](https://github.com/2listic/dealiiX-platform/issues/217) Fixed the nodes execution status view showing the previous job's nodes when the job you opened reported none — the case that happens when a graph is rejected before any node runs, or when a pipeline stage is still queued. Once it happened the view also stopped updating, so it never corrected itself. It now shows an explicit "no nodes have reported yet" message and keeps following the job.
 - [#212](https://github.com/2listic/dealiiX-platform/pull/212) Fixed the Jobs table's Working Directory column being empty for local runs (both coral and executable) — it now shows the run's actual output directory, matching remote runs.
 - [#212](https://github.com/2listic/dealiiX-platform/pull/212) The Jobs table now refreshes automatically when you switch execution location (local/remote) from the top-right selector. It no longer refreshes as a side effect of saving Settings, which could surface an unrelated connection error for a target you weren't actively using.
 - [#210](https://github.com/2listic/dealiiX-platform/pull/210) In executable mode the parameters view's "Merge from file" and "Download params" buttons moved out of the view and into the sidebar as dedicated **Add params** and **Download** buttons, matching how graph and pipeline actions live in the sidebar for a consistent, mode-aware layout.

@@ -23,16 +23,15 @@
     onClose,
   }: Props = $props()
 
-  // Internal state for polling updates
+  // Shallow copy of the prop that the poll below can reassign; the writable $derived keeps that
+  // override until the prop changes — i.e. until the modal opens for another job.
+  //
+  // It must track the prop *unconditionally*: an empty statusMap is a result, not a missing one, so
+  // guarding on its size left the previous job's rows on screen and froze the poll with them (the
+  // stop condition derives from this map).
+  //
   // consider to use SvelteMap if partial updates are needed instead of full replacement
-  let internalStatusMap = $state(new Map<string, string[]>())
-
-  // Sync internal state when prop changes (only when modal opens with new data)
-  $effect(() => {
-    if (statusMap.size > 0) {
-      internalStatusMap = new Map(statusMap) // shallow copy to update indipendently from parent prop
-    }
-  })
+  let internalStatusMap = $derived(new Map<string, string[]>(statusMap))
 
   const StatusToDisplay = {
     [ExecNodeStatus.FAILED]: 'Failed',
@@ -153,6 +152,12 @@
             </span>
           {/if}
         </div>
+      {:else}
+        <div class="empty-state">
+          <div class="empty-state-copy">
+            <strong>No nodes have reported yet</strong>
+          </div>
+        </div>
       {/each}
     </div>
     <div class="actions">
@@ -184,6 +189,19 @@
     display: flex;
     align-items: center;
     gap: 0.5em;
+  }
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2vh 0;
+  }
+  .empty-state-copy {
+    max-width: 28rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
   }
   /* .id-part {
     font-weight: 500;
