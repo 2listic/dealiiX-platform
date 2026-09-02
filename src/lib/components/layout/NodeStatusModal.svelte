@@ -81,29 +81,31 @@
     return false
   })
 
+  // Reads the job's node statuses into internalStatusMap, leaving the rows already on screen in
+  // place if the read fails.
+  const readNodesStatus = async (jobId: number): Promise<void> => {
+    try {
+      internalStatusMap = await getNodesExecutionStatus(
+        executionSelectionState.location,
+        jobId
+      )
+    } catch (error) {
+      console.error('Polling error:', error)
+    }
+  }
+
   // Polling effect - stops when the job is over, all nodes succeed, any node fails, or modal closes
   // effect runs when modal component is mounted and when reactive dependencies change
   $effect(() => {
-    // early return if jobIdInternal is not set, the job has reached a terminal state, all nodes
-    // succeeded, or any node has failed
-    if (
-      jobIdInternal === undefined ||
-      isJobTerminal ||
-      allNodesSucceeded ||
-      anyNodeFailed
-    )
-      return
+    // nothing to read: no job is selected, or the modal has been closed
+    if (jobIdInternal === undefined) return
 
-    const interval = setInterval(async () => {
-      try {
-        internalStatusMap = await getNodesExecutionStatus(
-          executionSelectionState.location,
-          jobIdInternal
-        )
-      } catch (error) {
-        console.error('Polling error:', error)
-      }
-    }, 5000)
+    if (isJobTerminal || allNodesSucceeded || anyNodeFailed) {
+      readNodesStatus(jobIdInternal)
+      return
+    }
+
+    const interval = setInterval(() => readNodesStatus(jobIdInternal), 5000)
 
     // cleanup function (stopping polling) called when the effect re-runs and when modal component is destroyed
     return () => clearInterval(interval)
