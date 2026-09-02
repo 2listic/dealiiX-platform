@@ -85,10 +85,13 @@
   // place if the read fails.
   const readNodesStatus = async (jobId: number): Promise<void> => {
     try {
-      internalStatusMap = await getNodesExecutionStatus(
+      const result = await getNodesExecutionStatus(
         executionSelectionState.location,
         jobId
       )
+      // an in-flight read cannot be cancelled, so drop a result the modal has moved on from
+      if (jobId !== jobIdInternal) return
+      internalStatusMap = result
     } catch (error) {
       console.error('Polling error:', error)
     }
