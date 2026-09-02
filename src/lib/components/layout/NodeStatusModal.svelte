@@ -84,16 +84,6 @@
   // Polling effect - stops when the job is over, all nodes succeed, any node fails, or modal closes
   // effect runs when modal component is mounted and when reactive dependencies change
   $effect(() => {
-    console.log(
-      'Internal jobId',
-      jobIdInternal,
-      'is job terminal?',
-      isJobTerminal,
-      'all nodes succeeded?',
-      allNodesSucceeded,
-      'any node failed?',
-      anyNodeFailed
-    )
     // early return if jobIdInternal is not set, the job has reached a terminal state, all nodes
     // succeeded, or any node has failed
     if (
@@ -106,15 +96,10 @@
 
     const interval = setInterval(async () => {
       try {
-        const result = await getNodesExecutionStatus(
+        internalStatusMap = await getNodesExecutionStatus(
           executionSelectionState.location,
           jobIdInternal
         )
-        console.log(
-          `Polling for internal jobId ${jobIdInternal}`,
-          $state.snapshot(result)
-        )
-        internalStatusMap = result
       } catch (error) {
         console.error('Polling error:', error)
       }
