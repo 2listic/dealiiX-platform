@@ -35,8 +35,10 @@
   )
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
-  let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let isRemoteExecution = $derived(location === 'remote')
+  // Only remote runs launch through mpirun today. The checkbox state outlives a
+  // close/reopen, so hiding the control must also disable it.
+  let mpiEnabled = $derived(isRemoteExecution && useMpi)
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   let timeLimitError = $derived(
@@ -73,6 +75,10 @@
           {
             executablePath: target.executablePath,
             parametersFileName,
+            nodes,
+            tasksPerNode,
+            timeLimit,
+            useMpi: mpiEnabled,
           } satisfies ExecutableJobConfig,
           trimmedRunName
         )
@@ -86,7 +92,7 @@
             nodes,
             tasksPerNode,
             timeLimit,
-            useMpi,
+            useMpi: mpiEnabled,
           } satisfies CoralJobConfig,
           trimmedRunName
         )
@@ -132,57 +138,57 @@
         </span>
       </div>
     </div>
-    {#if isCoralMode && (useMpi || isRemoteExecution)}
+    {#if mpiEnabled}
       <div class="inputs-container">
-        {#if useMpi}
-          <div class="inputs-row">
-            <div class="input-container">
-              <label for="mpi-nodes">Nodes</label>
-              <input
-                id="mpi-nodes"
-                type="number"
-                min="1"
-                bind:value={nodes}
-                class="input-field"
-              />
-            </div>
-            <div class="input-container">
-              <label for="mpi-tasks-per-node">Tasks per node</label>
-              <input
-                id="mpi-tasks-per-node"
-                type="number"
-                min="1"
-                bind:value={tasksPerNode}
-                class="input-field"
-              />
-            </div>
-            <div class="input-container total">
-              <span class="total-label">Total</span>
-              <span class="total-value">{totalProcesses}</span>
-            </div>
+        <div class="inputs-row">
+          <div class="input-container">
+            <label for="mpi-nodes">Nodes</label>
+            <input
+              id="mpi-nodes"
+              type="number"
+              min="1"
+              bind:value={nodes}
+              class="input-field"
+            />
           </div>
-        {/if}
-        {#if isRemoteExecution}
-          <div class="inputs-row">
-            <div class="input-container time-limit">
-              <label for="job-time-limit">Time limit</label>
-              <input
-                id="job-time-limit"
-                type="text"
-                placeholder="e.g. 01:00:00"
-                bind:value={timeLimit}
-                class="input-field"
-                class:input-field--error={timeLimitError}
-              />
-              <span
-                class="hint-message"
-                class:hint-message--error={timeLimitError}
-              >
-                {timeLimitError || 'Use 0 for no time limit'}
-              </span>
-            </div>
+          <div class="input-container">
+            <label for="mpi-tasks-per-node">Tasks per node</label>
+            <input
+              id="mpi-tasks-per-node"
+              type="number"
+              min="1"
+              bind:value={tasksPerNode}
+              class="input-field"
+            />
           </div>
-        {/if}
+          <div class="input-container total">
+            <span class="total-label">Total</span>
+            <span class="total-value">{totalProcesses}</span>
+          </div>
+        </div>
+      </div>
+    {/if}
+    {#if isRemoteExecution}
+      <div class="inputs-container">
+        <div class="inputs-row">
+          <div class="input-container time-limit">
+            <label for="job-time-limit">Time limit</label>
+            <input
+              id="job-time-limit"
+              type="text"
+              placeholder="e.g. 01:00:00"
+              bind:value={timeLimit}
+              class="input-field"
+              class:input-field--error={timeLimitError}
+            />
+            <span
+              class="hint-message"
+              class:hint-message--error={timeLimitError}
+            >
+              {timeLimitError || 'Use 0 for no time limit'}
+            </span>
+          </div>
+        </div>
       </div>
     {/if}
     {#if isExecutableMode && !hasParameters}
@@ -208,10 +214,12 @@
         </div>
       </div>
     {/if}
-    {#if isCoralMode}
+    {#if isRemoteExecution}
       <div class="toggle-container">
         <div class="mpi-row">
-          <span class="toggle-label">Use MPI</span>
+          <span class="toggle-label">
+            {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
+          </span>
           <label class="switch">
             <input type="checkbox" bind:checked={useMpi} />
             <span class="slider round"></span>

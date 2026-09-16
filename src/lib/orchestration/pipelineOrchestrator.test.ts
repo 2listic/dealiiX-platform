@@ -66,7 +66,10 @@ const executableStage = (id: string): PipelineStage => ({
   config: {
     executablePath: '/exe',
     parametersFileName: 'parameters.json',
+    nodes: 1,
+    tasksPerNode: 1,
     timeLimit: '01:00:00',
+    useMpi: false,
   },
 })
 

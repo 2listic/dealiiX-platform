@@ -17,6 +17,7 @@ import type {
 import type {
   CoralJobConfig,
   ExecutableJobConfig,
+  MpiResourceConfig,
 } from '../types/jobConfigTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { isValidSlurmTime } from '../utils/slurmTime'
@@ -25,22 +26,27 @@ let nodes = $state.raw<Node[]>([])
 let edges = $state.raw<Edge[]>([])
 let counter = 0
 
+const DEFAULT_MPI_RESOURCES: MpiResourceConfig = {
+  useMpi: false,
+  nodes: 1,
+  tasksPerNode: 4,
+}
+
 const DEFAULT_CORAL_CONFIG = (
   coralBinaryPath: string,
   coralPluginPath: string
 ): CoralJobConfig => ({
+  ...DEFAULT_MPI_RESOURCES,
   coralBinaryPath,
   coralPluginPath,
-  nodes: 1,
-  tasksPerNode: 4,
   timeLimit: '01:00:00',
-  useMpi: false,
 })
 
 const DEFAULT_EXECUTABLE_CONFIG = (
   executablePath: string,
   parametersFileName: string
 ): ExecutableJobConfig => ({
+  ...DEFAULT_MPI_RESOURCES,
   executablePath,
   parametersFileName,
   timeLimit: '01:00:00',
@@ -191,7 +197,9 @@ export const pipelineState = {
    * Replaces the canvas with an imported pipeline file, rebuilding xyflow nodes
    * from the flat file nodes and resyncing the stage-id counter so subsequently
    * added stages don't collide with the imported ones. The metadata envelope on
-   * the file is ignored.
+   * the file is ignored. Stage configs are merged over the current defaults, so a
+   * file exported before a config field existed loads with a usable value rather
+   * than letting `undefined` reach the batch script.
    * @param file - A previously exported pipeline file ({@link PipelineFile}).
    */
   load(file: PipelineFile): void {
@@ -199,7 +207,10 @@ export const pipelineState = {
       id,
       type,
       position,
-      data,
+      data: {
+        ...data,
+        config: { ...defaultStageConfig(type), ...data.config },
+      },
     })) as unknown as Node[]
     edges = file.pipeline.edges.map((edge) => ({
       id: `xy-edge__${edge.source}-${edge.target}`,
@@ -253,7 +264,7 @@ export const pipelineState = {
           issues.push(`${stage.name}: no executable path`)
         if (!stage.parameters)
           issues.push(`${stage.name}: no parameters loaded`)
-        if (stage.config.timeLimit && !isValidSlurmTime(stage.config.timeLimit))
+        if (!isValidSlurmTime(stage.config.timeLimit))
           issues.push(`${stage.name}: invalid time limit`)
       }
     }
@@ -262,6 +273,24 @@ export const pipelineState = {
 }
 
 // ── Private helpers ──
+
+/**
+ * Baseline config an imported stage is merged over, so a file exported before a
+ * config field existed loads with a usable value instead of `undefined`.
+ * Paths default to empty because an imported stage always carries its own.
+ * @param type - The stage kind discriminant from the file.
+ * @returns The default config for that stage kind.
+ */
+const defaultStageConfig = (
+  type: 'coralStage' | 'executableStage'
+): CoralJobConfig | ExecutableJobConfig => {
+  switch (type) {
+    case 'coralStage':
+      return DEFAULT_CORAL_CONFIG('', '')
+    case 'executableStage':
+      return DEFAULT_EXECUTABLE_CONFIG('', 'parameters.json')
+  }
+}
 
 /** Next unused stage counter value given a set of already-present nodes (ids like `p0`, `p1`, ...). */
 const nextStageCounter = (nodes: Node[]): number =>
