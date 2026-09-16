@@ -209,7 +209,7 @@ export const pipelineState = {
       position,
       data: {
         ...data,
-        config: { ...DEFAULT_MPI_RESOURCES, ...data.config },
+        config: { ...defaultStageConfig(type), ...data.config },
       },
     })) as unknown as Node[]
     edges = file.pipeline.edges.map((edge) => ({
@@ -264,7 +264,7 @@ export const pipelineState = {
           issues.push(`${stage.name}: no executable path`)
         if (!stage.parameters)
           issues.push(`${stage.name}: no parameters loaded`)
-        if (stage.config.timeLimit && !isValidSlurmTime(stage.config.timeLimit))
+        if (!isValidSlurmTime(stage.config.timeLimit))
           issues.push(`${stage.name}: invalid time limit`)
       }
     }
@@ -273,6 +273,24 @@ export const pipelineState = {
 }
 
 // ── Private helpers ──
+
+/**
+ * Baseline config an imported stage is merged over, so a file exported before a
+ * config field existed loads with a usable value instead of `undefined`.
+ * Paths default to empty because an imported stage always carries its own.
+ * @param type - The stage kind discriminant from the file.
+ * @returns The default config for that stage kind.
+ */
+const defaultStageConfig = (
+  type: 'coralStage' | 'executableStage'
+): CoralJobConfig | ExecutableJobConfig => {
+  switch (type) {
+    case 'coralStage':
+      return DEFAULT_CORAL_CONFIG('', '')
+    case 'executableStage':
+      return DEFAULT_EXECUTABLE_CONFIG('', 'parameters.json')
+  }
+}
 
 /** Next unused stage counter value given a set of already-present nodes (ids like `p0`, `p1`, ...). */
 const nextStageCounter = (nodes: Node[]): number =>

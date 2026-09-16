@@ -415,8 +415,7 @@ const buildExecutableBatchScript = (
   workingDirectory: string,
   config: ExecutableJobConfig
 ): string => {
-  const { executablePath, parametersFileName, useMpi } = config
-  const timeLimit = config.timeLimit ?? '01:00:00'
+  const { executablePath, parametersFileName, timeLimit, useMpi } = config
   const resourceDirectives = useMpi
     ? `#SBATCH --nodes=${config.nodes}\n#SBATCH --ntasks-per-node=${config.tasksPerNode}\n`
     : ''

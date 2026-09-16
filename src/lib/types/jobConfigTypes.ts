@@ -33,5 +33,5 @@ export type ExecutableJobConfig = MpiResourceConfig & {
   executablePath: string
   /** Params filename (extension selects JSON/PRM); captured at stage creation. */
   parametersFileName: string
-  timeLimit?: string
+  timeLimit: string
 }

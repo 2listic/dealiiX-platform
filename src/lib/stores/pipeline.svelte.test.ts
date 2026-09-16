@@ -1,6 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { pipelineState, getNodesSnapshot } from './pipeline.svelte'
-import type { PipelineFile, PipelineStage } from '../types/pipelineTypes'
+import type {
+  CoralPipelineStage,
+  ExecutablePipelineStage,
+  PipelineFile,
+  PipelineStage,
+} from '../types/pipelineTypes'
+import type { ParameterTree } from '../types/parameterTypes'
 
 /** A coral stage in the download/import file format. */
 const coralFileStage = (
@@ -21,6 +27,40 @@ const coralFileStage = (
     useMpi: false,
   },
 })
+
+/** An executable stage in the download/import file format. */
+const executableFileStage = (
+  id: string,
+  position = { x: 0, y: 0 }
+): PipelineStage => ({
+  id,
+  type: 'executableStage',
+  position,
+  name: id,
+  parameters: null,
+  config: {
+    executablePath: '/step-70',
+    parametersFileName: 'parameters.json',
+    nodes: 1,
+    tasksPerNode: 1,
+    timeLimit: '01:00:00',
+    useMpi: false,
+  },
+})
+
+/**
+ * Drops fields from a stage's config, standing in for a file exported before
+ * those fields existed. Typed loosely because the result is deliberately not a
+ * complete config.
+ */
+const withoutConfigFields = (
+  stage: PipelineStage,
+  ...fields: string[]
+): PipelineStage => {
+  const config = { ...stage.config } as Record<string, unknown>
+  for (const field of fields) delete config[field]
+  return { ...stage, config } as PipelineStage
+}
 
 /** Wraps stages/edges into a full {@link PipelineFile} (with envelope). */
 const file = (
@@ -97,6 +137,67 @@ describe('pipelineState.load', () => {
     expect(getNodesSnapshot().map((n) => n.id)).toEqual(['p1'])
   })
 
+  it('fills in config fields a coral stage predates, without touching its own', () => {
+    const stage = withoutConfigFields(
+      coralFileStage('p0'),
+      'useMpi',
+      'nodes',
+      'tasksPerNode'
+    )
+
+    pipelineState.load(file([stage]))
+
+    // Defaults supply the missing fields; the file still wins where it has a value.
+    expect(getNodesSnapshot()[0].data.config).toMatchObject({
+      useMpi: false,
+      nodes: 1,
+      tasksPerNode: 4,
+      coralBinaryPath: '/coral',
+      coralPluginPath: '/plugin',
+      timeLimit: '01:00:00',
+    })
+  })
+
+  it('fills in a missing time limit rather than leaving it undefined', () => {
+    const stage = withoutConfigFields(executableFileStage('p0'), 'timeLimit')
+
+    pipelineState.load(file([stage]))
+
+    expect(getNodesSnapshot()[0].data.config).toMatchObject({
+      timeLimit: '01:00:00',
+    })
+  })
+
+  it('merges the defaults of the stage kind it is loading', () => {
+    pipelineState.load(
+      file([
+        withoutConfigFields(coralFileStage('p0'), 'timeLimit'),
+        withoutConfigFields(executableFileStage('p1'), 'timeLimit'),
+      ])
+    )
+
+    const [coral, executable] = getNodesSnapshot()
+    // An executable stage must not pick up coral's path fields, or vice versa.
+    expect(coral.data.config).not.toHaveProperty('executablePath')
+    expect(executable.data.config).not.toHaveProperty('coralBinaryPath')
+    expect(executable.data.config).not.toHaveProperty('coralPluginPath')
+  })
+
+  it('keeps file values that differ from the defaults', () => {
+    const stage = coralFileStage('p0')
+    stage.config.useMpi = true
+    stage.config.tasksPerNode = 8
+    stage.config.timeLimit = '02:30:00'
+
+    pipelineState.load(file([stage]))
+
+    expect(getNodesSnapshot()[0].data.config).toMatchObject({
+      useMpi: true,
+      tasksPerNode: 8,
+      timeLimit: '02:30:00',
+    })
+  })
+
   it('ignores the metadata envelope on the file', () => {
     // A file whose envelope differs from the app's — load must not choke on it.
     const loaded = file([coralFileStage('p0')])
@@ -104,6 +205,52 @@ describe('pipelineState.load', () => {
     loaded.version = 99
     expect(() => pipelineState.load(loaded)).not.toThrow()
     expect(getNodesSnapshot()).toHaveLength(1)
+  })
+})
+
+describe('pipelineState.validation', () => {
+  /** An executable stage that is runnable apart from whatever a test breaks. */
+  const runnableExecutableStage = (id: string): PipelineStage => {
+    const stage = executableFileStage(id) as ExecutablePipelineStage
+    stage.parameters = {} as ParameterTree
+    return stage
+  }
+
+  it('rejects an empty time limit on an executable stage', () => {
+    const stage = runnableExecutableStage('p0')
+    stage.config.timeLimit = ''
+
+    pipelineState.load(file([stage]))
+
+    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+    expect(pipelineState.validation.runnable).toBe(false)
+  })
+
+  it('rejects an empty time limit on a coral stage', () => {
+    const stage = coralFileStage('p0') as CoralPipelineStage
+    stage.config.timeLimit = ''
+
+    pipelineState.load(file([stage]))
+
+    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+  })
+
+  it('rejects a malformed time limit on an executable stage', () => {
+    const stage = runnableExecutableStage('p0')
+    stage.config.timeLimit = 'later'
+
+    pipelineState.load(file([stage]))
+
+    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+  })
+
+  it('accepts a well-formed time limit', () => {
+    pipelineState.load(file([runnableExecutableStage('p0')]))
+
+    expect(pipelineState.validation.issues).not.toContain(
+      'p0: invalid time limit'
+    )
+    expect(pipelineState.validation.runnable).toBe(true)
   })
 })
 
