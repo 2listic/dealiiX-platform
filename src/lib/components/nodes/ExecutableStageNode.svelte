@@ -17,6 +17,7 @@
   let { id, data }: NodeProps<ExecutableStageNodeType> = $props()
 
   let paramsInput: HTMLInputElement | undefined = $state()
+  let total = $derived(data.config.nodes * data.config.tasksPerNode)
   let timeInvalid = $derived(
     !!data.config.timeLimit && !isValidSlurmTime(data.config.timeLimit)
   )
@@ -96,6 +97,49 @@
     onchange={onLoadParams}
   />
 
+  <label class="mpi-row">
+    <input
+      type="checkbox"
+      checked={data.config.useMpi}
+      onchange={(e) =>
+        pipelineState.updateStageConfig(id, {
+          useMpi: (e.currentTarget as HTMLInputElement).checked,
+        })}
+    />
+    Binary is MPI-enabled
+  </label>
+
+  {#if data.config.useMpi}
+    <div class="row">
+      <label class="field">
+        Nodes
+        <input
+          type="number"
+          min="1"
+          value={data.config.nodes}
+          oninput={(e) =>
+            pipelineState.updateStageConfig(id, {
+              nodes: (e.currentTarget as HTMLInputElement).valueAsNumber || 1,
+            })}
+        />
+      </label>
+      <label class="field">
+        Tasks/node
+        <input
+          type="number"
+          min="1"
+          value={data.config.tasksPerNode}
+          oninput={(e) =>
+            pipelineState.updateStageConfig(id, {
+              tasksPerNode:
+                (e.currentTarget as HTMLInputElement).valueAsNumber || 1,
+            })}
+        />
+      </label>
+      <span class="total">= {total}</span>
+    </div>
+  {/if}
+
   <label class="field">
     Time limit
     <input
@@ -165,6 +209,27 @@
     flex-direction: column;
     gap: 0.2rem;
   }
+  .mpi-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+  }
+  /* Only the fields sharing a row need to divide it; the standalone ones stack. */
+  .row .field {
+    flex: 1;
+    min-width: 0;
+  }
+  .total {
+    font-weight: bold;
+    padding-bottom: 0.4rem;
+    white-space: nowrap;
+  }
+  input[type='number'],
   input[type='text'] {
     padding: 0.3rem;
     border: 1px solid var(--ternary-color);

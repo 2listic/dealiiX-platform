@@ -23,8 +23,12 @@ export type CoralJobConfig = MpiResourceConfig & {
   timeLimit: string
 }
 
-/** Submit config for an executable run (single run or `executableStage` pipeline stage). */
-export type ExecutableJobConfig = {
+/**
+ * Submit config for an executable run (single run or `executableStage` pipeline stage).
+ * `useMpi` here is the user's assertion that the binary calls `MPI_Init` itself —
+ * the app supplies only the launcher and cannot verify the other half.
+ */
+export type ExecutableJobConfig = MpiResourceConfig & {
   /** Path of the binary to run (captured at stage creation, not read from settings at submit). */
   executablePath: string
   /** Params filename (extension selects JSON/PRM); captured at stage creation. */

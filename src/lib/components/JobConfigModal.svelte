@@ -35,13 +35,10 @@
   )
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
-  let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let isRemoteExecution = $derived(location === 'remote')
-  // Only remote CORAL runs launch through mpirun today.
-  let canUseMpi = $derived(isCoralMode && isRemoteExecution)
-  // The checkbox state outlives a close/reopen, so hiding the control must also
-  // disable it — otherwise a tick made in remote mode reaches a local run.
-  let mpiEnabled = $derived(canUseMpi && useMpi)
+  // Only remote runs launch through mpirun today. The checkbox state outlives a
+  // close/reopen, so hiding the control must also disable it.
+  let mpiEnabled = $derived(isRemoteExecution && useMpi)
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   let timeLimitError = $derived(
@@ -78,7 +75,10 @@
           {
             executablePath: target.executablePath,
             parametersFileName,
+            nodes,
+            tasksPerNode,
             timeLimit,
+            useMpi: mpiEnabled,
           } satisfies ExecutableJobConfig,
           trimmedRunName
         )
@@ -214,10 +214,12 @@
         </div>
       </div>
     {/if}
-    {#if canUseMpi}
+    {#if isRemoteExecution}
       <div class="toggle-container">
         <div class="mpi-row">
-          <span class="toggle-label">Use MPI</span>
+          <span class="toggle-label">
+            {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
+          </span>
           <label class="switch">
             <input type="checkbox" bind:checked={useMpi} />
             <span class="slider round"></span>

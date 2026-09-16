@@ -313,7 +313,7 @@ export const submitExecutableStageRemote = async ({
   dependencyJobIds: string[]
 }): Promise<string> => {
   const internalJobId = jobIdMapState.getNextKey()
-  const { executablePath, parametersFileName } = config
+  const { parametersFileName } = config
 
   await ensureRemoteDir(stageDir)
   await uploadFileSsh(
@@ -323,8 +323,6 @@ export const submitExecutableStageRemote = async ({
   const batchScript = buildExecutableBatchScript(
     internalJobId,
     stageDir,
-    executablePath,
-    parametersFileName,
     config
   )
   await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
@@ -404,14 +402,29 @@ const shellEscape = (value: string): string => {
   return `'${String(value).replaceAll("'", `'\\''`)}'`
 }
 
+/**
+ * Builds the sbatch script for an executable stage. Kept inline rather than
+ * templated because the executable and params paths need shell quoting.
+ * @param internalJobId - The internal job id for the `--job-name`.
+ * @param workingDirectory - The job working directory (flows from stageDir, not config).
+ * @param config - The complete executable job config (paths, MPI resources, time limit).
+ * @returns The sbatch script content.
+ */
 const buildExecutableBatchScript = (
   internalJobId: number,
   workingDirectory: string,
-  executablePath: string,
-  parametersFileName: string,
-  config?: ExecutableJobConfig
+  config: ExecutableJobConfig
 ): string => {
-  const timeLimit = config?.timeLimit ?? '01:00:00'
+  const { executablePath, parametersFileName, useMpi } = config
+  const timeLimit = config.timeLimit ?? '01:00:00'
+  const resourceDirectives = useMpi
+    ? `#SBATCH --nodes=${config.nodes}\n#SBATCH --ntasks-per-node=${config.tasksPerNode}\n`
+    : ''
+  // `-np` reads the rank count Slurm derives from the directives above, so the
+  // launcher can never disagree with the allocation.
+  const launcher = useMpi
+    ? 'mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1} '
+    : ''
 
   // Pass the parameters file as a bare name (the job already chdir's into the
   // working directory). This keeps the volatile directory path — e.g. the
@@ -422,9 +435,9 @@ const buildExecutableBatchScript = (
 #SBATCH --chdir=${workingDirectory}
 #SBATCH --output=${workingDirectory}/slurm-%j.out
 #SBATCH --job-name=executable-${internalJobId}
-#SBATCH --time=${timeLimit}
+${resourceDirectives}#SBATCH --time=${timeLimit}
 
-${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersFileName)}
+${launcher}${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersFileName)}
 `
 }
 
@@ -577,7 +590,7 @@ const localJobPolling = async (
 }
 
 export const JOB_DATE_INDEX = [2, 3]
-export const JOB_LIST_DAYS = 7
+export const JOB_LIST_DAYS = 30
 
 /**
  * Fetches the job list from the remote Slurm scheduler via SSH sacct.
