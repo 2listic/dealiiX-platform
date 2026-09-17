@@ -3,10 +3,12 @@
   import {
     EXECUTION_LOCATIONS,
     BACKEND_KINDS,
+    MPI_LAUNCHER_KINDS,
     type ExecutionSettings,
     type ExecutionLocation,
     type BackendKind,
   } from '../types/settingsTypes'
+  import { buildMpiLauncherCommand } from '../utils/mpiLauncher'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
@@ -48,6 +50,16 @@
   let remoteExecutableParametersFileName = $derived(
     settingsState.remote.parametersFileName
   )
+  let remoteMpiLauncherKind = $derived(settingsState.remote.mpiLauncher.kind)
+  let remoteMpiExtraArgs = $derived(
+    settingsState.remote.mpiLauncher.extraArgs ?? ''
+  )
+  let launcherPreview = $derived(
+    buildMpiLauncherCommand({
+      kind: remoteMpiLauncherKind,
+      extraArgs: remoteMpiExtraArgs,
+    })
+  )
   let isSavingExecution = $state(false)
   let showRemoteSettings = $derived(editLocation === 'remote')
   let showCoralSettings = $derived(editBackendKind === 'coral')
@@ -66,9 +78,9 @@
         coralPluginPath: localCoralPluginPath,
         executablePath: localExecutablePath,
         parametersFileName: localExecutableParametersFileName,
-        // Plain empty object (not the reactive proxy) so this object stays
-        // structured-cloneable across the probe IPC; saveExecutionPaths restores
-        // the real per-target probe status from live settings.
+        // Carried through, not rebuilt: there is no local launcher UI yet (#221).
+        mpiLauncher: $state.snapshot(settingsState.local.mpiLauncher),
+        // Not the $state proxy — this crosses the probe IPC; saveExecutionPaths restores it.
         probes: {},
       },
       remote: {
@@ -81,6 +93,11 @@
         executablePath: remoteExecutablePath,
         parametersFileName: remoteExecutableParametersFileName,
         sshKeyPath: sshPath,
+        mpiLauncher: {
+          kind: remoteMpiLauncherKind,
+          // Undefined rather than '' so the stored shape says "unset" explicitly.
+          extraArgs: remoteMpiExtraArgs.trim() || undefined,
+        },
         // See the note on `local.probes` above.
         probes: {},
       },
@@ -132,6 +149,8 @@
     localExecutableParametersFileName = settingsState.local.parametersFileName
     remoteExecutablePath = settingsState.remote.executablePath
     remoteExecutableParametersFileName = settingsState.remote.parametersFileName
+    remoteMpiLauncherKind = settingsState.remote.mpiLauncher.kind
+    remoteMpiExtraArgs = settingsState.remote.mpiLauncher.extraArgs ?? ''
   }
 
   const pickSshFile = async () => {
@@ -189,7 +208,7 @@
               editBackendKind = executionSelectionState.backendKind
             }
           }}
-          aria-expanded={executionOpen}>Execution paths</button
+          aria-expanded={executionOpen}>Execution</button
         >
         {#if executionOpen}
           <div class="accordion-body" transition:slide={{ duration: 300 }}>
@@ -406,6 +425,49 @@
                   </div>
                 </div>
               {/if}
+
+              {#if showRemoteSettings}
+                <div class="subsection">
+                  <div class="subsection-title">MPI launcher</div>
+                  <p class="section-hint">
+                    How MPI jobs start their ranks. Used only when a run has MPI
+                    enabled.
+                  </p>
+                  <div class="stacked-fields">
+                    <label class="field">
+                      <span>Launcher</span>
+                      <select
+                        bind:value={remoteMpiLauncherKind}
+                        class="input-field"
+                      >
+                        {#each MPI_LAUNCHER_KINDS as kind (kind)}
+                          <option value={kind}>{kind}</option>
+                        {/each}
+                      </select>
+                      <p class="field-hint">
+                        srun takes its rank count from the Slurm allocation;
+                        mpirun is for targets without one.
+                      </p>
+                    </label>
+                    <label class="field">
+                      <span>Extra launcher arguments</span>
+                      <input
+                        bind:value={remoteMpiExtraArgs}
+                        class="input-field"
+                        type="text"
+                        placeholder="e.g. --mpi=pmix"
+                      />
+                      <p class="field-hint">
+                        Appended verbatim: <code
+                          >{launcherPreview} &lt;binary&gt;</code
+                        >. Use <code>--mpi=&lt;plugin&gt;</code> to override the
+                        cluster's default PMI plugin.
+                      </p>
+                    </label>
+                  </div>
+                </div>
+              {/if}
+
               <div class="probe-info">
                 <div>
                   {activeProbe?.message || 'Not validated for this mode yet'}
@@ -669,7 +731,17 @@
     display: flex;
     flex-direction: column;
     gap: 1vh;
+    /* Hairline + breathing room so it is clear where one subsection ends. */
+    margin-top: 2vh;
+    padding-top: 2vh;
+    border-top: 1px solid
+      color-mix(in srgb, var(--ternary-color) 20%, transparent);
+  }
+
+  .subsection:first-of-type {
+    margin-top: 0;
     padding-top: 1vh;
+    border-top: none;
   }
 
   .subsection-title {
