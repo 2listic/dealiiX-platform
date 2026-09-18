@@ -19,7 +19,7 @@ const loadSettings = async () => {
       // Key absent — first launch or isolated E2E store. Silently use defaults.
       settings = createDefaultSettings()
     } else if (isValidAppSettings(storedSettings)) {
-      settings = normalizeProbes(storedSettings)
+      settings = normalizeStoredSettings(storedSettings)
     } else {
       // Key present but schema is wrong (e.g. after an app upgrade).
       settings = createDefaultSettings()
@@ -132,18 +132,39 @@ const persistSettings = async (nextSettings: AppSettings) => {
   await window.electron.store.set('settings', $state.snapshot(settings))
 }
 
-// Backfill the per-target `probes` map for settings persisted before it existed.
-const normalizeProbes = (stored: AppSettings): AppSettings => ({
-  ...stored,
-  execution: {
-    ...stored.execution,
-    local: {
-      ...stored.execution.local,
-      probes: stored.execution.local.probes ?? {},
+// Backfill per-target fields added after settings were first persisted. Defaults
+// come from createDefaultSettings so they are never spelled out twice.
+const normalizeStoredSettings = (stored: AppSettings): AppSettings => {
+  const defaults = createDefaultSettings()
+
+  return {
+    ...stored,
+    execution: {
+      ...stored.execution,
+      local: {
+        ...stored.execution.local,
+        mpiLauncher:
+          stored.execution.local.mpiLauncher ??
+          defaults.execution.local.mpiLauncher,
+        probes: currentProbes(stored.execution.local.probes),
+      },
+      remote: {
+        ...stored.execution.remote,
+        mpiLauncher:
+          stored.execution.remote.mpiLauncher ??
+          defaults.execution.remote.mpiLauncher,
+        probes: currentProbes(stored.execution.remote.probes),
+      },
     },
-    remote: {
-      ...stored.execution.remote,
-      probes: stored.execution.remote.probes ?? {},
-    },
-  },
-})
+  }
+}
+
+// Keeps only the probes carrying an `outcome`. Ones recorded before that field
+// existed are dropped rather than translated, so the combination reads as
+// unvalidated until Validate & Sync runs again.
+const currentProbes = (
+  stored: Partial<Record<BackendKind, ProbeResult>> | undefined
+): Partial<Record<BackendKind, ProbeResult>> =>
+  Object.fromEntries(
+    Object.entries(stored ?? {}).filter(([, probe]) => probe?.outcome)
+  )
