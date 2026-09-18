@@ -65,12 +65,19 @@ export type ExecutionSettings = {
 }
 
 /**
+ * How a probe ended. `warning` is still validated — the target synced, but
+ * something about it will fail at run time. A subset of the toast types, so it
+ * can be handed straight to `toastState`.
+ */
+export type ProbeOutcome = 'success' | 'warning' | 'error'
+
+/**
  * A single validation outcome for one target × backend kind. Status only — the
  * heavy payload (node registry / parameters template) is routed to its own
  * per-location store, not stored here.
  */
 export type ProbeResult = {
-  ok: boolean
+  outcome: ProbeOutcome
   message: string
   syncedAt?: string
 }

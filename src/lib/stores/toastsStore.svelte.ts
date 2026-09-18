@@ -1,6 +1,6 @@
 interface Toast {
   id: number
-  type: 'success' | 'error' | 'info'
+  type: 'success' | 'error' | 'warning' | 'info'
   dismissible: boolean
   timeout: number
   message: string
@@ -20,12 +20,14 @@ export const toastState = {
     toasts = newToasts
   },
   /**
-   * Queues a new toast notification. Defaults: type `'success'`, dismissible, 5 s timeout (10 s for errors).
+   * Queues a new toast notification. Defaults: type `'success'`, dismissible, 5 s timeout (10 s for errors and warnings).
    * @param toast - Toast fields to display. Only `message` is required; all other fields override the defaults.
    */
   add(toast: Partial<Toast> & { message: string }) {
     const id = Math.floor(Math.random() * 10000)
-    const timeoutDefault = toast.type == 'error' ? 10000 : 5000
+    // Warnings linger as long as errors: they report something the user has to act on.
+    const timeoutDefault =
+      toast.type === 'error' || toast.type === 'warning' ? 10000 : 5000
     const defaults = {
       id,
       type: 'success' as const,

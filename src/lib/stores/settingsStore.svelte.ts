@@ -146,15 +146,25 @@ const normalizeStoredSettings = (stored: AppSettings): AppSettings => {
         mpiLauncher:
           stored.execution.local.mpiLauncher ??
           defaults.execution.local.mpiLauncher,
-        probes: stored.execution.local.probes ?? {},
+        probes: currentProbes(stored.execution.local.probes),
       },
       remote: {
         ...stored.execution.remote,
         mpiLauncher:
           stored.execution.remote.mpiLauncher ??
           defaults.execution.remote.mpiLauncher,
-        probes: stored.execution.remote.probes ?? {},
+        probes: currentProbes(stored.execution.remote.probes),
       },
     },
   }
 }
+
+// Keeps only the probes carrying an `outcome`. Ones recorded before that field
+// existed are dropped rather than translated, so the combination reads as
+// unvalidated until Validate & Sync runs again.
+const currentProbes = (
+  stored: Partial<Record<BackendKind, ProbeResult>> | undefined
+): Partial<Record<BackendKind, ProbeResult>> =>
+  Object.fromEntries(
+    Object.entries(stored ?? {}).filter(([, probe]) => probe?.outcome)
+  )

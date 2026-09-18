@@ -349,9 +349,9 @@ export const probeAndSyncExecutionSettings = async (
 
     return {
       status: {
-        ok: true,
+        outcome: warning ? 'warning' : 'success',
         message: warning
-          ? `Configuration validated successfully — ${warning}`
+          ? `Configuration validated — ${warning}`
           : 'Configuration validated successfully',
         syncedAt: new Date().toISOString(),
       },
@@ -360,7 +360,7 @@ export const probeAndSyncExecutionSettings = async (
   } catch (error) {
     return {
       status: {
-        ok: false,
+        outcome: 'error',
         message: (error as Error)?.message || 'Configuration probe failed',
       },
       metadata: null,

@@ -111,16 +111,11 @@
         editBackendKind,
         execution
       )
-      if (!result?.ok) {
-        toastState.add({
-          message: result?.message || 'Configuration probe failed',
-          type: 'error',
-        })
-        return
-      }
+      // The probe outcome is already a toast type, warning included, so a
+      // missing launcher lands in orange instead of inside a green success line.
       toastState.add({
-        message: result.message || 'Execution settings saved',
-        type: 'success',
+        message: result?.message || 'Validate & Sync returned no details',
+        type: result?.outcome ?? 'error',
       })
     } finally {
       isSavingExecution = false
@@ -469,7 +464,7 @@
               {/if}
 
               <div class="probe-info">
-                <div>
+                <div class:probe-warning={activeProbe?.outcome === 'warning'}>
                   {activeProbe?.message || 'Not validated for this mode yet'}
                 </div>
                 {#if activeProbe?.syncedAt}
@@ -767,6 +762,11 @@
 
   .probe-subtle {
     opacity: 0.75;
+  }
+
+  .probe-warning {
+    color: DarkOrange;
+    font-weight: bold;
   }
 
   .execution-actions {
