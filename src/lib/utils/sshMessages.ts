@@ -22,12 +22,10 @@ import type { ParameterTree } from '../types/parameterTypes'
 import type {
   CoralJobConfig,
   ExecutableJobConfig,
+  MpiResourceConfig,
 } from '../types/jobConfigTypes'
-// The `?raw` Vite suffix imports the file contents as a plain string at build time.
-// It works identically in dev, built app, and packaged Electron binaries.
-// Docs: https://vite.dev/guide/assets#importing-asset-as-string
-import defaultSbatchTemplate from '../templates/sbatch.template.sh?raw'
-import defaultSbatchMpiTemplate from '../templates/sbatch-mpi.template.sh?raw'
+import type { SbatchMpiResources } from './sbatchScript'
+import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
@@ -164,7 +162,13 @@ export const submitCoralStageRemote = async ({
     JSON.stringify(withMpiPlugin(graph, useMpi)),
     `${stageDir}/graph.json`
   )
-  const batchScript = buildBatchScript(useMpi, internalJobId, stageDir, config)
+  const batchScript = buildSbatchScript({
+    jobName: `coral-${internalJobId}`,
+    workingDirectory: stageDir,
+    timeLimit: config.timeLimit,
+    command: `${config.coralBinaryPath} --plugin ${config.coralPluginPath} run ${stageDir}/graph.json --touch-dir nodes-exec-status/${internalJobId}`,
+    mpi: useMpi ? remoteMpiResources(config) : null,
+  })
   await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
 
   const jobId = await submitSbatch(`${stageDir}/job.sh`, dependencyJobIds)
@@ -320,11 +324,15 @@ export const submitExecutableStageRemote = async ({
     serializeParametersFile(parameters, parametersFileName),
     `${stageDir}/${parametersFileName}`
   )
-  const batchScript = buildExecutableBatchScript(
-    internalJobId,
-    stageDir,
-    config
-  )
+  // Bare filename, not a path: some deal.II programs read their dimension from
+  // the params path, so the volatile stage directory must stay out of argv.
+  const batchScript = buildSbatchScript({
+    jobName: `executable-${internalJobId}`,
+    workingDirectory: stageDir,
+    timeLimit: config.timeLimit,
+    command: `${shellQuoteForScript(config.executablePath)} ${shellQuoteForScript(parametersFileName)}`,
+    mpi: config.useMpi ? remoteMpiResources(config) : null,
+  })
   await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
 
   const jobId = await submitSbatch(`${stageDir}/job.sh`, dependencyJobIds)
@@ -361,38 +369,14 @@ export const buildGraphPayload = (
   useMpi: boolean
 ): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
 
-/**
- * Builds the batch script content from the appropriate template, replacing all placeholders.
- * {{WORKING_DIRECTORY}}, {{CORAL_BINARY_PATH}}, {{CORAL_PLUGIN_PATH}}, and {{TIME_LIMIT}} apply to both templates.
- * {{NODES}} and {{NTASKS_PER_NODE}} apply only to the MPI template.
- * @param useMpi - Whether to use the MPI template.
- * @param internalJobId - The internal job id for the `--job-name`.
- * @param workingDirectory - The job working directory (flows from stageDir, not config).
- * @param config - The complete coral job config (carries coralBinaryPath/coralPluginPath).
- */
-const buildBatchScript = (
-  useMpi: boolean,
-  internalJobId: number,
-  workingDirectory: string,
-  config: CoralJobConfig
-): string => {
-  const template = useMpi ? defaultSbatchMpiTemplate : defaultSbatchTemplate
-  let script = template
-    .replaceAll('{{INTERNAL_JOB_ID}}', String(internalJobId))
-    .replaceAll('{{TIME_LIMIT}}', config.timeLimit)
-    .replaceAll('{{WORKING_DIRECTORY}}', workingDirectory)
-    .replaceAll('{{CORAL_BINARY_PATH}}', config.coralBinaryPath)
-    .replaceAll('{{CORAL_PLUGIN_PATH}}', config.coralPluginPath)
-  if (useMpi) {
-    script = script
-      .replaceAll('{{NODES}}', String(config.nodes))
-      .replaceAll('{{NTASKS_PER_NODE}}', String(config.tasksPerNode))
-  }
-
-  console.log('Generated script:', script)
-
-  return script
-}
+/** Pairs a stage's MPI resources with the remote target's configured launcher. */
+const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({
+  nodes: config.nodes,
+  tasksPerNode: config.tasksPerNode,
+  // Read at submit, not captured into the config: the launcher belongs to the
+  // cluster, so an imported pipeline must not carry its origin's value.
+  launcher: settingsState.remote.mpiLauncher,
+})
 
 const shellQuoteForScript = (value: string): string => {
   return `"${String(value).replaceAll('"', '\\"')}"`
@@ -400,44 +384,6 @@ const shellQuoteForScript = (value: string): string => {
 
 const shellEscape = (value: string): string => {
   return `'${String(value).replaceAll("'", `'\\''`)}'`
-}
-
-/**
- * Builds the sbatch script for an executable stage. Kept inline rather than
- * templated because the executable and params paths need shell quoting.
- * @param internalJobId - The internal job id for the `--job-name`.
- * @param workingDirectory - The job working directory (flows from stageDir, not config).
- * @param config - The complete executable job config (paths, MPI resources, time limit).
- * @returns The sbatch script content.
- */
-const buildExecutableBatchScript = (
-  internalJobId: number,
-  workingDirectory: string,
-  config: ExecutableJobConfig
-): string => {
-  const { executablePath, parametersFileName, timeLimit, useMpi } = config
-  const resourceDirectives = useMpi
-    ? `#SBATCH --nodes=${config.nodes}\n#SBATCH --ntasks-per-node=${config.tasksPerNode}\n`
-    : ''
-  // `-np` reads the rank count Slurm derives from the directives above, so the
-  // launcher can never disagree with the allocation.
-  const launcher = useMpi
-    ? 'mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1} '
-    : ''
-
-  // Pass the parameters file as a bare name (the job already chdir's into the
-  // working directory). This keeps the volatile directory path — e.g. the
-  // pipeline's `pipeline-<timestamp>/stage-<id>` — out of the executable's argv.
-  // Some deal.II programs (e.g. step-70) sniff their dimension from the file path,
-  // so a stray digit in the directory name would otherwise change the run.
-  return `#!/bin/bash
-#SBATCH --chdir=${workingDirectory}
-#SBATCH --output=${workingDirectory}/slurm-%j.out
-#SBATCH --job-name=executable-${internalJobId}
-${resourceDirectives}#SBATCH --time=${timeLimit}
-
-${launcher}${shellQuoteForScript(executablePath)} ${shellQuoteForScript(parametersFileName)}
-`
 }
 
 /** Creates a remote directory (and parents) so SFTP uploads into it succeed. */

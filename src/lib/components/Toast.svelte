@@ -12,7 +12,7 @@
   <div style="width: 2rem">
     {#if type === 'success'}
       <SuccessIcon width="2rem" />
-    {:else if type === 'error'}
+    {:else if type === 'error' || type === 'warning'}
       <ErrorIcon width="2rem" />
     {:else}
       <InfoIcon width="2rem" />
@@ -46,6 +46,9 @@
   }
   .success {
     background: MediumSeaGreen;
+  }
+  .warning {
+    background: DarkOrange;
   }
   .info {
     background: SkyBlue;

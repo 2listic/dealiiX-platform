@@ -275,6 +275,37 @@ const getExecutableTemplateMetadataRemote = async (
 }
 
 /**
+ * Checks that the configured MPI launcher exists on the remote target, so a
+ * missing one surfaces here instead of as a job that fails after submission.
+ *
+ * @param target - The remote execution target.
+ * @returns A warning when the launcher is not on PATH, else null.
+ */
+const missingLauncherWarning = async (
+  target: RemoteExecutionSettings
+): Promise<string | null> => {
+  const { kind } = target.mpiLauncher
+
+  try {
+    // `command -v` exits non-zero when the launcher is absent, so the probe has
+    // to reject on the exit code — its output alone would look like success.
+    await connectToSSHWithKey(
+      `command -v ${shellEscape(kind)}`,
+      {
+        host: target.host,
+        port: target.port,
+        username: target.username,
+        pathToSsh: target.sshKeyPath,
+      },
+      { rejectOnNonZeroCode: true }
+    )
+    return null
+  } catch {
+    return `MPI launcher "${kind}" was not found on this target, so MPI runs will fail`
+  }
+}
+
+/**
  * Validates one execution target, probes local paths or remote connectivity, and fetches
  * backend metadata (node registry or parameters template) depending on the backend kind.
  *
@@ -310,10 +341,18 @@ export const probeAndSyncExecutionSettings = async (
             )
     }
 
+    // Local runs are always serial today, so only the remote launcher is checked.
+    const warning =
+      location === 'remote'
+        ? await missingLauncherWarning(target as RemoteExecutionSettings)
+        : null
+
     return {
       status: {
-        ok: true,
-        message: 'Configuration validated successfully',
+        outcome: warning ? 'warning' : 'success',
+        message: warning
+          ? `Configuration validated — ${warning}`
+          : 'Configuration validated successfully',
         syncedAt: new Date().toISOString(),
       },
       metadata,
@@ -321,7 +360,7 @@ export const probeAndSyncExecutionSettings = async (
   } catch (error) {
     return {
       status: {
-        ok: false,
+        outcome: 'error',
         message: (error as Error)?.message || 'Configuration probe failed',
       },
       metadata: null,

@@ -67,11 +67,12 @@ describe('submitExecutableStageRemote batch script', () => {
 
     expect(script).not.toContain('--nodes=')
     expect(script).not.toContain('--ntasks-per-node=')
+    expect(script).not.toContain('srun')
     expect(script).not.toContain('mpirun')
     expect(script).toContain('"/opt/step-70" "parameters.json"')
   })
 
-  it('requests the resources and launches through mpirun when MPI is on', async () => {
+  it("requests the resources and launches through the target's launcher when MPI is on", async () => {
     const script = await uploadedBatchScript({
       ...baseExecutableConfig,
       useMpi: true,
@@ -79,11 +80,10 @@ describe('submitExecutableStageRemote batch script', () => {
 
     expect(script).toContain('#SBATCH --nodes=2')
     expect(script).toContain('#SBATCH --ntasks-per-node=4')
-    // -np defers to Slurm's own rank count so the launcher cannot disagree
-    // with the allocation requested above.
-    expect(script).toContain(
-      'mpirun --allow-run-as-root -np ${SLURM_NTASKS:-1} "/opt/step-70" "parameters.json"'
-    )
+    // srun is the remote default, and it takes the rank count from the
+    // allocation requested above rather than restating it.
+    expect(script).toContain('srun "/opt/step-70" "parameters.json"')
+    expect(script).not.toContain('SLURM_NTASKS')
   })
 
   it('applies the configured time limit rather than the fallback', async () => {
