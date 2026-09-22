@@ -12,6 +12,7 @@
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
+  import { isProbeValidated } from '../utils/settingsActions'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { isValidSlurmTime, SLURM_TIME_HINT } from '../utils/slurmTime'
@@ -49,7 +50,7 @@
     // Block runs for a mode that was never validated — switching mode no longer
     // probes, so the paths/payload for this combination may be unset.
     const backendKind = executionSelectionState.backendKind
-    if (!settingsState.getProbe(location, backendKind)?.ok) {
+    if (!isProbeValidated(settingsState.getProbe(location, backendKind))) {
       toastState.add({
         message: `Configuration for ${location}/${backendKind} is not validated — open Settings and Validate & Sync.`,
         type: 'error',

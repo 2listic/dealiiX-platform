@@ -1,8 +1,26 @@
 export const EXECUTION_LOCATIONS = ['local', 'remote'] as const
 export const BACKEND_KINDS = ['coral', 'executable'] as const
+export const MPI_LAUNCHER_KINDS = ['srun', 'mpirun'] as const
 
 export type ExecutionLocation = (typeof EXECUTION_LOCATIONS)[number]
 export type BackendKind = (typeof BACKEND_KINDS)[number]
+export type MpiLauncherKind = (typeof MPI_LAUNCHER_KINDS)[number]
+
+/**
+ * How a target launches MPI ranks.
+ */
+export type MpiLauncherSettings = {
+  /**
+   * `srun` inherits the Slurm allocation and registers a real job step;
+   * `mpirun` is for targets with no Slurm allocation to inherit.
+   */
+  kind: MpiLauncherKind
+  /**
+   * Extra launcher flags, appended verbatim — e.g. `--mpi=pmix` to override the
+   * cluster's MpiDefault, or `--allow-run-as-root` for mpirun as root.
+   */
+  extraArgs?: string
+}
 
 export type NodeRegistryMetadata = {
   kind: 'nodeRegistry'
@@ -26,6 +44,8 @@ export type ExecutionTargetSettings = {
   executablePath: string
   parametersFileName: string
   workingDirectory: string
+  // Backfilled at load for settings saved before it existed, like `probes`.
+  mpiLauncher: MpiLauncherSettings
   // Probe status per backend kind for this target (paths/reachability differ per
   // target, so status is stored here; the validated payload lives in the
   // per-location registry/parameters store).
@@ -45,12 +65,19 @@ export type ExecutionSettings = {
 }
 
 /**
+ * How a probe ended. `warning` is still validated — the target synced, but
+ * something about it will fail at run time. A subset of the toast types, so it
+ * can be handed straight to `toastState`.
+ */
+export type ProbeOutcome = 'success' | 'warning' | 'error'
+
+/**
  * A single validation outcome for one target × backend kind. Status only — the
  * heavy payload (node registry / parameters template) is routed to its own
  * per-location store, not stored here.
  */
 export type ProbeResult = {
-  ok: boolean
+  outcome: ProbeOutcome
   message: string
   syncedAt?: string
 }
@@ -87,6 +114,8 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
   executablePath: '',
   parametersFileName: 'parameters.json',
   workingDirectory: '',
+  // No Slurm allocation to inherit locally, so srun has nothing to launch through.
+  mpiLauncher: { kind: 'mpirun' },
   probes: {},
 })
 
@@ -101,6 +130,7 @@ export const createDefaultSettings = (): AppSettings => ({
       port: 2222,
       username: 'root',
       sshKeyPath: '',
+      mpiLauncher: { kind: 'srun' },
       workingDirectory: '/app/shared-data',
       coralBinaryPath: '/app/build/core/coral',
       coralPluginPath: '/app/build/backends/dealii/libcoral_backend_dealii.so',

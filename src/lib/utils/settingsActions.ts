@@ -30,7 +30,7 @@ export const probeAndSaveExecution = async (
 ): Promise<ProbeResult> => {
   if (!window.electron?.invoke || !window.electron?.store) {
     return {
-      ok: false,
+      outcome: 'error',
       message:
         'Validate & Sync is available only in the Electron app, not in dev:vite mode.',
     }
@@ -52,13 +52,13 @@ export const probeAndSaveExecution = async (
     )
   } catch (error) {
     return {
-      ok: false,
+      outcome: 'error',
       message: (error as Error)?.message || 'Configuration probe failed',
     }
   }
 
   const { status, metadata } = response
-  if (!status.ok) return status
+  if (status.outcome === 'error') return status
 
   await applySyncedMetadata(location, metadata)
   await settingsState.saveExecutionPaths(execution)
@@ -73,6 +73,16 @@ export const probeAndSaveExecution = async (
 }
 
 /**
+ * Whether a recorded probe counts as validated. A `warning` does: the target
+ * synced, so the combination is usable — only some part of it will fail later.
+ *
+ * @param probe - The recorded probe result, or undefined if never probed.
+ * @returns True when the combination has been validated.
+ */
+export const isProbeValidated = (probe?: ProbeResult): boolean =>
+  probe?.outcome === 'success' || probe?.outcome === 'warning'
+
+/**
  * Toasts a hint when the given location × backend kind has no successful probe
  * recorded yet, pointing the user to Settings. Call after a mode/location switch.
  *
@@ -83,7 +93,7 @@ export const warnIfUnvalidated = (
   location: ExecutionLocation,
   backendKind: BackendKind
 ) => {
-  if (!settingsState.getProbe(location, backendKind)?.ok) {
+  if (!isProbeValidated(settingsState.getProbe(location, backendKind))) {
     toastState.add({
       message: `Configuration for ${location}/${backendKind} not validated yet — open Settings and Validate & Sync.`,
       type: 'error',
