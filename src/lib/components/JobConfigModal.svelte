@@ -42,7 +42,7 @@
   let totalProcesses = $derived(nodes * tasksPerNode)
 
   let timeLimitError = $derived(
-    isValidSlurmTime(timeLimit) ? '' : SLURM_TIME_HINT
+    isRemoteExecution && !isValidSlurmTime(timeLimit) ? SLURM_TIME_HINT : ''
   )
 
   const handleConfirm = () => {

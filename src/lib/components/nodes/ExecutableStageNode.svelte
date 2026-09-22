@@ -18,9 +18,7 @@
 
   let paramsInput: HTMLInputElement | undefined = $state()
   let total = $derived(data.config.nodes * data.config.tasksPerNode)
-  let timeInvalid = $derived(
-    !!data.config.timeLimit && !isValidSlurmTime(data.config.timeLimit)
-  )
+  let timeInvalid = $derived(!isValidSlurmTime(data.config.timeLimit))
 
   const onLoadParams = async () => {
     const file = paramsInput?.files?.[0]
