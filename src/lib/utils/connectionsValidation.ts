@@ -7,13 +7,10 @@
 
 import type { Connection, Edge, Node } from '@xyflow/svelte'
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
-import {
-  handleIdToIndex,
-  resolveInputArgument,
-  resolveOutputType,
-} from './canvasNodeUtils'
-import { isTypeCompatible } from '../types/nodeTypes'
+import { getInputTypeAndName, getOutputTypeAndName } from './canvasNodeUtils'
+import { isTypeCompatible, NodeType } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
+import { parameterHandlePath } from './parameterPorts'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -58,13 +55,37 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
 
   // Resolve the expected input type and the source's output type
   const targetNode = nodes.find((node) => node.id === connection.target)
-  const handleIndexInput = handleIdToIndex(connection.targetHandle as string)
-  const expectedInputType = resolveInputArgument(
-    targetNode!.data,
-    handleIndexInput
-  )?.type
-  const handleIndexOutput = handleIdToIndex(connection.sourceHandle as string)
-  const sourceType = resolveOutputType(sourceNode.data, handleIndexOutput)
+  if (!targetNode) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
+
+  const targetHandle = connection.targetHandle as string
+  const sourceHandle = connection.sourceHandle as string
+  const targetParameter = parameterHandlePath(targetHandle)
+  const sourceParameter = parameterHandlePath(sourceHandle)
+
+  // Exposed parameter inputs are evaluated before execution. A computed
+  // backend/subnetwork output cannot provide their value at that point; only
+  // a scalar literal or another parameter-file output is frontend-resolvable.
+  if (
+    targetParameter?.direction === 'input' &&
+    !sourceParameter &&
+    sourceNode.data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
+    sourceNode.data.node_type !== NodeType.PRIMITIVE
+  ) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
+
+  const expectedInputType = getInputTypeAndName(
+    targetNode,
+    targetHandle
+  )?.connectionType
+  const sourceType = getOutputTypeAndName(
+    sourceNode,
+    sourceHandle
+  )?.connectionType
 
   console.log(
     `Handle ${
