@@ -77,6 +77,14 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
+  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { settingsState } from '../../stores/settingsStore.svelte'
+  import { isParameterFileName } from '../../utils/parameterFileFormat'
+  import {
+    parameterFileExists,
+    parameterFileTarget,
+  } from '../../utils/parameterFileAccess'
 
   let {
     id,
@@ -90,10 +98,52 @@
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
   let color = $derived(nodeColors[type as keyof typeof nodeColors])
+  let activeLocation = $derived(executionSelectionState.location)
+  let workingDirectory = $derived(
+    activeLocation === 'local'
+      ? settingsState.local.workingDirectory
+      : settingsState.remote.workingDirectory
+  )
+  let isParameterFile = $derived(
+    [Type.STRING, Type.STR].includes(data.type as Type) &&
+      isParameterFileName(data.value)
+  )
+  let parameterFileAvailable = $state(false)
+  let parameterCheckId = 0
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
+
+  $effect(() => {
+    const fileName = data.value
+    const checkId = ++parameterCheckId
+    parameterFileAvailable = false
+    if (!isParameterFile || !workingDirectory) return
+
+    const target = parameterFileTarget(activeLocation, fileName)
+    void parameterFileExists(target)
+      .then((exists) => {
+        if (checkId === parameterCheckId) parameterFileAvailable = exists
+      })
+      .catch(() => {
+        if (checkId === parameterCheckId) parameterFileAvailable = false
+      })
+  })
+
+  const handleOpenParameters = async () => {
+    try {
+      await parameterFileEditorState.open(
+        parameterFileTarget(activeLocation, data.value)
+      )
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error ? error.message : 'Failed to open parameters',
+        type: 'error',
+      })
+    }
+  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -209,6 +259,16 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
+        {#if isParameterFile && parameterFileAvailable}
+          <button
+            class="node-button"
+            title="Open parameters"
+            aria-label="Open parameters"
+            onclick={handleOpenParameters}
+          >
+            <OpenIcon width="20px" height="20px" />
+          </button>
+        {/if}
         <button
           class="node-button"
           title="Edit name"
@@ -300,7 +360,8 @@
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
         <input
           type="text"
-          class={isValid ? '' : 'invalid'}
+          class:is-invalid={!isValid}
+          class:parameter-file-input={isParameterFile}
           value={data.value}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
@@ -392,8 +453,21 @@
     box-sizing: border-box;
   }
 
-  input.invalid {
+  input.is-invalid {
     border: 2px solid red;
+  }
+
+  input.parameter-file-input {
+    background-color: var(--button-action-bg);
+    border-color: var(--button-action-bg);
+    color: white;
+    font-family: monospace;
+  }
+
+  input.parameter-file-input:focus {
+    border-color: var(--button-action-hover);
+    outline: 2px solid
+      color-mix(in srgb, var(--button-action-bg) 35%, transparent);
   }
 
   .input-column {

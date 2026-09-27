@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ParameterTree } from '../types/parameterTypes'
 import {
   parseParametersFileWithFormat,
+  isParameterFileName,
   parsePrmParameters,
   getParameterProbeFileNames,
   normalizeParameterFileName,
@@ -25,6 +26,13 @@ end
 `
 
 describe('parameterFileFormat', () => {
+  it('recognizes JSON and PRM parameter filenames case-insensitively', () => {
+    expect(isParameterFileName('poisson.prm')).toBe(true)
+    expect(isParameterFileName('nested/Poisson.JSON')).toBe(true)
+    expect(isParameterFileName('poisson.txt')).toBe(false)
+    expect(isParameterFileName(42)).toBe(false)
+  })
+
   it('parses prm subsections and set values into a parameter tree', () => {
     const parsed = parsePrmParameters(samplePrm)
     const error = parsed.Error as ParameterTree

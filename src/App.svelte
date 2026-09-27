@@ -17,9 +17,12 @@
   import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
   import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
   import { jobsState } from './lib/stores/jobsStore.svelte'
+  import ParameterFileEditor from './lib/components/ParameterFileEditor.svelte'
+  import { parameterFileEditorState } from './lib/stores/parameterFileEditor.svelte'
 
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let viewMode = $derived(viewModeState.value)
+  let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
 
   // Keep the per-location registry/params stores pointed at the active location
   // (covers the async load and any location switch). Also refreshes the jobs
@@ -102,7 +105,9 @@
           <ExecutionBadge />
         </div>
         <div class="flow-wrapper">
-          {#if viewMode === 'pipeline'}
+          {#if isParameterEditorOpen}
+            <ParameterFileEditor />
+          {:else if viewMode === 'pipeline'}
             <PipelineCanvas />
           {:else if isCoralMode}
             <FlowCanvas />

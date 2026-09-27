@@ -10,7 +10,32 @@
     isParameterTree,
   } from '../utils/parameterFileFormat'
 
-  let parameters = $derived(parametersState.value)
+  interface Props {
+    /** Optional standalone tree used by the graph parameter-file editor. */
+    parameters?: ParameterTree | null
+    /** Replaces an externally-owned tree after structural edits. */
+    onChange?: (_parameters: ParameterTree) => void
+    /** Marks an externally-owned tree dirty after leaf edits. */
+    onDirty?: () => void
+  }
+
+  let { parameters: externalParameters, onChange, onDirty }: Props = $props()
+
+  let parameters = $derived(
+    externalParameters === undefined
+      ? parametersState.value
+      : externalParameters
+  )
+
+  const setParameters = (next: ParameterTree) => {
+    if (externalParameters === undefined) {
+      parametersState.value = next
+    } else {
+      onChange?.(next)
+    }
+  }
+
+  const markDirty = () => onDirty?.()
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
@@ -72,7 +97,7 @@
    * @param key  - Name of the section within its parent, e.g. `"Mesh"`.
    */
   function duplicateSection(path: string[], key: string) {
-    if (!parametersState.value) return
+    if (!parameters) return
 
     const suggestedName = `${key}_copy`
     duplicateModalPath = path
@@ -85,12 +110,10 @@
    * Commits the duplication after the user confirms the name in the modal.
    */
   function confirmDuplicateSection() {
-    if (!parametersState.value || !duplicateModalKey) return
+    if (!parameters || !duplicateModalKey) return
 
     // Deep-clone so intermediate mutations don't touch the live reactive store.
-    const nextParameters = $state.snapshot(
-      parametersState.value
-    ) as ParameterTree
+    const nextParameters = $state.snapshot(parameters) as ParameterTree
     // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
@@ -117,7 +140,8 @@
     // mutation here propagates back to nextParameters.
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
     // only this final assignment triggers Svelte reactivity.
-    parametersState.value = nextParameters
+    setParameters(nextParameters)
+    markDirty()
     toastState.add({
       message: `Section ${duplicateModalKey} duplicated as ${newName}`,
       type: 'success',
@@ -138,17 +162,18 @@
    * @param key  - Key of the node to delete within its parent.
    */
   function deleteExtraNode(path: string[], key: string) {
-    if (!parametersState.value) return
+    if (!parameters) return
     if (!window.confirm(`Delete "${key}"? This cannot be undone.`)) return
     // Deep-clone so intermediate mutations don't touch the live reactive store.
-    const next = $state.snapshot(parametersState.value) as ParameterTree
+    const next = $state.snapshot(parameters) as ParameterTree
     // parent is a reference into next — mutations propagate back via JS reference semantics.
     const parent = getTreeAtPath(next, path)
     if (!parent) return
     // mutation here propagates back to next.
     delete parent[key]
     // only this final assignment triggers Svelte reactivity.
-    parametersState.value = next
+    setParameters(next)
+    markDirty()
     toastState.add({ message: `${key} removed`, type: 'success' })
   }
 
@@ -173,7 +198,7 @@
 
   $effect(() => {
     if (parameters) {
-      console.log('parameters changed:', parametersState.snapshot)
+      console.log('parameters changed:', parameters)
     }
   })
 </script>
@@ -213,6 +238,7 @@
                       val.value = (e.target as HTMLInputElement).checked
                         ? 'true'
                         : 'false'
+                      markDirty()
                     }}
                   />
                 {:else if inputType === 'selection'}
@@ -220,6 +246,7 @@
                     value={val.value}
                     onchange={(e) => {
                       val.value = (e.target as HTMLSelectElement).value
+                      markDirty()
                     }}
                   >
                     {#each getSelectionOptions(val.pattern_description) as opt (opt)}
@@ -235,6 +262,7 @@
                       : 'any'}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
+                      markDirty()
                     }}
                   />
                 {:else}
@@ -243,6 +271,7 @@
                     value={val.value}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
+                      markDirty()
                     }}
                   />
                 {/if}

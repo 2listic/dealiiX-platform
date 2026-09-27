@@ -24,6 +24,13 @@ import type { SbatchMpiResources } from './sbatchScript'
 import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
+import { isParameterFileName } from './parameterFileFormat'
+import {
+  normalizeRelativeParameterPath,
+  readParameterFile,
+  type ParameterFileTarget,
+} from './parameterFileAccess'
+import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   resolveGraphFileReferences,
@@ -89,11 +96,31 @@ export const submitCoralStageRemote = async ({
   const internalJobId = jobIdMapState.getNextKey()
 
   await ensureRemoteDir(stageDir)
+  const executionGraph = await materializeProtocolGraphIfNeeded(
+    graph,
+    'remote',
+    {},
+    stageDir
+  )
   const resolvedGraph = await resolveGraphFileReferences(
-    withMpiPlugin(graph, useMpi),
+    withMpiPlugin(executionGraph, useMpi),
     'remote',
     settingsState.remote.workingDirectory
   )
+  const parameterFileNames = collectParameterFileNames(executionGraph)
+  for (const fileName of parameterFileNames) {
+    const target: ParameterFileTarget = {
+      location: 'remote',
+      workingDirectory: settingsState.remote.workingDirectory,
+      fileName,
+    }
+    const loaded = await readParameterFile(target)
+    const relativePath = normalizeRelativeParameterPath(fileName)
+    const stagedPath = `${stageDir}/${relativePath}`
+    const directory = stagedPath.slice(0, stagedPath.lastIndexOf('/'))
+    await ensureRemoteDir(directory)
+    await uploadFileSsh(loaded.content, stagedPath)
+  }
   await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
     jobName: `coral-${internalJobId}`,
@@ -117,6 +144,24 @@ export const submitCoralStageRemote = async ({
  */
 export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
+}
+
+/** Collects parameter-file references from node value fields, including subnetworks. */
+export const collectParameterFileNames = (value: unknown): string[] => {
+  const names = new Set<string>()
+  const visit = (current: unknown): void => {
+    if (Array.isArray(current)) {
+      current.forEach(visit)
+      return
+    }
+    if (!current || typeof current !== 'object') return
+
+    const record = current as Record<string, unknown>
+    if (isParameterFileName(record.value)) names.add(record.value.trim())
+    Object.values(record).forEach(visit)
+  }
+  visit(value)
+  return Array.from(names)
 }
 
 /**

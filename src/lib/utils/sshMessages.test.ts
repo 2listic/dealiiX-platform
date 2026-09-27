@@ -18,8 +18,8 @@ vi.stubGlobal('window', {
 
 const {
   ensureUniqueRemoteDir,
-  submitCoralStageRemote,
   submitExecutableStageRemote,
+  submitCoralStageRemote,
 } = await import('./sshMessages')
 const { settingsState } = await import('../stores/settingsStore.svelte')
 
@@ -141,8 +141,8 @@ describe('submitExecutableStageRemote batch script', () => {
   })
 })
 
-describe('submitCoralStageRemote batch script', () => {
-  it('runs the Coral binary and plugin configured for the remote target', async () => {
+describe('submitCoralStageRemote parameter staging', () => {
+  it('stages referenced parameter files and uses the configured Coral launch paths', async () => {
     const uploads: Record<string, string> = {}
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, string>) => {
@@ -150,25 +150,43 @@ describe('submitCoralStageRemote batch script', () => {
           uploads[payload.remotePath] = payload.content
           return ''
         }
-        return payload.command?.startsWith('sbatch') ? '4242' : ''
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) return 'set Value = 3\n'
+        return ''
       }
     )
 
     await submitCoralStageRemote({
-      graph: { workflow: { nodes: {}, edges: [] } },
-      stageDir: '/data/stage-p0',
+      graph: {
+        workflow: {
+          nodes: {
+            '0': {
+              type: 'std::string',
+              value: 'nested/poisson.prm',
+            },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-1',
       config: {
         nodes: 1,
-        tasksPerNode: 1,
-        timeLimit: '01:00:00',
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
         useMpi: false,
       },
       dependencyJobIds: [],
     })
 
     const { coralBinaryPath, coralPluginPath } = settingsState.remote
-    expect(uploads['/data/stage-p0/job.sh']).toContain(
-      `${coralBinaryPath} --plugin ${coralPluginPath} run /data/stage-p0/graph.json`
+    expect(uploads['/app/shared-data/run-1/job.sh']).toContain(
+      `${coralBinaryPath} --plugin ${coralPluginPath} run /app/shared-data/run-1/graph.json`
+    )
+    expect(uploads['/app/shared-data/run-1/nested/poisson.prm']).toBe(
+      'set Value = 3\n'
+    )
+    expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
+      'nested/poisson.prm'
     )
   })
 })
