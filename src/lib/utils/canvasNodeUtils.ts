@@ -16,6 +16,7 @@ import {
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 import {
   parameterExposureForHandle,
+  parameterHandlePath,
   parameterPathLabel,
   parameterPortCoralType,
 } from './parameterPorts'
@@ -304,11 +305,20 @@ export const returnNodeName = (node: NodeDefinitions): string =>
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
   expectedInputType: string,
-  excludedNodeType?: string
+  excludedNodeType?: string,
+  frontendScalarOnly = false
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
   for (const nodeDefinition of availableNodes) {
     if (nodeDefinition.node_type === NodeType.ABSTRACT) continue
+    if (
+      frontendScalarOnly &&
+      ![NodeType.ELEMENTARY_CONSTRUCTOR, NodeType.PRIMITIVE].includes(
+        nodeDefinition.node_type
+      )
+    ) {
+      continue
+    }
     if (nodeDefinition.type === excludedNodeType) continue
     for (
       let handleIndex = 0;
@@ -353,6 +363,9 @@ export const resolveConnectionAndCompatibleNodes = (
 
   const { connectionType, connectionName } = connectionInfo
   const nodeType = (node.data as StandardNodeDefinition).type
+  const targetIsParameterInput =
+    connectStartParams.handleType === 'target' &&
+    parameterHandlePath(connectStartParams.handleId)?.direction === 'input'
   const compatibleOptions =
     connectStartParams.handleType === 'source'
       ? findCompatibleTargetNodesAsOptions(
@@ -363,7 +376,8 @@ export const resolveConnectionAndCompatibleNodes = (
       : findCompatibleSourceNodesAsOptions(
           availableNodes,
           connectionType,
-          nodeType
+          targetIsParameterInput ? undefined : nodeType,
+          targetIsParameterInput
         ) // 'target'
 
   return { connectionType, connectionName, compatibleOptions }
