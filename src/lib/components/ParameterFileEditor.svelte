@@ -39,17 +39,6 @@
         <strong>Parameters</strong>
         <span title={document.resolvedPath}>{document.target.fileName}</span>
       </div>
-      <div class="editor-actions">
-        <Button
-          variant="action"
-          size="small"
-          disabled={!document.dirty || document.saving}
-          onclick={save}
-        >
-          {document.saving ? 'Saving…' : 'Save'}
-        </Button>
-        <Button size="small" onclick={backToGraph}>Back to graph</Button>
-      </div>
     </div>
     <div class="editor-content">
       <ParametersView
@@ -58,6 +47,17 @@
         onDirty={() => parameterFileEditorState.markDirty()}
       />
     </div>
+    <div class="editor-actions">
+      <Button
+        variant="action"
+        size="small"
+        disabled={!document.dirty || document.saving}
+        onclick={save}
+      >
+        {document.saving ? 'Saving…' : 'Save'}
+      </Button>
+      <Button size="small" onclick={backToGraph}>Back to graph</Button>
+    </div>
   {:else}
     <div class="editor-loading">Opening parameters…</div>
   {/if}
@@ -65,6 +65,7 @@
 
 <style>
   .parameter-editor {
+    position: relative;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -83,8 +84,7 @@
     background: var(--primary-color);
   }
 
-  .editor-heading,
-  .editor-actions {
+  .editor-heading {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -104,6 +104,21 @@
 
   .editor-content :global(.parameters-view) {
     height: 100%;
+  }
+
+  .editor-actions {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 62rem;
+    background: var(--surface-color);
+    box-shadow: 0 0.2rem 0.8rem
+      color-mix(in srgb, var(--ternary-color) 8%, transparent);
   }
 
   .editor-loading {
