@@ -16,9 +16,11 @@ vi.stubGlobal('window', {
   },
 })
 
-const { ensureUniqueRemoteDir, submitExecutableStageRemote } = await import(
-  './sshMessages'
-)
+const {
+  ensureUniqueRemoteDir,
+  submitExecutableStageRemote,
+  submitCoralStageRemote,
+} = await import('./sshMessages')
 
 beforeEach(() => {
   invoke.mockReset()
@@ -134,6 +136,54 @@ describe('submitExecutableStageRemote batch script', () => {
 
     expect(uploads['/data/stage-p0/parameters.json']).toContain(
       '"value": "/app/shared-data/mesh.vtu"'
+    )
+  })
+})
+
+describe('submitCoralStageRemote parameter staging', () => {
+  it('stages referenced parameter files while preserving relative paths', async () => {
+    const uploads: Record<string, string> = {}
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          return ''
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) return 'set Value = 3\n'
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '0': {
+              type: 'std::string',
+              value: 'nested/poisson.prm',
+            },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-1',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/app/shared-data/run-1/nested/poisson.prm']).toBe(
+      'set Value = 3\n'
+    )
+    expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
+      'nested/poisson.prm'
     )
   })
 })
