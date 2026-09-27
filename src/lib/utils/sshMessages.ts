@@ -8,7 +8,13 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraphWithQualifiedIds } from './graphParser'
+import {
+  edgesFromProtocolToFlow,
+  nodesFromProtocolToFlow,
+  parseGraphWithQualifiedIds,
+  removeQualifiedIds,
+} from './graphParser'
+import { materializeParameterGraph } from './parameterMaterialization'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -72,6 +78,74 @@ export const executeWithKey = async (): Promise<void> => {
 }
 
 /**
+ * Exports a computational graph to the remote server and executes it via Slurm.
+ * Polls the job status until completion and displays results via toast notifications.
+ * @param nodes - Array of nodes (must be snapshots, not reactive)
+ * @param edges - Array of edges (must be snapshots, not reactive)
+ * @param config - Optional job configuration for template placeholders
+ * @param runName - Optional user-supplied name; slugified into the run's output folder.
+ * @returns Resolves when the job completes or fails.
+ * @throws {Error} Throws if export, execution, or polling fails.
+ * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
+ */
+export const exportAndEvalCoralGraph = async (
+  location: ExecutionLocation,
+  nodes: Node[],
+  edges: Edge[],
+  config: CoralJobConfig,
+  runName?: string
+): Promise<void> => {
+  if (location === 'local') {
+    await exportAndEvalGraphLocal(nodes, edges, config, runName)
+  } else if (location === 'remote') {
+    await exportAndEvalGraphRemote(nodes, edges, config, runName)
+  }
+}
+
+export const exportAndEvalExecutable = async (
+  location: ExecutionLocation,
+  config: ExecutableJobConfig,
+  runName?: string
+): Promise<void> => {
+  if (location === 'local') {
+    await exportAndEvalExecutableLocal(config, runName)
+  } else if (location === 'remote') {
+    await exportAndEvalExecutableRemote(config, runName)
+  }
+}
+
+const exportAndEvalGraphRemote = async (
+  nodes: Node[],
+  edges: Edge[],
+  config: CoralJobConfig,
+  runName?: string
+): Promise<void> => {
+  // Parse the canvas once without MPI; the submit primitive injects the MPI block.
+  const graph = await buildExecutionGraphPayload('remote', nodes, edges, false)
+  // Give every single remote run a unique, legible subdir so back-to-back runs
+  // don't clobber the shared graph.json/job.sh (the batch script reads
+  // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
+  // isolation pipeline stages already have.
+  const runDir = await ensureUniqueRemoteDir(
+    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  const jobId = await submitCoralStageRemote({
+    graph,
+    stageDir: runDir,
+    config,
+    dependencyJobIds: [],
+  })
+  toastState.add({ message: `Submitted job ${jobId}` })
+
+  // poll every 10 secs for 1 day, finally display final status
+  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+/**
  * Builds, uploads, and submits a single CORAL-graph stage as one Slurm job, with
  * optional `afterok` dependencies, and returns its Slurm job id without polling.
  * @param params.graph - The CORAL network object (MPI block injected here from config).
@@ -94,7 +168,6 @@ export const submitCoralStageRemote = async ({
 }): Promise<string> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-
   await ensureRemoteDir(stageDir)
   const executionGraph = await materializeProtocolGraphIfNeeded(
     graph,
@@ -146,6 +219,32 @@ export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
 }
 
+/** Converts a saved frontend graph back through the execution compiler when a
+ * pipeline stage contains virtual parameter ports. Ordinary Coral graphs take
+ * the fast path and remain byte-for-byte compatible with previous stages. */
+const materializeProtocolGraphIfNeeded = async (
+  graph: object
+): Promise<object> => {
+  const hasParameterMetadata = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(hasParameterMetadata)
+    if (!value || typeof value !== 'object') return false
+    const record = value as Record<string, unknown>
+    if (record.parameter_file) return true
+    return Object.values(record).some(hasParameterMetadata)
+  }
+  if (!hasParameterMetadata(graph)) return graph
+
+  const network = removeQualifiedIds(
+    graph as Parameters<typeof removeQualifiedIds>[0]
+  )
+  const materialized = await materializeParameterGraph(
+    'remote',
+    nodesFromProtocolToFlow(network.workflow.nodes),
+    edgesFromProtocolToFlow(network.workflow.edges)
+  )
+  return parseGraphWithQualifiedIds(materialized.nodes, materialized.edges)
+}
+
 /** Collects parameter-file references from node value fields, including subnetworks. */
 export const collectParameterFileNames = (value: unknown): string[] => {
   const names = new Set<string>()
@@ -162,6 +261,147 @@ export const collectParameterFileNames = (value: unknown): string[] => {
   }
   visit(value)
   return Array.from(names)
+}
+
+const exportAndEvalGraphLocal = async (
+  nodes: Node[],
+  edges: Edge[],
+  config: CoralJobConfig,
+  runName?: string
+): Promise<void> => {
+  const useMpi = config.useMpi
+  const internalJobId = jobIdMapState.getNextKey()
+  const graphPayload = await buildExecutionGraphPayload(
+    'local',
+    nodes,
+    edges,
+    useMpi
+  )
+  // Isolate every run into its own subdir, same as remote, so back-to-back runs
+  // don't clobber each other's graph.json/log.
+  const runDir = await ensureUniqueLocalDir(
+    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
+
+  const resultExecute = await window.electron.invoke('start-local-coral-run', {
+    coralBinaryPath: config.coralBinaryPath,
+    coralPluginPath: config.coralPluginPath,
+    runDirectory: runDir,
+    graphPayload,
+    internalJobId,
+    mpi: useMpi
+      ? {
+          launcher: {
+            kind: settingsState.local.mpiLauncher.kind,
+            extraArgs: settingsState.local.mpiLauncher.extraArgs,
+          },
+          processes: config.tasksPerNode,
+        }
+      : undefined,
+  })
+
+  const jobId = String(resultExecute.jobId)
+  await jobIdMapState.add(
+    jobId,
+    internalJobId,
+    'coral',
+    resultExecute.runDirectory
+  )
+  toastState.add({ message: `Started local Coral run ${jobId}` })
+
+  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
+  await jobsState.update()
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+const getExecutableParametersPayload = () => {
+  const parametersPayload = parametersState.snapshot
+  if (!parametersPayload) {
+    throw new Error(
+      'Executable backend requires a synchronized parameters template before execution'
+    )
+  }
+  return parametersPayload
+}
+
+const exportAndEvalExecutableLocal = async (
+  config: ExecutableJobConfig,
+  runName?: string
+): Promise<void> => {
+  const internalJobId = jobIdMapState.getNextKey()
+  const runDir = await ensureUniqueLocalDir(
+    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  const resultExecute = await window.electron.invoke(
+    'start-local-executable-run',
+    {
+      executablePath: config.executablePath,
+      runDirectory: runDir,
+      parametersPayload: await resolveParameterFileReferences(
+        getExecutableParametersPayload(),
+        'local',
+        settingsState.local.workingDirectory
+      ),
+      parametersFileName: config.parametersFileName,
+      internalJobId,
+      mpi: config.useMpi
+        ? {
+            launcher: {
+              kind: settingsState.local.mpiLauncher.kind,
+              extraArgs: settingsState.local.mpiLauncher.extraArgs,
+            },
+            processes: config.tasksPerNode,
+          }
+        : undefined,
+    }
+  )
+
+  // local runs have no external scheduler ID — both keys are the same internalJobId.
+  await jobIdMapState.add(
+    internalJobId,
+    internalJobId,
+    'executable',
+    resultExecute.runDirectory
+  )
+  toastState.add({ message: `Started local executable run ${internalJobId}` })
+
+  const finalState = await localJobPolling(
+    String(internalJobId),
+    1000,
+    24 * 60 * 60 * 1000
+  )
+  await jobsState.update()
+  toastState.add({
+    message: `Job id ${internalJobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
+}
+
+const exportAndEvalExecutableRemote = async (
+  config: ExecutableJobConfig,
+  runName?: string
+): Promise<void> => {
+  // Unique, legible per-run subdir so back-to-back runs don't clobber a shared job.sh.
+  const runDir = await ensureUniqueRemoteDir(
+    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
+
+  const jobId = await submitExecutableStageRemote({
+    parameters: getExecutableParametersPayload(),
+    stageDir: runDir,
+    config,
+    dependencyJobIds: [],
+  })
+  toastState.add({ message: `Submitted job ${jobId}` })
+
+  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
+  toastState.add({
+    message: `Job id ${jobId}: ${finalState}`,
+    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
+  })
 }
 
 /**
@@ -242,6 +482,20 @@ export const buildGraphPayload = (
   edges: Edge[],
   useMpi: boolean
 ): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
+
+/** Builds a backend payload after applying frontend parameter connections. */
+export const buildExecutionGraphPayload = async (
+  location: ExecutionLocation,
+  nodes: Node[],
+  edges: Edge[],
+  useMpi: boolean
+): Promise<object> => {
+  const materialized = await materializeParameterGraph(location, nodes, edges)
+  return withMpiPlugin(
+    parseGraphWithQualifiedIds(materialized.nodes, materialized.edges),
+    useMpi
+  )
+}
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
 const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({

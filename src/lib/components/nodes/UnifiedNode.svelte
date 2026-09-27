@@ -2,36 +2,42 @@
   import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
-    StandardNodeDefinition,
+    StandardNodeDefinition as StandardNodeDefinitionType,
     NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
   // unused exports
   export type ElementaryConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.ELEMENTARY_CONSTRUCTOR
   >
   export type EmptyConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.EMPTY_CONSTRUCTOR
   >
   export type Constructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.CONSTRUCTOR
   >
-  export type Abstract = FlowNode<StandardNodeDefinition, FlowNodeType.ABSTRACT>
+  export type Abstract = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.ABSTRACT
+  >
   export type VoidMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_METHOD
   >
   export type VoidConstMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_CONST_METHOD
   >
   export type VoidFunction = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_FUNCTION
   >
-  export type Function = FlowNode<StandardNodeDefinition, FlowNodeType.FUNCTION>
+  export type Function = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.FUNCTION
+  >
   export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
@@ -85,6 +91,14 @@
     parameterFileExists,
     parameterFileTarget,
   } from '../../utils/parameterFileAccess'
+  import {
+    parameterHandle,
+    parameterInputExposures,
+    parameterOutputExposures,
+    parameterPathLabel,
+    parameterPortCoralType,
+  } from '../../utils/parameterPorts'
+  import type { StandardNodeDefinition } from '../../types/nodeTypes'
 
   let {
     id,
@@ -110,6 +124,14 @@
   )
   let parameterFileAvailable = $state(false)
   let parameterCheckId = 0
+  let parameterInputs = $derived(
+    parameterInputExposures(data as StandardNodeDefinition)
+  )
+  let parameterOutputs = $derived(
+    parameterOutputExposures(data as StandardNodeDefinition)
+  )
+  let totalInputs = $derived(data.inputs.length + parameterInputs.length)
+  let totalOutputs = $derived(data.outputs.length + parameterOutputs.length)
 
   const { updateNodeData } = useSvelteFlow()
 
@@ -134,7 +156,17 @@
   const handleOpenParameters = async () => {
     try {
       await parameterFileEditorState.open(
-        parameterFileTarget(activeLocation, data.value)
+        parameterFileTarget(activeLocation, data.value),
+        {
+          exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
+          onExposureChange: (exposures) => {
+            graphHistoryState.checkpoint()
+            updateNodeData(id, {
+              parameter_file: { exposures },
+            })
+            clearConnectionCache()
+          },
+        }
       )
     } catch (error) {
       toastState.add({
@@ -296,7 +328,18 @@
       id={`input-${index}`}
       type="target"
       position={Position.Left}
-      style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
+      style="top: {(100 / (totalInputs + 1)) * (index + 1) + 5}%;"
+    />
+  {/each}
+  {#each parameterInputs as exposure, index (parameterHandle('input', exposure.path))}
+    <Handle
+      id={parameterHandle('input', exposure.path)}
+      type="target"
+      position={Position.Left}
+      class="parameter-handle"
+      style="top: {(100 / (totalInputs + 1)) *
+        (data.inputs.length + index + 1) +
+        5}%;"
     />
   {/each}
 
@@ -306,7 +349,18 @@
       id={`output-${index}`}
       type="source"
       position={Position.Right}
-      style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+      style="top: {(100 / (totalOutputs + 1)) * (index + 1) + 5}%;"
+    />
+  {/each}
+  {#each parameterOutputs as exposure, index (parameterHandle('output', exposure.path))}
+    <Handle
+      id={parameterHandle('output', exposure.path)}
+      type="source"
+      position={Position.Right}
+      class="parameter-handle"
+      style="top: {(100 / (totalOutputs + 1)) *
+        (data.outputs.length + index + 1) +
+        5}%;"
     />
   {/each}
 
@@ -335,6 +389,31 @@
               <div class="output-type">{data.arguments[i].type}</div>
             </div>
           {/if}
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  {#if parameterInputs.length > 0 || parameterOutputs.length > 0}
+    <div class="parameter-port-columns">
+      <div class="input-column">
+        {#each parameterInputs as exposure (parameterHandle('input', exposure.path))}
+          <div class="parameter-port-label">
+            <div class="input-label">{parameterPathLabel(exposure.path)}</div>
+            <div class="input-type">
+              {parameterPortCoralType(exposure.type)}
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="output-column">
+        {#each parameterOutputs as exposure (parameterHandle('output', exposure.path))}
+          <div class="parameter-port-label">
+            <div class="output-label">{parameterPathLabel(exposure.path)}</div>
+            <div class="output-type">
+              {parameterPortCoralType(exposure.type)}
+            </div>
+          </div>
         {/each}
       </div>
     </div>
@@ -507,5 +586,23 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
+  }
+
+  :global(.parameter-handle) {
+    background: var(--button-action-bg);
+    border-color: var(--button-action-hover);
+  }
+
+  .parameter-port-columns {
+    display: flex;
+    flex-direction: row;
+    gap: 4vh;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.25rem;
+  }
+
+  .parameter-port-label {
+    font-size: 0.8rem;
   }
 </style>

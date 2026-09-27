@@ -4,6 +4,7 @@ import {
   serializeParametersFile,
 } from '../utils/parameterFileFormat'
 import type { ParameterTree } from '../types/parameterTypes'
+import type { ParameterExposure } from '../types/nodeTypes'
 import {
   readParameterFile,
   writeParameterFile,
@@ -17,10 +18,19 @@ export type ParameterFileDocument = {
   parameters: ParameterTree
   dirty: boolean
   saving: boolean
+  exposures: ParameterExposure[]
+}
+
+export type ParameterFileEditorOptions = {
+  exposures?: ParameterExposure[]
+  onExposureChange?: (_exposures: ParameterExposure[]) => void
 }
 
 let document = $state<ParameterFileDocument | null>(null)
 let opening = $state(false)
+let exposureChangeHandler:
+  | ((_exposures: ParameterExposure[]) => void)
+  | undefined
 
 export const parameterFileEditorState = {
   get document() {
@@ -32,7 +42,10 @@ export const parameterFileEditorState = {
   get opening() {
     return opening
   },
-  async open(target: ParameterFileTarget): Promise<void> {
+  async open(
+    target: ParameterFileTarget,
+    options: ParameterFileEditorOptions = {}
+  ): Promise<void> {
     opening = true
     try {
       const loaded = await readParameterFile(target)
@@ -47,10 +60,23 @@ export const parameterFileEditorState = {
         parameters: parsed.data,
         dirty: false,
         saving: false,
+        exposures: (options.exposures ?? []).map((exposure) => ({
+          ...exposure,
+          path: [...exposure.path],
+        })),
       }
+      exposureChangeHandler = options.onExposureChange
     } finally {
       opening = false
     }
+  },
+  updateExposures(exposures: ParameterExposure[]): void {
+    if (!document) return
+    document.exposures = exposures.map((exposure) => ({
+      ...exposure,
+      path: [...exposure.path],
+    }))
+    exposureChangeHandler?.(document.exposures)
   },
   replaceParameters(parameters: ParameterTree): void {
     if (!document) return
@@ -76,5 +102,6 @@ export const parameterFileEditorState = {
   },
   close(): void {
     document = null
+    exposureChangeHandler = undefined
   },
 }

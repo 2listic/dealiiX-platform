@@ -34,9 +34,16 @@ import {
   type LeanNodes,
   type QualifiedLeanNodes,
   type QualifiedNetwork,
+  type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
+import {
+  parameterExposureForHandle,
+  parameterHandlePath,
+  parameterPortCoralType,
+  normalizeParameterExposures,
+} from './parameterPorts'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -161,11 +168,19 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
   } else {
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = getNodeData(protocolNode.type)
+    const regularNode = protocolNode as LeanStandardNode
     return {
       ...storeNodeData,
       position: protocolNode.position,
-      ...(protocolNode.name && { name: protocolNode.name }),
-      ...(protocolNode.value !== undefined && { value: protocolNode.value }),
+      ...(regularNode.name && { name: regularNode.name }),
+      ...(regularNode.value !== undefined && { value: regularNode.value }),
+      ...(regularNode.parameter_file && {
+        parameter_file: {
+          exposures: normalizeParameterExposures(
+            regularNode.parameter_file.exposures
+          ),
+        },
+      }),
     }
   }
 }
@@ -179,13 +194,18 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
 export const edgesFromProtocolToFlow = (edges: {
   [id: string]: NetworkEdge
 }): Edge[] => {
-  return Object.values(edges).map((edge) => ({
-    id: `xy-edge__${edge.source}output-${edge.source_output}-${edge.target}input-${edge.target_input}`,
-    source: edge.source.toString(),
-    target: edge.target.toString(),
-    sourceHandle: `output-${edge.source_output}`,
-    targetHandle: `input-${edge.target_input}`,
-  }))
+  return Object.values(edges).map((edge) => {
+    const sourceHandle =
+      edge.source_handle ?? `output-${edge.source_output ?? 0}`
+    const targetHandle = edge.target_handle ?? `input-${edge.target_input ?? 0}`
+    return {
+      id: `xy-edge__${edge.source}${sourceHandle}-${edge.target}${targetHandle}`,
+      source: edge.source.toString(),
+      target: edge.target.toString(),
+      sourceHandle,
+      targetHandle,
+    }
+  })
 }
 
 /**
@@ -238,16 +258,39 @@ export const validateGraphData = (
     // Get source and target node definition (from registry or networkNodes)
     const sourceNodeData = isSubGraphNodeDefinition(sourceNode)
       ? sourceNode
-      : getNodeData(sourceNode.type)
+      : {
+          ...getNodeData(sourceNode.type),
+          ...(sourceNode.parameter_file && {
+            parameter_file: sourceNode.parameter_file,
+          }),
+        }
     const targetNodeData = isSubGraphNodeDefinition(targetNode)
       ? targetNode
-      : getNodeData(targetNode.type)
+      : {
+          ...getNodeData(targetNode.type),
+          ...(targetNode.parameter_file && {
+            parameter_file: targetNode.parameter_file,
+          }),
+        }
 
-    // Determine source output type via outputs[] → arguments[] indirection
-    const sourceOutputType = resolveOutputType(
-      sourceNodeData,
-      edge.source_output
+    const sourceParameterExposure = parameterExposureForHandle(
+      sourceNodeData as StandardNodeDefinition,
+      edge.source_handle,
+      'output'
     )
+    const targetParameterExposure = parameterExposureForHandle(
+      targetNodeData as StandardNodeDefinition,
+      edge.target_handle,
+      'input'
+    )
+
+    // Virtual parameter handles are validated from their persisted metadata.
+    // Their numeric indices are intentionally absent from the backend protocol.
+    const sourceOutputType = sourceParameterExposure
+      ? parameterPortCoralType(sourceParameterExposure.type)
+      : edge.source_output == null
+        ? null
+        : resolveOutputType(sourceNodeData, edge.source_output)
     if (sourceOutputType == null) {
       throw new Error(
         `Edge ${edgeId}: Source node ${edge.source} has no output at index ${edge.source_output}`
@@ -255,10 +298,13 @@ export const validateGraphData = (
     }
 
     // Determine target input type via inputs[] → arguments[] indirection
-    const targetInputArg = resolveInputArgument(
-      targetNodeData,
-      edge.target_input
-    )
+    const targetInputArg = targetParameterExposure
+      ? {
+          type: parameterPortCoralType(targetParameterExposure.type),
+        }
+      : edge.target_input == null
+        ? null
+        : resolveInputArgument(targetNodeData, edge.target_input)
     if (!targetInputArg) {
       throw new Error(
         `Edge ${edgeId}: Target node ${edge.target} has no argument at index ${edge.target_input}`
@@ -346,6 +392,11 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       if (data.base) node.base = data.base
       if (data.name) node.name = data.name
       if (data.value !== undefined) node.value = data.value
+      if (data.parameter_file?.exposures?.length) {
+        node.parameter_file = {
+          exposures: normalizeParameterExposures(data.parameter_file.exposures),
+        }
+      }
       acc[obj.id] = node
     }
 
@@ -353,11 +404,21 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
   }, {})
 
   const edgesGraph = edges.reduce<NetworkEdges>((acc, obj, index) => {
+    const sourceHandle = obj.sourceHandle as string
+    const targetHandle = obj.targetHandle as string
+    const sourceOutput = handleIdToIndex(sourceHandle)
+    const targetInput = handleIdToIndex(targetHandle)
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: handleIdToIndex(obj.sourceHandle as string),
-      target_input: handleIdToIndex(obj.targetHandle as string),
+      ...(Number.isNaN(sourceOutput) ? {} : { source_output: sourceOutput }),
+      ...(Number.isNaN(targetInput) ? {} : { target_input: targetInput }),
+      ...(parameterHandlePath(sourceHandle)
+        ? { source_handle: sourceHandle }
+        : {}),
+      ...(parameterHandlePath(targetHandle)
+        ? { target_handle: targetHandle }
+        : {}),
     }
     return acc
   }, {})

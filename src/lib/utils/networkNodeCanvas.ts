@@ -100,6 +100,14 @@ const toCanvasNodeFromProtocol = (
       ...(protocolNode.name && { name: protocolNode.name }),
       ...(protocolNode.value !== undefined && { value: protocolNode.value }),
       ...(protocolNode.base && { base: protocolNode.base }),
+      ...(protocolNode.parameter_file && {
+        parameter_file: {
+          exposures: protocolNode.parameter_file.exposures.map((exposure) => ({
+            ...exposure,
+            path: [...exposure.path],
+          })),
+        },
+      }),
     },
   }
 }
@@ -140,9 +148,9 @@ const explodeSubgraphNodeSelection = (
   const explodedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
     ...createCustomEdge({
       source: oldToNewNodeId[String(edge.source)],
-      sourceHandle: `output-${edge.source_output}`,
+      sourceHandle: edge.source_handle ?? `output-${edge.source_output ?? 0}`,
       target: oldToNewNodeId[String(edge.target)],
-      targetHandle: `input-${edge.target_input}`,
+      targetHandle: edge.target_handle ?? `input-${edge.target_input ?? 0}`,
     }),
     selected: false,
   }))
