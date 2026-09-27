@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow, nativeTheme, screen } from 'electron/main'
 import { dialog } from 'electron'
 import fs from 'fs'
+import os from 'os'
 import type {
   AppSettings,
   ProbeRequest,
@@ -117,6 +118,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('ensure-unique-local-dir', async (_event, { dir }) => {
     return await ensureUniqueLocalDir(dir)
   })
+
+  ipcMain.handle('get-local-cpu-count', () => os.cpus().length)
 
   ipcMain.handle('start-local-coral-run', async (_event, payload) => {
     return await startLocalCoralRun(payload)

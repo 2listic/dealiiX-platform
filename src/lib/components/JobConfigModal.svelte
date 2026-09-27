@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
   import type {
@@ -27,6 +28,7 @@
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
+  let localCpuCount = $state(1)
   let runName = $state('')
   let location = $derived(executionSelectionState.location)
   // Writable derived: pre-filled from settings, temporarily overridable per run.
@@ -41,10 +43,28 @@
   let totalProcesses = $derived(
     isRemoteExecution ? nodes * tasksPerNode : tasksPerNode
   )
+  let oversubscriptionHint = $derived(
+    !isRemoteExecution &&
+      mpiEnabled &&
+      totalProcesses > localCpuCount &&
+      `This uses ${totalProcesses} processes on ${localCpuCount} logical CPUs; the run will be allowed to proceed.`
+  )
 
   let timeLimitError = $derived(
     isRemoteExecution && !isValidSlurmTime(timeLimit) ? SLURM_TIME_HINT : ''
   )
+
+  onMount(() => {
+    if (!window.electron?.invoke) return
+    void window.electron
+      .invoke('get-local-cpu-count')
+      .then((count) => {
+        if (Number.isInteger(count) && count > 0) {
+          localCpuCount = count
+        }
+      })
+      .catch(() => undefined)
+  })
 
   const handleConfirm = () => {
     // Block runs for a mode that was never validated — switching mode no longer
@@ -171,6 +191,11 @@
             <span class="total-value">{totalProcesses}</span>
           </div>
         </div>
+        {#if oversubscriptionHint}
+          <span class="hint-message hint-message--warning">
+            {oversubscriptionHint}
+          </span>
+        {/if}
       </div>
     {/if}
     {#if isRemoteExecution}
@@ -299,6 +324,10 @@
 
   .hint-message--error {
     color: var(--error-color, #e53935);
+  }
+
+  .hint-message--warning {
+    color: var(--button-action-bg);
   }
 
   .total {
