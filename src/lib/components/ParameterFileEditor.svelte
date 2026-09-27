@@ -43,6 +43,9 @@
     <div class="editor-content">
       <ParametersView
         parameters={document.parameters}
+        exposures={document.exposures}
+        onExposureChange={(next) =>
+          parameterFileEditorState.updateExposures(next)}
         onChange={(next) => parameterFileEditorState.replaceParameters(next)}
         onDirty={() => parameterFileEditorState.markDirty()}
       />

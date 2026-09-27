@@ -20,6 +20,22 @@ export type Argument = {
   type: Type
 }
 
+/** The four scalar types that can be exposed by a frontend parameter port. */
+export type ParameterPortType = 'string' | 'int' | 'double' | 'bool'
+
+/** Frontend-only exposure metadata for one parameter-file leaf. */
+export type ParameterExposure = {
+  path: string[]
+  type: ParameterPortType
+  input: boolean
+  output: boolean
+}
+
+/** Metadata persisted in the frontend graph, never written into the parameter file. */
+export type ParameterFileMetadata = {
+  exposures: ParameterExposure[]
+}
+
 export type InputIndex = number
 export const SELF = -1 as const
 export type OutputIndex = typeof SELF | number
@@ -114,6 +130,12 @@ export const isTypeCompatible = (
 ): boolean => {
   if (sourceType === Type.ANY || targetType === Type.ANY) return true
   if (sourceType === targetType) return true
+  if (
+    [Type.STRING, Type.STR].includes(sourceType as Type) &&
+    [Type.STRING, Type.STR].includes(targetType as Type)
+  ) {
+    return true
+  }
 
   const sourceRank = NUMERIC_WIDENING_RANK[sourceType as Type]
   const targetRank = NUMERIC_WIDENING_RANK[targetType as Type]
@@ -139,6 +161,7 @@ export type StandardNodeDefinition = {
   method_name?: string
   value?: any
   is_valid?: boolean
+  parameter_file?: ParameterFileMetadata
 }
 
 export type RegisteredNodes = {
@@ -154,9 +177,13 @@ export type RegisteredSubGraphNodes = {
 
 export type NetworkEdge = {
   source: number
-  source_output: number
+  source_output?: number
   target: number
-  target_input: number
+  target_input?: number
+  /** Stable frontend handle, present for virtual parameter ports. */
+  source_handle?: string
+  /** Stable frontend handle, present for virtual parameter ports. */
+  target_handle?: string
 }
 
 export type NetworkEdges = {
@@ -176,6 +203,7 @@ export type LeanStandardNode = {
   value?: string
   name?: string
   position?: { x: number; y: number }
+  parameter_file?: ParameterFileMetadata
 }
 
 /**

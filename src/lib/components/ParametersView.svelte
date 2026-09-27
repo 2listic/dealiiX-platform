@@ -4,11 +4,16 @@
   import { parametersState } from '../stores/parametersStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type { ParameterTree, ParameterNode } from '../types/parameterTypes'
+  import type { ParameterExposure } from '../types/nodeTypes'
   import {
     isExtraNode,
     isParameterLeaf,
     isParameterTree,
   } from '../utils/parameterFileFormat'
+  import {
+    findParameterExposure,
+    parameterPortType,
+  } from '../utils/parameterPorts'
 
   interface Props {
     /** Optional standalone tree used by the graph parameter-file editor. */
@@ -17,9 +22,19 @@
     onChange?: (_parameters: ParameterTree) => void
     /** Marks an externally-owned tree dirty after leaf edits. */
     onDirty?: () => void
+    /** Frontend-only parameter port exposure state. */
+    exposures?: ParameterExposure[]
+    /** Called when a parameter input/output switch changes. */
+    onExposureChange?: (_exposures: ParameterExposure[]) => void
   }
 
-  let { parameters: externalParameters, onChange, onDirty }: Props = $props()
+  let {
+    parameters: externalParameters,
+    onChange,
+    onDirty,
+    exposures = [],
+    onExposureChange,
+  }: Props = $props()
 
   let parameters = $derived(
     externalParameters === undefined
@@ -36,6 +51,34 @@
   }
 
   const markDirty = () => onDirty?.()
+
+  const exposureAt = (path: string[]) => findParameterExposure(exposures, path)
+
+  const setExposure = (
+    path: string[],
+    leaf: { pattern_description: string },
+    direction: 'input' | 'output',
+    enabled: boolean
+  ) => {
+    const current = exposureAt(path)
+    const next = exposures
+      .filter(
+        (exposure) =>
+          exposure.path.length !== path.length ||
+          !exposure.path.every((segment, index) => segment === path[index])
+      )
+      .map((exposure) => ({ ...exposure, path: [...exposure.path] }))
+
+    const updated: ParameterExposure = {
+      path: [...path],
+      type: current?.type ?? parameterPortType(leaf.pattern_description),
+      input: current?.input ?? false,
+      output: current?.output ?? false,
+    }
+    updated[direction] = enabled
+    if (updated.input || updated.output) next.push(updated)
+    onExposureChange?.(next)
+  }
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
@@ -220,6 +263,7 @@
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
           {#if isParameterLeaf(val)}
             {@const inputType = parsePatternType(val.pattern_description)}
+            {@const exposure = exposureAt([...path, key])}
             <div class="param-leaf">
               {#if val.documentation}
                 <span
@@ -234,6 +278,7 @@
                   <input
                     type="checkbox"
                     checked={val.value === 'true'}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).checked
                         ? 'true'
@@ -244,6 +289,7 @@
                 {:else if inputType === 'selection'}
                   <select
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLSelectElement).value
                       markDirty()
@@ -257,6 +303,7 @@
                   <input
                     type="number"
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     step={val.pattern_description.startsWith('[Integer')
                       ? '1'
                       : 'any'}
@@ -269,6 +316,7 @@
                   <input
                     type="text"
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
                       markDirty()
@@ -276,6 +324,38 @@
                   />
                 {/if}
               </label>
+              {#if onExposureChange}
+                <div class="exposure-switches" title="Graph connections">
+                  <label class="exposure-switch">
+                    <input
+                      type="checkbox"
+                      checked={exposure?.input ?? false}
+                      onchange={(event) =>
+                        setExposure(
+                          [...path, key],
+                          val,
+                          'input',
+                          (event.target as HTMLInputElement).checked
+                        )}
+                    />
+                    <span>Expose as input</span>
+                  </label>
+                  <label class="exposure-switch">
+                    <input
+                      type="checkbox"
+                      checked={exposure?.output ?? false}
+                      onchange={(event) =>
+                        setExposure(
+                          [...path, key],
+                          val,
+                          'output',
+                          (event.target as HTMLInputElement).checked
+                        )}
+                    />
+                    <span>Expose as output</span>
+                  </label>
+                </div>
+              {/if}
             </div>
           {:else}
             <details use:setInitialOpen={depth < 1}>
@@ -499,6 +579,33 @@
     gap: 0.5rem;
     flex: 1;
     min-width: 0;
+  }
+
+  .exposure-switches {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 8.5rem;
+    gap: 0.15rem;
+    font-size: 0.7rem;
+  }
+
+  .exposure-switch {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem !important;
+    white-space: nowrap;
+  }
+
+  .exposure-switch input {
+    flex: 0 0 auto;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .param-leaf input:disabled,
+  .param-leaf select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .param-name {

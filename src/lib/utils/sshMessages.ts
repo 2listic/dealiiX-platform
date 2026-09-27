@@ -12,7 +12,13 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraphWithQualifiedIds } from './graphParser'
+import {
+  edgesFromProtocolToFlow,
+  nodesFromProtocolToFlow,
+  parseGraphWithQualifiedIds,
+  removeQualifiedIds,
+} from './graphParser'
+import { materializeParameterGraph } from './parameterMaterialization'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -120,7 +126,7 @@ const exportAndEvalGraphRemote = async (
   runName?: string
 ): Promise<void> => {
   // Parse the canvas once without MPI; the submit primitive injects the MPI block.
-  const graph = buildGraphPayload(nodes, edges, false)
+  const graph = await buildExecutionGraphPayload('remote', nodes, edges, false)
   // Give every single remote run a unique, legible subdir so back-to-back runs
   // don't clobber the shared graph.json/job.sh (the batch script reads
   // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
@@ -167,7 +173,6 @@ export const submitCoralStageRemote = async ({
 }): Promise<string> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-
   await ensureRemoteDir(stageDir)
   const executionGraph = await materializeProtocolGraphIfNeeded(
     graph,
@@ -209,6 +214,32 @@ export const submitCoralStageRemote = async ({
   return jobId
 }
 
+/** Converts a saved frontend graph back through the execution compiler when a
+ * pipeline stage contains virtual parameter ports. Ordinary Coral graphs take
+ * the fast path and remain byte-for-byte compatible with previous stages. */
+const materializeProtocolGraphIfNeeded = async (
+  graph: object
+): Promise<object> => {
+  const hasParameterMetadata = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(hasParameterMetadata)
+    if (!value || typeof value !== 'object') return false
+    const record = value as Record<string, unknown>
+    if (record.parameter_file) return true
+    return Object.values(record).some(hasParameterMetadata)
+  }
+  if (!hasParameterMetadata(graph)) return graph
+
+  const network = removeQualifiedIds(
+    graph as Parameters<typeof removeQualifiedIds>[0]
+  )
+  const materialized = await materializeParameterGraph(
+    'remote',
+    nodesFromProtocolToFlow(network.workflow.nodes),
+    edgesFromProtocolToFlow(network.workflow.edges)
+  )
+  return parseGraphWithQualifiedIds(materialized.nodes, materialized.edges)
+}
+
 /** Collects parameter-file references from node value fields, including subnetworks. */
 export const collectParameterFileNames = (value: unknown): string[] => {
   const names = new Set<string>()
@@ -240,10 +271,11 @@ const exportAndEvalGraphLocal = async (
 ): Promise<void> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-  const graphPayload = await resolveGraphFileReferences(
-    buildGraphPayload(nodes, edges, useMpi),
+  const graphPayload = await buildExecutionGraphPayload(
     'local',
-    settingsState.local.workingDirectory
+    nodes,
+    edges,
+    useMpi
   )
   // Isolate every run into its own subdir, same as remote, so back-to-back runs
   // don't clobber each other's graph.json/log.
@@ -450,6 +482,20 @@ export const buildGraphPayload = (
   edges: Edge[],
   useMpi: boolean
 ): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
+
+/** Builds a backend payload after applying frontend parameter connections. */
+export const buildExecutionGraphPayload = async (
+  location: ExecutionLocation,
+  nodes: Node[],
+  edges: Edge[],
+  useMpi: boolean
+): Promise<object> => {
+  const materialized = await materializeParameterGraph(location, nodes, edges)
+  return withMpiPlugin(
+    parseGraphWithQualifiedIds(materialized.nodes, materialized.edges),
+    useMpi
+  )
+}
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
 const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({

@@ -4,6 +4,7 @@ import type {
   StandardNodeDefinition,
   RegisteredNodes,
 } from '../types/nodeTypes'
+import { Type } from '../types/nodeTypes'
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
@@ -34,7 +35,10 @@ import {
   validateGraphData,
   addQualifiedIds,
   removeQualifiedIds,
+  parseGraphToProtocol,
+  edgesFromProtocolToFlow,
 } from './graphParser'
+import { parameterHandle } from './parameterPorts'
 
 describe('validateGraphData', () => {
   let graph: Network
@@ -256,5 +260,111 @@ describe('addQualifiedIds / removeQualifiedIds', () => {
     }
     const result = addQualifiedIds(emptyNetwork)
     expect(Object.keys(result.workflow.nodes)).toHaveLength(0)
+  })
+})
+
+describe('parameter-node graph persistence', () => {
+  beforeEach(() => {
+    mockStore.nodeDataByType = {
+      ...(defaultRegistry as unknown as RegisteredNodes),
+      consumer: {
+        type: 'consumer',
+        node_type: 'void_method' as any,
+        arguments: [
+          { connection_type: 'input' as any, name: 'value', type: Type.DOUBLE },
+        ],
+        inputs: [0],
+        outputs: [],
+      },
+    }
+  })
+
+  it('round-trips exposure metadata and stable virtual handles', () => {
+    const inputHandle = parameterHandle('input', ['Solver', 'Tolerance'])
+    const outputHandle = parameterHandle('output', ['Solver', 'Tolerance'])
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'std::string',
+          node_type: 'elementary_constructor',
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          value: 'poisson_2d.prm',
+          parameter_file: {
+            exposures: [
+              {
+                path: ['Solver', 'Tolerance'],
+                type: 'double',
+                input: true,
+                output: true,
+              },
+            ],
+          },
+        },
+      },
+      {
+        id: '2',
+        position: { x: 100, y: 0 },
+        data: {
+          type: 'double',
+          node_type: 'elementary_constructor',
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          value: '0.01',
+        },
+      },
+      {
+        id: '3',
+        position: { x: 200, y: 0 },
+        data: {
+          type: 'consumer',
+          node_type: 'void_method',
+          arguments: [
+            { connection_type: 'input', name: 'value', type: 'double' },
+          ],
+          inputs: [0],
+          outputs: [],
+        },
+      },
+    ] as any
+    const edges = [
+      {
+        id: 'input',
+        source: '2',
+        sourceHandle: 'output-0',
+        target: '1',
+        targetHandle: inputHandle,
+      },
+      {
+        id: 'output',
+        source: '1',
+        sourceHandle: outputHandle,
+        target: '3',
+        targetHandle: 'input-0',
+      },
+    ] as any
+
+    const graph = parseGraphToProtocol(nodes, edges)
+    const savedNode = graph.workflow.nodes['1'] as any
+    expect(savedNode.parameter_file.exposures[0]).toEqual({
+      path: ['Solver', 'Tolerance'],
+      type: 'double',
+      input: true,
+      output: true,
+    })
+    expect(graph.workflow.edges['0'].target_handle).toBe(inputHandle)
+    expect(graph.workflow.edges['1'].source_handle).toBe(outputHandle)
+
+    const restoredEdges = edgesFromProtocolToFlow(graph.workflow.edges)
+    expect(restoredEdges[0].targetHandle).toBe(inputHandle)
+    expect(restoredEdges[1].sourceHandle).toBe(outputHandle)
+
+    const [validEdges, invalidEdges] = validateGraphData(graph)
+    expect(Object.keys(validEdges)).toHaveLength(2)
+    expect(invalidEdges).toHaveLength(0)
   })
 })

@@ -14,6 +14,11 @@ import {
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
+import {
+  parameterExposureForHandle,
+  parameterPathLabel,
+  parameterPortCoralType,
+} from './parameterPorts'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
@@ -51,6 +56,17 @@ const cloneNodeDefinition = (
     arguments: nodeDefinition.arguments.map((argument) => ({ ...argument })),
     inputs: [...nodeDefinition.inputs],
     outputs: [...nodeDefinition.outputs],
+    ...('parameter_file' in nodeDefinition &&
+      nodeDefinition.parameter_file && {
+        parameter_file: {
+          exposures: nodeDefinition.parameter_file.exposures.map(
+            (exposure) => ({
+              ...exposure,
+              path: [...exposure.path],
+            })
+          ),
+        },
+      }),
   } as NodeDefinitions
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
@@ -121,6 +137,17 @@ export const getOutputTypeAndName = (
   sourceHandle: string
 ): { connectionType: string; connectionName: string } | null => {
   const data = sourceNode.data as StandardNodeDefinition
+  const parameterExposure = parameterExposureForHandle(
+    data,
+    sourceHandle,
+    'output'
+  )
+  if (parameterExposure) {
+    return {
+      connectionType: parameterPortCoralType(parameterExposure.type),
+      connectionName: parameterPathLabel(parameterExposure.path),
+    }
+  }
   const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getOutputTypeAndName: invalid handle id', sourceHandle)
@@ -209,6 +236,17 @@ export const getInputTypeAndName = (
   targetHandle: string
 ): { connectionType: string; connectionName: string } | null => {
   const data = targetNode.data as StandardNodeDefinition
+  const parameterExposure = parameterExposureForHandle(
+    data,
+    targetHandle,
+    'input'
+  )
+  if (parameterExposure) {
+    return {
+      connectionType: parameterPortCoralType(parameterExposure.type),
+      connectionName: parameterPathLabel(parameterExposure.path),
+    }
+  }
   const handleIndex = handleIdToIndex(targetHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getInputTypeAndName: invalid handle id', targetHandle)
