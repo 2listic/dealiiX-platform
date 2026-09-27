@@ -79,6 +79,19 @@ const convertValue = (
         )
       }
       return value
+    case 'unsigned int': {
+      const unsigned = Number(value)
+      if (
+        !/^\d+$/.test(value) ||
+        !Number.isSafeInteger(unsigned) ||
+        unsigned > 4_294_967_295
+      ) {
+        throw new Error(
+          `Parameter ${path.join(' / ')} expects unsigned int, received "${raw}"`
+        )
+      }
+      return value
+    }
     case 'double': {
       if (!value || !Number.isFinite(Number(value))) {
         throw new Error(
