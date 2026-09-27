@@ -200,8 +200,18 @@ const exportAndEvalGraphLocal = async (
     coralBinaryPath: config.coralBinaryPath,
     coralPluginPath: config.coralPluginPath,
     workingDirectory: runDir,
+    executionDirectory: settingsState.local.workingDirectory,
     graphPayload,
     internalJobId,
+    mpi: useMpi
+      ? {
+          launcher: {
+            kind: settingsState.local.mpiLauncher.kind,
+            extraArgs: settingsState.local.mpiLauncher.extraArgs,
+          },
+          processes: config.tasksPerNode,
+        }
+      : undefined,
   })
 
   const jobId = String(resultExecute.jobId)
@@ -244,9 +254,19 @@ const exportAndEvalExecutableLocal = async (
     {
       executablePath: config.executablePath,
       workingDirectory: runDir,
+      executionDirectory: settingsState.local.workingDirectory,
       parametersPayload: getExecutableParametersPayload(),
       parametersFileName: config.parametersFileName,
       internalJobId,
+      mpi: config.useMpi
+        ? {
+            launcher: {
+              kind: settingsState.local.mpiLauncher.kind,
+              extraArgs: settingsState.local.mpiLauncher.extraArgs,
+            },
+            processes: config.tasksPerNode,
+          }
+        : undefined,
     }
   )
 

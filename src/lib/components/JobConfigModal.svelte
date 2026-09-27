@@ -37,10 +37,10 @@
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
   let isRemoteExecution = $derived(location === 'remote')
-  // Only remote runs launch through mpirun today. The checkbox state outlives a
-  // close/reopen, so hiding the control must also disable it.
-  let mpiEnabled = $derived(isRemoteExecution && useMpi)
-  let totalProcesses = $derived(nodes * tasksPerNode)
+  let mpiEnabled = $derived(useMpi)
+  let totalProcesses = $derived(
+    isRemoteExecution ? nodes * tasksPerNode : tasksPerNode
+  )
 
   let timeLimitError = $derived(
     isRemoteExecution && !isValidSlurmTime(timeLimit) ? SLURM_TIME_HINT : ''
@@ -76,7 +76,7 @@
           {
             executablePath: target.executablePath,
             parametersFileName,
-            nodes,
+            nodes: isRemoteExecution ? nodes : 1,
             tasksPerNode,
             timeLimit,
             useMpi: mpiEnabled,
@@ -90,7 +90,7 @@
           {
             coralBinaryPath: target.coralBinaryPath,
             coralPluginPath: target.coralPluginPath,
-            nodes,
+            nodes: isRemoteExecution ? nodes : 1,
             tasksPerNode,
             timeLimit,
             useMpi: mpiEnabled,
@@ -142,18 +142,22 @@
     {#if mpiEnabled}
       <div class="inputs-container">
         <div class="inputs-row">
+          {#if isRemoteExecution}
+            <div class="input-container">
+              <label for="mpi-nodes">Nodes</label>
+              <input
+                id="mpi-nodes"
+                type="number"
+                min="1"
+                bind:value={nodes}
+                class="input-field"
+              />
+            </div>
+          {/if}
           <div class="input-container">
-            <label for="mpi-nodes">Nodes</label>
-            <input
-              id="mpi-nodes"
-              type="number"
-              min="1"
-              bind:value={nodes}
-              class="input-field"
-            />
-          </div>
-          <div class="input-container">
-            <label for="mpi-tasks-per-node">Tasks per node</label>
+            <label for="mpi-tasks-per-node">
+              {isRemoteExecution ? 'Tasks per node' : 'Processes'}
+            </label>
             <input
               id="mpi-tasks-per-node"
               type="number"
@@ -215,19 +219,17 @@
         </div>
       </div>
     {/if}
-    {#if isRemoteExecution}
-      <div class="toggle-container">
-        <div class="mpi-row">
-          <span class="toggle-label">
-            {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
-          </span>
-          <label class="switch">
-            <input type="checkbox" bind:checked={useMpi} />
-            <span class="slider round"></span>
-          </label>
-        </div>
+    <div class="toggle-container">
+      <div class="mpi-row">
+        <span class="toggle-label">
+          {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
+        </span>
+        <label class="switch">
+          <input type="checkbox" bind:checked={useMpi} />
+          <span class="slider round"></span>
+        </label>
       </div>
-    {/if}
+    </div>
     <div class="button-container">
       <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button

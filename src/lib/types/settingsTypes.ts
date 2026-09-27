@@ -16,8 +16,8 @@ export type MpiLauncherSettings = {
    */
   kind: MpiLauncherKind
   /**
-   * Extra launcher flags, appended verbatim — e.g. `--mpi=pmix` to override the
-   * cluster's MpiDefault, or `--allow-run-as-root` for mpirun as root.
+   * Extra launcher flags — e.g. `--mpi=pmix` to override the cluster's
+   * MpiDefault, or `--allow-run-as-root` for local mpirun as root.
    */
   extraArgs?: string
 }

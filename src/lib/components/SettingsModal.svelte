@@ -54,6 +54,9 @@
   let remoteMpiExtraArgs = $derived(
     settingsState.remote.mpiLauncher.extraArgs ?? ''
   )
+  let localMpiExtraArgs = $derived(
+    settingsState.local.mpiLauncher.extraArgs ?? ''
+  )
   let launcherPreview = $derived(
     buildMpiLauncherCommand({
       kind: remoteMpiLauncherKind,
@@ -78,8 +81,10 @@
         coralPluginPath: localCoralPluginPath,
         executablePath: localExecutablePath,
         parametersFileName: localExecutableParametersFileName,
-        // Carried through, not rebuilt: there is no local launcher UI yet (#221).
-        mpiLauncher: $state.snapshot(settingsState.local.mpiLauncher),
+        mpiLauncher: {
+          kind: 'mpirun',
+          extraArgs: localMpiExtraArgs.trim() || undefined,
+        },
         // Not the $state proxy — this crosses the probe IPC; saveExecutionPaths restores it.
         probes: {},
       },
@@ -146,6 +151,7 @@
     remoteExecutableParametersFileName = settingsState.remote.parametersFileName
     remoteMpiLauncherKind = settingsState.remote.mpiLauncher.kind
     remoteMpiExtraArgs = settingsState.remote.mpiLauncher.extraArgs ?? ''
+    localMpiExtraArgs = settingsState.local.mpiLauncher.extraArgs ?? ''
   }
 
   const pickSshFile = async () => {
@@ -460,6 +466,30 @@
                       </p>
                     </label>
                   </div>
+                </div>
+              {/if}
+
+              {#if !showRemoteSettings}
+                <div class="subsection">
+                  <div class="subsection-title">MPI launcher</div>
+                  <p class="section-hint">
+                    Local MPI runs use <code>mpirun</code> on this machine.
+                  </p>
+                  <label class="field">
+                    <span>Extra launcher arguments</span>
+                    <input
+                      bind:value={localMpiExtraArgs}
+                      class="input-field"
+                      type="text"
+                      placeholder="e.g. --allow-run-as-root"
+                    />
+                    <p class="field-hint">
+                      Appended before the generated process count, for example
+                      <code
+                        >mpirun --allow-run-as-root -np 4 &lt;binary&gt;</code
+                      >.
+                    </p>
+                  </label>
                 </div>
               {/if}
 

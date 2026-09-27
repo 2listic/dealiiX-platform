@@ -6,7 +6,7 @@
 
 /** The resources an MPI run needs, shared by every backend kind that can be launched under MPI. */
 export type MpiResourceConfig = {
-  /** Whether to request MPI resources and launch the job through `mpirun`. */
+  /** Whether to request MPI resources and launch the job through the configured MPI launcher. */
   useMpi: boolean
   /** Number of nodes to request (`#SBATCH --nodes`). */
   nodes: number

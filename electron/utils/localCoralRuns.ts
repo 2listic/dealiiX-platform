@@ -4,6 +4,8 @@ import { spawn } from 'child_process'
 import store from './storage.js'
 import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
+import { buildLocalMpiArgs } from '../../src/lib/utils/mpiLauncher.js'
+import type { MpiLauncherSettings } from '../../src/lib/types/settingsTypes.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
@@ -19,17 +21,25 @@ export interface LocalRun {
 interface CoralRunPayload {
   coralBinaryPath: string
   coralPluginPath: string
+  /** Per-run directory for graph, log, and node-status files. */
   workingDirectory: string
+  /** Actual cwd used by Coral so relative input/output paths resolve predictably. */
+  executionDirectory?: string
   graphPayload: unknown
   internalJobId: number | string
+  mpi?: { launcher: MpiLauncherSettings; processes: number }
 }
 
 interface ExecutableRunPayload {
   executablePath: string
+  /** Per-run directory for parameters and logs. */
   workingDirectory: string
+  /** Actual cwd used by the executable so relative input/output paths resolve predictably. */
+  executionDirectory?: string
   parametersPayload: ParameterTree
   parametersFileName: string
   internalJobId: number | string
+  mpi?: { launcher: MpiLauncherSettings; processes: number }
 }
 
 const localRuns = new Map<string, LocalRun>()
@@ -93,14 +103,16 @@ export const ensureUniqueLocalDir = async (
 
 /**
  * @param payload - Coral run configuration.
- * @returns The internal job ID and working directory of the spawned process.
+ * @returns The internal job ID and per-run directory used for run artifacts.
  */
 export const startLocalCoralRun = async ({
   coralBinaryPath,
   coralPluginPath,
   workingDirectory,
+  executionDirectory,
   graphPayload,
   internalJobId,
+  mpi,
 }: CoralRunPayload): Promise<{ jobId: string; workingDirectory: string }> => {
   const jobId = String(internalJobId)
   const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
@@ -117,7 +129,7 @@ export const startLocalCoralRun = async ({
 
   await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
 
-  const args = [
+  const executableArgs = [
     '-p',
     coralPluginPath,
     'run',
@@ -125,10 +137,18 @@ export const startLocalCoralRun = async ({
     '--touch-dir',
     touchDir,
   ]
+  const invocation = mpi
+    ? buildLocalMpiArgs(
+        mpi.launcher,
+        mpi.processes,
+        coralBinaryPath,
+        executableArgs
+      )
+    : { command: coralBinaryPath, args: executableArgs }
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
-  const child = spawn(coralBinaryPath, args, {
-    cwd: workingDirectory,
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: executionDirectory ?? workingDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -164,14 +184,16 @@ export const startLocalCoralRun = async ({
 
 /**
  * @param payload - Executable run configuration.
- * @returns The internal job ID and per-run working directory of the spawned process.
+ * @returns The internal job ID and per-run directory used for run artifacts.
  */
 export const startLocalExecutableRun = async ({
   executablePath,
   workingDirectory,
+  executionDirectory,
   parametersPayload,
   parametersFileName,
   internalJobId,
+  mpi,
 }: ExecutableRunPayload): Promise<{
   jobId: string
   workingDirectory: string
@@ -196,8 +218,13 @@ export const startLocalExecutableRun = async ({
   await fs.promises.writeFile(parametersPath, parametersContent)
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
-  const child = spawn(executablePath, [parametersPath], {
-    cwd: runDir,
+  const invocation = mpi
+    ? buildLocalMpiArgs(mpi.launcher, mpi.processes, executablePath, [
+        parametersPath,
+      ])
+    : { command: executablePath, args: [parametersPath] }
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: executionDirectory ?? runDir,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
