@@ -186,6 +186,100 @@ describe('submitCoralStageRemote parameter staging', () => {
       'nested/poisson.prm'
     )
   })
+
+  it('materializes parameter inputs inside a subnetwork before upload', async () => {
+    const uploads: Record<string, string> = {}
+    let remoteParameterContent =
+      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\n'
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          if (payload.remotePath === '/app/shared-data/nested/poisson.prm') {
+            remoteParameterContent = payload.content
+          }
+          return ''
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) {
+          return remoteParameterContent
+        }
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '16': {
+              type: 'coral::Network',
+              node_type: 'network',
+              name: 'step1 triangulation input free',
+              arguments: [],
+              inputs: [],
+              outputs: [],
+              value: {
+                author: 'test',
+                date_time_utc: '',
+                version: 1,
+                workflow: {
+                  nodes: {
+                    '13': {
+                      type: 'std::string',
+                      value: 'nested/poisson.prm',
+                      parameter_file: {
+                        exposures: [
+                          {
+                            path: [
+                              'ImmersX Coral Poisson',
+                              'Initial refinement',
+                            ],
+                            type: 'string',
+                            input: true,
+                            output: false,
+                          },
+                        ],
+                      },
+                    },
+                    '15': { type: 'std::string', value: '4' },
+                  },
+                  edges: {
+                    '0': {
+                      source: 15,
+                      source_output: 0,
+                      target: 13,
+                      target_handle:
+                        'parameter-input-%5B%22ImmersX%20Coral%20Poisson%22%2C%22Initial%20refinement%22%5D',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-nested',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/app/shared-data/run-nested/nested/poisson.prm']).toContain(
+      'set Initial refinement = 4'
+    )
+    const uploadedGraph = uploads['/app/shared-data/run-nested/graph.json']
+    expect(uploadedGraph).not.toContain('parameter_file')
+    expect(uploadedGraph).not.toContain('target_handle')
+    expect(uploadedGraph).toContain('"edges":{}')
+  })
 })
 
 describe('ensureUniqueRemoteDir', () => {

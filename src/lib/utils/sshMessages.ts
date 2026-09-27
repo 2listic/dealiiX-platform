@@ -15,6 +15,7 @@ import { toastState } from '../stores/toastsStore.svelte'
 import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
+  addQualifiedIds,
   parseGraphWithQualifiedIds,
   removeQualifiedIds,
 } from './graphParser'
@@ -48,6 +49,11 @@ import {
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
+import {
+  isSubGraphNodeDefinition,
+  type Network,
+  type QualifiedNetwork,
+} from '../types/nodeTypes'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -218,7 +224,8 @@ export const submitCoralStageRemote = async ({
  * pipeline stage contains virtual parameter ports. Ordinary Coral graphs take
  * the fast path and remain byte-for-byte compatible with previous stages. */
 const materializeProtocolGraphIfNeeded = async (
-  graph: object
+  graph: object,
+  location: ExecutionLocation = 'remote'
 ): Promise<object> => {
   const hasParameterMetadata = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.some(hasParameterMetadata)
@@ -229,15 +236,51 @@ const materializeProtocolGraphIfNeeded = async (
   }
   if (!hasParameterMetadata(graph)) return graph
 
-  const network = removeQualifiedIds(
-    graph as Parameters<typeof removeQualifiedIds>[0]
+  const network = await materializeNestedProtocolGraphs(
+    removeQualifiedIds(graph as Parameters<typeof removeQualifiedIds>[0]),
+    location
   )
   const materialized = await materializeParameterGraph(
-    'remote',
+    location,
     nodesFromProtocolToFlow(network.workflow.nodes),
     edgesFromProtocolToFlow(network.workflow.edges)
   )
-  return parseGraphWithQualifiedIds(materialized.nodes, materialized.edges)
+  const parsed = parseGraphWithQualifiedIds(
+    materialized.nodes,
+    materialized.edges
+  )
+
+  // parseGraphToProtocol obtains stored subnetwork values from the registry.
+  // Replace those snapshots with the recursively materialized values from the
+  // submitted graph, then let qualified-id generation add the parent prefix.
+  for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
+    if (!isSubGraphNodeDefinition(node)) continue
+    const parsedNode = parsed.workflow.nodes[nodeId]
+    if (isSubGraphNodeDefinition(parsedNode)) {
+      parsed.workflow.nodes[nodeId] = {
+        ...parsedNode,
+        value: addQualifiedIds(node.value, parsedNode.qualified_id),
+      }
+    }
+  }
+  return parsed
+}
+
+/** Recursively materializes parameter nodes inside stored subnetworks. */
+const materializeNestedProtocolGraphs = async (
+  network: Network,
+  location: ExecutionLocation
+): Promise<Network> => {
+  const nodes = { ...network.workflow.nodes }
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    if (!isSubGraphNodeDefinition(node)) continue
+    const nested = await materializeProtocolGraphIfNeeded(node.value, location)
+    nodes[nodeId] = {
+      ...node,
+      value: removeQualifiedIds(nested as Network | QualifiedNetwork),
+    }
+  }
+  return { ...network, workflow: { ...network.workflow, nodes } }
 }
 
 /** Collects parameter-file references from node value fields, including subnetworks. */
@@ -490,11 +533,12 @@ export const buildExecutionGraphPayload = async (
   edges: Edge[],
   useMpi: boolean
 ): Promise<object> => {
-  const materialized = await materializeParameterGraph(location, nodes, edges)
-  return withMpiPlugin(
-    parseGraphWithQualifiedIds(materialized.nodes, materialized.edges),
-    useMpi
+  const protocol = parseGraphWithQualifiedIds(nodes, edges)
+  const materialized = await materializeProtocolGraphIfNeeded(
+    protocol,
+    location
   )
+  return withMpiPlugin(materialized, useMpi)
 }
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
