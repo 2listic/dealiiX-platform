@@ -21,7 +21,12 @@ export type Argument = {
 }
 
 /** The four scalar types that can be exposed by a frontend parameter port. */
-export type ParameterPortType = 'string' | 'int' | 'double' | 'bool'
+export type ParameterPortType =
+  | 'string'
+  | 'int'
+  | 'unsigned int'
+  | 'double'
+  | 'bool'
 
 /** Frontend-only exposure metadata for one parameter-file leaf. */
 export type ParameterExposure = {

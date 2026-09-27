@@ -18,7 +18,19 @@ export const parameterPortType = (
 ): ParameterPortType => {
   const description = patternDescription?.trim() ?? ''
   if (description === '[Bool]') return 'bool'
-  if (description.startsWith('[Integer')) return 'int'
+  if (description.startsWith('[Integer')) {
+    // deal.II's parameter templates do not carry the C++ type separately.
+    // A non-negative integer range is the available indication that the
+    // parameter is intended to be unsigned; unconstrained/ranged signed
+    // integers remain `int`.
+    const lowerBound = description.match(
+      /^\[Integer\s+range\s+([+-]?\d+)\.\./i
+    )?.[1]
+    if (lowerBound !== undefined && Number(lowerBound) >= 0) {
+      return 'unsigned int'
+    }
+    return 'int'
+  }
   if (description.startsWith('[Double')) return 'double'
   return 'string'
 }
@@ -30,6 +42,8 @@ export const parameterPortCoralType = (type: ParameterPortType): Type => {
       return Type.BOOLEAN
     case 'int':
       return Type.INT
+    case 'unsigned int':
+      return Type.UNSIGNED_INT
     case 'double':
       return Type.DOUBLE
     default:
@@ -125,6 +139,7 @@ export const normalizeParameterExposures = (
     const type: ParameterPortType =
       value.type === 'bool' ||
       value.type === 'int' ||
+      value.type === 'unsigned int' ||
       value.type === 'double' ||
       value.type === 'string'
         ? value.type
