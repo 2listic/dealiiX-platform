@@ -372,6 +372,21 @@ describe('submitCoralStageRemote parameter staging', () => {
     expect(
       uploads['/app/shared-data/run-dangling/nested/dangling.prm']
     ).toContain('set Initial refinement = 4')
+    const uploadedGraph = JSON.parse(
+      uploads['/app/shared-data/run-dangling/graph.json']
+    )
+    const uploadedNetwork = uploadedGraph.workflow.nodes['12']
+    expect(uploadedNetwork.inputs).toEqual([])
+    expect(uploadedNetwork.arguments).not.toContainEqual(
+      expect.objectContaining({
+        name: 'ImmersX Coral Poisson / Initial refinement',
+      })
+    )
+    expect(
+      Object.values(uploadedGraph.workflow.edges).some(
+        (edge: unknown) => (edge as { target?: number }).target === 12
+      )
+    ).toBe(false)
   })
 })
 

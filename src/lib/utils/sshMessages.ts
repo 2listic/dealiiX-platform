@@ -57,8 +57,10 @@ import { shellEscape } from './shellEscape'
 import { analyzeNetworkBoundary } from './networkNode'
 import {
   isSubGraphNodeDefinition,
+  type Argument,
   type Network,
   type QualifiedNetwork,
+  type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 
 /**
@@ -292,6 +294,9 @@ const materializeProtocolGraphIfNeeded = async (
     if (isSubGraphNodeDefinition(parsedNode)) {
       parsed.workflow.nodes[nodeId] = {
         ...parsedNode,
+        arguments: node.arguments,
+        inputs: node.inputs,
+        outputs: node.outputs,
         value: addQualifiedIds(node.value, parsedNode.qualified_id),
       }
     }
@@ -337,12 +342,71 @@ const materializeNestedProtocolGraphs = async (
       location,
       childBoundaryValues
     )
+    const nestedWithoutIds = removeQualifiedIds(
+      nested as Network | QualifiedNetwork
+    )
+    const nestedBoundary = analyzeNetworkBoundary(
+      nodesFromProtocolToFlow(nestedWithoutIds.workflow.nodes),
+      edgesFromProtocolToFlow(nestedWithoutIds.workflow.edges)
+    )
+    remapNestedNetworkEdges(materializedEdges, nodeId, node, nestedBoundary)
     nodes[nodeId] = {
       ...node,
-      value: removeQualifiedIds(nested as Network | QualifiedNetwork),
+      arguments: nestedBoundary.argumentsArray,
+      inputs: nestedBoundary.inputsArray,
+      outputs: nestedBoundary.outputsArray,
+      value: nestedWithoutIds,
     }
   }
   return { ...network, workflow: { ...network.workflow, nodes } }
+}
+
+const sameNetworkArgument = (left: Argument, right: Argument): boolean =>
+  left.name === right.name &&
+  left.type === right.type &&
+  left.connection_type === right.connection_type
+
+/**
+ * Removes frontend-only parameter boundary ports and remaps the remaining
+ * parent edges to the backend interface recomputed from the sanitized graph.
+ */
+const remapNestedNetworkEdges = (
+  edges: Edge[],
+  networkNodeId: string,
+  originalNode: SubGraphNodeDefinition,
+  sanitizedBoundary: ReturnType<typeof analyzeNetworkBoundary>
+): void => {
+  const remapped = edges.flatMap((edge) => {
+    if (edge.target === networkNodeId) {
+      const oldInputIndex = handleIdToIndex(edge.targetHandle as string)
+      const oldArgumentIndex = originalNode.inputs[oldInputIndex]
+      const oldArgument = originalNode.arguments[oldArgumentIndex]
+      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
+        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
+      )
+      const newInputIndex =
+        sanitizedBoundary.inputsArray.indexOf(newArgumentIndex)
+      if (newInputIndex < 0) return []
+      return [{ ...edge, targetHandle: `input-${newInputIndex}` }]
+    }
+
+    if (edge.source === networkNodeId) {
+      const oldOutputIndex = handleIdToIndex(edge.sourceHandle as string)
+      const oldArgumentIndex = originalNode.outputs[oldOutputIndex]
+      const oldArgument = originalNode.arguments[oldArgumentIndex]
+      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
+        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
+      )
+      const newOutputIndex =
+        sanitizedBoundary.outputsArray.indexOf(newArgumentIndex)
+      if (newOutputIndex < 0) return []
+      return [{ ...edge, sourceHandle: `output-${newOutputIndex}` }]
+    }
+
+    return [edge]
+  })
+
+  edges.splice(0, edges.length, ...remapped)
 }
 
 /** Collects parameter-file references from node value fields, including subnetworks. */
