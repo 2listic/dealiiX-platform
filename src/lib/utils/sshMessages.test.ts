@@ -280,6 +280,99 @@ describe('submitCoralStageRemote parameter staging', () => {
     expect(uploadedGraph).not.toContain('target_handle')
     expect(uploadedGraph).toContain('"edges":{}')
   })
+
+  it('binds an outer subnetwork input to a dangling parameter port', async () => {
+    const uploads: Record<string, string> = {}
+    let remoteParameterContent =
+      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\n'
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          if (payload.remotePath === '/app/shared-data/nested/dangling.prm') {
+            remoteParameterContent = payload.content
+          }
+          return ''
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) return remoteParameterContent
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '12': {
+              type: 'coral::Network',
+              node_type: 'network',
+              name: 'step1 triangulation input free',
+              arguments: [
+                {
+                  connection_type: 'input',
+                  name: 'ImmersX Coral Poisson / Initial refinement',
+                  type: 'std::string',
+                },
+              ],
+              inputs: [0],
+              outputs: [],
+              value: {
+                author: 'test',
+                date_time_utc: '',
+                version: 1,
+                workflow: {
+                  nodes: {
+                    '13': {
+                      type: 'std::string',
+                      value: 'nested/dangling.prm',
+                      parameter_file: {
+                        exposures: [
+                          {
+                            path: [
+                              'ImmersX Coral Poisson',
+                              'Initial refinement',
+                            ],
+                            type: 'string',
+                            input: true,
+                            output: false,
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  edges: {},
+                },
+              },
+            },
+            '14': { type: 'std::string', value: '4' },
+          },
+          edges: {
+            '0': {
+              source: 14,
+              source_output: 0,
+              target: 12,
+              target_input: 0,
+            },
+          },
+        },
+      },
+      stageDir: '/app/shared-data/run-dangling',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(
+      uploads['/app/shared-data/run-dangling/nested/dangling.prm']
+    ).toContain('set Initial refinement = 4')
+  })
 })
 
 describe('ensureUniqueRemoteDir', () => {

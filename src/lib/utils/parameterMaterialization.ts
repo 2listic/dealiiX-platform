@@ -46,7 +46,10 @@ const isParameterNode = (node: Node): node is Node<StandardNodeDefinition> => {
 const nodeType = (node: Node): string =>
   String((node.data as StandardNodeDefinition).type)
 
-const scalarValueFromNode = (node: Node, handle: string): string | null => {
+export const scalarValueFromNode = (
+  node: Node,
+  handle: string
+): string | null => {
   const data = node.data as StandardNodeDefinition
   if (
     data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
@@ -118,7 +121,8 @@ const cloneNode = (node: Node): Node => ({
 export const materializeParameterGraph = async (
   location: ExecutionLocation,
   inputNodes: Node[],
-  inputEdges: Edge[]
+  inputEdges: Edge[],
+  parameterInputOverrides: Record<string, string> = {}
 ): Promise<MaterializedGraph> => {
   const nodes = inputNodes.map(cloneNode)
   const edges = inputEdges.map((edge) => ({ ...edge }))
@@ -193,20 +197,26 @@ export const materializeParameterGraph = async (
     const data = node.data as StandardNodeDefinition
     for (const exposure of parameterInputExposures(data)) {
       const handle = parameterHandle('input', exposure.path)
+      const overrideKey = `${node.id}::${handle}`
+      const hasOverride = Object.prototype.hasOwnProperty.call(
+        parameterInputOverrides,
+        overrideKey
+      )
       const incoming = edges.filter(
         (edge) => edge.target === node.id && edge.targetHandle === handle
       )
-      if (incoming.length !== 1) {
+      if (incoming.length !== 1 && !hasOverride) {
         throw new Error(
           `Exposed parameter ${exposure.path.join(' / ')} on ${data.value} requires exactly one input connection`
         )
       }
-      const edge = incoming[0]
-      const raw = await resolveSource(
-        edge.source,
-        edge.sourceHandle as string,
-        stack
-      )
+      const raw = hasOverride
+        ? parameterInputOverrides[overrideKey]
+        : await resolveSource(
+            incoming[0].source,
+            incoming[0].sourceHandle as string,
+            stack
+          )
       const leaf = parameterAtPath(file.tree, exposure.path)
       if (!leaf) {
         throw new Error(
