@@ -195,6 +195,10 @@ export type StandardNodeDefinition = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   node_type: NodeType
+  /** Optional logical operation shared by concrete specializations. */
+  operation?: string
+  /** Optional user-facing label for the logical operation. */
+  display_name?: string
   name?: string
   derived?: string[]
   base?: string

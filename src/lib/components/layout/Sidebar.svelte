@@ -12,6 +12,10 @@
     type StandardNodeDefinition,
   } from '../../types/nodeTypes'
   import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import {
+    groupNodesByOperation,
+    nodeConcreteSignature,
+  } from '../../utils/nodePalette'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -24,11 +28,16 @@
 
   let searchQuery = $state('')
   const filteredAvailableNodes = $derived(
-    availableNodes?.filter(
-      (node) =>
-        !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
-        node.type.toLowerCase().includes(searchQuery.toLowerCase())
-    ) ?? []
+    availableNodes?.filter((node) => {
+      if (HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)) return false
+      const query = searchQuery.toLowerCase()
+      return [node.type, node.operation, node.display_name]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query))
+    }) ?? []
+  )
+  const availableNodeGroups = $derived(
+    groupNodesByOperation(filteredAvailableNodes)
   )
 
   const onDragStart = (
@@ -118,22 +127,34 @@
           transition:fade|global={{ duration: 250 }}
         />
       {/if}
-      {#each filteredAvailableNodes as Array<StandardNodeDefinition> as node (node)}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          style="--borderColor: {returnNodeColor(node.node_type)}"
-          class="node"
-          data-testid="sidebar-node"
-          data-node-type={node.node_type}
-          ondragstart={(event) => onDragStart(event, node)}
-          draggable={true}
-        >
-          {#if showNodeNames}
-            <span transition:fade|global={{ duration: 250 }}>
-              {returnNodeName(node)}
-            </span>
-          {/if}
-        </div>
+      {#each availableNodeGroups as group (group.key)}
+        {#if showNodeNames && group.nodes.length > 1}
+          <span
+            class="operation-label"
+            data-operation={group.operation ?? group.key}
+            transition:fade|global={{ duration: 250 }}>{group.displayName}</span
+          >
+        {/if}
+        {#each group.nodes as node (node.type)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style="--borderColor: {returnNodeColor(node.node_type)}"
+            class="node"
+            data-testid="sidebar-node"
+            data-node-type={node.node_type}
+            data-operation={group.operation ?? undefined}
+            ondragstart={(event) => onDragStart(event, node)}
+            draggable={true}
+          >
+            {#if showNodeNames}
+              <span transition:fade|global={{ duration: 250 }}>
+                {group.nodes.length > 1
+                  ? nodeConcreteSignature(node)
+                  : returnNodeName(node)}
+              </span>
+            {/if}
+          </div>
+        {/each}
       {/each}
     {/if}
   </div>
@@ -168,6 +189,12 @@
     font-weight: 600;
     text-transform: uppercase;
     text-align: left;
+  }
+
+  .operation-label {
+    width: 100%;
+    margin-top: 0.4rem;
+    font-weight: 600;
   }
 
   .search-input {
