@@ -15,7 +15,11 @@ import {
   parseGraphWithQualifiedIds,
   removeQualifiedIds,
 } from './graphParser'
-import { materializeParameterGraph } from './parameterMaterialization'
+import { handleIdToIndex } from './canvasNodeUtils'
+import {
+  materializeParameterGraph,
+  scalarValueFromNode,
+} from './parameterMaterialization'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -37,6 +41,7 @@ import {
   readParameterFile,
   type ParameterFileTarget,
 } from './parameterFileAccess'
+import { parameterHandlePath } from './parameterPorts'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
@@ -44,6 +49,7 @@ import {
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
+import { analyzeNetworkBoundary } from './networkNode'
 import {
   isSubGraphNodeDefinition,
   type Network,
@@ -230,7 +236,8 @@ export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
  * the fast path and remain byte-for-byte compatible with previous stages. */
 const materializeProtocolGraphIfNeeded = async (
   graph: object,
-  location: ExecutionLocation = 'remote'
+  location: ExecutionLocation = 'remote',
+  boundaryInputValues: Record<number, string> = {}
 ): Promise<object> => {
   const hasParameterMetadata = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.some(hasParameterMetadata)
@@ -241,14 +248,40 @@ const materializeProtocolGraphIfNeeded = async (
   }
   if (!hasParameterMetadata(graph)) return graph
 
-  const network = await materializeNestedProtocolGraphs(
-    removeQualifiedIds(graph as Parameters<typeof removeQualifiedIds>[0]),
-    location
+  const network = removeQualifiedIds(
+    graph as Parameters<typeof removeQualifiedIds>[0]
   )
+  const boundary = analyzeNetworkBoundary(
+    nodesFromProtocolToFlow(network.workflow.nodes),
+    edgesFromProtocolToFlow(network.workflow.edges)
+  )
+  const parameterInputOverrides: Record<string, string> = {}
+  const inheritedNetworkInputs: Record<string, Record<number, string>> = {}
+  for (const [inputIndexText, value] of Object.entries(boundaryInputValues)) {
+    const inputIndex = Number(inputIndexText)
+    const binding = boundary.networkInputToInternalHandle[inputIndex]
+    if (!binding) continue
+    if (parameterHandlePath(binding.handleId)?.direction === 'input') {
+      parameterInputOverrides[`${binding.nodeId}::${binding.handleId}`] = value
+      continue
+    }
+    const nestedInputIndex = handleIdToIndex(binding.handleId)
+    if (!Number.isInteger(nestedInputIndex) || nestedInputIndex < 0) continue
+    inheritedNetworkInputs[binding.nodeId] ??= {}
+    inheritedNetworkInputs[binding.nodeId][nestedInputIndex] = value
+  }
   const materialized = await materializeParameterGraph(
     location,
     nodesFromProtocolToFlow(network.workflow.nodes),
-    edgesFromProtocolToFlow(network.workflow.edges)
+    edgesFromProtocolToFlow(network.workflow.edges),
+    parameterInputOverrides
+  )
+  const nestedNetwork = await materializeNestedProtocolGraphs(
+    network,
+    location,
+    materialized.nodes,
+    materialized.edges,
+    inheritedNetworkInputs
   )
   const parsed = parseGraphWithQualifiedIds(
     materialized.nodes,
@@ -258,7 +291,7 @@ const materializeProtocolGraphIfNeeded = async (
   // parseGraphToProtocol obtains stored subnetwork values from the registry.
   // Replace those snapshots with the recursively materialized values from the
   // submitted graph, then let qualified-id generation add the parent prefix.
-  for (const [nodeId, node] of Object.entries(network.workflow.nodes)) {
+  for (const [nodeId, node] of Object.entries(nestedNetwork.workflow.nodes)) {
     if (!isSubGraphNodeDefinition(node)) continue
     const parsedNode = parsed.workflow.nodes[nodeId]
     if (isSubGraphNodeDefinition(parsedNode)) {
@@ -274,12 +307,41 @@ const materializeProtocolGraphIfNeeded = async (
 /** Recursively materializes parameter nodes inside stored subnetworks. */
 const materializeNestedProtocolGraphs = async (
   network: Network,
-  location: ExecutionLocation
+  location: ExecutionLocation,
+  materializedNodes: Node[],
+  materializedEdges: Edge[],
+  inheritedNetworkInputs: Record<string, Record<number, string>>
 ): Promise<Network> => {
   const nodes = { ...network.workflow.nodes }
   for (const [nodeId, node] of Object.entries(nodes)) {
     if (!isSubGraphNodeDefinition(node)) continue
-    const nested = await materializeProtocolGraphIfNeeded(node.value, location)
+    const childBoundaryValues = {
+      ...(inheritedNetworkInputs[nodeId] ?? {}),
+    }
+    for (const edge of materializedEdges.filter(
+      (candidate) => candidate.target === nodeId
+    )) {
+      const inputIndex = handleIdToIndex(edge.targetHandle as string)
+      if (!Number.isInteger(inputIndex) || inputIndex < 0) continue
+      const source = materializedNodes.find(
+        (candidate) => candidate.id === edge.source
+      )
+      const value = source
+        ? scalarValueFromNode(source, edge.sourceHandle as string)
+        : null
+      if (value === null) {
+        const argument = node.arguments[node.inputs[inputIndex]]
+        throw new Error(
+          `Exposed parameter input ${argument?.name ?? inputIndex} on ${node.name} requires a frontend-known scalar source`
+        )
+      }
+      childBoundaryValues[inputIndex] = value
+    }
+    const nested = await materializeProtocolGraphIfNeeded(
+      node.value,
+      location,
+      childBoundaryValues
+    )
     nodes[nodeId] = {
       ...node,
       value: removeQualifiedIds(nested as Network | QualifiedNetwork),
