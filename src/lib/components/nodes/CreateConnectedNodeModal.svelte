@@ -9,6 +9,7 @@
   import {
     type CompatibleNodeOption,
     returnNodeName,
+    returnNodeSignature,
   } from '../../utils/canvasNodeUtils'
   import { NodeType } from '../../types/nodeTypes'
 
@@ -63,6 +64,16 @@
     }
     onCreate(selectedOption, nodeName.trim())
   }
+
+  const optionLabel = (option: CompatibleNodeOption): string => {
+    const showConcreteSignature = options.length > 1
+    const name = returnNodeName(option.nodeDefinition)
+    const signature = showConcreteSignature
+      ? ` — ${returnNodeSignature(option.nodeDefinition)}`
+      : ''
+    const argument = option.argumentName ? ` (${option.argumentName})` : ''
+    return `${name}${signature}${argument}`
+  }
 </script>
 
 <Modal id={modalId} size="sm" onClose={onCancel}>
@@ -80,7 +91,7 @@
     >
       {#each options as option (optionId(option))}
         <option value={optionId(option)}>
-          {returnNodeName(option.nodeDefinition)} ({option.argumentName})
+          {optionLabel(option)}
         </option>
       {/each}
     </select>

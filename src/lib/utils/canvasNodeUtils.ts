@@ -20,6 +20,7 @@ import {
   parameterPathLabel,
   parameterPortCoralType,
 } from './parameterPorts'
+import { nodeConcreteSignature } from './nodePalette'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
@@ -289,10 +290,19 @@ export const formatSuggestedNodeName = (name: string): string => {
  * Returns the display name for a node definition: prefers `name` over `type`,
  * replaces underscores with spaces, and capitalizes the first letter.
  * @param node - Registry node or stored subgraph node.
- * @returns Display name, or `""` if both `name` and `type` are blank.
+ * @returns Display name, or `""` if all available labels are blank.
  */
 export const returnNodeName = (node: NodeDefinitions): string =>
-  formatSuggestedNodeName(node.name ?? node.type)
+  formatSuggestedNodeName(
+    node.name ??
+      ('display_name' in node ? node.display_name : undefined) ??
+      ('operation' in node ? node.operation : undefined) ??
+      node.type
+  )
+
+/** Returns the concrete registry identifier for a picker/connection option. */
+export const returnNodeSignature = (node: NodeDefinitions): string =>
+  nodeConcreteSignature(node as StandardNodeDefinition)
 
 /**
  * Finds all available nodes that produce `expectedInputType` on any output handle.

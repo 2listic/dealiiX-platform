@@ -367,4 +367,28 @@ describe('parameter-node graph persistence', () => {
     expect(Object.keys(validEdges)).toHaveLength(2)
     expect(invalidEdges).toHaveLength(0)
   })
+
+  it('serializes only the concrete type, not palette metadata', () => {
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'GridGenerator::generate<2,2>',
+          operation: 'GridGenerator::generate',
+          display_name: 'Generate grid',
+          node_type: 'void_function',
+          arguments: [],
+          inputs: [],
+          outputs: [],
+        },
+      },
+    ] as any
+
+    const graph = parseGraphToProtocol(nodes, [])
+    expect(graph.workflow.nodes['1']).toEqual({
+      type: 'GridGenerator::generate<2,2>',
+      position: { x: 0, y: 0 },
+    })
+  })
 })
