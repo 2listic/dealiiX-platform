@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_WORKING_FILE_REFERENCE,
+  HIDDEN_SIDEBAR_NODE_TYPES,
   isWorkingFileReference,
   isTypeCompatible,
+  NodeType,
   Type,
 } from './nodeTypes'
 
@@ -63,5 +65,11 @@ describe('working-file metadata', () => {
     expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
     expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
     expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
+  })
+})
+
+describe('sidebar node visibility', () => {
+  it('keeps output-only value types out of the constructor palette', () => {
+    expect(HIDDEN_SIDEBAR_NODE_TYPES).toContain(NodeType.OUTPUT_ONLY)
   })
 })
