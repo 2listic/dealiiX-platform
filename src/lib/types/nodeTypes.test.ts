@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isTypeCompatible, Type } from './nodeTypes'
+import {
+  HIDDEN_SIDEBAR_NODE_TYPES,
+  isTypeCompatible,
+  NodeType,
+  Type,
+} from './nodeTypes'
 
 describe('isTypeCompatible', () => {
   it('accepts an exact type match', () => {
@@ -43,5 +48,11 @@ describe('isTypeCompatible', () => {
   it('does not widen C++-only numeric types outside the bool/int/float chain', () => {
     expect(isTypeCompatible(Type.INT, Type.DOUBLE)).toBe(false)
     expect(isTypeCompatible(Type.UNSIGNED, Type.INT)).toBe(false)
+  })
+})
+
+describe('sidebar node visibility', () => {
+  it('keeps output-only value types out of the constructor palette', () => {
+    expect(HIDDEN_SIDEBAR_NODE_TYPES).toContain(NodeType.OUTPUT_ONLY)
   })
 })

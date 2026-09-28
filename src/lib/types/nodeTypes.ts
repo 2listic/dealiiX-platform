@@ -51,6 +51,7 @@ export enum NodeType {
   EMPTY_CONSTRUCTOR = 'empty_constructor',
   CONSTRUCTOR = 'constructor',
   ABSTRACT = 'abstract',
+  OUTPUT_ONLY = 'output_only',
   VOID_METHOD = 'void_method',
   VOID_CONST_METHOD = 'void_const_method',
   METHOD = 'method',
@@ -71,6 +72,7 @@ export enum TypeField {
  */
 export const HIDDEN_SIDEBAR_NODE_TYPES: NodeType[] = [
   NodeType.ABSTRACT,
+  NodeType.OUTPUT_ONLY,
   NodeType.NETWORK,
 ]
 
