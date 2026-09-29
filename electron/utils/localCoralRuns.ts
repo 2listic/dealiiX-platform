@@ -6,6 +6,7 @@ import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 import { buildLocalMpiArgs } from '../../src/lib/utils/mpiLauncher.js'
 import type { MpiLauncherSettings } from '../../src/lib/types/settingsTypes.js'
+import { resolveExistingFileReferences } from '../../src/lib/utils/fileReferences.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
@@ -23,8 +24,8 @@ interface CoralRunPayload {
   coralPluginPath: string
   /** Per-run directory for graph, log, and node-status files. */
   workingDirectory: string
-  /** Actual cwd used by Coral so relative input/output paths resolve predictably. */
-  executionDirectory?: string
+  /** Configured working directory used to resolve existing input files. */
+  fileResolutionDirectory: string
   graphPayload: unknown
   internalJobId: number | string
   mpi?: { launcher: MpiLauncherSettings; processes: number }
@@ -34,8 +35,8 @@ interface ExecutableRunPayload {
   executablePath: string
   /** Per-run directory for parameters and logs. */
   workingDirectory: string
-  /** Actual cwd used by the executable so relative input/output paths resolve predictably. */
-  executionDirectory?: string
+  /** Configured working directory used to resolve existing input files. */
+  fileResolutionDirectory: string
   parametersPayload: ParameterTree
   parametersFileName: string
   internalJobId: number | string
@@ -68,6 +69,25 @@ const updateRun = (jobId: string, patch: Partial<LocalRun>) => {
 
 const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
+}
+
+const resolveLocalFileReferences = async <T>(
+  value: T,
+  workingDirectory: string
+): Promise<T> => {
+  if (!workingDirectory.trim()) return value
+
+  return await resolveExistingFileReferences(
+    value,
+    (fileName) => path.resolve(workingDirectory, fileName),
+    async (filePath) => {
+      try {
+        return (await fs.promises.stat(filePath)).isFile()
+      } catch {
+        return false
+      }
+    }
+  )
 }
 
 const dirExists = async (dirPath: string): Promise<boolean> => {
@@ -109,7 +129,7 @@ export const startLocalCoralRun = async ({
   coralBinaryPath,
   coralPluginPath,
   workingDirectory,
-  executionDirectory,
+  fileResolutionDirectory,
   graphPayload,
   internalJobId,
   mpi,
@@ -127,7 +147,11 @@ export const startLocalCoralRun = async ({
   await ensureDir(path.dirname(touchDir))
   await ensureDir(touchDir)
 
-  await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
+  const resolvedGraphPayload = await resolveLocalFileReferences(
+    graphPayload,
+    fileResolutionDirectory
+  )
+  await fs.promises.writeFile(graphPath, JSON.stringify(resolvedGraphPayload))
 
   const executableArgs = [
     '-p',
@@ -148,7 +172,7 @@ export const startLocalCoralRun = async ({
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(invocation.command, invocation.args, {
-    cwd: executionDirectory ?? workingDirectory,
+    cwd: workingDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -189,7 +213,7 @@ export const startLocalCoralRun = async ({
 export const startLocalExecutableRun = async ({
   executablePath,
   workingDirectory,
-  executionDirectory,
+  fileResolutionDirectory,
   parametersPayload,
   parametersFileName,
   internalJobId,
@@ -210,9 +234,13 @@ export const startLocalExecutableRun = async ({
   )
   const logPath = path.join(runDir, 'local.out')
 
-  await ensureDir(runDir)
-  const parametersContent = serializeParametersFile(
+  await ensureDir(path.dirname(parametersPath))
+  const resolvedParametersPayload = await resolveLocalFileReferences(
     parametersPayload,
+    fileResolutionDirectory
+  )
+  const parametersContent = serializeParametersFile(
+    resolvedParametersPayload,
     parametersFileName
   )
   await fs.promises.writeFile(parametersPath, parametersContent)
@@ -224,7 +252,7 @@ export const startLocalExecutableRun = async ({
       ])
     : { command: executablePath, args: [parametersPath] }
   const child = spawn(invocation.command, invocation.args, {
-    cwd: executionDirectory ?? runDir,
+    cwd: runDir,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

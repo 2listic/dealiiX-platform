@@ -31,6 +31,7 @@ import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
+import { resolveExistingFileReferences } from './fileReferences'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -158,10 +159,11 @@ export const submitCoralStageRemote = async ({
   const internalJobId = jobIdMapState.getNextKey()
 
   await ensureRemoteDir(stageDir)
-  await uploadFileSsh(
-    JSON.stringify(withMpiPlugin(graph, useMpi)),
-    `${stageDir}/graph.json`
+  const resolvedGraph = await resolveRemoteFileReferences(
+    withMpiPlugin(graph, useMpi),
+    settingsState.remote.workingDirectory
   )
+  await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
     jobName: `coral-${internalJobId}`,
     workingDirectory: stageDir,
@@ -200,7 +202,7 @@ const exportAndEvalGraphLocal = async (
     coralBinaryPath: config.coralBinaryPath,
     coralPluginPath: config.coralPluginPath,
     workingDirectory: runDir,
-    executionDirectory: settingsState.local.workingDirectory,
+    fileResolutionDirectory: settingsState.local.workingDirectory,
     graphPayload,
     internalJobId,
     mpi: useMpi
@@ -254,7 +256,7 @@ const exportAndEvalExecutableLocal = async (
     {
       executablePath: config.executablePath,
       workingDirectory: runDir,
-      executionDirectory: settingsState.local.workingDirectory,
+      fileResolutionDirectory: settingsState.local.workingDirectory,
       parametersPayload: getExecutableParametersPayload(),
       parametersFileName: config.parametersFileName,
       internalJobId,
@@ -340,8 +342,12 @@ export const submitExecutableStageRemote = async ({
   const { parametersFileName } = config
 
   await ensureRemoteDir(stageDir)
+  const resolvedParameters = await resolveRemoteFileReferences(
+    parameters,
+    settingsState.remote.workingDirectory
+  )
   await uploadFileSsh(
-    serializeParametersFile(parameters, parametersFileName),
+    serializeParametersFile(resolvedParameters, parametersFileName),
     `${stageDir}/${parametersFileName}`
   )
   // Bare filename, not a path: some deal.II programs read their dimension from
@@ -404,6 +410,34 @@ const shellQuoteForScript = (value: string): string => {
 
 const shellEscape = (value: string): string => {
   return `'${String(value).replaceAll("'", `'\\''`)}'`
+}
+
+const remoteFilePath = (workingDirectory: string, fileName: string): string => {
+  if (fileName.startsWith('/')) return fileName
+  return `${workingDirectory.replace(/\/+$/, '')}/${fileName}`
+}
+
+const resolveRemoteFileReferences = async <T>(
+  value: T,
+  workingDirectory: string
+): Promise<T> => {
+  if (!workingDirectory.trim()) return value
+
+  return await resolveExistingFileReferences(
+    value,
+    (fileName) => remoteFilePath(workingDirectory, fileName),
+    async (filePath) => {
+      try {
+        await window.electron.invoke('execute-ssh-with-key', {
+          command: `test -f ${shellEscape(filePath)}`,
+          rejectOnNonZeroCode: true,
+        })
+        return true
+      } catch {
+        return false
+      }
+    }
+  )
 }
 
 /** Creates a remote directory (and parents) so SFTP uploads into it succeed. */
