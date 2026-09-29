@@ -117,12 +117,20 @@ const cloneNode = (node: Node): Node => ({
  * Applies frontend parameter bindings and turns virtual parameter outputs into
  * ordinary literal nodes in an execution-only graph. The returned nodes and
  * edges are never written back to the canvas.
+ * @param location - Execution location containing the source parameter files.
+ * @param inputNodes - Protocol graph nodes to materialize.
+ * @param inputEdges - Protocol graph edges to materialize.
+ * @param parameterInputOverrides - Values inherited from an enclosing subnetwork.
+ * @param materializationDirectory - Run directory where changed files are written.
+ * @returns Execution-only nodes and edges with frontend metadata removed.
+ * @throws If a source file, parameter, or exposed value is invalid.
  */
 export const materializeParameterGraph = async (
   location: ExecutionLocation,
   inputNodes: Node[],
   inputEdges: Edge[],
-  parameterInputOverrides: Record<string, string> = {}
+  parameterInputOverrides: Record<string, string> = {},
+  materializationDirectory?: string
 ): Promise<MaterializedGraph> => {
   const nodes = inputNodes.map(cloneNode)
   const edges = inputEdges.map((edge) => ({ ...edge }))
@@ -228,8 +236,14 @@ export const materializeParameterGraph = async (
     }
 
     if (file.dirty) {
+      const destination = materializationDirectory
+        ? {
+            ...parameterFileTarget(location, file.fileName),
+            workingDirectory: materializationDirectory,
+          }
+        : parameterFileTarget(location, file.fileName)
       await writeParameterFile(
-        parameterFileTarget(location, file.fileName),
+        destination,
         serializeParametersFile(
           file.tree,
           file.format === 'prm' ? 'parameters.prm' : 'parameters.json'

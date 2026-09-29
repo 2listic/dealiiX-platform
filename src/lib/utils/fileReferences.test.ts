@@ -172,4 +172,18 @@ describe('resolveParameterFileReferences', () => {
       __extra: true,
     })
   })
+
+  it('can preserve parameter-file names for the run-local staging step', async () => {
+    const result = await resolveExistingFileReferences(
+      { input: 'mesh.vtu', parameters: 'parameters.json' },
+      (value) => `/work/${value}`,
+      async () => true,
+      (value) => !/\.(json|prm)$/i.test(value)
+    )
+
+    expect(result).toEqual({
+      input: '/work/mesh.vtu',
+      parameters: 'parameters.json',
+    })
+  })
 })
