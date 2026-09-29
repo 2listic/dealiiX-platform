@@ -11,6 +11,7 @@ import {
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
+  canonicalNodeName,
   findCompatibleSourceNodesAsOptions,
   findCompatibleTargetNodesAsOptions,
   formatSuggestedNodeName,
@@ -60,6 +61,63 @@ describe('canvasNodeUtils', () => {
       connectionType: 'dealii::FiniteElement<2, 2>',
       connectionName: 'my_fe',
     })
+  })
+
+  it('uses output_type for function SELF outputs', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.FUNCTION,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Finite element space::std::function<Space(const Problem &)>',
+        node_type: NodeType.FUNCTION,
+        arguments: [
+          {
+            connection_type: 'input',
+            name: 'problem',
+            type: 'ImmersX::ElasticStaticProblem<2, 2>',
+          },
+        ],
+        inputs: [0],
+        outputs: [-1],
+        output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+      },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'ImmersX::FiniteElementSpaceView<2,2>',
+      connectionName:
+        'Finite element space::std::function<Space(const Problem &)>',
+    })
+
+    const scalarFieldNode = {
+      type: 'Scalar field::std::function<Field(const Space &, const string &)>',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        },
+        { connection_type: 'input', name: 'name', type: 'std::string' },
+      ],
+      inputs: [0, 1],
+      outputs: [-1],
+      output_type: 'ImmersX::Field<2,2,Scalar>',
+    }
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: '1', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [scalarFieldNode] as unknown as NodeDefinitions[]
+    )
+
+    expect(resolved?.connectionType).toBe(
+      'ImmersX::FiniteElementSpaceView<2,2>'
+    )
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      scalarFieldNode.type
+    )
   })
 
   it('falls back to the node type when an elementary constructor has no base', () => {
@@ -289,6 +347,30 @@ describe('canvasNodeUtils', () => {
 
     expect(returnNodeName(definition)).toBe('Run Laplace problem')
     expect(returnNodeSignature(definition)).toBe('LaplaceProblem::run<2>')
+  })
+
+  it('uses the logical display name instead of the palette variant', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('repairs a persisted variant name when loading an older graph', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+      name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+    expect(canonicalNodeName(definition)).toBe('Run Laplace problem')
   })
 
   it('connects directly when an operation has one compatible specialization', () => {

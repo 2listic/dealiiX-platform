@@ -7,8 +7,13 @@
 
 import type { Connection, Edge, Node } from '@xyflow/svelte'
 import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
-import { getInputTypeAndName, getOutputTypeAndName } from './canvasNodeUtils'
-import { isTypeCompatible, NodeType } from '../types/nodeTypes'
+import {
+  getInputTypeAndName,
+  getOutputTypeAndName,
+  handleIdToIndex,
+  resolveOutputTypeCandidates,
+} from './canvasNodeUtils'
+import { ConnectionType, isTypeCompatible, NodeType } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { parameterHandlePath } from './parameterPorts'
 
@@ -82,23 +87,90 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
     targetNode,
     targetHandle
   )?.connectionType
-  const sourceType = getOutputTypeAndName(
-    sourceNode,
-    sourceHandle
-  )?.connectionType
+  const sourceTypes = canvasOutputTypeCandidates(
+    sourceNode.id,
+    sourceHandle,
+    nodes,
+    edges
+  )
+  const sourceType = sourceTypes[0]
 
   console.log(
     `Handle ${
       connection.targetHandle
     } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
-  const isValid = isTypeCompatible(sourceType, expectedInputType)
+  const isValid = sourceTypes.some((type) =>
+    isTypeCompatible(type, expectedInputType)
+  )
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid) // Cache the result
   return isValid
 }
 
 const clearConnectionCache = () => connectionCache.clear()
+
+/**
+ * Resolves the concrete types available at a canvas output, following an
+ * already-connected upstream edge for pass-through arguments.
+ *
+ * @param nodeId - ID of the node owning the output.
+ * @param handleId - Output handle ID.
+ * @param nodes - Current canvas nodes.
+ * @param edges - Current canvas edges.
+ * @param resolving - Outputs currently being resolved, used to stop cycles.
+ * @returns Unique output types available at the handle.
+ */
+const canvasOutputTypeCandidates = (
+  nodeId: string,
+  handleId: string,
+  nodes: Node<NodeDefinitions>[],
+  edges: Edge[],
+  resolving = new Set<string>()
+): string[] => {
+  const node = nodes.find((candidate) => candidate.id === nodeId)
+  if (!node) return []
+
+  const parameter = parameterHandlePath(handleId)
+  if (parameter?.direction === 'output') {
+    const outputType = getOutputTypeAndName(node, handleId)?.connectionType
+    return outputType ? [outputType] : []
+  }
+
+  const handleIndex = handleIdToIndex(handleId)
+  if (Number.isNaN(handleIndex)) return []
+
+  const outputIndex = node.data.outputs?.[handleIndex]
+  if (outputIndex == null) return []
+
+  const key = `${nodeId}:${handleIndex}`
+  if (resolving.has(key)) {
+    return resolveOutputTypeCandidates(node.data, handleIndex)
+  }
+
+  let upstreamTypes: string[] = []
+  const argument =
+    outputIndex === -1 ? null : node.data.arguments?.[outputIndex]
+  if (argument?.connection_type === ConnectionType.PASSTHROUGH) {
+    const inputIndex = node.data.inputs?.indexOf(outputIndex) ?? -1
+    const upstream = edges.find(
+      (edge) =>
+        edge.target === nodeId && edge.targetHandle === `input-${inputIndex}`
+    )
+    if (upstream) {
+      const upstreamHandle = upstream.sourceHandle ?? 'output-0'
+      upstreamTypes = canvasOutputTypeCandidates(
+        upstream.source,
+        upstreamHandle,
+        nodes,
+        edges,
+        new Set(resolving).add(key)
+      )
+    }
+  }
+
+  return resolveOutputTypeCandidates(node.data, handleIndex, upstreamTypes)
+}
 
 const isTargetHandleConnected = (
   edges: Edge[],
