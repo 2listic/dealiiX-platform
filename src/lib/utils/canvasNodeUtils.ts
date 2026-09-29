@@ -6,6 +6,7 @@
 
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
+  ConnectionType,
   isTypeCompatible,
   NodeType,
   SELF,
@@ -20,7 +21,11 @@ import {
   parameterPathLabel,
   parameterPortCoralType,
 } from './parameterPorts'
-import { nodeConcreteSignature } from './nodePalette'
+import {
+  nodeConcreteSignature,
+  nodePaletteNodeName,
+  nodeSimpleDisplayName,
+} from './nodePalette'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
@@ -171,7 +176,7 @@ export const getOutputTypeAndName = (
 
   if (outputIndex === SELF) {
     return {
-      connectionType: data?.base ?? data.type,
+      connectionType: data.output_type ?? data.base ?? data.type,
       connectionName: defaultNodeName,
     }
   }
@@ -287,18 +292,54 @@ export const formatSuggestedNodeName = (name: string): string => {
 }
 
 /**
- * Returns the display name for a node definition: prefers `name` over `type`,
- * replaces underscores with spaces, and capitalizes the first letter.
+ * Returns the canonical persisted instance name for a node.
+ *
+ * The old UI stored `variant_name` as the default instance name. Migrate that
+ * generated value to the logical `display_name`, while preserving genuinely
+ * custom names and network-node identifiers.
+ *
+ * @param node - Node whose persisted instance name should be canonicalized.
+ * @returns Canonical instance name, or `undefined` when no name is stored.
+ */
+export const canonicalNodeName = (
+  node: NodeDefinitions
+): string | undefined => {
+  if (!node.name) return undefined
+
+  if (node.node_type !== NodeType.NETWORK) {
+    const registryNode = node as StandardNodeDefinition
+    if (
+      registryNode.display_name?.trim() &&
+      registryNode.variant_name?.trim() === node.name.trim()
+    ) {
+      return registryNode.display_name.trim()
+    }
+  }
+
+  return node.name
+}
+
+/**
+ * Returns the display name for a node definition.
+ *
+ * A persisted `name` is an instance label, except when it is the old
+ * automatically generated variant label. In that case use the logical
+ * `display_name` so loading an older graph also repairs its canvas label.
+ *
  * @param node - Registry node or stored subgraph node.
  * @returns Display name, or `""` if all available labels are blank.
  */
-export const returnNodeName = (node: NodeDefinitions): string =>
-  formatSuggestedNodeName(
-    node.name ??
-      ('display_name' in node ? node.display_name : undefined) ??
-      ('operation' in node ? node.operation : undefined) ??
-      node.type
-  )
+export const returnNodeName = (node: NodeDefinitions): string => {
+  const canonicalName = canonicalNodeName(node)
+  if (canonicalName) return formatSuggestedNodeName(canonicalName)
+
+  if (node.node_type !== NodeType.NETWORK) {
+    const registryNode = node as StandardNodeDefinition
+    return formatSuggestedNodeName(nodePaletteNodeName(registryNode))
+  }
+
+  return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))
+}
 
 /** Returns the concrete registry identifier for a picker/connection option. */
 export const returnNodeSignature = (node: NodeDefinitions): string =>
@@ -451,8 +492,9 @@ export const resolveInputArgument = (
 
 /**
  * Resolves the output type string for an output handle index on a node.
- * Handles the SELF case (`outputs[-1]`) by returning `base ?? type`.
- * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `base`.
+ * Handles the SELF case (`outputs[-1]`) by returning
+ * `output_type ?? base ?? type`.
+ * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `output_type`/`base`.
  * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The type string, or null if the index is out of range.
@@ -464,8 +506,54 @@ export const resolveOutputType = (
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
   if (outputIndex === SELF)
-    return (data as StandardNodeDefinition).base ?? data.type
+    return (
+      (data as StandardNodeDefinition).output_type ??
+      (data as StandardNodeDefinition).base ??
+      data.type
+    )
   return data.arguments?.[outputIndex]?.type ?? null
+}
+
+/**
+ * Resolves every type that may be observed at an output handle.
+ *
+ * A derived self-output is externally usable both as its registered base and
+ * as the concrete derived type. A pass-through output additionally preserves
+ * the concrete types resolved from its upstream input.
+ *
+ * @param data - The node definition containing the output metadata.
+ * @param handleIndex - Zero-based index into the node's `outputs` array.
+ * @param upstreamTypes - Concrete types propagated through a pass-through input.
+ * @returns Unique output types, or an empty array for an invalid handle.
+ */
+export const resolveOutputTypeCandidates = (
+  data: NodeDefinitions,
+  handleIndex: number,
+  upstreamTypes: string[] = []
+): string[] => {
+  const outputIndex = data.outputs?.[handleIndex]
+  if (outputIndex == null) return []
+
+  const candidates: string[] = []
+  if (outputIndex === SELF) {
+    const standardData = data as StandardNodeDefinition
+    if (standardData.output_type) {
+      candidates.push(standardData.output_type)
+    } else if (standardData.base) {
+      candidates.push(standardData.base, data.type)
+    } else {
+      candidates.push(data.type)
+    }
+  } else {
+    const argument = data.arguments?.[outputIndex]
+    if (!argument) return []
+    candidates.push(argument.type)
+    if (argument.connection_type === ConnectionType.PASSTHROUGH) {
+      candidates.push(...upstreamTypes)
+    }
+  }
+
+  return [...new Set(candidates)]
 }
 
 /**
