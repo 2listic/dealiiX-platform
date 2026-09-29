@@ -36,11 +36,6 @@ import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
 import { isParameterFileName } from './parameterFileFormat'
-import {
-  normalizeRelativeParameterPath,
-  readParameterFile,
-  type ParameterFileTarget,
-} from './parameterFileAccess'
 import { parameterHandlePath } from './parameterPorts'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
@@ -134,14 +129,22 @@ const exportAndEvalGraphRemote = async (
   config: CoralJobConfig,
   runName?: string
 ): Promise<void> => {
-  // Parse the canvas once without MPI; the submit primitive injects the MPI block.
-  const graph = await buildExecutionGraphPayload('remote', nodes, edges, false)
   // Give every single remote run a unique, legible subdir so back-to-back runs
   // don't clobber the shared graph.json/job.sh (the batch script reads
   // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
   // isolation pipeline stages already have.
   const runDir = await ensureUniqueRemoteDir(
     `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  // Parse and materialize only after the isolated run directory exists. Any
+  // exposed parameter values are written into this directory, never back into
+  // the user's source working directory.
+  const graph = await buildExecutionGraphPayload(
+    'remote',
+    nodes,
+    edges,
+    false,
+    runDir
   )
   const jobId = await submitCoralStageRemote({
     graph,
@@ -194,20 +197,6 @@ export const submitCoralStageRemote = async ({
     'remote',
     settingsState.remote.workingDirectory
   )
-  const parameterFileNames = collectParameterFileNames(executionGraph)
-  for (const fileName of parameterFileNames) {
-    const target: ParameterFileTarget = {
-      location: 'remote',
-      workingDirectory: settingsState.remote.workingDirectory,
-      fileName,
-    }
-    const loaded = await readParameterFile(target)
-    const relativePath = normalizeRelativeParameterPath(fileName)
-    const stagedPath = `${stageDir}/${relativePath}`
-    const directory = stagedPath.slice(0, stagedPath.lastIndexOf('/'))
-    await ensureRemoteDir(directory)
-    await uploadFileSsh(loaded.content, stagedPath)
-  }
   await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
     jobName: `coral-${internalJobId}`,
@@ -239,7 +228,8 @@ export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
 const materializeProtocolGraphIfNeeded = async (
   graph: object,
   location: ExecutionLocation = 'remote',
-  boundaryInputValues: Record<number, string> = {}
+  boundaryInputValues: Record<number, string> = {},
+  materializationDirectory?: string
 ): Promise<object> => {
   const hasParameterMetadata = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.some(hasParameterMetadata)
@@ -276,14 +266,16 @@ const materializeProtocolGraphIfNeeded = async (
     location,
     nodesFromProtocolToFlow(network.workflow.nodes),
     edgesFromProtocolToFlow(network.workflow.edges),
-    parameterInputOverrides
+    parameterInputOverrides,
+    materializationDirectory
   )
   const nestedNetwork = await materializeNestedProtocolGraphs(
     network,
     location,
     materialized.nodes,
     materialized.edges,
-    inheritedNetworkInputs
+    inheritedNetworkInputs,
+    materializationDirectory
   )
   const parsed = parseGraphWithQualifiedIds(
     materialized.nodes,
@@ -315,7 +307,8 @@ const materializeNestedProtocolGraphs = async (
   location: ExecutionLocation,
   materializedNodes: Node[],
   materializedEdges: Edge[],
-  inheritedNetworkInputs: Record<string, Record<number, string>>
+  inheritedNetworkInputs: Record<string, Record<number, string>>,
+  materializationDirectory?: string
 ): Promise<Network> => {
   const nodes = { ...network.workflow.nodes }
   for (const [nodeId, node] of Object.entries(nodes)) {
@@ -345,7 +338,8 @@ const materializeNestedProtocolGraphs = async (
     const nested = await materializeProtocolGraphIfNeeded(
       node.value,
       location,
-      childBoundaryValues
+      childBoundaryValues,
+      materializationDirectory
     )
     const nestedWithoutIds = removeQualifiedIds(
       nested as Network | QualifiedNetwork
@@ -440,16 +434,17 @@ const exportAndEvalGraphLocal = async (
 ): Promise<void> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-  const graphPayload = await buildExecutionGraphPayload(
-    'local',
-    nodes,
-    edges,
-    useMpi
-  )
   // Isolate every run into its own subdir, same as remote, so back-to-back runs
   // don't clobber each other's graph.json/log.
   const runDir = await ensureUniqueLocalDir(
     `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  const graphPayload = await buildExecutionGraphPayload(
+    'local',
+    nodes,
+    edges,
+    useMpi,
+    runDir
   )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
@@ -652,17 +647,29 @@ export const buildGraphPayload = (
   useMpi: boolean
 ): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
 
-/** Builds a backend payload after applying frontend parameter connections. */
+/**
+ * Builds a backend payload after applying frontend parameter connections.
+ *
+ * @param location - Execution location used for filesystem access.
+ * @param nodes - Canvas graph nodes.
+ * @param edges - Canvas graph edges.
+ * @param useMpi - Whether to inject the configured MPI plugin settings.
+ * @param materializationDirectory - Optional run directory for changed parameter files.
+ * @returns Sanitized graph payload ready for execution.
+ */
 export const buildExecutionGraphPayload = async (
   location: ExecutionLocation,
   nodes: Node[],
   edges: Edge[],
-  useMpi: boolean
+  useMpi: boolean,
+  materializationDirectory?: string
 ): Promise<object> => {
   const protocol = parseGraphWithQualifiedIds(nodes, edges)
   const materialized = await materializeProtocolGraphIfNeeded(
     protocol,
-    location
+    location,
+    {},
+    materializationDirectory
   )
   return withMpiPlugin(materialized, useMpi)
 }

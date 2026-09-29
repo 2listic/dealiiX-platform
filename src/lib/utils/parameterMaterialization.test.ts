@@ -25,7 +25,7 @@ describe('materializeParameterGraph', () => {
     access.writeParameterFile.mockReset()
   })
 
-  it('updates the source file and compiles virtual outputs to literal nodes', async () => {
+  it('writes materialized values into the run directory', async () => {
     const inputHandle = parameterHandle('input', ['Solver', 'Tolerance'])
     const outputHandle = parameterHandle('output', ['Solver', 'Tolerance'])
     const nodes = [
@@ -94,9 +94,19 @@ describe('materializeParameterGraph', () => {
       },
     ] as any
 
-    const result = await materializeParameterGraph('local', nodes, edges)
+    const result = await materializeParameterGraph(
+      'local',
+      nodes,
+      edges,
+      {},
+      '/run'
+    )
 
     expect(access.writeParameterFile).toHaveBeenCalledTimes(1)
+    expect(access.writeParameterFile.mock.calls[0][0]).toMatchObject({
+      workingDirectory: '/run',
+      fileName: 'parameters.prm',
+    })
     expect(access.writeParameterFile.mock.calls[0][1]).toContain(
       'set Tolerance = 0.02'
     )
