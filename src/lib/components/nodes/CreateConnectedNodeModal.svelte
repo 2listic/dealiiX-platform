@@ -11,6 +11,7 @@
     returnNodeName,
     returnNodeSignature,
   } from '../../utils/canvasNodeUtils'
+  import { nodePaletteNodeName } from '../../utils/nodePalette'
   import { NodeType } from '../../types/nodeTypes'
 
   interface Props {
@@ -38,6 +39,14 @@
       ? `${option.nodeDefinition.name}-${option.handleId}`
       : `${option.nodeDefinition.type}-${option.handleId}`
 
+  const optionPaletteName = (option: CompatibleNodeOption): string =>
+    option.nodeDefinition.node_type === NodeType.NETWORK
+      ? returnNodeName(option.nodeDefinition)
+      : nodePaletteNodeName(option.nodeDefinition, options.length > 1)
+
+  const optionDefaultNodeName = (option: CompatibleNodeOption): string =>
+    returnNodeName(option.nodeDefinition)
+
   // Fires when `options` changes (i.e. modal opens with a new set of choices).
   // Resets selection to the first option.
   // The ternary guards against an empty array.
@@ -51,7 +60,7 @@
       (option) => optionId(option) === selectedOptionId
     )
     if (selectedOption) {
-      nodeName = returnNodeName(selectedOption.nodeDefinition)
+      nodeName = optionDefaultNodeName(selectedOption)
     }
   })
 
@@ -67,7 +76,7 @@
 
   const optionLabel = (option: CompatibleNodeOption): string => {
     const showConcreteSignature = options.length > 1
-    const name = returnNodeName(option.nodeDefinition)
+    const name = optionPaletteName(option)
     const signature = showConcreteSignature
       ? ` — ${returnNodeSignature(option.nodeDefinition)}`
       : ''
