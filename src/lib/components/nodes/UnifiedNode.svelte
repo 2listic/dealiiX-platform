@@ -58,7 +58,7 @@
     useSvelteFlow,
     type NodeProps,
   } from '@xyflow/svelte'
-  import { getModal } from '../layout/Modal.svelte'
+  import Modal, { getModal } from '../layout/Modal.svelte'
   import WorkingFileMetadataModal from './WorkingFileMetadataModal.svelte'
   import {
     nodeColors,
@@ -76,6 +76,7 @@
   } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
+  import InfoIcon from '../icons/InfoIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
@@ -83,6 +84,7 @@
   import { explodeNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
+  import CubeIcon from '../icons/CubeIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
@@ -103,6 +105,14 @@
     StandardNodeDefinition,
     WorkingFileReference,
   } from '../../types/nodeTypes'
+  import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import { isVtkFileName } from '../../utils/vtkFileFormat'
+  import {
+    buildVtkVisualizerUrl,
+    vtkVisualizerFileExists,
+    vtkVisualizerTarget,
+  } from '../../utils/vtkVisualizer'
+  import { openNewWindow } from '../../utils/sshMessages'
 
   let {
     id,
@@ -126,6 +136,10 @@
     [Type.STRING, Type.STR].includes(data.type as Type) &&
       isParameterFileName(data.value)
   )
+  let isVtkFile = $derived(
+    [Type.STRING, Type.STR].includes(data.type as Type) &&
+      isVtkFileName(data.value)
+  )
   let parameterFileAvailable = $state(false)
   let parameterFileCheckPending = $state(false)
   let parameterCheckId = 0
@@ -141,6 +155,9 @@
   )
   let totalInputs = $derived(data.inputs.length + parameterInputs.length)
   let totalOutputs = $derived(data.outputs.length + parameterOutputs.length)
+  let nodeInfoModalId = $derived(`node-info-${id}`)
+  let nodeInfoJson = $derived(JSON.stringify(data, null, 2))
+  let nodeDisplayName = $derived(returnNodeName(data))
 
   const { updateNodeData } = useSvelteFlow()
 
@@ -216,6 +233,26 @@
     graphHistoryState.checkpoint()
     updateNodeData(id, { working_file: metadata })
     clearConnectionCache()
+  }
+
+  const handleOpenVtkFile = async () => {
+    try {
+      const target = vtkVisualizerTarget(activeLocation, String(data.value))
+      if (!(await vtkVisualizerFileExists(target))) {
+        throw new Error('VTK file is not available in the working directory')
+      }
+      await openNewWindow(
+        buildVtkVisualizerUrl(settingsState.urlVisualizer, target)
+      )
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to open the VTK visualizer',
+        type: 'error',
+      })
+    }
   }
 
   const isValidNum = (value: string | null | undefined) => {
@@ -308,12 +345,7 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      {#if hasCustomName}
-        <div class="node-name">{data.name}</div>
-        <div class="node-type">{data.type}</div>
-      {:else}
-        <div class="node-name">{data.type}</div>
-      {/if}
+      <div class="node-name" title={data.type}>{nodeDisplayName}</div>
     </div>
     <div class="node-buttons">
       {#if isNetworkNode}
@@ -347,6 +379,17 @@
             <OpenIcon width="20px" height="20px" />
           </button>
         {/if}
+        {#if isVtkFile}
+          <button
+            class="node-button vtk-button"
+            title="Open VTK file in visualizer"
+            aria-label="Open VTK file in visualizer"
+            disabled={!workingDirectory}
+            onclick={handleOpenVtkFile}
+          >
+            <CubeIcon width="20px" height="20px" />
+          </button>
+        {/if}
         <button
           class="node-button"
           title="Edit name"
@@ -355,6 +398,18 @@
           <EditIcon width="20px" height="20px" />
         </button>
       {/if}
+      <button
+        class="node-button"
+        title="Show node definition"
+        aria-label={`Show node definition for ${nodeDisplayName}`}
+        onclick={(event) => {
+          event.stopPropagation()
+          getModal(nodeInfoModalId)?.open()
+        }}
+        onmousedown={(event) => event.stopPropagation()}
+      >
+        <InfoIcon width="20px" />
+      </button>
       <button
         class="node-button"
         title="Delete"
@@ -487,6 +542,7 @@
           type="text"
           class:is-invalid={!isValid}
           class:parameter-file-input={isParameterFile}
+          class:vtk-file-input={isVtkFile}
           value={data.value}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
@@ -513,6 +569,13 @@
     onSave={handleWorkingFileMetadataSave}
   />
 {/if}
+
+<Modal id={nodeInfoModalId} size="lg">
+  <div class="node-info-modal">
+    <h2>{nodeDisplayName}</h2>
+    <pre>{nodeInfoJson}</pre>
+  </div>
+</Modal>
 
 <style>
   .custom-node {
@@ -550,12 +613,7 @@
   .node-name {
     font-weight: bold;
     text-align: center;
-  }
-
-  .node-type {
-    font-family: monospace;
-    font-size: smaller;
-    text-align: center;
+    cursor: help;
   }
 
   .node-buttons {
@@ -579,8 +637,38 @@
   }
 
   .node-button:disabled {
-    cursor: wait;
-    opacity: 0.5;
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .node-info-modal {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .node-info-modal h2 {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .node-info-modal pre {
+    max-height: 70vh;
+    margin: 0;
+    overflow: auto;
+    padding: 1rem;
+    border: 1px solid var(--ternary-color);
+    border-radius: 6px;
+    background: var(--background-color-primary);
+    color: var(--ternary-color);
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   input[type='text'] {
@@ -607,6 +695,19 @@
     border-color: var(--button-action-hover);
     outline: 2px solid
       color-mix(in srgb, var(--button-action-bg) 35%, transparent);
+  }
+
+  input.vtk-file-input {
+    background-color: var(--button-vtk-bg, #287f8f);
+    border-color: var(--button-vtk-bg, #287f8f);
+    color: white;
+    font-family: monospace;
+  }
+
+  input.vtk-file-input:focus {
+    border-color: var(--button-vtk-hover, #35a5b8);
+    outline: 2px solid
+      color-mix(in srgb, var(--button-vtk-bg, #287f8f) 35%, transparent);
   }
 
   .input-column {
