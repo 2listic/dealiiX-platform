@@ -142,7 +142,7 @@ describe('submitExecutableStageRemote batch script', () => {
 })
 
 describe('submitCoralStageRemote parameter staging', () => {
-  it('stages referenced parameter files and uses the configured Coral launch paths', async () => {
+  it('resolves existing parameter references in the graph payload', async () => {
     const uploads: Record<string, string> = {}
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, string>) => {
@@ -150,14 +150,10 @@ describe('submitCoralStageRemote parameter staging', () => {
           uploads[payload.remotePath] = payload.content
           return ''
         }
-        if (
-          payload.command?.startsWith('test -f') &&
-          payload.command.includes("'/app/shared-data/run-1/")
-        ) {
-          throw new Error('staged file not found')
+        if (payload.command?.startsWith('for p in')) {
+          return '/app/shared-data/nested/poisson.prm\n'
         }
         if (payload.command?.startsWith('sbatch')) return '4242'
-        if (payload.command?.includes('cat')) return 'set Value = 3\n'
         return ''
       }
     )
@@ -188,11 +184,8 @@ describe('submitCoralStageRemote parameter staging', () => {
     expect(uploads['/app/shared-data/run-1/job.sh']).toContain(
       `${coralBinaryPath} --plugin ${coralPluginPath} run /app/shared-data/run-1/graph.json`
     )
-    expect(uploads['/app/shared-data/run-1/nested/poisson.prm']).toBe(
-      'set Value = 3\n'
-    )
     expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
-      'nested/poisson.prm'
+      '/app/shared-data/nested/poisson.prm'
     )
   })
 
@@ -242,15 +235,23 @@ describe('submitCoralStageRemote parameter staging', () => {
   it('materializes parameter inputs inside a subnetwork before upload', async () => {
     const uploads: Record<string, string> = {}
     let remoteParameterContent =
-      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\n'
+      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\nset Grid = grid_input.vtk\n'
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, string>) => {
         if (channel === 'upload-file-ssh') {
           uploads[payload.remotePath] = payload.content
-          if (payload.remotePath === '/app/shared-data/nested/poisson.prm') {
+          if (
+            payload.remotePath ===
+            '/app/shared-data/run-nested/nested/poisson.prm'
+          ) {
             remoteParameterContent = payload.content
           }
           return ''
+        }
+        if (payload.command?.startsWith('for p in')) {
+          return payload.command.includes("'/app/shared-data/grid_input.vtk'")
+            ? '/app/shared-data/grid_input.vtk\n'
+            : ''
         }
         if (payload.command?.startsWith('sbatch')) return '4242'
         if (payload.command?.includes('cat')) {
@@ -295,6 +296,10 @@ describe('submitCoralStageRemote parameter staging', () => {
                       },
                     },
                     '15': { type: 'std::string', value: '4' },
+                    '17': {
+                      type: 'std::string',
+                      value: 'grid_input.vtk',
+                    },
                   },
                   edges: {
                     '0': {
@@ -303,6 +308,12 @@ describe('submitCoralStageRemote parameter staging', () => {
                       target: 13,
                       target_handle:
                         'parameter-input-%5B%22ImmersX%20Coral%20Poisson%22%2C%22Initial%20refinement%22%5D',
+                    },
+                    '1': {
+                      source: 17,
+                      source_output: 0,
+                      target: 13,
+                      target_handle: 'parameter-input-%5B%22Grid%22%5D',
                     },
                   },
                 },
@@ -327,9 +338,16 @@ describe('submitCoralStageRemote parameter staging', () => {
     expect(uploads['/app/shared-data/run-nested/nested/poisson.prm']).toContain(
       'set Initial refinement = 4'
     )
+    expect(uploads['/app/shared-data/run-nested/nested/poisson.prm']).toContain(
+      'set Grid = /app/shared-data/grid_input.vtk'
+    )
     const uploadedGraph = uploads['/app/shared-data/run-nested/graph.json']
     expect(uploadedGraph).not.toContain('parameter_file')
     expect(uploadedGraph).not.toContain('target_handle')
+    expect(uploadedGraph).toContain(
+      '/app/shared-data/run-nested/nested/poisson.prm'
+    )
+    expect(uploadedGraph).toContain('/app/shared-data/grid_input.vtk')
     expect(uploadedGraph).toContain('"edges":{}')
   })
 

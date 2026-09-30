@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NodeType, SELF } from '../types/nodeTypes'
 import { parameterHandle } from './parameterPorts'
 
+const invoke = vi.hoisted(() => vi.fn())
+
+vi.stubGlobal('window', { electron: { invoke } })
+
 const access = vi.hoisted(() => ({
   readParameterFile: vi.fn(),
   writeParameterFile: vi.fn(),
+  normalizeRelativeParameterPath: (fileName: string) => fileName,
   parameterFileTarget: vi.fn((location: string, fileName: string) => ({
     location,
     workingDirectory: '/work',
@@ -18,9 +23,12 @@ import { materializeParameterGraph } from './parameterMaterialization'
 
 describe('materializeParameterGraph', () => {
   beforeEach(() => {
+    invoke.mockReset()
+    invoke.mockResolvedValue(['/work/grid_input.vtk'])
     access.readParameterFile.mockResolvedValue({
       resolvedPath: '/work/parameters.prm',
-      content: 'subsection Solver\nset Tolerance = 1e-3\nend\n',
+      content:
+        'subsection Solver\nset Tolerance = 1e-3\nend\nset Grid = grid_input.vtk\n',
     })
     access.writeParameterFile.mockReset()
   })
@@ -47,8 +55,26 @@ describe('materializeParameterGraph', () => {
                 input: true,
                 output: true,
               },
+              {
+                path: ['Grid'],
+                type: 'string',
+                input: true,
+                output: false,
+              },
             ],
           },
+        },
+      },
+      {
+        id: '4',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'std::string',
+          node_type: NodeType.ELEMENTARY_CONSTRUCTOR,
+          arguments: [],
+          inputs: [],
+          outputs: [SELF],
+          value: 'grid_input.vtk',
         },
       },
       {
@@ -92,6 +118,13 @@ describe('materializeParameterGraph', () => {
         target: '3',
         targetHandle: 'input-0',
       },
+      {
+        id: 'grid-input',
+        source: '4',
+        sourceHandle: 'output-0',
+        target: '1',
+        targetHandle: parameterHandle('input', ['Grid']),
+      },
     ] as any
 
     const result = await materializeParameterGraph(
@@ -110,15 +143,25 @@ describe('materializeParameterGraph', () => {
     expect(access.writeParameterFile.mock.calls[0][1]).toContain(
       'set Tolerance = 0.02'
     )
+    expect(access.writeParameterFile.mock.calls[0][1]).toContain(
+      'set Grid = /work/grid_input.vtk'
+    )
     expect(result.edges).toHaveLength(1)
     expect(result.edges[0].target).toBe('3')
     expect(result.edges[0].sourceHandle).toBe('output-0')
     expect(
       result.nodes.find((node) => node.id === '1')?.data.parameter_file
     ).toBeUndefined()
+    expect(result.nodes.find((node) => node.id === '1')?.data.value).toBe(
+      '/run/parameters.prm'
+    )
     expect(
       result.nodes.find(
-        (node) => node.id !== '1' && node.id !== '2' && node.id !== '3'
+        (node) =>
+          node.id !== '1' &&
+          node.id !== '2' &&
+          node.id !== '3' &&
+          node.id !== '4'
       )?.data.value
     ).toBe('0.02')
   })
