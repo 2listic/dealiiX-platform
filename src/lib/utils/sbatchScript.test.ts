@@ -17,6 +17,7 @@ describe('buildSbatchScript', () => {
 #SBATCH --job-name=coral-7
 #SBATCH --time=01:00:00
 
+printf '%s\\n' 'Command: /app/coral run graph.json'
 /app/coral run graph.json
 `
     )
@@ -41,6 +42,7 @@ describe('buildSbatchScript', () => {
 #SBATCH --ntasks-per-node=4
 #SBATCH --time=01:00:00
 
+printf '%s\\n' 'Command: srun --mpi=pmix /app/coral run graph.json'
 srun --mpi=pmix /app/coral run graph.json
 `
     )
@@ -55,6 +57,9 @@ srun --mpi=pmix /app/coral run graph.json
     })
 
     expect(script).toContain('\n"/app/my program" "parameters.json"\n')
+    expect(script).toContain(
+      'printf \'%s\\n\' \'Command: "/app/my program" "parameters.json"\''
+    )
   })
 
   it('carries no OpenMPI-specific flags or rank count', () => {

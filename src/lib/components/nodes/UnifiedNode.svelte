@@ -2,36 +2,42 @@
   import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
-    StandardNodeDefinition,
+    StandardNodeDefinition as StandardNodeDefinitionType,
     NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
   // unused exports
   export type ElementaryConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.ELEMENTARY_CONSTRUCTOR
   >
   export type EmptyConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.EMPTY_CONSTRUCTOR
   >
   export type Constructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.CONSTRUCTOR
   >
-  export type Abstract = FlowNode<StandardNodeDefinition, FlowNodeType.ABSTRACT>
+  export type Abstract = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.ABSTRACT
+  >
   export type VoidMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_METHOD
   >
   export type VoidConstMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_CONST_METHOD
   >
   export type VoidFunction = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_FUNCTION
   >
-  export type Function = FlowNode<StandardNodeDefinition, FlowNodeType.FUNCTION>
+  export type Function = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.FUNCTION
+  >
   export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
@@ -77,6 +83,22 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
+  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { settingsState } from '../../stores/settingsStore.svelte'
+  import { isParameterFileName } from '../../utils/parameterFileFormat'
+  import {
+    parameterFileExists,
+    parameterFileTarget,
+  } from '../../utils/parameterFileAccess'
+  import {
+    parameterHandle,
+    parameterInputExposures,
+    parameterOutputExposures,
+    parameterPathLabel,
+    parameterPortCoralType,
+  } from '../../utils/parameterPorts'
+  import type { StandardNodeDefinition } from '../../types/nodeTypes'
 
   let {
     id,
@@ -90,10 +112,70 @@
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
   let color = $derived(nodeColors[type as keyof typeof nodeColors])
+  let activeLocation = $derived(executionSelectionState.location)
+  let workingDirectory = $derived(
+    activeLocation === 'local'
+      ? settingsState.local.workingDirectory
+      : settingsState.remote.workingDirectory
+  )
+  let isParameterFile = $derived(
+    [Type.STRING, Type.STR].includes(data.type as Type) &&
+      isParameterFileName(data.value)
+  )
+  let parameterFileAvailable = $state(false)
+  let parameterCheckId = 0
+  let parameterInputs = $derived(
+    parameterInputExposures(data as StandardNodeDefinition)
+  )
+  let parameterOutputs = $derived(
+    parameterOutputExposures(data as StandardNodeDefinition)
+  )
+  let totalInputs = $derived(data.inputs.length + parameterInputs.length)
+  let totalOutputs = $derived(data.outputs.length + parameterOutputs.length)
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
+
+  $effect(() => {
+    const fileName = data.value
+    const checkId = ++parameterCheckId
+    parameterFileAvailable = false
+    if (!isParameterFile || !workingDirectory) return
+
+    const target = parameterFileTarget(activeLocation, fileName)
+    void parameterFileExists(target)
+      .then((exists) => {
+        if (checkId === parameterCheckId) parameterFileAvailable = exists
+      })
+      .catch(() => {
+        if (checkId === parameterCheckId) parameterFileAvailable = false
+      })
+  })
+
+  const handleOpenParameters = async () => {
+    try {
+      await parameterFileEditorState.open(
+        parameterFileTarget(activeLocation, data.value),
+        {
+          exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
+          onExposureChange: (exposures) => {
+            graphHistoryState.checkpoint()
+            updateNodeData(id, {
+              parameter_file: { exposures },
+            })
+            clearConnectionCache()
+          },
+        }
+      )
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error ? error.message : 'Failed to open parameters',
+        type: 'error',
+      })
+    }
+  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -209,6 +291,16 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
+        {#if isParameterFile && parameterFileAvailable}
+          <button
+            class="node-button"
+            title="Open parameters"
+            aria-label="Open parameters"
+            onclick={handleOpenParameters}
+          >
+            <OpenIcon width="20px" height="20px" />
+          </button>
+        {/if}
         <button
           class="node-button"
           title="Edit name"
@@ -236,7 +328,18 @@
       id={`input-${index}`}
       type="target"
       position={Position.Left}
-      style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
+      style="top: {(100 / (totalInputs + 1)) * (index + 1) + 5}%;"
+    />
+  {/each}
+  {#each parameterInputs as exposure, index (parameterHandle('input', exposure.path))}
+    <Handle
+      id={parameterHandle('input', exposure.path)}
+      type="target"
+      position={Position.Left}
+      class="parameter-handle"
+      style="top: {(100 / (totalInputs + 1)) *
+        (data.inputs.length + index + 1) +
+        5}%;"
     />
   {/each}
 
@@ -246,7 +349,18 @@
       id={`output-${index}`}
       type="source"
       position={Position.Right}
-      style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+      style="top: {(100 / (totalOutputs + 1)) * (index + 1) + 5}%;"
+    />
+  {/each}
+  {#each parameterOutputs as exposure, index (parameterHandle('output', exposure.path))}
+    <Handle
+      id={parameterHandle('output', exposure.path)}
+      type="source"
+      position={Position.Right}
+      class="parameter-handle"
+      style="top: {(100 / (totalOutputs + 1)) *
+        (data.outputs.length + index + 1) +
+        5}%;"
     />
   {/each}
 
@@ -280,6 +394,31 @@
     </div>
   {/if}
 
+  {#if parameterInputs.length > 0 || parameterOutputs.length > 0}
+    <div class="parameter-port-columns">
+      <div class="input-column">
+        {#each parameterInputs as exposure (parameterHandle('input', exposure.path))}
+          <div class="parameter-port-label">
+            <div class="input-label">{parameterPathLabel(exposure.path)}</div>
+            <div class="input-type">
+              {parameterPortCoralType(exposure.type)}
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="output-column">
+        {#each parameterOutputs as exposure (parameterHandle('output', exposure.path))}
+          <div class="parameter-port-label">
+            <div class="output-label">{parameterPathLabel(exposure.path)}</div>
+            <div class="output-type">
+              {parameterPortCoralType(exposure.type)}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <!-- Elementary constructor / primitive literal input fields -->
   {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || data.node_type === NodeType.PRIMITIVE}
     <div>
@@ -300,7 +439,8 @@
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
         <input
           type="text"
-          class={isValid ? '' : 'invalid'}
+          class:is-invalid={!isValid}
+          class:parameter-file-input={isParameterFile}
           value={data.value}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
@@ -392,8 +532,21 @@
     box-sizing: border-box;
   }
 
-  input.invalid {
+  input.is-invalid {
     border: 2px solid red;
+  }
+
+  input.parameter-file-input {
+    background-color: var(--button-action-bg);
+    border-color: var(--button-action-bg);
+    color: white;
+    font-family: monospace;
+  }
+
+  input.parameter-file-input:focus {
+    border-color: var(--button-action-hover);
+    outline: 2px solid
+      color-mix(in srgb, var(--button-action-bg) 35%, transparent);
   }
 
   .input-column {
@@ -433,5 +586,23 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
+  }
+
+  :global(.parameter-handle) {
+    background: var(--button-action-bg);
+    border-color: var(--button-action-hover);
+  }
+
+  .parameter-port-columns {
+    display: flex;
+    flex-direction: row;
+    gap: 4vh;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.25rem;
+  }
+
+  .parameter-port-label {
+    font-size: 0.8rem;
   }
 </style>

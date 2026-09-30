@@ -4,13 +4,81 @@
   import { parametersState } from '../stores/parametersStore.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type { ParameterTree, ParameterNode } from '../types/parameterTypes'
+  import type { ParameterExposure } from '../types/nodeTypes'
   import {
     isExtraNode,
     isParameterLeaf,
     isParameterTree,
   } from '../utils/parameterFileFormat'
+  import {
+    findParameterExposure,
+    parameterPortType,
+  } from '../utils/parameterPorts'
 
-  let parameters = $derived(parametersState.value)
+  interface Props {
+    /** Optional standalone tree used by the graph parameter-file editor. */
+    parameters?: ParameterTree | null
+    /** Replaces an externally-owned tree after structural edits. */
+    onChange?: (_parameters: ParameterTree) => void
+    /** Marks an externally-owned tree dirty after leaf edits. */
+    onDirty?: () => void
+    /** Frontend-only parameter port exposure state. */
+    exposures?: ParameterExposure[]
+    /** Called when a parameter input/output switch changes. */
+    onExposureChange?: (_exposures: ParameterExposure[]) => void
+  }
+
+  let {
+    parameters: externalParameters,
+    onChange,
+    onDirty,
+    exposures = [],
+    onExposureChange,
+  }: Props = $props()
+
+  let parameters = $derived(
+    externalParameters === undefined
+      ? parametersState.value
+      : externalParameters
+  )
+
+  const setParameters = (next: ParameterTree) => {
+    if (externalParameters === undefined) {
+      parametersState.value = next
+    } else {
+      onChange?.(next)
+    }
+  }
+
+  const markDirty = () => onDirty?.()
+
+  const exposureAt = (path: string[]) => findParameterExposure(exposures, path)
+
+  const setExposure = (
+    path: string[],
+    leaf: { pattern_description: string },
+    direction: 'input' | 'output',
+    enabled: boolean
+  ) => {
+    const current = exposureAt(path)
+    const next = exposures
+      .filter(
+        (exposure) =>
+          exposure.path.length !== path.length ||
+          !exposure.path.every((segment, index) => segment === path[index])
+      )
+      .map((exposure) => ({ ...exposure, path: [...exposure.path] }))
+
+    const updated: ParameterExposure = {
+      path: [...path],
+      type: current?.type ?? parameterPortType(leaf.pattern_description),
+      input: current?.input ?? false,
+      output: current?.output ?? false,
+    }
+    updated[direction] = enabled
+    if (updated.input || updated.output) next.push(updated)
+    onExposureChange?.(next)
+  }
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
@@ -72,7 +140,7 @@
    * @param key  - Name of the section within its parent, e.g. `"Mesh"`.
    */
   function duplicateSection(path: string[], key: string) {
-    if (!parametersState.value) return
+    if (!parameters) return
 
     const suggestedName = `${key}_copy`
     duplicateModalPath = path
@@ -85,12 +153,10 @@
    * Commits the duplication after the user confirms the name in the modal.
    */
   function confirmDuplicateSection() {
-    if (!parametersState.value || !duplicateModalKey) return
+    if (!parameters || !duplicateModalKey) return
 
     // Deep-clone so intermediate mutations don't touch the live reactive store.
-    const nextParameters = $state.snapshot(
-      parametersState.value
-    ) as ParameterTree
+    const nextParameters = $state.snapshot(parameters) as ParameterTree
     // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
     const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
@@ -117,7 +183,8 @@
     // mutation here propagates back to nextParameters.
     parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
     // only this final assignment triggers Svelte reactivity.
-    parametersState.value = nextParameters
+    setParameters(nextParameters)
+    markDirty()
     toastState.add({
       message: `Section ${duplicateModalKey} duplicated as ${newName}`,
       type: 'success',
@@ -138,17 +205,18 @@
    * @param key  - Key of the node to delete within its parent.
    */
   function deleteExtraNode(path: string[], key: string) {
-    if (!parametersState.value) return
+    if (!parameters) return
     if (!window.confirm(`Delete "${key}"? This cannot be undone.`)) return
     // Deep-clone so intermediate mutations don't touch the live reactive store.
-    const next = $state.snapshot(parametersState.value) as ParameterTree
+    const next = $state.snapshot(parameters) as ParameterTree
     // parent is a reference into next — mutations propagate back via JS reference semantics.
     const parent = getTreeAtPath(next, path)
     if (!parent) return
     // mutation here propagates back to next.
     delete parent[key]
     // only this final assignment triggers Svelte reactivity.
-    parametersState.value = next
+    setParameters(next)
+    markDirty()
     toastState.add({ message: `${key} removed`, type: 'success' })
   }
 
@@ -173,7 +241,7 @@
 
   $effect(() => {
     if (parameters) {
-      console.log('parameters changed:', parametersState.snapshot)
+      console.log('parameters changed:', parameters)
     }
   })
 </script>
@@ -195,6 +263,7 @@
         {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
           {#if isParameterLeaf(val)}
             {@const inputType = parsePatternType(val.pattern_description)}
+            {@const exposure = exposureAt([...path, key])}
             <div class="param-leaf">
               {#if val.documentation}
                 <span
@@ -209,17 +278,21 @@
                   <input
                     type="checkbox"
                     checked={val.value === 'true'}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).checked
                         ? 'true'
                         : 'false'
+                      markDirty()
                     }}
                   />
                 {:else if inputType === 'selection'}
                   <select
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLSelectElement).value
+                      markDirty()
                     }}
                   >
                     {#each getSelectionOptions(val.pattern_description) as opt (opt)}
@@ -230,23 +303,59 @@
                   <input
                     type="number"
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     step={val.pattern_description.startsWith('[Integer')
                       ? '1'
                       : 'any'}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
+                      markDirty()
                     }}
                   />
                 {:else}
                   <input
                     type="text"
                     value={val.value}
+                    disabled={exposure?.input ?? false}
                     onchange={(e) => {
                       val.value = (e.target as HTMLInputElement).value
+                      markDirty()
                     }}
                   />
                 {/if}
               </label>
+              {#if onExposureChange}
+                <div class="exposure-switches" title="Graph connections">
+                  <label class="exposure-switch">
+                    <input
+                      type="checkbox"
+                      checked={exposure?.input ?? false}
+                      onchange={(event) =>
+                        setExposure(
+                          [...path, key],
+                          val,
+                          'input',
+                          (event.target as HTMLInputElement).checked
+                        )}
+                    />
+                    <span>Expose as input</span>
+                  </label>
+                  <label class="exposure-switch">
+                    <input
+                      type="checkbox"
+                      checked={exposure?.output ?? false}
+                      onchange={(event) =>
+                        setExposure(
+                          [...path, key],
+                          val,
+                          'output',
+                          (event.target as HTMLInputElement).checked
+                        )}
+                    />
+                    <span>Expose as output</span>
+                  </label>
+                </div>
+              {/if}
             </div>
           {:else}
             <details use:setInitialOpen={depth < 1}>
@@ -470,6 +579,33 @@
     gap: 0.5rem;
     flex: 1;
     min-width: 0;
+  }
+
+  .exposure-switches {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 8.5rem;
+    gap: 0.15rem;
+    font-size: 0.7rem;
+  }
+
+  .exposure-switch {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem !important;
+    white-space: nowrap;
+  }
+
+  .exposure-switch input {
+    flex: 0 0 auto;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .param-leaf input:disabled,
+  .param-leaf select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .param-name {

@@ -50,6 +50,7 @@
   import GridIcon from '../icons/GridIcon.svelte'
   import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
+  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
 
   const { fitView } = useSvelteFlow()
 
@@ -70,6 +71,7 @@
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
+  let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
   let isRemote = $derived(executionSelectionState.location === 'remote')
   let pipelineValidation = $derived(pipelineState.validation)
 
@@ -545,52 +547,54 @@
     </Modal>
   {/if}
 
-  <!-- Run (unified: single job or pipeline) -->
-  <div class="button-container">
-    <label
-      for="execute-graph-button"
-      class="element-label"
-      title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-    >
-      <ExecuteIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="execute-graph-button"
-      onclick={handleExecution}
-      style="display: none"
-      aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-    ></button>
-    <span class="button-text">Run</span>
-  </div>
+  {#if !isParameterEditorOpen}
+    <!-- Run (unified: single job or pipeline) -->
+    <div class="button-container">
+      <label
+        for="execute-graph-button"
+        class="element-label"
+        title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+      >
+        <ExecuteIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="execute-graph-button"
+        onclick={handleExecution}
+        style="display: none"
+        aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+      ></button>
+      <span class="button-text">Run</span>
+    </div>
 
-  <JobConfigModal modalId={JobConfigModalId} />
-  <PipelineRunNameModal
-    modalId={runNameModalId}
-    onConfirm={handleRunPipeline}
-  />
+    <JobConfigModal modalId={JobConfigModalId} />
+    <PipelineRunNameModal
+      modalId={runNameModalId}
+      onConfirm={handleRunPipeline}
+    />
 
-  <!-- VTK Visualizer (standalone) -->
-  <div class="button-container">
-    <label
-      for="vtk-visualizer-button"
-      class="element-label"
-      class:disabled={!hasVisualizer}
-      title="Open VTK Visualizer"
-    >
-      <CubeIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="vtk-visualizer-button"
-      onclick={handleOpenVisualizer}
-      disabled={!hasVisualizer}
-      style="display: none"
-      aria-label="Open VTK Visualizer"
-    ></button>
-    <span class="button-text">Visualiz.</span>
-  </div>
+    <!-- VTK Visualizer (standalone) -->
+    <div class="button-container">
+      <label
+        for="vtk-visualizer-button"
+        class="element-label"
+        class:disabled={!hasVisualizer}
+        title="Open VTK Visualizer"
+      >
+        <CubeIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="vtk-visualizer-button"
+        onclick={handleOpenVisualizer}
+        disabled={!hasVisualizer}
+        style="display: none"
+        aria-label="Open VTK Visualizer"
+      ></button>
+      <span class="button-text">Visualiz.</span>
+    </div>
+  {/if}
 
   <!-- Layout group (auto-layout + undo/redo) -->
-  {#if isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -619,7 +623,7 @@
   {/if}
 
   <!-- Import group -->
-  {#if isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
     <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
@@ -659,7 +663,7 @@
   />
 
   <!-- Parameters actions (executable single mode only) -->
-  {#if isExecutableMode && isSingleMode}
+  {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}
     <div class="button-container">
       <label
         for="add-params-button"
@@ -710,7 +714,7 @@
   {/if}
 
   <!-- Pipeline composition (pipeline mode only) -->
-  {#if isPipelineMode}
+  {#if !isParameterEditorOpen && isPipelineMode}
     <SidebarGroupButton title="Add stage">
       {#snippet icon()}
         <PlusIcon width="30px" height="30px" />

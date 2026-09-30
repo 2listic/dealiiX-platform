@@ -16,8 +16,10 @@ import {
   formatSuggestedNodeName,
   getInputTypeAndName,
   getOutputTypeAndName,
+  resolveConnectionAndCompatibleNodes,
   returnNodeName,
 } from './canvasNodeUtils'
+import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
 const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes
@@ -147,6 +149,43 @@ describe('canvasNodeUtils', () => {
     )
 
     expect(options).toHaveLength(0)
+  })
+
+  it('only offers scalar literal nodes for exposed parameter inputs', () => {
+    const targetHandle = parameterHandle('input', ['Solver', 'Tolerance'])
+    const targetNode = {
+      id: 'parameter',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        ...structuredClone(registry['std::string']),
+        parameter_file: {
+          exposures: [
+            {
+              path: ['Solver', 'Tolerance'],
+              type: 'string',
+              input: true,
+              output: false,
+            },
+          ],
+        },
+      },
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'parameter', handleId: targetHandle, handleType: 'target' },
+      targetNode,
+      [
+        networkNodes['step1 triangulation input free'],
+        registry['std::string'],
+      ] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(Type.STRING)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.node_type).toBe(
+      NodeType.ELEMENTARY_CONSTRUCTOR
+    )
   })
 
   it('matches a source typed "any" against a concrete target input', () => {

@@ -16,6 +16,12 @@ import {
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
+import {
+  parameterExposureArgument,
+  parameterHandle,
+  parameterInputExposures,
+  parameterOutputExposures,
+} from './parameterPorts'
 
 /**
  * Bidirectional handle maps for routing edges between an internal subgraph and
@@ -110,6 +116,35 @@ export const analyzeNetworkBoundary = (
   }
 
   const freeConnectionsMap: Record<string, FreeConnection> = {}
+
+  const registerFreeParameterPort = (
+    nodeId: string,
+    argument: StandardNodeDefinition['arguments'][number],
+    handle: string,
+    direction: 'input' | 'output'
+  ) => {
+    const key = `${nodeId}-${argument.name}-${argument.type}`
+    const existing = freeConnectionsMap[key]
+    if (existing) {
+      if (direction === 'input') existing.isFreeInput = true
+      else existing.isFreeOutput = true
+      if (direction === 'input') existing.inputHandles.push(handle)
+      else existing.outputHandles.push(handle)
+      return
+    }
+    freeConnectionsMap[key] = {
+      nodeId,
+      argument: {
+        connection_type: argument.connection_type,
+        name: argument.name,
+        type: argument.type,
+      },
+      isFreeInput: direction === 'input',
+      isFreeOutput: direction === 'output',
+      inputHandles: direction === 'input' ? [handle] : [],
+      outputHandles: direction === 'output' ? [handle] : [],
+    }
+  }
 
   // Sort nodes by numeric ID for deterministic ordering
   const sortedNodes = [...currentNodes].sort(
@@ -211,6 +246,39 @@ export const analyzeNetworkBoundary = (
           }
         }
       })
+    }
+
+    // Parameter ports are frontend-only, but a free one must still become a
+    // normal subgraph boundary port. The stable path handle is retained in
+    // the internal mapping so entering/exiting a subgraph preserves edges.
+    const standardData = nodeData as StandardNodeDefinition
+    for (const exposure of parameterInputExposures(standardData)) {
+      const handle = parameterHandle('input', exposure.path)
+      const isConnected = currentEdges.some(
+        (edge) => edge.target === node.id && edge.targetHandle === handle
+      )
+      if (!isConnected) {
+        registerFreeParameterPort(
+          node.id,
+          parameterExposureArgument(exposure),
+          handle,
+          'input'
+        )
+      }
+    }
+    for (const exposure of parameterOutputExposures(standardData)) {
+      const handle = parameterHandle('output', exposure.path)
+      const isConnected = currentEdges.some(
+        (edge) => edge.source === node.id && edge.sourceHandle === handle
+      )
+      if (!isConnected) {
+        registerFreeParameterPort(
+          node.id,
+          parameterExposureArgument(exposure),
+          handle,
+          'output'
+        )
+      }
     }
   }
 

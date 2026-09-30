@@ -16,9 +16,11 @@ vi.stubGlobal('window', {
   },
 })
 
-const { ensureUniqueRemoteDir, submitExecutableStageRemote } = await import(
-  './sshMessages'
-)
+const {
+  ensureUniqueRemoteDir,
+  submitExecutableStageRemote,
+  submitCoralStageRemote,
+} = await import('./sshMessages')
 
 beforeEach(() => {
   invoke.mockReset()
@@ -135,6 +137,323 @@ describe('submitExecutableStageRemote batch script', () => {
     expect(uploads['/data/stage-p0/parameters.json']).toContain(
       '"value": "/app/shared-data/mesh.vtu"'
     )
+  })
+})
+
+describe('submitCoralStageRemote parameter staging', () => {
+  it('resolves existing parameter references in the graph payload', async () => {
+    const uploads: Record<string, string> = {}
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          return ''
+        }
+        if (payload.command?.startsWith('for p in')) {
+          return '/app/shared-data/nested/poisson.prm\n'
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '0': {
+              type: 'std::string',
+              value: 'nested/poisson.prm',
+            },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-1',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
+      '/app/shared-data/nested/poisson.prm'
+    )
+  })
+
+  it('does not try to stage a parameter-looking output that does not exist yet', async () => {
+    const uploads: Record<string, string> = {}
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          return ''
+        }
+        if (payload.command?.startsWith('test -f')) {
+          throw new Error('file not found')
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '0': { type: 'std::string', value: 'results.json' },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-output',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/app/shared-data/run-output/results.json']).toBeUndefined()
+    expect(uploads['/app/shared-data/run-output/graph.json']).toContain(
+      'results.json'
+    )
+  })
+
+  it('materializes parameter inputs inside a subnetwork before upload', async () => {
+    const uploads: Record<string, string> = {}
+    let remoteParameterContent =
+      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\nset Grid = grid_input.vtk\n'
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          if (
+            payload.remotePath ===
+            '/app/shared-data/run-nested/nested/poisson.prm'
+          ) {
+            remoteParameterContent = payload.content
+          }
+          return ''
+        }
+        if (payload.command?.startsWith('for p in')) {
+          return payload.command.includes("'/app/shared-data/grid_input.vtk'")
+            ? '/app/shared-data/grid_input.vtk\n'
+            : ''
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) {
+          return remoteParameterContent
+        }
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '16': {
+              type: 'coral::Network',
+              node_type: 'network',
+              name: 'step1 triangulation input free',
+              arguments: [],
+              inputs: [],
+              outputs: [],
+              value: {
+                author: 'test',
+                date_time_utc: '',
+                version: 1,
+                workflow: {
+                  nodes: {
+                    '13': {
+                      type: 'std::string',
+                      value: 'nested/poisson.prm',
+                      parameter_file: {
+                        exposures: [
+                          {
+                            path: [
+                              'ImmersX Coral Poisson',
+                              'Initial refinement',
+                            ],
+                            type: 'string',
+                            input: true,
+                            output: false,
+                          },
+                        ],
+                      },
+                    },
+                    '15': { type: 'std::string', value: '4' },
+                    '17': {
+                      type: 'std::string',
+                      value: 'grid_input.vtk',
+                    },
+                  },
+                  edges: {
+                    '0': {
+                      source: 15,
+                      source_output: 0,
+                      target: 13,
+                      target_handle:
+                        'parameter-input-%5B%22ImmersX%20Coral%20Poisson%22%2C%22Initial%20refinement%22%5D',
+                    },
+                    '1': {
+                      source: 17,
+                      source_output: 0,
+                      target: 13,
+                      target_handle: 'parameter-input-%5B%22Grid%22%5D',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          edges: {},
+        },
+      },
+      stageDir: '/app/shared-data/run-nested',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/app/shared-data/run-nested/nested/poisson.prm']).toContain(
+      'set Initial refinement = 4'
+    )
+    expect(uploads['/app/shared-data/run-nested/nested/poisson.prm']).toContain(
+      'set Grid = /app/shared-data/grid_input.vtk'
+    )
+    const uploadedGraph = uploads['/app/shared-data/run-nested/graph.json']
+    expect(uploadedGraph).not.toContain('parameter_file')
+    expect(uploadedGraph).not.toContain('target_handle')
+    expect(uploadedGraph).toContain(
+      '/app/shared-data/run-nested/nested/poisson.prm'
+    )
+    expect(uploadedGraph).toContain('/app/shared-data/grid_input.vtk')
+    expect(uploadedGraph).toContain('"edges":{}')
+  })
+
+  it('binds an outer subnetwork input to a dangling parameter port', async () => {
+    const uploads: Record<string, string> = {}
+    let remoteParameterContent =
+      'subsection ImmersX Coral Poisson\nset Initial refinement = 1\nend\n'
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          if (payload.remotePath === '/app/shared-data/nested/dangling.prm') {
+            remoteParameterContent = payload.content
+          }
+          return ''
+        }
+        if (payload.command?.startsWith('sbatch')) return '4242'
+        if (payload.command?.includes('cat')) return remoteParameterContent
+        return ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: {
+        workflow: {
+          nodes: {
+            '12': {
+              type: 'coral::Network',
+              node_type: 'network',
+              name: 'step1 triangulation input free',
+              arguments: [
+                {
+                  connection_type: 'input',
+                  name: 'ImmersX Coral Poisson / Initial refinement',
+                  type: 'std::string',
+                },
+              ],
+              inputs: [0],
+              outputs: [],
+              value: {
+                author: 'test',
+                date_time_utc: '',
+                version: 1,
+                workflow: {
+                  nodes: {
+                    '13': {
+                      type: 'std::string',
+                      value: 'nested/dangling.prm',
+                      parameter_file: {
+                        exposures: [
+                          {
+                            path: [
+                              'ImmersX Coral Poisson',
+                              'Initial refinement',
+                            ],
+                            type: 'string',
+                            input: true,
+                            output: false,
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  edges: {},
+                },
+              },
+            },
+            '14': { type: 'std::string', value: '4' },
+          },
+          edges: {
+            '0': {
+              source: 14,
+              source_output: 0,
+              target: 12,
+              target_input: 0,
+            },
+          },
+        },
+      },
+      stageDir: '/app/shared-data/run-dangling',
+      config: {
+        coralBinaryPath: '/opt/coral',
+        coralPluginPath: '/opt/plugin.so',
+        nodes: 1,
+        tasksPerNode: 2,
+        timeLimit: '00:10:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    expect(
+      uploads['/app/shared-data/run-dangling/nested/dangling.prm']
+    ).toContain('set Initial refinement = 4')
+    const uploadedGraph = JSON.parse(
+      uploads['/app/shared-data/run-dangling/graph.json']
+    )
+    const uploadedNetwork = uploadedGraph.workflow.nodes['12']
+    expect(uploadedNetwork.inputs).toEqual([])
+    expect(uploadedNetwork.arguments).not.toContainEqual(
+      expect.objectContaining({
+        name: 'ImmersX Coral Poisson / Initial refinement',
+      })
+    )
+    expect(
+      Object.values(uploadedGraph.workflow.edges).some(
+        (edge: unknown) => (edge as { target?: number }).target === 12
+      )
+    ).toBe(false)
   })
 })
 

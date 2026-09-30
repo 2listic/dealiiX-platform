@@ -12,7 +12,18 @@ import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraphWithQualifiedIds } from './graphParser'
+import {
+  edgesFromProtocolToFlow,
+  nodesFromProtocolToFlow,
+  addQualifiedIds,
+  parseGraphWithQualifiedIds,
+  removeQualifiedIds,
+} from './graphParser'
+import { handleIdToIndex } from './canvasNodeUtils'
+import {
+  materializeParameterGraph,
+  scalarValueFromNode,
+} from './parameterMaterialization'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -29,6 +40,7 @@ import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
+import { parameterHandlePath } from './parameterPorts'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
@@ -36,6 +48,14 @@ import {
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
+import { analyzeNetworkBoundary } from './networkNode'
+import {
+  isSubGraphNodeDefinition,
+  type Argument,
+  type Network,
+  type QualifiedNetwork,
+  type SubGraphNodeDefinition,
+} from '../types/nodeTypes'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -113,14 +133,22 @@ const exportAndEvalGraphRemote = async (
   config: CoralJobConfig,
   runName?: string
 ): Promise<void> => {
-  // Parse the canvas once without MPI; the submit primitive injects the MPI block.
-  const graph = buildGraphPayload(nodes, edges, false)
   // Give every single remote run a unique, legible subdir so back-to-back runs
   // don't clobber the shared graph.json/job.sh (the batch script reads
   // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
   // isolation pipeline stages already have.
   const runDir = await ensureUniqueRemoteDir(
     `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  // Parse and materialize only after the isolated run directory exists. Any
+  // exposed parameter values are written into this directory, never back into
+  // the user's source working directory.
+  const graph = await buildExecutionGraphPayload(
+    'remote',
+    nodes,
+    edges,
+    false,
+    runDir
   )
   const jobId = await submitCoralStageRemote({
     graph,
@@ -161,10 +189,15 @@ export const submitCoralStageRemote = async ({
 }): Promise<string> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-
   await ensureRemoteDir(stageDir)
+  const executionGraph = await materializeProtocolGraphIfNeeded(
+    graph,
+    'remote',
+    {},
+    stageDir
+  )
   const resolvedGraph = await resolveGraphFileReferences(
-    withMpiPlugin(graph, useMpi),
+    withMpiPlugin(executionGraph, useMpi),
     'remote',
     settingsState.remote.workingDirectory
   )
@@ -183,6 +216,192 @@ export const submitCoralStageRemote = async ({
   return jobId
 }
 
+/** Converts a saved frontend graph back through the execution compiler when a
+ * pipeline stage contains virtual parameter ports. Ordinary Coral graphs take
+ * the fast path and remain byte-for-byte compatible with previous stages. */
+const materializeProtocolGraphIfNeeded = async (
+  graph: object,
+  location: ExecutionLocation = 'remote',
+  boundaryInputValues: Record<number, string> = {},
+  materializationDirectory?: string
+): Promise<object> => {
+  const hasParameterMetadata = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(hasParameterMetadata)
+    if (!value || typeof value !== 'object') return false
+    const record = value as Record<string, unknown>
+    if (record.parameter_file) return true
+    return Object.values(record).some(hasParameterMetadata)
+  }
+  if (!hasParameterMetadata(graph)) return graph
+
+  const network = removeQualifiedIds(
+    graph as Parameters<typeof removeQualifiedIds>[0]
+  )
+  const boundary = analyzeNetworkBoundary(
+    nodesFromProtocolToFlow(network.workflow.nodes),
+    edgesFromProtocolToFlow(network.workflow.edges)
+  )
+  const parameterInputOverrides: Record<string, string> = {}
+  const inheritedNetworkInputs: Record<string, Record<number, string>> = {}
+  for (const [inputIndexText, value] of Object.entries(boundaryInputValues)) {
+    const inputIndex = Number(inputIndexText)
+    const binding = boundary.networkInputToInternalHandle[inputIndex]
+    if (!binding) continue
+    if (parameterHandlePath(binding.handleId)?.direction === 'input') {
+      parameterInputOverrides[`${binding.nodeId}::${binding.handleId}`] = value
+      continue
+    }
+    const nestedInputIndex = handleIdToIndex(binding.handleId)
+    if (!Number.isInteger(nestedInputIndex) || nestedInputIndex < 0) continue
+    inheritedNetworkInputs[binding.nodeId] ??= {}
+    inheritedNetworkInputs[binding.nodeId][nestedInputIndex] = value
+  }
+  const materialized = await materializeParameterGraph(
+    location,
+    nodesFromProtocolToFlow(network.workflow.nodes),
+    edgesFromProtocolToFlow(network.workflow.edges),
+    parameterInputOverrides,
+    materializationDirectory
+  )
+  const nestedNetwork = await materializeNestedProtocolGraphs(
+    network,
+    location,
+    materialized.nodes,
+    materialized.edges,
+    inheritedNetworkInputs,
+    materializationDirectory
+  )
+  const parsed = parseGraphWithQualifiedIds(
+    materialized.nodes,
+    materialized.edges
+  )
+
+  // parseGraphToProtocol obtains stored subnetwork values from the registry.
+  // Replace those snapshots with the recursively materialized values from the
+  // submitted graph, then let qualified-id generation add the parent prefix.
+  for (const [nodeId, node] of Object.entries(nestedNetwork.workflow.nodes)) {
+    if (!isSubGraphNodeDefinition(node)) continue
+    const parsedNode = parsed.workflow.nodes[nodeId]
+    if (isSubGraphNodeDefinition(parsedNode)) {
+      parsed.workflow.nodes[nodeId] = {
+        ...parsedNode,
+        arguments: node.arguments,
+        inputs: node.inputs,
+        outputs: node.outputs,
+        value: addQualifiedIds(node.value, parsedNode.qualified_id),
+      }
+    }
+  }
+  return parsed
+}
+
+/** Recursively materializes parameter nodes inside stored subnetworks. */
+const materializeNestedProtocolGraphs = async (
+  network: Network,
+  location: ExecutionLocation,
+  materializedNodes: Node[],
+  materializedEdges: Edge[],
+  inheritedNetworkInputs: Record<string, Record<number, string>>,
+  materializationDirectory?: string
+): Promise<Network> => {
+  const nodes = { ...network.workflow.nodes }
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    if (!isSubGraphNodeDefinition(node)) continue
+    const childBoundaryValues = {
+      ...(inheritedNetworkInputs[nodeId] ?? {}),
+    }
+    for (const edge of materializedEdges.filter(
+      (candidate) => candidate.target === nodeId
+    )) {
+      const inputIndex = handleIdToIndex(edge.targetHandle as string)
+      if (!Number.isInteger(inputIndex) || inputIndex < 0) continue
+      const source = materializedNodes.find(
+        (candidate) => candidate.id === edge.source
+      )
+      const value = source
+        ? scalarValueFromNode(source, edge.sourceHandle as string)
+        : null
+      if (value === null) {
+        const argument = node.arguments[node.inputs[inputIndex]]
+        throw new Error(
+          `Exposed parameter input ${argument?.name ?? inputIndex} on ${node.name} requires a frontend-known scalar source`
+        )
+      }
+      childBoundaryValues[inputIndex] = value
+    }
+    const nested = await materializeProtocolGraphIfNeeded(
+      node.value,
+      location,
+      childBoundaryValues,
+      materializationDirectory
+    )
+    const nestedWithoutIds = removeQualifiedIds(
+      nested as Network | QualifiedNetwork
+    )
+    const nestedBoundary = analyzeNetworkBoundary(
+      nodesFromProtocolToFlow(nestedWithoutIds.workflow.nodes),
+      edgesFromProtocolToFlow(nestedWithoutIds.workflow.edges)
+    )
+    remapNestedNetworkEdges(materializedEdges, nodeId, node, nestedBoundary)
+    nodes[nodeId] = {
+      ...node,
+      arguments: nestedBoundary.argumentsArray,
+      inputs: nestedBoundary.inputsArray,
+      outputs: nestedBoundary.outputsArray,
+      value: nestedWithoutIds,
+    }
+  }
+  return { ...network, workflow: { ...network.workflow, nodes } }
+}
+
+const sameNetworkArgument = (left: Argument, right: Argument): boolean =>
+  left.name === right.name &&
+  left.type === right.type &&
+  left.connection_type === right.connection_type
+
+/**
+ * Removes frontend-only parameter boundary ports and remaps the remaining
+ * parent edges to the backend interface recomputed from the sanitized graph.
+ */
+const remapNestedNetworkEdges = (
+  edges: Edge[],
+  networkNodeId: string,
+  originalNode: SubGraphNodeDefinition,
+  sanitizedBoundary: ReturnType<typeof analyzeNetworkBoundary>
+): void => {
+  const remapped = edges.flatMap((edge) => {
+    if (edge.target === networkNodeId) {
+      const oldInputIndex = handleIdToIndex(edge.targetHandle as string)
+      const oldArgumentIndex = originalNode.inputs[oldInputIndex]
+      const oldArgument = originalNode.arguments[oldArgumentIndex]
+      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
+        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
+      )
+      const newInputIndex =
+        sanitizedBoundary.inputsArray.indexOf(newArgumentIndex)
+      if (newInputIndex < 0) return []
+      return [{ ...edge, targetHandle: `input-${newInputIndex}` }]
+    }
+
+    if (edge.source === networkNodeId) {
+      const oldOutputIndex = handleIdToIndex(edge.sourceHandle as string)
+      const oldArgumentIndex = originalNode.outputs[oldOutputIndex]
+      const oldArgument = originalNode.arguments[oldArgumentIndex]
+      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
+        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
+      )
+      const newOutputIndex =
+        sanitizedBoundary.outputsArray.indexOf(newArgumentIndex)
+      if (newOutputIndex < 0) return []
+      return [{ ...edge, sourceHandle: `output-${newOutputIndex}` }]
+    }
+
+    return [edge]
+  })
+
+  edges.splice(0, edges.length, ...remapped)
+}
+
 /** Local counterpart of {@link ensureUniqueRemoteDir}, backed by the local filesystem. */
 const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
@@ -196,15 +415,15 @@ const exportAndEvalGraphLocal = async (
 ): Promise<void> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-  const graphPayload = await resolveGraphFileReferences(
-    buildGraphPayload(nodes, edges, useMpi),
-    'local',
-    settingsState.local.workingDirectory
-  )
   // Isolate every run into its own subdir, same as remote, so back-to-back runs
   // don't clobber each other's graph.json/log.
   const runDir = await ensureUniqueLocalDir(
     `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
+  )
+  const graphPayload = await resolveGraphFileReferences(
+    await buildExecutionGraphPayload('local', nodes, edges, useMpi, runDir),
+    'local',
+    settingsState.local.workingDirectory
   )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
@@ -406,6 +625,33 @@ export const buildGraphPayload = (
   edges: Edge[],
   useMpi: boolean
 ): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
+
+/**
+ * Builds a backend payload after applying frontend parameter connections.
+ *
+ * @param location - Execution location used for filesystem access.
+ * @param nodes - Canvas graph nodes.
+ * @param edges - Canvas graph edges.
+ * @param useMpi - Whether to inject the configured MPI plugin settings.
+ * @param materializationDirectory - Optional run directory for changed parameter files.
+ * @returns Sanitized graph payload ready for execution.
+ */
+export const buildExecutionGraphPayload = async (
+  location: ExecutionLocation,
+  nodes: Node[],
+  edges: Edge[],
+  useMpi: boolean,
+  materializationDirectory?: string
+): Promise<object> => {
+  const protocol = parseGraphWithQualifiedIds(nodes, edges)
+  const materialized = await materializeProtocolGraphIfNeeded(
+    protocol,
+    location,
+    {},
+    materializationDirectory
+  )
+  return withMpiPlugin(materialized, useMpi)
+}
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
 const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({

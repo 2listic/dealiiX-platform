@@ -10,6 +10,10 @@ const PRM_EXTENSION_RE = /\.prm$/i
 const JSON_EXTENSION_RE = /\.json$/i
 const PARAMETER_EXTENSION_RE = /\.(json|prm)$/i
 
+/** Returns true for a string that names a JSON or deal.II parameter file. */
+export const isParameterFileName = (value: unknown): value is string =>
+  typeof value === 'string' && PARAMETER_EXTENSION_RE.test(value.trim())
+
 export const isParameterLeaf = (value: unknown): value is ParameterLeaf => {
   return (
     typeof value === 'object' &&
