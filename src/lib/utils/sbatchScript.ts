@@ -18,7 +18,7 @@ export type SbatchScriptOptions = {
   /** Value of `#SBATCH --job-name`. */
   jobName: string
   /** Directory the job chdir's into and writes its `slurm-%j.out` to. */
-  workingDirectory: string
+  runDirectory: string
   timeLimit: string
   /** The command line to run, already shell-quoted by the caller. */
   command: string
@@ -29,19 +29,19 @@ export type SbatchScriptOptions = {
 /**
  * Builds the content of an sbatch script.
  *
- * @param options - Job name, working directory, time limit, command, and MPI resources.
+ * @param options - Job name, run directory, time limit, command, and MPI resources.
  * @returns The script content, ready to upload as `job.sh`.
  */
 export const buildSbatchScript = ({
   jobName,
-  workingDirectory,
+  runDirectory,
   timeLimit,
   command,
   mpi,
 }: SbatchScriptOptions): string => {
   const directives = [
-    `#SBATCH --chdir=${workingDirectory}`,
-    `#SBATCH --output=${workingDirectory}/slurm-%j.out`,
+    `#SBATCH --chdir=${runDirectory}`,
+    `#SBATCH --output=${runDirectory}/slurm-%j.out`,
     `#SBATCH --job-name=${jobName}`,
   ]
 

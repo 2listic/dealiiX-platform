@@ -102,11 +102,11 @@ describe('submitExecutableStageRemote batch script', () => {
         }
 
         if (channel === 'execute-ssh-with-key') {
-          if (payload.command?.startsWith('test -f')) {
-            if (payload.command.includes("'/app/shared-data/mesh.vtu'")) {
-              return ''
-            }
-            throw new Error('file not found')
+          // The batched file check echoes back the paths that exist.
+          if (payload.command?.startsWith('for p in')) {
+            return payload.command.includes("'/app/shared-data/mesh.vtu'")
+              ? '/app/shared-data/mesh.vtu\n'
+              : ''
           }
           return payload.command?.startsWith('sbatch') ? '4242' : ''
         }

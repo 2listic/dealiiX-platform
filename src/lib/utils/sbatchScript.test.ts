@@ -3,7 +3,7 @@ import { buildSbatchScript } from './sbatchScript'
 
 const options = {
   jobName: 'coral-7',
-  workingDirectory: '/app/shared-data/run-1',
+  runDirectory: '/app/shared-data/run-1',
   timeLimit: '01:00:00',
   command: '/app/coral run graph.json',
 }

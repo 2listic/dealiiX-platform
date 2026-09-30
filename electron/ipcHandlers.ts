@@ -20,6 +20,7 @@ import {
 } from '../src/lib/utils/parameterFileFormat.js'
 import {
   ensureUniqueLocalDir,
+  findExistingLocalFiles,
   getLocalNodeStatusFiles,
   getLocalRunLog,
   getLocalRunState,
@@ -117,6 +118,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ensure-unique-local-dir', async (_event, { dir }) => {
     return await ensureUniqueLocalDir(dir)
+  })
+
+  ipcMain.handle('find-existing-local-files', async (_event, { paths }) => {
+    return await findExistingLocalFiles(paths)
   })
 
   ipcMain.handle('get-local-cpu-count', () => os.cpus().length)

@@ -6,7 +6,6 @@ import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 import { buildLocalMpiArgs } from '../../src/lib/utils/mpiLauncher.js'
 import type { MpiLauncherSettings } from '../../src/lib/types/settingsTypes.js'
-import { resolveExistingFileReferences } from '../../src/lib/utils/fileReferences.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
@@ -22,10 +21,8 @@ export interface LocalRun {
 interface CoralRunPayload {
   coralBinaryPath: string
   coralPluginPath: string
-  /** Per-run directory for graph, log, and node-status files. */
-  workingDirectory: string
-  /** Configured working directory used to resolve existing input files. */
-  fileResolutionDirectory: string
+  /** Per-run directory for graph, log, and node-status files; Coral runs in it. */
+  runDirectory: string
   graphPayload: unknown
   internalJobId: number | string
   mpi?: { launcher: MpiLauncherSettings; processes: number }
@@ -33,10 +30,8 @@ interface CoralRunPayload {
 
 interface ExecutableRunPayload {
   executablePath: string
-  /** Per-run directory for parameters and logs. */
-  workingDirectory: string
-  /** Configured working directory used to resolve existing input files. */
-  fileResolutionDirectory: string
+  /** Per-run directory for parameters and logs; the executable runs in it. */
+  runDirectory: string
   parametersPayload: ParameterTree
   parametersFileName: string
   internalJobId: number | string
@@ -71,31 +66,32 @@ const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
 }
 
-const resolveLocalFileReferences = async <T>(
-  value: T,
-  workingDirectory: string
-): Promise<T> => {
-  if (!workingDirectory.trim()) return value
-
-  return await resolveExistingFileReferences(
-    value,
-    (fileName) => path.resolve(workingDirectory, fileName),
-    async (filePath) => {
-      try {
-        return (await fs.promises.stat(filePath)).isFile()
-      } catch {
-        return false
-      }
-    }
-  )
-}
-
 const dirExists = async (dirPath: string): Promise<boolean> => {
   try {
     return (await fs.promises.stat(dirPath)).isDirectory()
   } catch {
     return false
   }
+}
+
+const fileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    return (await fs.promises.stat(filePath)).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns the subset of the given paths that are existing regular files.
+ * @param filePaths - Absolute local paths to check.
+ * @returns The paths that exist and are files, in input order.
+ */
+export const findExistingLocalFiles = async (
+  filePaths: string[]
+): Promise<string[]> => {
+  const exists = await Promise.all(filePaths.map(fileExists))
+  return filePaths.filter((_, index) => exists[index])
 }
 
 /**
@@ -128,30 +124,25 @@ export const ensureUniqueLocalDir = async (
 export const startLocalCoralRun = async ({
   coralBinaryPath,
   coralPluginPath,
-  workingDirectory,
-  fileResolutionDirectory,
+  runDirectory,
   graphPayload,
   internalJobId,
   mpi,
-}: CoralRunPayload): Promise<{ jobId: string; workingDirectory: string }> => {
+}: CoralRunPayload): Promise<{ jobId: string; runDirectory: string }> => {
   const jobId = String(internalJobId)
-  const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
-  const logPath = path.join(workingDirectory, `local-${jobId}.out`)
+  const graphPath = path.join(runDirectory, `graph-${jobId}.json`)
+  const logPath = path.join(runDirectory, `local-${jobId}.out`)
   const touchDir = path.join(
-    workingDirectory,
+    runDirectory,
     'nodes-exec-status',
     String(internalJobId)
   )
 
-  await ensureDir(workingDirectory)
+  await ensureDir(runDirectory)
   await ensureDir(path.dirname(touchDir))
   await ensureDir(touchDir)
 
-  const resolvedGraphPayload = await resolveLocalFileReferences(
-    graphPayload,
-    fileResolutionDirectory
-  )
-  await fs.promises.writeFile(graphPath, JSON.stringify(resolvedGraphPayload))
+  await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
 
   const executableArgs = [
     '-p',
@@ -172,7 +163,7 @@ export const startLocalCoralRun = async ({
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(invocation.command, invocation.args, {
-    cwd: workingDirectory,
+    cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -203,7 +194,7 @@ export const startLocalCoralRun = async ({
     })
   })
 
-  return { jobId, workingDirectory }
+  return { jobId, runDirectory }
 }
 
 /**
@@ -212,47 +203,40 @@ export const startLocalCoralRun = async ({
  */
 export const startLocalExecutableRun = async ({
   executablePath,
-  workingDirectory,
-  fileResolutionDirectory,
+  runDirectory,
   parametersPayload,
   parametersFileName,
   internalJobId,
   mpi,
 }: ExecutableRunPayload): Promise<{
   jobId: string
-  workingDirectory: string
+  runDirectory: string
 }> => {
   const jobId = String(internalJobId)
-  // Already an isolated, unique per-run directory (allocated by the caller via
+  // runDirectory is already unique per run (allocated by the caller via
   // ensureUniqueLocalDir), so back-to-back runs never share a parameters.json.
-  const runDir = workingDirectory
-  // Bare filename, no jobId prefix: some deal.II programs (e.g. step-70) sniff
-  // their dimension from the file path, so a prefix would be unsafe.
-  const parametersPath = path.join(
-    runDir,
-    parametersFileName || 'parameters.json'
-  )
-  const logPath = path.join(runDir, 'local.out')
+  const parametersName = parametersFileName || 'parameters.json'
+  const parametersPath = path.join(runDirectory, parametersName)
+  const logPath = path.join(runDirectory, 'local.out')
 
   await ensureDir(path.dirname(parametersPath))
-  const resolvedParametersPayload = await resolveLocalFileReferences(
-    parametersPayload,
-    fileResolutionDirectory
-  )
   const parametersContent = serializeParametersFile(
-    resolvedParametersPayload,
+    parametersPayload,
     parametersFileName
   )
   await fs.promises.writeFile(parametersPath, parametersContent)
 
+  // Bare filename relative to cwd, not a path: some deal.II programs (e.g.
+  // step-70) read their dimension from the params path, so the run directory
+  // must stay out of argv. Matches the remote batch script.
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const invocation = mpi
     ? buildLocalMpiArgs(mpi.launcher, mpi.processes, executablePath, [
-        parametersPath,
+        parametersName,
       ])
-    : { command: executablePath, args: [parametersPath] }
+    : { command: executablePath, args: [parametersName] }
   const child = spawn(invocation.command, invocation.args, {
-    cwd: runDir,
+    cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -283,7 +267,7 @@ export const startLocalExecutableRun = async ({
     })
   })
 
-  return { jobId, workingDirectory: runDir }
+  return { jobId, runDirectory }
 }
 
 /**
