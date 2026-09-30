@@ -325,6 +325,11 @@
                       <Button onclick={pickLocalWorkingDirectory}>Edit</Button>
                     </div>
                   {/if}
+                  <p class="field-hint">
+                    This directory holds a separate folder for each run. Files
+                    placed in it, such as meshes, can be referenced by name in
+                    graphs and parameters: the run receives their full path.
+                  </p>
                 </div>
               </div>
 
@@ -403,6 +408,14 @@
                           placeholder="parameters.json or parameters.prm"
                           required
                         />
+                        <p class="field-hint">
+                          Default value for the Run dialog and new pipeline
+                          stages. The file is written in the run folder and
+                          passed to the executable by name. Validate &amp; Sync
+                          tries
+                          <code>.json</code>, then <code>.prm</code>, and keeps
+                          the one that works.
+                        </p>
                       </label>
                     {:else}
                       <div class="field">
@@ -421,6 +434,13 @@
                           placeholder="parameters.json or parameters.prm"
                           required
                         />
+                        <p class="field-hint">
+                          Default value for the Run dialog. The file is written
+                          in the run folder and passed to the executable by
+                          name. Validate &amp; Sync tries <code>.json</code>,
+                          then
+                          <code>.prm</code>, and keeps the one that works.
+                        </p>
                       </label>
                     {/if}
                   </div>
