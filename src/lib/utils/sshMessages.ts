@@ -420,12 +420,10 @@ const exportAndEvalGraphLocal = async (
   const runDir = await ensureUniqueLocalDir(
     `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
   )
-  const graphPayload = await buildExecutionGraphPayload(
+  const graphPayload = await resolveGraphFileReferences(
+    await buildExecutionGraphPayload('local', nodes, edges, useMpi, runDir),
     'local',
-    nodes,
-    edges,
-    useMpi,
-    runDir
+    settingsState.local.workingDirectory
   )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {

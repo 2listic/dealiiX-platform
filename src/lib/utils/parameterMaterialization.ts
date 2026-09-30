@@ -18,10 +18,12 @@ import {
   parameterPortCoralType,
 } from './parameterPorts'
 import {
+  normalizeRelativeParameterPath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
 } from './parameterFileAccess'
+import { resolveParameterFileReferences } from './fileReferences'
 import { NodeType, SELF } from '../types/nodeTypes'
 
 type MaterializedGraph = {
@@ -35,6 +37,12 @@ type LoadedParameterFile = {
   fileName: string
   dirty: boolean
 }
+
+const materializedParameterFilePath = (
+  directory: string,
+  fileName: string
+): string =>
+  `${directory.replace(/[\\/]+$/, '')}/${normalizeRelativeParameterPath(fileName)}`
 
 const isParameterNode = (node: Node): node is Node<StandardNodeDefinition> => {
   const data = node.data as StandardNodeDefinition
@@ -121,7 +129,7 @@ const cloneNode = (node: Node): Node => ({
  * @param inputNodes - Protocol graph nodes to materialize.
  * @param inputEdges - Protocol graph edges to materialize.
  * @param parameterInputOverrides - Values inherited from an enclosing subnetwork.
- * @param materializationDirectory - Run directory where changed files are written.
+ * @param materializationDirectory - Run directory where parameter files are copied and written.
  * @returns Execution-only nodes and edges with frontend metadata removed.
  * @throws If a source file, parameter, or exposed value is invalid.
  */
@@ -235,13 +243,18 @@ export const materializeParameterGraph = async (
       file.dirty = true
     }
 
-    if (file.dirty) {
+    const sourceTarget = parameterFileTarget(location, file.fileName)
+    if (materializationDirectory || file.dirty) {
       const destination = materializationDirectory
-        ? {
-            ...parameterFileTarget(location, file.fileName),
-            workingDirectory: materializationDirectory,
-          }
-        : parameterFileTarget(location, file.fileName)
+        ? { ...sourceTarget, workingDirectory: materializationDirectory }
+        : sourceTarget
+      if (materializationDirectory) {
+        file.tree = await resolveParameterFileReferences(
+          file.tree,
+          location,
+          sourceTarget.workingDirectory
+        )
+      }
       await writeParameterFile(
         destination,
         serializeParametersFile(
@@ -250,6 +263,12 @@ export const materializeParameterGraph = async (
         )
       )
       file.dirty = false
+    }
+    if (materializationDirectory) {
+      data.value = materializedParameterFilePath(
+        materializationDirectory,
+        file.fileName
+      )
     }
     return file
   }
@@ -323,7 +342,7 @@ export const materializeParameterGraph = async (
     return !targetVirtual && !sourceVirtual && !virtualEdges.has(edge)
   })
 
-  // Parameter metadata is a frontend concern. Keep the original filename and
+  // Parameter metadata is a frontend concern. Keep the run-local path and
   // ordinary backend handles, but never send the exposure block to Coral.
   for (const node of nodes) {
     const data = node.data as Record<string, unknown>
