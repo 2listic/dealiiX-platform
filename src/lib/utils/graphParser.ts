@@ -19,12 +19,15 @@ import {
 } from '../stores/registryStore.svelte'
 import {
   handleIdToIndex,
+  canonicalNodeName,
   resolveInputArgument,
-  resolveOutputType,
+  resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
 import {
+  ConnectionType,
   isSubGraphNodeDefinition,
   isTypeCompatible,
+  SELF,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -121,6 +124,65 @@ const addNetworkNodesFromGraph = async (
   return networkNodes
 }
 
+/** Returns the registry definition used to resolve graph edge types. */
+const validationNodeData = (
+  node: LeanNodes[string]
+): StandardNodeDefinition | SubGraphNodeDefinition => {
+  if (isSubGraphNodeDefinition(node)) return node
+
+  return {
+    ...getNodeData(node.type),
+    ...(node.parameter_file && {
+      parameter_file: node.parameter_file,
+    }),
+  }
+}
+
+/**
+ * Resolves all types that can leave a protocol output, following the concrete
+ * source of a pass-through argument when that source is already connected.
+ */
+const protocolOutputTypeCandidates = (
+  edges: NetworkEdges,
+  nodeDataById: Record<string, StandardNodeDefinition | SubGraphNodeDefinition>,
+  nodeId: number,
+  outputHandle: number,
+  resolving = new Set<string>()
+): string[] => {
+  const data = nodeDataById[String(nodeId)]
+  if (!data) return []
+
+  const outputIndex = data.outputs?.[outputHandle]
+  if (outputIndex == null) return []
+
+  const key = `${nodeId}:${outputHandle}`
+  if (resolving.has(key)) {
+    return resolveOutputTypeCandidates(data, outputHandle)
+  }
+
+  let upstreamTypes: string[] = []
+  if (outputIndex !== SELF) {
+    const argument = data.arguments?.[outputIndex]
+    if (argument?.connection_type === ConnectionType.PASSTHROUGH) {
+      const inputHandle = data.inputs?.indexOf(outputIndex) ?? -1
+      const upstream = Object.values(edges).find(
+        (edge) => edge.target === nodeId && edge.target_input === inputHandle
+      )
+      if (upstream?.source_output != null) {
+        upstreamTypes = protocolOutputTypeCandidates(
+          edges,
+          nodeDataById,
+          upstream.source,
+          upstream.source_output,
+          new Set(resolving).add(key)
+        )
+      }
+    }
+  }
+
+  return resolveOutputTypeCandidates(data, outputHandle, upstreamTypes)
+}
+
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
  * xyflow-compatible node objects with positions and merged data.
@@ -169,10 +231,13 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = getNodeData(protocolNode.type)
     const regularNode = protocolNode as LeanStandardNode
+    const name = regularNode.name
+      ? canonicalNodeName({ ...storeNodeData, name: regularNode.name })
+      : undefined
     return {
       ...storeNodeData,
       position: protocolNode.position,
-      ...(regularNode.name && { name: regularNode.name }),
+      ...(name && { name }),
       ...(regularNode.value !== undefined && { value: regularNode.value }),
       ...(regularNode.parameter_file && {
         parameter_file: {
@@ -244,6 +309,14 @@ export const validateGraphData = (
     error: string
   }> = []
 
+  const nodeDataById: Record<
+    string,
+    StandardNodeDefinition | SubGraphNodeDefinition
+  > = {}
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    nodeDataById[nodeId] = validationNodeData(node)
+  }
+
   Object.entries(edges).forEach(([edgeId, edge]) => {
     // Get source and target node from workflow
     const sourceNode = nodes[edge.source]
@@ -256,22 +329,8 @@ export const validateGraphData = (
     }
 
     // Get source and target node definition (from registry or networkNodes)
-    const sourceNodeData = isSubGraphNodeDefinition(sourceNode)
-      ? sourceNode
-      : {
-          ...getNodeData(sourceNode.type),
-          ...(sourceNode.parameter_file && {
-            parameter_file: sourceNode.parameter_file,
-          }),
-        }
-    const targetNodeData = isSubGraphNodeDefinition(targetNode)
-      ? targetNode
-      : {
-          ...getNodeData(targetNode.type),
-          ...(targetNode.parameter_file && {
-            parameter_file: targetNode.parameter_file,
-          }),
-        }
+    const sourceNodeData = nodeDataById[String(edge.source)]
+    const targetNodeData = nodeDataById[String(edge.target)]
 
     const sourceParameterExposure = parameterExposureForHandle(
       sourceNodeData as StandardNodeDefinition,
@@ -286,11 +345,17 @@ export const validateGraphData = (
 
     // Virtual parameter handles are validated from their persisted metadata.
     // Their numeric indices are intentionally absent from the backend protocol.
-    const sourceOutputType = sourceParameterExposure
-      ? parameterPortCoralType(sourceParameterExposure.type)
+    const sourceOutputTypes = sourceParameterExposure
+      ? [parameterPortCoralType(sourceParameterExposure.type)]
       : edge.source_output == null
-        ? null
-        : resolveOutputType(sourceNodeData, edge.source_output)
+        ? []
+        : protocolOutputTypeCandidates(
+            edges,
+            nodeDataById,
+            edge.source,
+            edge.source_output
+          )
+    const sourceOutputType = sourceOutputTypes[0] ?? null
     if (sourceOutputType == null) {
       throw new Error(
         `Edge ${edgeId}: Source node ${edge.source} has no output at index ${edge.source_output}`
@@ -312,7 +377,11 @@ export const validateGraphData = (
     }
 
     // Check if types are compatible (wildcard 'any' on either side, or numeric widening).
-    if (!isTypeCompatible(sourceOutputType, targetInputArg.type)) {
+    if (
+      !sourceOutputTypes.some((type) =>
+        isTypeCompatible(type, targetInputArg.type)
+      )
+    ) {
       const errorMessage = `Edge id: ${edgeId} - Type mismatch - source output type '${sourceOutputType}' does not match target input '${targetInputArg.type}'`
       console.warn(errorMessage)
       invalidEdges.push({

@@ -8,6 +8,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - [#215](https://github.com/2listic/dealiiX-platform/issues/215) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Parameter-file nodes can now be edited from the graph, expose selected parameters as graph ports, and materialize connected values in the per-run copy while keeping frontend-only metadata out of the backend graph.
+- [#224](https://github.com/2listic/dealiiX-platform/issues/224) Graph validation now accepts both the concrete and registered base type of derived outputs, including when the value passes through a passthrough node. This keeps loading, manual connections, and create-on-connect suggestions consistent with CORAL.
 
 ### Project-Structure
 
@@ -27,6 +28,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### UI/UX
 
 - [#225](https://github.com/2listic/dealiiX-platform/pull/225) Settings now explains the working directory and parameters file name fields: each run gets its own folder under the working directory, files placed there can be referenced by name, and the parameters file name is the default used when starting a run and is detected as JSON first, then PRM, during **Validate & Sync**.
+- Registry nodes are now grouped by logical operation or class family while retaining their concrete specializations for connections and serialization. Canvas instances use `display_name` for the logical node label; `variant_name` remains available for choosing a concrete specialization, and older graphs are migrated when they stored that variant label as the instance name.
+- VTK and PVD file values now expose an action to open the file in the configured visualizer through a path-confined deep link. Canvas nodes also provide an information view with their complete registry definition.
 - [#222](https://github.com/2listic/dealiiX-platform/pull/222) The run modal no longer shows or enforces remote-only settings on local runs: the MPI toggle had no effect there — the run was always serial — yet still displayed a rank count, and an invalid time limit entered in remote mode left the Run button disabled after switching to local, with no field on screen to correct it. Local MPI support is tracked in [#221](https://github.com/2listic/dealiiX-platform/issues/221).
 - [#222](https://github.com/2listic/dealiiX-platform/pull/222) The Jobs list now covers the last 30 days instead of the last 7.
 - [#217](https://github.com/2listic/dealiiX-platform/issues/217) Fixed the nodes execution status view showing the previous job's nodes when the job you opened reported none — the case that happens when a graph is rejected before any node runs, or when a pipeline stage is still queued. Once it happened the view also stopped updating, so it never corrected itself. It now says so explicitly, and distinguishes a job that is still starting (it keeps following it) from one that ended without ever running a node (it stops).

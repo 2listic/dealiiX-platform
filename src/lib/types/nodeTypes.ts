@@ -51,6 +51,7 @@ export enum NodeType {
   EMPTY_CONSTRUCTOR = 'empty_constructor',
   CONSTRUCTOR = 'constructor',
   ABSTRACT = 'abstract',
+  OUTPUT_ONLY = 'output_only',
   VOID_METHOD = 'void_method',
   VOID_CONST_METHOD = 'void_const_method',
   METHOD = 'method',
@@ -71,6 +72,7 @@ export enum TypeField {
  */
 export const HIDDEN_SIDEBAR_NODE_TYPES: NodeType[] = [
   NodeType.ABSTRACT,
+  NodeType.OUTPUT_ONLY,
   NodeType.NETWORK,
 ]
 
@@ -160,6 +162,16 @@ export type StandardNodeDefinition = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   node_type: NodeType
+  /** Concrete value type produced by a function's SELF output. */
+  output_type?: string
+  /** Optional logical operation shared by concrete specializations. */
+  operation?: string
+  /** Optional user-facing label for the logical operation. */
+  display_name?: string
+  /** Optional user-facing label for one concrete operation specialization. */
+  variant_name?: string
+  /** Optional description shown as supplementary UI information. */
+  description?: string
   name?: string
   derived?: string[]
   base?: string
