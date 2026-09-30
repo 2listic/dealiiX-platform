@@ -1,6 +1,6 @@
 # Run Coral Locally (no Docker, no SSH)
 
-This approach runs the **local + coral** execution mode directly on your machine without Docker, SSH, or Slurm.
+This approach runs the **local + coral** execution mode directly on your machine without Docker, SSH, or Slurm. Serial and single-host MPI runs are supported; MPI uses `mpirun`.
 
 ## Install deal.II
 
@@ -60,3 +60,18 @@ Click **Save & Sync** to probe the binary, load the node registry into the sideb
 ```bash
 ./coral/build/core/coral -p ./coral/build/backends/dealii/libcoral_backend_dealii.so run graph.json --touch-dir nodes-exec-status/1
 ```
+
+### Run locally with MPI
+
+Install an MPI implementation that provides `mpirun`, then enable **Use MPI** in
+the Run dialog and set the number of **Processes**. Coral receives the MPI plugin
+configuration automatically. The equivalent command is:
+
+```bash
+mpirun -np 4 ./coral/build/core/coral \
+  -p ./coral/build/backends/dealii/libcoral_backend_dealii.so \
+  run graph.json --touch-dir nodes-exec-status/1
+```
+
+If the MPI launcher requires additional flags, configure them under Settings →
+Execution → local → MPI launcher.

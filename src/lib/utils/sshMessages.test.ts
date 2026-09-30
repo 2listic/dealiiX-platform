@@ -91,6 +91,51 @@ describe('submitExecutableStageRemote batch script', () => {
 
     expect(script).toContain('#SBATCH --time=02:00:00')
   })
+
+  it('absolutizes existing input files in the staged parameter file', async () => {
+    const uploads: Record<string, string> = {}
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          return ''
+        }
+
+        if (channel === 'execute-ssh-with-key') {
+          // The batched file check echoes back the paths that exist.
+          if (payload.command?.startsWith('for p in')) {
+            return payload.command.includes("'/app/shared-data/mesh.vtu'")
+              ? '/app/shared-data/mesh.vtu\n'
+              : ''
+          }
+          return payload.command?.startsWith('sbatch') ? '4242' : ''
+        }
+
+        return ''
+      }
+    )
+
+    await submitExecutableStageRemote({
+      parameters: {
+        Mesh: {
+          File: {
+            value: 'mesh.vtu',
+            default_value: 'mesh.vtu',
+            documentation: '',
+            pattern: '.*',
+            pattern_description: '[Text]',
+          },
+        },
+      },
+      stageDir: '/data/stage-p0',
+      config: baseExecutableConfig,
+      dependencyJobIds: [],
+    })
+
+    expect(uploads['/data/stage-p0/parameters.json']).toContain(
+      '"value": "/app/shared-data/mesh.vtu"'
+    )
+  })
 })
 
 describe('ensureUniqueRemoteDir', () => {

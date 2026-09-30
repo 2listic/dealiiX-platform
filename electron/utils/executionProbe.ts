@@ -305,6 +305,15 @@ const missingLauncherWarning = async (
   }
 }
 
+const missingLocalLauncherWarning = async (): Promise<string | null> => {
+  try {
+    await execFileAsync('which', ['mpirun'])
+    return null
+  } catch {
+    return 'MPI launcher "mpirun" was not found on this machine, so local MPI runs will fail'
+  }
+}
+
 /**
  * Validates one execution target, probes local paths or remote connectivity, and fetches
  * backend metadata (node registry or parameters template) depending on the backend kind.
@@ -341,11 +350,10 @@ export const probeAndSyncExecutionSettings = async (
             )
     }
 
-    // Local runs are always serial today, so only the remote launcher is checked.
     const warning =
       location === 'remote'
         ? await missingLauncherWarning(target as RemoteExecutionSettings)
-        : null
+        : await missingLocalLauncherWarning()
 
     return {
       status: {

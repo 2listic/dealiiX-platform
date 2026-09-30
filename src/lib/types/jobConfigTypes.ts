@@ -6,11 +6,14 @@
 
 /** The resources an MPI run needs, shared by every backend kind that can be launched under MPI. */
 export type MpiResourceConfig = {
-  /** Whether to request MPI resources and launch the job through `mpirun`. */
+  /** Whether to request MPI resources and launch the job through the configured MPI launcher. */
   useMpi: boolean
-  /** Number of nodes to request (`#SBATCH --nodes`). */
+  /** Number of nodes to request remotely (`#SBATCH --nodes`); local runs use one host. */
   nodes: number
-  /** Ranks per node (`#SBATCH --ntasks-per-node`). */
+  /**
+   * Ranks per node remotely (`#SBATCH --ntasks-per-node`); local runs use this
+   * existing field as the single-host process count passed to `mpirun -np`.
+   */
   tasksPerNode: number
 }
 
@@ -20,6 +23,7 @@ export type CoralJobConfig = MpiResourceConfig & {
   coralBinaryPath: string
   /** Remote/local path to the coral plugin (captured at stage creation, not read from settings at submit). */
   coralPluginPath: string
+  /** Slurm wall-clock limit; ignored by local runs. */
   timeLimit: string
 }
 
@@ -33,5 +37,6 @@ export type ExecutableJobConfig = MpiResourceConfig & {
   executablePath: string
   /** Params filename (extension selects JSON/PRM); captured at stage creation. */
   parametersFileName: string
+  /** Slurm wall-clock limit; ignored by local runs. */
   timeLimit: string
 }

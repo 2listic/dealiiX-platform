@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMpiLauncherCommand } from './mpiLauncher'
+import { buildLocalMpiArgs, buildMpiLauncherCommand } from './mpiLauncher'
 
 describe('buildMpiLauncherCommand', () => {
   it('renders the bare launcher when nothing extra is configured', () => {
@@ -28,5 +28,46 @@ describe('buildMpiLauncherCommand', () => {
     expect(buildMpiLauncherCommand({ kind: 'srun', extraArgs: '  ' })).toBe(
       'srun'
     )
+  })
+})
+
+describe('buildLocalMpiArgs', () => {
+  it('prepends mpirun and the requested process count', () => {
+    expect(
+      buildLocalMpiArgs({ kind: 'mpirun' }, 4, '/opt/step-70', [
+        'parameters.json',
+      ])
+    ).toEqual({
+      command: 'mpirun',
+      args: ['-np', '4', '/opt/step-70', 'parameters.json'],
+    })
+  })
+
+  it('tokenizes configured launcher arguments without using a shell', () => {
+    expect(
+      buildLocalMpiArgs(
+        { kind: 'mpirun', extraArgs: '--allow-run-as-root --mca "pml ^ucx"' },
+        2,
+        '/opt/my executable',
+        ['parameters.json']
+      ).args
+    ).toEqual([
+      '--allow-run-as-root',
+      '--mca',
+      'pml ^ucx',
+      '-np',
+      '2',
+      '/opt/my executable',
+      'parameters.json',
+    ])
+  })
+
+  it('rejects Slurm launchers and invalid process counts locally', () => {
+    expect(() =>
+      buildLocalMpiArgs({ kind: 'srun' }, 2, '/opt/app', [])
+    ).toThrow('requires the mpirun launcher')
+    expect(() =>
+      buildLocalMpiArgs({ kind: 'mpirun' }, 0, '/opt/app', [])
+    ).toThrow('at least one process')
   })
 })

@@ -31,6 +31,11 @@ import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
+import {
+  resolveGraphFileReferences,
+  resolveParameterFileReferences,
+} from './fileReferences'
+import { shellEscape } from './shellEscape'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -158,13 +163,15 @@ export const submitCoralStageRemote = async ({
   const internalJobId = jobIdMapState.getNextKey()
 
   await ensureRemoteDir(stageDir)
-  await uploadFileSsh(
-    JSON.stringify(withMpiPlugin(graph, useMpi)),
-    `${stageDir}/graph.json`
+  const resolvedGraph = await resolveGraphFileReferences(
+    withMpiPlugin(graph, useMpi),
+    'remote',
+    settingsState.remote.workingDirectory
   )
+  await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
     jobName: `coral-${internalJobId}`,
-    workingDirectory: stageDir,
+    runDirectory: stageDir,
     timeLimit: config.timeLimit,
     command: `${config.coralBinaryPath} --plugin ${config.coralPluginPath} run ${stageDir}/graph.json --touch-dir nodes-exec-status/${internalJobId}`,
     mpi: useMpi ? remoteMpiResources(config) : null,
@@ -189,7 +196,11 @@ const exportAndEvalGraphLocal = async (
 ): Promise<void> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-  const graphPayload = buildGraphPayload(nodes, edges, useMpi)
+  const graphPayload = await resolveGraphFileReferences(
+    buildGraphPayload(nodes, edges, useMpi),
+    'local',
+    settingsState.local.workingDirectory
+  )
   // Isolate every run into its own subdir, same as remote, so back-to-back runs
   // don't clobber each other's graph.json/log.
   const runDir = await ensureUniqueLocalDir(
@@ -199,9 +210,18 @@ const exportAndEvalGraphLocal = async (
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
     coralBinaryPath: config.coralBinaryPath,
     coralPluginPath: config.coralPluginPath,
-    workingDirectory: runDir,
+    runDirectory: runDir,
     graphPayload,
     internalJobId,
+    mpi: useMpi
+      ? {
+          launcher: {
+            kind: settingsState.local.mpiLauncher.kind,
+            extraArgs: settingsState.local.mpiLauncher.extraArgs,
+          },
+          processes: config.tasksPerNode,
+        }
+      : undefined,
   })
 
   const jobId = String(resultExecute.jobId)
@@ -209,7 +229,7 @@ const exportAndEvalGraphLocal = async (
     jobId,
     internalJobId,
     'coral',
-    resultExecute.workingDirectory
+    resultExecute.runDirectory
   )
   toastState.add({ message: `Started local Coral run ${jobId}` })
 
@@ -243,10 +263,23 @@ const exportAndEvalExecutableLocal = async (
     'start-local-executable-run',
     {
       executablePath: config.executablePath,
-      workingDirectory: runDir,
-      parametersPayload: getExecutableParametersPayload(),
+      runDirectory: runDir,
+      parametersPayload: await resolveParameterFileReferences(
+        getExecutableParametersPayload(),
+        'local',
+        settingsState.local.workingDirectory
+      ),
       parametersFileName: config.parametersFileName,
       internalJobId,
+      mpi: config.useMpi
+        ? {
+            launcher: {
+              kind: settingsState.local.mpiLauncher.kind,
+              extraArgs: settingsState.local.mpiLauncher.extraArgs,
+            },
+            processes: config.tasksPerNode,
+          }
+        : undefined,
     }
   )
 
@@ -255,7 +288,7 @@ const exportAndEvalExecutableLocal = async (
     internalJobId,
     internalJobId,
     'executable',
-    resultExecute.workingDirectory
+    resultExecute.runDirectory
   )
   toastState.add({ message: `Started local executable run ${internalJobId}` })
 
@@ -320,15 +353,20 @@ export const submitExecutableStageRemote = async ({
   const { parametersFileName } = config
 
   await ensureRemoteDir(stageDir)
+  const resolvedParameters = await resolveParameterFileReferences(
+    parameters,
+    'remote',
+    settingsState.remote.workingDirectory
+  )
   await uploadFileSsh(
-    serializeParametersFile(parameters, parametersFileName),
+    serializeParametersFile(resolvedParameters, parametersFileName),
     `${stageDir}/${parametersFileName}`
   )
   // Bare filename, not a path: some deal.II programs read their dimension from
   // the params path, so the volatile stage directory must stay out of argv.
   const batchScript = buildSbatchScript({
     jobName: `executable-${internalJobId}`,
-    workingDirectory: stageDir,
+    runDirectory: stageDir,
     timeLimit: config.timeLimit,
     command: `${shellQuoteForScript(config.executablePath)} ${shellQuoteForScript(parametersFileName)}`,
     mpi: config.useMpi ? remoteMpiResources(config) : null,
@@ -380,10 +418,6 @@ const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({
 
 const shellQuoteForScript = (value: string): string => {
   return `"${String(value).replaceAll('"', '\\"')}"`
-}
-
-const shellEscape = (value: string): string => {
-  return `'${String(value).replaceAll("'", `'\\''`)}'`
 }
 
 /** Creates a remote directory (and parents) so SFTP uploads into it succeed. */

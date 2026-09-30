@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
   import type {
@@ -27,6 +28,7 @@
   let tasksPerNode = $state(4)
   let timeLimit = $state('01:00:00')
   let useMpi = $state(false)
+  let localCpuCount = $state(1)
   let runName = $state('')
   let location = $derived(executionSelectionState.location)
   // Writable derived: pre-filled from settings, temporarily overridable per run.
@@ -37,14 +39,32 @@
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
   let isRemoteExecution = $derived(location === 'remote')
-  // Only remote runs launch through mpirun today. The checkbox state outlives a
-  // close/reopen, so hiding the control must also disable it.
-  let mpiEnabled = $derived(isRemoteExecution && useMpi)
-  let totalProcesses = $derived(nodes * tasksPerNode)
+  let mpiEnabled = $derived(useMpi)
+  let totalProcesses = $derived(
+    isRemoteExecution ? nodes * tasksPerNode : tasksPerNode
+  )
+  let oversubscriptionHint = $derived(
+    !isRemoteExecution &&
+      mpiEnabled &&
+      totalProcesses > localCpuCount &&
+      `This uses ${totalProcesses} processes on ${localCpuCount} logical CPUs; the run will be allowed to proceed.`
+  )
 
   let timeLimitError = $derived(
     isRemoteExecution && !isValidSlurmTime(timeLimit) ? SLURM_TIME_HINT : ''
   )
+
+  onMount(() => {
+    if (!window.electron?.invoke) return
+    void window.electron
+      .invoke('get-local-cpu-count')
+      .then((count) => {
+        if (Number.isInteger(count) && count > 0) {
+          localCpuCount = count
+        }
+      })
+      .catch(() => undefined)
+  })
 
   const handleConfirm = () => {
     // Block runs for a mode that was never validated — switching mode no longer
@@ -76,7 +96,7 @@
           {
             executablePath: target.executablePath,
             parametersFileName,
-            nodes,
+            nodes: isRemoteExecution ? nodes : 1,
             tasksPerNode,
             timeLimit,
             useMpi: mpiEnabled,
@@ -90,7 +110,7 @@
           {
             coralBinaryPath: target.coralBinaryPath,
             coralPluginPath: target.coralPluginPath,
-            nodes,
+            nodes: isRemoteExecution ? nodes : 1,
             tasksPerNode,
             timeLimit,
             useMpi: mpiEnabled,
@@ -142,18 +162,22 @@
     {#if mpiEnabled}
       <div class="inputs-container">
         <div class="inputs-row">
+          {#if isRemoteExecution}
+            <div class="input-container">
+              <label for="mpi-nodes">Nodes</label>
+              <input
+                id="mpi-nodes"
+                type="number"
+                min="1"
+                bind:value={nodes}
+                class="input-field"
+              />
+            </div>
+          {/if}
           <div class="input-container">
-            <label for="mpi-nodes">Nodes</label>
-            <input
-              id="mpi-nodes"
-              type="number"
-              min="1"
-              bind:value={nodes}
-              class="input-field"
-            />
-          </div>
-          <div class="input-container">
-            <label for="mpi-tasks-per-node">Tasks per node</label>
+            <label for="mpi-tasks-per-node">
+              {isRemoteExecution ? 'Tasks per node' : 'Processes'}
+            </label>
             <input
               id="mpi-tasks-per-node"
               type="number"
@@ -167,6 +191,11 @@
             <span class="total-value">{totalProcesses}</span>
           </div>
         </div>
+        {#if oversubscriptionHint}
+          <span class="hint-message hint-message--warning">
+            {oversubscriptionHint}
+          </span>
+        {/if}
       </div>
     {/if}
     {#if isRemoteExecution}
@@ -215,19 +244,17 @@
         </div>
       </div>
     {/if}
-    {#if isRemoteExecution}
-      <div class="toggle-container">
-        <div class="mpi-row">
-          <span class="toggle-label">
-            {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
-          </span>
-          <label class="switch">
-            <input type="checkbox" bind:checked={useMpi} />
-            <span class="slider round"></span>
-          </label>
-        </div>
+    <div class="toggle-container">
+      <div class="mpi-row">
+        <span class="toggle-label">
+          {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
+        </span>
+        <label class="switch">
+          <input type="checkbox" bind:checked={useMpi} />
+          <span class="slider round"></span>
+        </label>
       </div>
-    {/if}
+    </div>
     <div class="button-container">
       <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button
@@ -297,6 +324,10 @@
 
   .hint-message--error {
     color: var(--error-color, #e53935);
+  }
+
+  .hint-message--warning {
+    color: var(--button-action-bg);
   }
 
   .total {

@@ -1,6 +1,6 @@
 # Run a Custom Executable Locally (no Docker, no SSH)
 
-This approach uses the **local + executable** execution mode with any deal.II-based program that follows the DealiiX executable contract.
+This approach uses the **local + executable** execution mode with any deal.II-based program that follows the DealiiX executable contract. Serial and single-host MPI runs are supported; MPI uses `mpirun`.
 
 The contract is simple: when called with a parameters file path that **does not exist**, the binary writes a template with all parameters and exits. When the file **exists**, it reads it and runs the simulation. DealiiX accepts either JSON (`.json`) or deal.II-style text parameters (`.prm`) and translates between the two formats internally.
 
@@ -67,3 +67,16 @@ For a quick end-to-end check that everything is wired up correctly, run in 2D wi
 
 1. Find **Number of time steps** in the Parameters panel and set it to `1`.
 2. Click **Execute**. The simulation finishes in seconds rather than minutes.
+
+### Run locally with MPI
+
+Build the executable with MPI support, enable **Binary is MPI-enabled** in the
+Run dialog, and set the number of **Processes**. The app launches the binary as
+follows:
+
+```bash
+mpirun -np 4 ./step-70 parameters.json
+```
+
+Configure launcher-specific flags such as `--allow-run-as-root` under Settings
+→ Execution → local → MPI launcher.

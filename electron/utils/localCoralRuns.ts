@@ -4,6 +4,8 @@ import { spawn } from 'child_process'
 import store from './storage.js'
 import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
+import { buildLocalMpiArgs } from '../../src/lib/utils/mpiLauncher.js'
+import type { MpiLauncherSettings } from '../../src/lib/types/settingsTypes.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
 
@@ -19,17 +21,21 @@ export interface LocalRun {
 interface CoralRunPayload {
   coralBinaryPath: string
   coralPluginPath: string
-  workingDirectory: string
+  /** Per-run directory for graph, log, and node-status files; Coral runs in it. */
+  runDirectory: string
   graphPayload: unknown
   internalJobId: number | string
+  mpi?: { launcher: MpiLauncherSettings; processes: number }
 }
 
 interface ExecutableRunPayload {
   executablePath: string
-  workingDirectory: string
+  /** Per-run directory for parameters and logs; the executable runs in it. */
+  runDirectory: string
   parametersPayload: ParameterTree
   parametersFileName: string
   internalJobId: number | string
+  mpi?: { launcher: MpiLauncherSettings; processes: number }
 }
 
 const localRuns = new Map<string, LocalRun>()
@@ -68,6 +74,26 @@ const dirExists = async (dirPath: string): Promise<boolean> => {
   }
 }
 
+const fileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    return (await fs.promises.stat(filePath)).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns the subset of the given paths that are existing regular files.
+ * @param filePaths - Absolute local paths to check.
+ * @returns The paths that exist and are files, in input order.
+ */
+export const findExistingLocalFiles = async (
+  filePaths: string[]
+): Promise<string[]> => {
+  const exists = await Promise.all(filePaths.map(fileExists))
+  return filePaths.filter((_, index) => exists[index])
+}
+
 /**
  * Creates a local directory for exclusive use by a run: if the exact path
  * already exists (a slug was reused), retries with a timestamp-suffixed
@@ -93,31 +119,32 @@ export const ensureUniqueLocalDir = async (
 
 /**
  * @param payload - Coral run configuration.
- * @returns The internal job ID and working directory of the spawned process.
+ * @returns The internal job ID and per-run directory used for run artifacts.
  */
 export const startLocalCoralRun = async ({
   coralBinaryPath,
   coralPluginPath,
-  workingDirectory,
+  runDirectory,
   graphPayload,
   internalJobId,
-}: CoralRunPayload): Promise<{ jobId: string; workingDirectory: string }> => {
+  mpi,
+}: CoralRunPayload): Promise<{ jobId: string; runDirectory: string }> => {
   const jobId = String(internalJobId)
-  const graphPath = path.join(workingDirectory, `graph-${jobId}.json`)
-  const logPath = path.join(workingDirectory, `local-${jobId}.out`)
+  const graphPath = path.join(runDirectory, `graph-${jobId}.json`)
+  const logPath = path.join(runDirectory, `local-${jobId}.out`)
   const touchDir = path.join(
-    workingDirectory,
+    runDirectory,
     'nodes-exec-status',
     String(internalJobId)
   )
 
-  await ensureDir(workingDirectory)
+  await ensureDir(runDirectory)
   await ensureDir(path.dirname(touchDir))
   await ensureDir(touchDir)
 
   await fs.promises.writeFile(graphPath, JSON.stringify(graphPayload))
 
-  const args = [
+  const executableArgs = [
     '-p',
     coralPluginPath,
     'run',
@@ -125,10 +152,18 @@ export const startLocalCoralRun = async ({
     '--touch-dir',
     touchDir,
   ]
+  const invocation = mpi
+    ? buildLocalMpiArgs(
+        mpi.launcher,
+        mpi.processes,
+        coralBinaryPath,
+        executableArgs
+      )
+    : { command: coralBinaryPath, args: executableArgs }
 
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
-  const child = spawn(coralBinaryPath, args, {
-    cwd: workingDirectory,
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -159,45 +194,49 @@ export const startLocalCoralRun = async ({
     })
   })
 
-  return { jobId, workingDirectory }
+  return { jobId, runDirectory }
 }
 
 /**
  * @param payload - Executable run configuration.
- * @returns The internal job ID and per-run working directory of the spawned process.
+ * @returns The internal job ID and per-run directory used for run artifacts.
  */
 export const startLocalExecutableRun = async ({
   executablePath,
-  workingDirectory,
+  runDirectory,
   parametersPayload,
   parametersFileName,
   internalJobId,
+  mpi,
 }: ExecutableRunPayload): Promise<{
   jobId: string
-  workingDirectory: string
+  runDirectory: string
 }> => {
   const jobId = String(internalJobId)
-  // Already an isolated, unique per-run directory (allocated by the caller via
+  // runDirectory is already unique per run (allocated by the caller via
   // ensureUniqueLocalDir), so back-to-back runs never share a parameters.json.
-  const runDir = workingDirectory
-  // Bare filename, no jobId prefix: some deal.II programs (e.g. step-70) sniff
-  // their dimension from the file path, so a prefix would be unsafe.
-  const parametersPath = path.join(
-    runDir,
-    parametersFileName || 'parameters.json'
-  )
-  const logPath = path.join(runDir, 'local.out')
+  const parametersName = parametersFileName || 'parameters.json'
+  const parametersPath = path.join(runDirectory, parametersName)
+  const logPath = path.join(runDirectory, 'local.out')
 
-  await ensureDir(runDir)
+  await ensureDir(path.dirname(parametersPath))
   const parametersContent = serializeParametersFile(
     parametersPayload,
     parametersFileName
   )
   await fs.promises.writeFile(parametersPath, parametersContent)
 
+  // Bare filename relative to cwd, not a path: some deal.II programs (e.g.
+  // step-70) read their dimension from the params path, so the run directory
+  // must stay out of argv. Matches the remote batch script.
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
-  const child = spawn(executablePath, [parametersPath], {
-    cwd: runDir,
+  const invocation = mpi
+    ? buildLocalMpiArgs(mpi.launcher, mpi.processes, executablePath, [
+        parametersName,
+      ])
+    : { command: executablePath, args: [parametersName] }
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -228,7 +267,7 @@ export const startLocalExecutableRun = async ({
     })
   })
 
-  return { jobId, workingDirectory: runDir }
+  return { jobId, runDirectory }
 }
 
 /**
