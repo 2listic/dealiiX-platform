@@ -9,12 +9,19 @@ import {
   submitExecutableStageRemote,
   jobPolling,
   ensureUniqueRemoteDir,
+  ensureUniqueLocalDir,
+  localJobPolling,
 } from '../utils/sshMessages'
 import { settingsState } from '../stores/settingsStore.svelte'
+import { JobStatus } from '../types/jobTypes'
 import type { PipelineStage } from '../types/pipelineTypes'
+import type { PipelineProgress } from './pipelineOrchestrator'
+import { prepareStageLocal, startPreparedStage } from './localStages'
 
 const REMOTE_POLL_INTERVAL_MS = 10 * 1000
 const REMOTE_POLL_TIMEOUT_MS = 24 * 60 * 60 * 1000
+const LOCAL_POLL_INTERVAL_MS = 1000
+const LOCAL_POLL_TIMEOUT_MS = 24 * 60 * 60 * 1000
 
 /** How the orchestrator allocates, submits and waits for the stages of one run. */
 export type StageScheduler = {
@@ -68,3 +75,66 @@ export const remoteScheduler = (): StageScheduler => ({
   waitForTerminal: (handle) =>
     jobPolling(handle, REMOTE_POLL_INTERVAL_MS, REMOTE_POLL_TIMEOUT_MS),
 })
+
+/**
+ * Creates the in-process local scheduler for one pipeline run. Each stage is
+ * checked and recorded at submit, then started as soon as all of its own parents
+ * have completed; if any parent did not complete it is never started and ends
+ * CANCELLED, so a failure cascades to every descendant. Handles are local job ids.
+ *
+ * @param emit - Receives an error event when a stage fails to start.
+ * @returns A scheduler backed by local processes, scoped to a single run.
+ */
+export const localScheduler = (
+  emit: (event: PipelineProgress) => void
+): StageScheduler => {
+  const outcomes = new Map<string, Promise<string>>()
+
+  const outcomeOf = (handle: string): Promise<string> => {
+    const outcome = outcomes.get(handle)
+    if (!outcome) throw new Error(`Unknown local stage handle ${handle}`)
+    return outcome
+  }
+
+  const runAfterParents = async (
+    stageName: string,
+    key: string,
+    parentOutcomes: Promise<string>[],
+    start: () => Promise<void>
+  ): Promise<string> => {
+    const parentStates = await Promise.all(parentOutcomes)
+    if (parentStates.some((state) => state !== JobStatus.COMPLETED))
+      return JobStatus.CANCELLED
+    try {
+      await start()
+      return await localJobPolling(
+        key,
+        LOCAL_POLL_INTERVAL_MS,
+        LOCAL_POLL_TIMEOUT_MS
+      )
+    } catch (error) {
+      emit({ type: 'error', message: `${stageName}: ${error}` })
+      return JobStatus.FAILED
+    }
+  }
+
+  return {
+    workingDirectory: () => settingsState.local.workingDirectory,
+    allocateDirectory: ensureUniqueLocalDir,
+    submitStage: async (stage, stageDir, parentHandles) => {
+      // Awaited by the orchestrator, so a missing binary stops submission of
+      // this and every later stage, as a failed sbatch does remotely.
+      const prepared = await prepareStageLocal(stage, stageDir)
+      const parentOutcomes = parentHandles.map(outcomeOf)
+      // Not awaited: the stage waits for its parents in the background.
+      outcomes.set(
+        prepared.key,
+        runAfterParents(stage.name, prepared.key, parentOutcomes, () =>
+          startPreparedStage(prepared)
+        )
+      )
+      return prepared.key
+    },
+    waitForTerminal: outcomeOf,
+  }
+}

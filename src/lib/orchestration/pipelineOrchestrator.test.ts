@@ -32,10 +32,29 @@ vi.mock('../utils/sshMessages', () => ({
     submitExecutableStageRemote(args),
   jobPolling: (...args: never[]) => jobPolling(...args),
   ensureUniqueRemoteDir: (dir: string) => ensureUniqueRemoteDir(dir),
+  ensureUniqueLocalDir: async (dir: string) => dir,
+  localJobPolling: async () => JobStatus.COMPLETED,
+}))
+
+const prepareStageLocal = vi.fn(
+  async (stage: PipelineStage, stageDir: string) => ({
+    key: `local-${stage.id}`,
+    channel: 'start-local-coral-run',
+    payload: { stageDir },
+  })
+)
+
+vi.mock('./localStages', () => ({
+  prepareStageLocal: (stage: PipelineStage, stageDir: string) =>
+    prepareStageLocal(stage, stageDir),
+  startPreparedStage: async () => {},
 }))
 
 vi.mock('../stores/settingsStore.svelte', () => ({
-  settingsState: { remote: { workingDirectory: '/app/shared-data' } },
+  settingsState: {
+    remote: { workingDirectory: '/app/shared-data' },
+    local: { workingDirectory: '/home/user/runs' },
+  },
 }))
 
 const { runPipeline, runPipelineOnScheduler } = await import(
@@ -207,10 +226,20 @@ describe("runPipeline('remote')", () => {
 })
 
 describe("runPipeline('local')", () => {
-  it('refuses until local pipelines are supported', async () => {
-    await expect(
-      runPipeline('local', pipeline([coralStage('a')], []), undefined)
-    ).rejects.toThrow('Pipelines run in remote mode only')
+  it('runs stages through the local scheduler under the local working directory', async () => {
+    const events: string[] = []
+    prepareStageLocal.mockClear()
+
+    await runPipeline('local', pipeline([coralStage('a')], []), 'demo', (e) => {
+      if (e.type === 'success') events.push(e.message)
+    })
+
+    expect(prepareStageLocal).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a' }),
+      '/home/user/runs/pipeline-demo/stage-a'
+    )
+    expect(submitCoralStageRemote).not.toHaveBeenCalled()
+    expect(events).toContain('a (job local-a): COMPLETED')
   })
 })
 
@@ -279,5 +308,28 @@ describe('runPipelineOnScheduler', () => {
     expect(scheduler.waitForTerminal).toHaveBeenCalledTimes(2)
     expect(events).toContain('success:a (job h-a): COMPLETED')
     expect(events).toContain('error:b (job h-b): FAILED')
+  })
+
+  it('names a failed parent as the cause of a cancelled stage', async () => {
+    // a → b, and an independent c the user cancelled
+    const scheduler = fakeScheduler({
+      'h-a': JobStatus.FAILED,
+      'h-b': JobStatus.CANCELLED,
+      'h-c': JobStatus.CANCELLED,
+    })
+    const events: string[] = []
+    const p = pipeline(
+      [coralStage('a'), coralStage('b'), coralStage('c')],
+      [['a', 'b']]
+    )
+
+    await runPipelineOnScheduler(scheduler, p, undefined, (e) => {
+      if (e.type === 'error') events.push(e.message)
+    })
+
+    expect(events).toContain(
+      'b (job h-b): CANCELLED (a parent stage did not complete)'
+    )
+    expect(events).toContain('c (job h-c): CANCELLED')
   })
 })

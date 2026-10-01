@@ -14,7 +14,11 @@
 
 import { JobStatus } from '../types/jobTypes'
 import { resolveExecutionOrder, parentsOf } from './executionOrder'
-import { remoteScheduler, type StageScheduler } from './stageScheduler'
+import {
+  localScheduler,
+  remoteScheduler,
+  type StageScheduler,
+} from './stageScheduler'
 import { buildDirName } from '../utils/slugify'
 import type { Pipeline } from '../types/pipelineTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
@@ -29,7 +33,7 @@ export type PipelineProgress =
  * Runs every stage of a pipeline at the given execution location in dependency
  * order and reports progress through `onProgress` callbacks.
  *
- * @param location - Where the stages run; only `remote` is supported for now.
+ * @param location - Where the stages run: Slurm for `remote`, the in-process local scheduler for `local`.
  * @param pipeline - The pipeline (stages + ordering edges) to execute.
  * @param runName - Optional user-supplied name; slugified into the pipeline's output folder.
  * @param onProgress - Optional callback for progress events (toasts, job-table refresh).
@@ -46,7 +50,7 @@ export const runPipeline = async (
   if (location === 'remote') {
     scheduler = remoteScheduler()
   } else if (location === 'local') {
-    throw new Error('Pipelines run in remote mode only')
+    scheduler = localScheduler((event) => onProgress?.(event))
   } else {
     throw new Error(`Unknown execution location: ${location}`)
   }
@@ -112,18 +116,32 @@ export const runPipelineOnScheduler = async (
 
   emit({
     type: 'success',
-    message: `Submitted ${order.length} stage(s) to Slurm`,
+    message: `Submitted ${order.length} stage(s)`,
   })
+
+  const outcomes = new Map(
+    order.map((stage) => [
+      stage.id,
+      scheduler.waitForTerminal(handleByStage.get(stage.id)!),
+    ])
+  )
 
   // Wait for all stages concurrently; each stage reports as soon as it finishes,
   // rather than waiting for the whole pipeline to reach a terminal state.
   await Promise.all(
     order.map(async (stage) => {
-      const handle = handleByStage.get(stage.id)!
-      const finalState = await scheduler.waitForTerminal(handle)
+      const finalState = await outcomes.get(stage.id)!
+      // Both schedulers cancel the descendants of a failed stage, so name the
+      // cause rather than leave it looking like a user cancellation.
+      const parentStates = await Promise.all(
+        parentsOf(stage.id, pipeline.edges).map((id) => outcomes.get(id)!)
+      )
+      const parentFailed =
+        finalState === JobStatus.CANCELLED &&
+        parentStates.some((state) => state !== JobStatus.COMPLETED)
       emit({
         type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-        message: `${stage.name} (job ${handle}): ${finalState}`,
+        message: `${stage.name} (job ${handleByStage.get(stage.id)}): ${finalState}${parentFailed ? ' (a parent stage did not complete)' : ''}`,
       })
     })
   )

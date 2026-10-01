@@ -183,8 +183,13 @@ export const submitCoralStageRemote = async ({
   return jobId
 }
 
-/** Local counterpart of {@link ensureUniqueRemoteDir}, backed by the local filesystem. */
-const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
+/**
+ * Local counterpart of {@link ensureUniqueRemoteDir}, backed by the local filesystem.
+ * @param dir - Preferred local directory path.
+ * @returns The local directory path actually created (`dir` unless a collision occurred).
+ * @throws {Error} If a free directory cannot be allocated after a few attempts.
+ */
+export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
 }
 
@@ -545,7 +550,15 @@ const delay = (ms: number): Promise<void> => {
   return new Promise((res) => setTimeout(res, ms))
 }
 
-const localJobPolling = async (
+/**
+ * Polls a local run's state through IPC until it reaches a terminal state.
+ * @param jobId - The local run's job id (its internal job id).
+ * @param interval - The interval (in milliseconds) between polling attempts.
+ * @param timeout - The maximum time (in milliseconds) to wait; polls indefinitely if omitted.
+ * @returns A promise that resolves to the run's terminal {@link JobStatus}.
+ * @throws {Error} If the run does not finish within `timeout`.
+ */
+export const localJobPolling = async (
   jobId: string,
   interval: number,
   timeout?: number
