@@ -16,7 +16,7 @@
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import {
-    runPipelineRemote,
+    runPipeline,
     type PipelineProgress,
   } from '../../orchestration/pipelineOrchestrator'
   import { buildExportMeta } from '../../utils/exportMeta'
@@ -250,7 +250,8 @@
   /** Runs the pipeline remotely, surfacing progress events as toasts. */
   const handleRunPipeline = (name: string) => {
     const pipeline = pipelineState.toPipeline()
-    runPipelineRemote(
+    runPipeline(
+      'remote',
       pipeline,
       name || undefined,
       handlePipelineProgress

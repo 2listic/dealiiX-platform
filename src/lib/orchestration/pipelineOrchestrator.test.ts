@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { JobStatus } from '../types/jobTypes'
 import type { Pipeline, PipelineStage } from '../types/pipelineTypes'
+import type { StageScheduler } from './stageScheduler'
 
 const submits: { id: string; deps: string[] }[] = []
 let submitCounter = 100
@@ -37,7 +38,9 @@ vi.mock('../stores/settingsStore.svelte', () => ({
   settingsState: { remote: { workingDirectory: '/app/shared-data' } },
 }))
 
-const { runPipelineRemote } = await import('./pipelineOrchestrator')
+const { runPipeline, runPipelineOnScheduler } = await import(
+  './pipelineOrchestrator'
+)
 
 /** Builds a coral stage with a complete config. */
 const coralStage = (id: string): PipelineStage => ({
@@ -92,7 +95,7 @@ beforeEach(() => {
   ensureUniqueRemoteDir.mockImplementation(async (dir: string) => dir)
 })
 
-describe('runPipelineRemote', () => {
+describe("runPipeline('remote')", () => {
   it('submits stages in dependency order with correct --dependency chains', async () => {
     // a → b → c (linear)
     const p = pipeline(
@@ -103,7 +106,7 @@ describe('runPipelineRemote', () => {
       ]
     )
 
-    await runPipelineRemote(p, undefined)
+    await runPipeline('remote', p, undefined)
 
     // Three submits, in topo order a, b, c.
     expect(submits.map((s) => s.id)).toEqual(['100', '101', '102'])
@@ -123,7 +126,7 @@ describe('runPipelineRemote', () => {
       ]
     )
 
-    await runPipelineRemote(p, undefined)
+    await runPipeline('remote', p, undefined)
 
     // a first, then b and c (both depend only on a).
     expect(submits[0].id).toBe('100')
@@ -139,7 +142,7 @@ describe('runPipelineRemote', () => {
     pollResult = JobStatus.COMPLETED
     const events: string[] = []
 
-    await runPipelineRemote(p, undefined, (event) => {
+    await runPipeline('remote', p, undefined, (event) => {
       if (event.type === 'success') events.push(`success:${event.message}`)
       if (event.type === 'error') events.push(`error:${event.message}`)
     })
@@ -150,7 +153,7 @@ describe('runPipelineRemote', () => {
   it('dispatches coral vs executable stages to the right submit primitive', async () => {
     const p = pipeline([coralStage('a'), executableStage('b')], [['a', 'b']])
 
-    await runPipelineRemote(p, undefined)
+    await runPipeline('remote', p, undefined)
 
     expect(submitCoralStageRemote).toHaveBeenCalledTimes(1)
     expect(submitExecutableStageRemote).toHaveBeenCalledTimes(1)
@@ -159,7 +162,7 @@ describe('runPipelineRemote', () => {
   it('rejects an empty pipeline without submitting', async () => {
     const events: string[] = []
 
-    await runPipelineRemote({ nodes: [], edges: [] }, undefined, (e) => {
+    await runPipeline('remote', { nodes: [], edges: [] }, undefined, (e) => {
       if (e.type === 'error') events.push(e.message)
     })
 
@@ -171,7 +174,7 @@ describe('runPipelineRemote', () => {
   it('builds the pipeline dir from a slugified custom name', async () => {
     const p = pipeline([coralStage('a')], [])
 
-    await runPipelineRemote(p, 'My Custom Name')
+    await runPipeline('remote', p, 'My Custom Name')
 
     expect(ensureUniqueRemoteDir).toHaveBeenCalledWith(
       '/app/shared-data/pipeline-my-custom-name'
@@ -181,7 +184,7 @@ describe('runPipelineRemote', () => {
   it('falls back to a timestamp-based pipeline dir when no name is given', async () => {
     const p = pipeline([coralStage('a')], [])
 
-    await runPipelineRemote(p, undefined)
+    await runPipeline('remote', p, undefined)
 
     const [dir] = ensureUniqueRemoteDir.mock.calls[0]
     expect(dir).toMatch(/^\/app\/shared-data\/pipeline-\d+$/)
@@ -193,12 +196,88 @@ describe('runPipelineRemote', () => {
     )
     const p = pipeline([coralStage('a')], [])
 
-    await runPipelineRemote(p, 'dup-test')
+    await runPipeline('remote', p, 'dup-test')
 
     expect(submitCoralStageRemote).toHaveBeenCalledWith(
       expect.objectContaining({
         stageDir: '/app/shared-data/pipeline-dup-test-1740000000000/stage-a',
       })
     )
+  })
+})
+
+describe("runPipeline('local')", () => {
+  it('refuses until local pipelines are supported', async () => {
+    await expect(
+      runPipeline('local', pipeline([coralStage('a')], []), undefined)
+    ).rejects.toThrow('Pipelines run in remote mode only')
+  })
+})
+
+describe('runPipelineOnScheduler', () => {
+  /** A scheduler recording each submit; handles are `h-<stage id>`. */
+  const fakeScheduler = (
+    terminal: Record<string, string> = {}
+  ): StageScheduler & {
+    submitted: { stageDir: string; parents: string[] }[]
+  } => {
+    const submitted: { stageDir: string; parents: string[] }[] = []
+    return {
+      submitted,
+      workingDirectory: () => '/work',
+      allocateDirectory: vi.fn(async (dir: string) => `${dir}-x`),
+      submitStage: vi.fn(async (stage, stageDir, parentHandles) => {
+        submitted.push({ stageDir, parents: parentHandles })
+        return `h-${stage.id}`
+      }),
+      waitForTerminal: vi.fn(
+        async (handle: string) => terminal[handle] ?? JobStatus.COMPLETED
+      ),
+    }
+  }
+
+  it('allocates the pipeline dir under the scheduler working directory', async () => {
+    const scheduler = fakeScheduler()
+
+    await runPipelineOnScheduler(
+      scheduler,
+      pipeline([coralStage('a')], []),
+      'run'
+    )
+
+    expect(scheduler.allocateDirectory).toHaveBeenCalledWith(
+      '/work/pipeline-run'
+    )
+    expect(scheduler.submitted[0].stageDir).toBe('/work/pipeline-run-x/stage-a')
+  })
+
+  it("passes each stage its parents' handles", async () => {
+    // a → c ← b (fan-in)
+    const scheduler = fakeScheduler()
+    const p = pipeline(
+      [coralStage('a'), coralStage('b'), executableStage('c')],
+      [
+        ['a', 'c'],
+        ['b', 'c'],
+      ]
+    )
+
+    await runPipelineOnScheduler(scheduler, p, undefined)
+
+    expect(scheduler.submitted.at(-1)!.parents.sort()).toEqual(['h-a', 'h-b'])
+  })
+
+  it('waits for every stage and reports each terminal state', async () => {
+    const scheduler = fakeScheduler({ 'h-b': JobStatus.FAILED })
+    const events: string[] = []
+    const p = pipeline([coralStage('a'), coralStage('b')], [['a', 'b']])
+
+    await runPipelineOnScheduler(scheduler, p, undefined, (e) => {
+      if (e.type !== 'info') events.push(`${e.type}:${e.message}`)
+    })
+
+    expect(scheduler.waitForTerminal).toHaveBeenCalledTimes(2)
+    expect(events).toContain('success:a (job h-a): COMPLETED')
+    expect(events).toContain('error:b (job h-b): FAILED')
   })
 })
