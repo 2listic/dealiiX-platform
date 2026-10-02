@@ -19,8 +19,6 @@ const coralFileStage = (
   name: id,
   graph: { workflow: id },
   config: {
-    coralBinaryPath: '/coral',
-    coralPluginPath: '/plugin',
     nodes: 1,
     tasksPerNode: 1,
     timeLimit: '01:00:00',
@@ -112,12 +110,7 @@ describe('pipelineState.load', () => {
   it('resyncs the stage counter so a new stage does not collide with loaded ids', () => {
     pipelineState.load(file([coralFileStage('p0'), coralFileStage('p3')]))
 
-    pipelineState.addCoralStage({
-      name: 'new stage',
-      graph: {},
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-    })
+    pipelineState.addCoralStage({ name: 'new stage', graph: {} })
 
     const ids = getNodesSnapshot().map((n) => n.id)
     expect(ids).toContain('p4')
@@ -127,12 +120,7 @@ describe('pipelineState.load', () => {
   it('resets the counter to 1 on an empty load', () => {
     pipelineState.load(file([]))
 
-    pipelineState.addCoralStage({
-      name: 'first stage',
-      graph: {},
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-    })
+    pipelineState.addCoralStage({ name: 'first stage', graph: {} })
 
     expect(getNodesSnapshot().map((n) => n.id)).toEqual(['p1'])
   })
@@ -144,6 +132,7 @@ describe('pipelineState.load', () => {
       'nodes',
       'tasksPerNode'
     )
+    stage.config.timeLimit = '02:00:00'
 
     pipelineState.load(file([stage]))
 
@@ -152,9 +141,7 @@ describe('pipelineState.load', () => {
       useMpi: false,
       nodes: 1,
       tasksPerNode: 4,
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-      timeLimit: '01:00:00',
+      timeLimit: '02:00:00',
     })
   })
 
@@ -208,7 +195,7 @@ describe('pipelineState.load', () => {
   })
 })
 
-describe('pipelineState.validation', () => {
+describe('pipelineState.validate', () => {
   /** An executable stage that is runnable apart from whatever a test breaks. */
   const runnableExecutableStage = (id: string): PipelineStage => {
     const stage = executableFileStage(id) as ExecutablePipelineStage
@@ -222,8 +209,9 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
-    expect(pipelineState.validation.runnable).toBe(false)
+    const validation = pipelineState.validate('remote')
+    expect(validation.issues).toContain('p0: invalid time limit')
+    expect(validation.runnable).toBe(false)
   })
 
   it('rejects an empty time limit on a coral stage', () => {
@@ -232,7 +220,9 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+    expect(pipelineState.validate('remote').issues).toContain(
+      'p0: invalid time limit'
+    )
   })
 
   it('rejects a malformed time limit on an executable stage', () => {
@@ -241,16 +231,28 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+    expect(pipelineState.validate('remote').issues).toContain(
+      'p0: invalid time limit'
+    )
   })
 
   it('accepts a well-formed time limit', () => {
     pipelineState.load(file([runnableExecutableStage('p0')]))
 
-    expect(pipelineState.validation.issues).not.toContain(
-      'p0: invalid time limit'
-    )
-    expect(pipelineState.validation.runnable).toBe(true)
+    const validation = pipelineState.validate('remote')
+    expect(validation.issues).not.toContain('p0: invalid time limit')
+    expect(validation.runnable).toBe(true)
+  })
+
+  it('ignores the time limit for a local run', () => {
+    const stage = runnableExecutableStage('p0')
+    stage.config.timeLimit = 'later'
+
+    pipelineState.load(file([stage]))
+
+    const validation = pipelineState.validate('local')
+    expect(validation.issues).toEqual([])
+    expect(validation.runnable).toBe(true)
   })
 })
 

@@ -16,7 +16,7 @@
   import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import {
-    runPipelineRemote,
+    runPipeline,
     type PipelineProgress,
   } from '../../orchestration/pipelineOrchestrator'
   import { buildExportMeta } from '../../utils/exportMeta'
@@ -70,8 +70,6 @@
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
-  let isRemote = $derived(executionSelectionState.location === 'remote')
-  let pipelineValidation = $derived(pipelineState.validation)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -107,16 +105,12 @@
    */
   const handleExecution = () => {
     if (isPipelineMode) {
-      if (!isRemote) {
+      const validation = pipelineState.validate(
+        executionSelectionState.location
+      )
+      if (!validation.runnable) {
         toastState.add({
-          message: 'Pipelines run in remote mode only — switch location first.',
-          type: 'error',
-        })
-        return
-      }
-      if (!pipelineValidation.runnable) {
-        toastState.add({
-          message: `Cannot run: ${pipelineValidation.issues.join('; ')}`,
+          message: `Cannot run: ${validation.issues.join('; ')}`,
           type: 'error',
         })
         return
@@ -141,15 +135,7 @@
         return
       }
       const name = file.name.replace(/\.json$/i, '')
-      // Capture the coral install paths at stage creation so the stage is a
-      // self-contained execution request — the submit primitive no longer reads
-      // settingsState.
-      pipelineState.addCoralStage({
-        name,
-        graph,
-        coralBinaryPath: settingsState.remote.coralBinaryPath,
-        coralPluginPath: settingsState.remote.coralPluginPath,
-      })
+      pipelineState.addCoralStage({ name, graph })
     } catch (error) {
       toastState.add({
         message:
@@ -170,17 +156,15 @@
     pipelineState.addCoralStage({
       name: currentProjectState.name || 'canvas graph',
       graph,
-      coralBinaryPath: settingsState.remote.coralBinaryPath,
-      coralPluginPath: settingsState.remote.coralPluginPath,
     })
   }
 
   const handleAddExecutable = () => {
+    const target = settingsState[executionSelectionState.location]
     pipelineState.addExecutableStage({
       name: 'executable',
-      executablePath: settingsState.remote.executablePath,
-      parametersFileName:
-        settingsState.remote.parametersFileName || 'parameters.json',
+      executablePath: target.executablePath,
+      parametersFileName: target.parametersFileName || 'parameters.json',
     })
   }
 
@@ -247,10 +231,11 @@
     if (event.type !== 'info') jobsState.update()
   }
 
-  /** Runs the pipeline remotely, surfacing progress events as toasts. */
+  /** Runs the pipeline at the active location, surfacing progress events as toasts. */
   const handleRunPipeline = (name: string) => {
     const pipeline = pipelineState.toPipeline()
-    runPipelineRemote(
+    runPipeline(
+      executionSelectionState.location,
       pipeline,
       name || undefined,
       handlePipelineProgress
