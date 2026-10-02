@@ -13,8 +13,6 @@ const stage = (id: string): PipelineStage => ({
   name: id,
   graph: {},
   config: {
-    coralBinaryPath: '/coral',
-    coralPluginPath: '/plugin',
     nodes: 1,
     tasksPerNode: 1,
     timeLimit: '01:00:00',

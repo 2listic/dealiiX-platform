@@ -19,8 +19,6 @@ const coralFileStage = (
   name: id,
   graph: { workflow: id },
   config: {
-    coralBinaryPath: '/coral',
-    coralPluginPath: '/plugin',
     nodes: 1,
     tasksPerNode: 1,
     timeLimit: '01:00:00',
@@ -112,12 +110,7 @@ describe('pipelineState.load', () => {
   it('resyncs the stage counter so a new stage does not collide with loaded ids', () => {
     pipelineState.load(file([coralFileStage('p0'), coralFileStage('p3')]))
 
-    pipelineState.addCoralStage({
-      name: 'new stage',
-      graph: {},
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-    })
+    pipelineState.addCoralStage({ name: 'new stage', graph: {} })
 
     const ids = getNodesSnapshot().map((n) => n.id)
     expect(ids).toContain('p4')
@@ -127,12 +120,7 @@ describe('pipelineState.load', () => {
   it('resets the counter to 1 on an empty load', () => {
     pipelineState.load(file([]))
 
-    pipelineState.addCoralStage({
-      name: 'first stage',
-      graph: {},
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-    })
+    pipelineState.addCoralStage({ name: 'first stage', graph: {} })
 
     expect(getNodesSnapshot().map((n) => n.id)).toEqual(['p1'])
   })
@@ -144,6 +132,7 @@ describe('pipelineState.load', () => {
       'nodes',
       'tasksPerNode'
     )
+    stage.config.timeLimit = '02:00:00'
 
     pipelineState.load(file([stage]))
 
@@ -152,9 +141,7 @@ describe('pipelineState.load', () => {
       useMpi: false,
       nodes: 1,
       tasksPerNode: 4,
-      coralBinaryPath: '/coral',
-      coralPluginPath: '/plugin',
-      timeLimit: '01:00:00',
+      timeLimit: '02:00:00',
     })
   })
 

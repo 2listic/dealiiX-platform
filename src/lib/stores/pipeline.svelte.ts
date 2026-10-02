@@ -32,15 +32,10 @@ const DEFAULT_MPI_RESOURCES: MpiResourceConfig = {
   tasksPerNode: 4,
 }
 
-const DEFAULT_CORAL_CONFIG = (
-  coralBinaryPath: string,
-  coralPluginPath: string
-): CoralJobConfig => ({
+const DEFAULT_CORAL_CONFIG: CoralJobConfig = {
   ...DEFAULT_MPI_RESOURCES,
-  coralBinaryPath,
-  coralPluginPath,
   timeLimit: '01:00:00',
-})
+}
 
 const DEFAULT_EXECUTABLE_CONFIG = (
   executablePath: string,
@@ -78,27 +73,21 @@ export const pipelineState = {
    * Adds a CORAL-graph stage node.
    * @param params.name - Display name for the stage.
    * @param params.graph - The CORAL network object (from a file or canvas snapshot).
-   * @param params.coralBinaryPath - Coral binary path (captured from settings at creation).
-   * @param params.coralPluginPath - Coral plugin path (captured from settings at creation).
    * @param params.position - Optional canvas position; cascades by default.
    */
   addCoralStage({
     name,
     graph,
-    coralBinaryPath,
-    coralPluginPath,
     position,
   }: {
     name: string
     graph: unknown
-    coralBinaryPath: string
-    coralPluginPath: string
     position?: { x: number; y: number }
   }): void {
     const data: CoralStageData = {
       name,
       graph,
-      config: DEFAULT_CORAL_CONFIG(coralBinaryPath, coralPluginPath),
+      config: { ...DEFAULT_CORAL_CONFIG },
     }
     addStageNode('coralStage', data, position)
   },
@@ -106,7 +95,7 @@ export const pipelineState = {
   /**
    * Adds an executable stage node.
    * @param params.name - Display name for the stage.
-   * @param params.executablePath - Binary path (captured from settings at creation).
+   * @param params.executablePath - Binary path (initialised from settings, editable on the card).
    * @param params.parametersFileName - Params filename (extension selects JSON/PRM).
    * @param params.position - Optional canvas position; cascades by default.
    */
@@ -277,7 +266,7 @@ export const pipelineState = {
 /**
  * Baseline config an imported stage is merged over, so a file exported before a
  * config field existed loads with a usable value instead of `undefined`.
- * Paths default to empty because an imported stage always carries its own.
+ * The executable path defaults to empty because an imported stage always carries its own.
  * @param type - The stage kind discriminant from the file.
  * @returns The default config for that stage kind.
  */
@@ -286,7 +275,7 @@ const defaultStageConfig = (
 ): CoralJobConfig | ExecutableJobConfig => {
   switch (type) {
     case 'coralStage':
-      return DEFAULT_CORAL_CONFIG('', '')
+      return DEFAULT_CORAL_CONFIG
     case 'executableStage':
       return DEFAULT_EXECUTABLE_CONFIG('', 'parameters.json')
   }

@@ -35,6 +35,8 @@ vi.mock('../stores/settingsStore.svelte', () => ({
   settingsState: {
     local: {
       workingDirectory: '/work',
+      coralBinaryPath: '/bin/coral',
+      coralPluginPath: '/lib/plugin.so',
       mpiLauncher: { kind: 'mpirun', extraArgs: '--oversubscribe' },
     },
   },
@@ -65,12 +67,7 @@ const coralStage = (id: string, useMpi = false): PipelineStage => ({
   position: { x: 0, y: 0 },
   name: id,
   graph: { workflow: id },
-  config: {
-    ...mpiOff,
-    useMpi,
-    coralBinaryPath: '/bin/coral',
-    coralPluginPath: '/lib/plugin.so',
-  },
+  config: { ...mpiOff, useMpi },
 })
 
 const executableStage = (id: string, executablePath: string): PipelineStage =>
@@ -99,7 +96,7 @@ describe('prepareStageLocal', () => {
     expect(recorded.get(b.key)?.workingDirectory).toBe('/p/stage-b')
   })
 
-  it('builds the Coral start payload with the MPI plugin and launcher', async () => {
+  it('builds the Coral start payload from the local install, with the MPI plugin and launcher', async () => {
     const prepared = await prepareStageLocal(
       coralStage('a', true),
       '/p/stage-a'

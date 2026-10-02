@@ -14,6 +14,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Pipelines
 
+- [#230](https://github.com/2listic/dealiiX-platform/issues/230) CORAL stages now always run with the CORAL binary and plugin configured in Settings for the location the pipeline runs on. Previously each stage kept the paths in use when it was added, which could not be seen or changed on the stage, so a pipeline imported from another machine ran with that machine's paths. New executable stages now start with the executable path and parameters file name of the active location rather than always the remote ones.
 - [#222](https://github.com/2listic/dealiiX-platform/pull/222) Executable pipeline stages gain the MPI controls CORAL stages already had, so a stage can request its own nodes and tasks per node.
 - [#222](https://github.com/2listic/dealiiX-platform/pull/222) A blank or malformed time limit on an executable stage is now reported in the canvas before the run starts, matching CORAL stages — previously it was accepted and the stage failed at submission with a scheduler error.
 - [#222](https://github.com/2listic/dealiiX-platform/pull/222) Importing a pipeline exported by an older version now fills in settings that did not exist when the file was written, instead of leaving them unset.

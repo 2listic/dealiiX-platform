@@ -141,15 +141,7 @@
         return
       }
       const name = file.name.replace(/\.json$/i, '')
-      // Capture the coral install paths at stage creation so the stage is a
-      // self-contained execution request — the submit primitive no longer reads
-      // settingsState.
-      pipelineState.addCoralStage({
-        name,
-        graph,
-        coralBinaryPath: settingsState.remote.coralBinaryPath,
-        coralPluginPath: settingsState.remote.coralPluginPath,
-      })
+      pipelineState.addCoralStage({ name, graph })
     } catch (error) {
       toastState.add({
         message:
@@ -170,17 +162,15 @@
     pipelineState.addCoralStage({
       name: currentProjectState.name || 'canvas graph',
       graph,
-      coralBinaryPath: settingsState.remote.coralBinaryPath,
-      coralPluginPath: settingsState.remote.coralPluginPath,
     })
   }
 
   const handleAddExecutable = () => {
+    const target = settingsState[executionSelectionState.location]
     pipelineState.addExecutableStage({
       name: 'executable',
-      executablePath: settingsState.remote.executablePath,
-      parametersFileName:
-        settingsState.remote.parametersFileName || 'parameters.json',
+      executablePath: target.executablePath,
+      parametersFileName: target.parametersFileName || 'parameters.json',
     })
   }
 

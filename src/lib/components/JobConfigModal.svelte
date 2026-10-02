@@ -80,9 +80,7 @@
 
     getModal(modalId)?.close()
 
-    // Settings are read once, at this UI boundary, and flow in as explicit args.
-    // The submit primitives no longer fall back to settingsState — the config is
-    // the complete, serializable argument bag for the run.
+    // A single run executes the executable configured in Settings for its location.
     const target = isRemoteExecution
       ? settingsState.remote
       : settingsState.local
@@ -108,8 +106,6 @@
           getNodesSnapshot(),
           getEdgesSnapshot(),
           {
-            coralBinaryPath: target.coralBinaryPath,
-            coralPluginPath: target.coralPluginPath,
             nodes: isRemoteExecution ? nodes : 1,
             tasksPerNode,
             timeLimit,

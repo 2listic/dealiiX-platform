@@ -43,7 +43,7 @@ export const prepareStageLocal = async (
   let channel: PreparedLocalStage['channel']
   let payload: object
   if (stage.type === 'coralStage') {
-    const { coralBinaryPath, coralPluginPath } = stage.config
+    const { coralBinaryPath, coralPluginPath } = settingsState.local
     await assertLocalFilesExist(stage.name, [coralBinaryPath, coralPluginPath])
     backendKind = 'coral'
     channel = 'start-local-coral-run'

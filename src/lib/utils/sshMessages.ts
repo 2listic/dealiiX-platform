@@ -173,7 +173,7 @@ export const submitCoralStageRemote = async ({
     jobName: `coral-${internalJobId}`,
     runDirectory: stageDir,
     timeLimit: config.timeLimit,
-    command: `${config.coralBinaryPath} --plugin ${config.coralPluginPath} run ${stageDir}/graph.json --touch-dir nodes-exec-status/${internalJobId}`,
+    command: `${settingsState.remote.coralBinaryPath} --plugin ${settingsState.remote.coralPluginPath} run ${stageDir}/graph.json --touch-dir nodes-exec-status/${internalJobId}`,
     mpi: useMpi ? remoteMpiResources(config) : null,
   })
   await uploadFileSsh(batchScript, `${stageDir}/job.sh`)
@@ -213,8 +213,8 @@ const exportAndEvalGraphLocal = async (
   )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {
-    coralBinaryPath: config.coralBinaryPath,
-    coralPluginPath: config.coralPluginPath,
+    coralBinaryPath: settingsState.local.coralBinaryPath,
+    coralPluginPath: settingsState.local.coralPluginPath,
     runDirectory: runDir,
     graphPayload,
     internalJobId,
