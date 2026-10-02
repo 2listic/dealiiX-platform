@@ -126,7 +126,7 @@ export const runPipelineOnScheduler = async (
         parentStates.some((state) => state !== JobStatus.COMPLETED)
       emit({
         type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-        message: `${stage.name} (job ${jobIdByStage.get(stage.id)}): ${finalState}${parentFailed ? ' (a parent stage did not complete)' : ''}`,
+        message: `${stage.name} (stage ${stage.id}, job ${jobIdByStage.get(stage.id)}): ${finalState}${parentFailed ? ' (a parent stage did not complete)' : ''}`,
       })
     })
   )

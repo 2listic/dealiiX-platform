@@ -70,8 +70,6 @@
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
-  let isRemote = $derived(executionSelectionState.location === 'remote')
-  let pipelineValidation = $derived(pipelineState.validation)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -107,16 +105,12 @@
    */
   const handleExecution = () => {
     if (isPipelineMode) {
-      if (!isRemote) {
+      const validation = pipelineState.validate(
+        executionSelectionState.location
+      )
+      if (!validation.runnable) {
         toastState.add({
-          message: 'Pipelines run in remote mode only — switch location first.',
-          type: 'error',
-        })
-        return
-      }
-      if (!pipelineValidation.runnable) {
-        toastState.add({
-          message: `Cannot run: ${pipelineValidation.issues.join('; ')}`,
+          message: `Cannot run: ${validation.issues.join('; ')}`,
           type: 'error',
         })
         return
@@ -237,11 +231,11 @@
     if (event.type !== 'info') jobsState.update()
   }
 
-  /** Runs the pipeline remotely, surfacing progress events as toasts. */
+  /** Runs the pipeline at the active location, surfacing progress events as toasts. */
   const handleRunPipeline = (name: string) => {
     const pipeline = pipelineState.toPipeline()
     runPipeline(
-      'remote',
+      executionSelectionState.location,
       pipeline,
       name || undefined,
       handlePipelineProgress

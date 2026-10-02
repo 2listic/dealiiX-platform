@@ -195,7 +195,7 @@ describe('pipelineState.load', () => {
   })
 })
 
-describe('pipelineState.validation', () => {
+describe('pipelineState.validate', () => {
   /** An executable stage that is runnable apart from whatever a test breaks. */
   const runnableExecutableStage = (id: string): PipelineStage => {
     const stage = executableFileStage(id) as ExecutablePipelineStage
@@ -209,8 +209,9 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
-    expect(pipelineState.validation.runnable).toBe(false)
+    const validation = pipelineState.validate('remote')
+    expect(validation.issues).toContain('p0: invalid time limit')
+    expect(validation.runnable).toBe(false)
   })
 
   it('rejects an empty time limit on a coral stage', () => {
@@ -219,7 +220,9 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+    expect(pipelineState.validate('remote').issues).toContain(
+      'p0: invalid time limit'
+    )
   })
 
   it('rejects a malformed time limit on an executable stage', () => {
@@ -228,16 +231,28 @@ describe('pipelineState.validation', () => {
 
     pipelineState.load(file([stage]))
 
-    expect(pipelineState.validation.issues).toContain('p0: invalid time limit')
+    expect(pipelineState.validate('remote').issues).toContain(
+      'p0: invalid time limit'
+    )
   })
 
   it('accepts a well-formed time limit', () => {
     pipelineState.load(file([runnableExecutableStage('p0')]))
 
-    expect(pipelineState.validation.issues).not.toContain(
-      'p0: invalid time limit'
-    )
-    expect(pipelineState.validation.runnable).toBe(true)
+    const validation = pipelineState.validate('remote')
+    expect(validation.issues).not.toContain('p0: invalid time limit')
+    expect(validation.runnable).toBe(true)
+  })
+
+  it('ignores the time limit for a local run', () => {
+    const stage = runnableExecutableStage('p0')
+    stage.config.timeLimit = 'later'
+
+    pipelineState.load(file([stage]))
+
+    const validation = pipelineState.validate('local')
+    expect(validation.issues).toEqual([])
+    expect(validation.runnable).toBe(true)
   })
 })
 

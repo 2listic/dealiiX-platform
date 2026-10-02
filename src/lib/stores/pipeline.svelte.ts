@@ -20,6 +20,7 @@ import type {
   MpiResourceConfig,
 } from '../types/jobConfigTypes'
 import type { ParameterTree } from '../types/parameterTypes'
+import type { ExecutionLocation } from '../types/settingsTypes'
 import { isValidSlurmTime } from '../utils/slurmTime'
 
 let nodes = $state.raw<Node[]>([])
@@ -235,10 +236,14 @@ export const pipelineState = {
   },
 
   /**
-   * Validation summary driving the Run button and inline issue list.
+   * Validation summary driving the Run button.
+   * @param location - Where the pipeline would run; only remote runs have a time limit.
    * @returns `runnable` plus a list of human-readable `issues`.
    */
-  get validation(): { runnable: boolean; issues: string[] } {
+  validate(location: ExecutionLocation): {
+    runnable: boolean
+    issues: string[]
+  } {
     const issues: string[] = []
     const { nodes: stages } = this.toPipeline()
     if (stages.length === 0) issues.push('Add at least one stage')
@@ -246,16 +251,14 @@ export const pipelineState = {
     for (const stage of stages) {
       if (stage.type === 'coralStage') {
         if (!stage.graph) issues.push(`${stage.name}: no graph loaded`)
-        if (!isValidSlurmTime(stage.config.timeLimit))
-          issues.push(`${stage.name}: invalid time limit`)
       } else if (stage.type === 'executableStage') {
         if (!stage.config.executablePath.trim())
           issues.push(`${stage.name}: no executable path`)
         if (!stage.parameters)
           issues.push(`${stage.name}: no parameters loaded`)
-        if (!isValidSlurmTime(stage.config.timeLimit))
-          issues.push(`${stage.name}: invalid time limit`)
       }
+      if (location === 'remote' && !isValidSlurmTime(stage.config.timeLimit))
+        issues.push(`${stage.name}: invalid time limit`)
     }
     return { runnable: issues.length === 0, issues }
   },

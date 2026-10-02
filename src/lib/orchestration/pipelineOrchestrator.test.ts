@@ -164,7 +164,7 @@ describe("runPipeline('remote')", () => {
       if (event.type === 'error') events.push(`error:${event.message}`)
     })
 
-    expect(events).toContain('success:a (job 100): COMPLETED')
+    expect(events).toContain('success:a (stage a, job 100): COMPLETED')
   })
 
   it('dispatches coral vs executable stages to the right submit primitive', async () => {
@@ -237,7 +237,7 @@ describe("runPipeline('local')", () => {
       '/home/user/runs/pipeline-demo/stage-a'
     )
     expect(submitCoralStageRemote).not.toHaveBeenCalled()
-    expect(events).toContain('a (job local-a): COMPLETED')
+    expect(events).toContain('a (stage a, job local-a): COMPLETED')
   })
 })
 
@@ -304,8 +304,8 @@ describe('runPipelineOnScheduler', () => {
     })
 
     expect(scheduler.waitForTerminal).toHaveBeenCalledTimes(2)
-    expect(events).toContain('success:a (job h-a): COMPLETED')
-    expect(events).toContain('error:b (job h-b): FAILED')
+    expect(events).toContain('success:a (stage a, job h-a): COMPLETED')
+    expect(events).toContain('error:b (stage b, job h-b): FAILED')
   })
 
   it('names a failed parent as the cause of a cancelled stage', async () => {
@@ -326,8 +326,8 @@ describe('runPipelineOnScheduler', () => {
     })
 
     expect(events).toContain(
-      'b (job h-b): CANCELLED (a parent stage did not complete)'
+      'b (stage b, job h-b): CANCELLED (a parent stage did not complete)'
     )
-    expect(events).toContain('c (job h-c): CANCELLED')
+    expect(events).toContain('c (stage c, job h-c): CANCELLED')
   })
 })
