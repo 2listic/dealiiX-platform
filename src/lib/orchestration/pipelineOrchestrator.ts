@@ -2,7 +2,7 @@
  * In-app pipeline orchestration.
  *
  * Topologically orders the stage DAG and submits every stage through a
- * {@link StageScheduler}, passing each one its parents' handles. The scheduler
+ * {@link StageScheduler}, passing each one its parents' job ids. The scheduler
  * holds a stage until its parents succeed and runs independent branches in
  * parallel; remotely that is Slurm (`--dependency=afterok`), so the run survives
  * the app being closed and the concurrent waiting here is only for live feedback.
@@ -14,11 +14,7 @@
 
 import { JobStatus } from '../types/jobTypes'
 import { resolveExecutionOrder, parentsOf } from './executionOrder'
-import {
-  localScheduler,
-  remoteScheduler,
-  type StageScheduler,
-} from './stageScheduler'
+import { schedulerFor, type StageScheduler } from './stageScheduler'
 import { buildDirName } from '../utils/slugify'
 import type { Pipeline } from '../types/pipelineTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
@@ -46,14 +42,7 @@ export const runPipeline = async (
   runName: string | undefined,
   onProgress?: (event: PipelineProgress) => void
 ): Promise<void> => {
-  let scheduler: StageScheduler
-  if (location === 'remote') {
-    scheduler = remoteScheduler()
-  } else if (location === 'local') {
-    scheduler = localScheduler((event) => onProgress?.(event))
-  } else {
-    throw new Error(`Unknown execution location: ${location}`)
-  }
+  const scheduler = schedulerFor(location, (event) => onProgress?.(event))
   await runPipelineOnScheduler(scheduler, pipeline, runName, onProgress)
 }
 
@@ -91,26 +80,22 @@ export const runPipelineOnScheduler = async (
     `${scheduler.workingDirectory()}/${buildDirName('pipeline', runName)}`
   )
 
-  // Map each stage id to its scheduler handle so children can depend on parents.
-  const handleByStage = new Map<string, string>()
+  // Map each stage id to its job id so children can depend on parents.
+  const jobIdByStage = new Map<string, string>()
 
   for (const stage of order) {
     const stageDir = `${pipelineDir}/stage-${stage.id}`
-    const parentHandles = parentsOf(stage.id, pipeline.edges).map(
-      (parentId) => {
-        const parentHandle = handleByStage.get(parentId)
-        // Guaranteed present: topo order submits every parent before its children.
-        if (!parentHandle)
-          throw new Error(
-            `Missing submitted job id for parent stage ${parentId}`
-          )
-        return parentHandle
-      }
-    )
+    const parentJobIds = parentsOf(stage.id, pipeline.edges).map((parentId) => {
+      const parentJobId = jobIdByStage.get(parentId)
+      // Guaranteed present: topo order submits every parent before its children.
+      if (!parentJobId)
+        throw new Error(`Missing submitted job id for parent stage ${parentId}`)
+      return parentJobId
+    })
 
-    handleByStage.set(
+    jobIdByStage.set(
       stage.id,
-      await scheduler.submitStage(stage, stageDir, parentHandles)
+      await scheduler.submitStage(stage, stageDir, parentJobIds)
     )
   }
 
@@ -122,7 +107,7 @@ export const runPipelineOnScheduler = async (
   const outcomes = new Map(
     order.map((stage) => [
       stage.id,
-      scheduler.waitForTerminal(handleByStage.get(stage.id)!),
+      scheduler.waitForTerminal(jobIdByStage.get(stage.id)!),
     ])
   )
 
@@ -141,7 +126,7 @@ export const runPipelineOnScheduler = async (
         parentStates.some((state) => state !== JobStatus.COMPLETED)
       emit({
         type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-        message: `${stage.name} (job ${handleByStage.get(stage.id)}): ${finalState}${parentFailed ? ' (a parent stage did not complete)' : ''}`,
+        message: `${stage.name} (job ${jobIdByStage.get(stage.id)}): ${finalState}${parentFailed ? ' (a parent stage did not complete)' : ''}`,
       })
     })
   )

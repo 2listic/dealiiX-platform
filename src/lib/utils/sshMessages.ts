@@ -1,11 +1,7 @@
 /**
- * SSH and Slurm job orchestration for remote graph execution.
- * Builds and uploads the graph JSON and sbatch script, submits the job,
- * polls for completion, and reports results via toast notifications.
- *
- * Two entry points depending on the execution mode:
- * exportAndEvalCoralGraph(nodes, edges, config?) and
- * exportAndEvalExecutable(config?)
+ * SSH and Slurm primitives for job execution: building and uploading a stage's
+ * graph or parameters file and sbatch script, submitting it, and polling job
+ * state, remotely and locally. Runs are orchestrated in `src/lib/orchestration/`.
  */
 
 import type { Edge, Node } from '@xyflow/svelte'
@@ -27,9 +23,7 @@ import type {
 import type { SbatchMpiResources } from './sbatchScript'
 import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
-import { parametersState } from '../stores/parametersStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
-import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   resolveGraphFileReferences,
@@ -68,74 +62,6 @@ export const executeWithKey = async (): Promise<void> => {
   })
   console.log('SSH Connection Result:', result)
   toastState.add({ message: 'Command was sent' })
-}
-
-/**
- * Exports a computational graph to the remote server and executes it via Slurm.
- * Polls the job status until completion and displays results via toast notifications.
- * @param nodes - Array of nodes (must be snapshots, not reactive)
- * @param edges - Array of edges (must be snapshots, not reactive)
- * @param config - Optional job configuration for template placeholders
- * @param runName - Optional user-supplied name; slugified into the run's output folder.
- * @returns Resolves when the job completes or fails.
- * @throws {Error} Throws if export, execution, or polling fails.
- * @remarks Callers should pass snapshots using $state.snapshot() or snapshot()
- */
-export const exportAndEvalCoralGraph = async (
-  location: ExecutionLocation,
-  nodes: Node[],
-  edges: Edge[],
-  config: CoralJobConfig,
-  runName?: string
-): Promise<void> => {
-  if (location === 'local') {
-    await exportAndEvalGraphLocal(nodes, edges, config, runName)
-  } else if (location === 'remote') {
-    await exportAndEvalGraphRemote(nodes, edges, config, runName)
-  }
-}
-
-export const exportAndEvalExecutable = async (
-  location: ExecutionLocation,
-  config: ExecutableJobConfig,
-  runName?: string
-): Promise<void> => {
-  if (location === 'local') {
-    await exportAndEvalExecutableLocal(config, runName)
-  } else if (location === 'remote') {
-    await exportAndEvalExecutableRemote(config, runName)
-  }
-}
-
-const exportAndEvalGraphRemote = async (
-  nodes: Node[],
-  edges: Edge[],
-  config: CoralJobConfig,
-  runName?: string
-): Promise<void> => {
-  // Parse the canvas once without MPI; the submit primitive injects the MPI block.
-  const graph = buildGraphPayload(nodes, edges, false)
-  // Give every single remote run a unique, legible subdir so back-to-back runs
-  // don't clobber the shared graph.json/job.sh (the batch script reads
-  // <wd>/graph.json by absolute path at Slurm runtime, not at submit). Same
-  // isolation pipeline stages already have.
-  const runDir = await ensureUniqueRemoteDir(
-    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
-  )
-  const jobId = await submitCoralStageRemote({
-    graph,
-    stageDir: runDir,
-    config,
-    dependencyJobIds: [],
-  })
-  toastState.add({ message: `Submitted job ${jobId}` })
-
-  // poll every 10 secs for 1 day, finally display final status
-  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-  toastState.add({
-    message: `Job id ${jobId}: ${finalState}`,
-    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-  })
 }
 
 /**
@@ -191,146 +117,6 @@ export const submitCoralStageRemote = async ({
  */
 export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
-}
-
-const exportAndEvalGraphLocal = async (
-  nodes: Node[],
-  edges: Edge[],
-  config: CoralJobConfig,
-  runName?: string
-): Promise<void> => {
-  const useMpi = config.useMpi
-  const internalJobId = jobIdMapState.getNextKey()
-  const graphPayload = await resolveGraphFileReferences(
-    buildGraphPayload(nodes, edges, useMpi),
-    'local',
-    settingsState.local.workingDirectory
-  )
-  // Isolate every run into its own subdir, same as remote, so back-to-back runs
-  // don't clobber each other's graph.json/log.
-  const runDir = await ensureUniqueLocalDir(
-    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
-  )
-
-  const resultExecute = await window.electron.invoke('start-local-coral-run', {
-    coralBinaryPath: settingsState.local.coralBinaryPath,
-    coralPluginPath: settingsState.local.coralPluginPath,
-    runDirectory: runDir,
-    graphPayload,
-    internalJobId,
-    mpi: useMpi
-      ? {
-          launcher: {
-            kind: settingsState.local.mpiLauncher.kind,
-            extraArgs: settingsState.local.mpiLauncher.extraArgs,
-          },
-          processes: config.tasksPerNode,
-        }
-      : undefined,
-  })
-
-  const jobId = String(resultExecute.jobId)
-  await jobIdMapState.add(
-    jobId,
-    internalJobId,
-    'coral',
-    resultExecute.runDirectory
-  )
-  toastState.add({ message: `Started local Coral run ${jobId}` })
-
-  const finalState = await localJobPolling(jobId, 1000, 24 * 60 * 60 * 1000)
-  await jobsState.update()
-  toastState.add({
-    message: `Job id ${jobId}: ${finalState}`,
-    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-  })
-}
-
-const getExecutableParametersPayload = () => {
-  const parametersPayload = parametersState.snapshot
-  if (!parametersPayload) {
-    throw new Error(
-      'Executable backend requires a synchronized parameters template before execution'
-    )
-  }
-  return parametersPayload
-}
-
-const exportAndEvalExecutableLocal = async (
-  config: ExecutableJobConfig,
-  runName?: string
-): Promise<void> => {
-  const internalJobId = jobIdMapState.getNextKey()
-  const runDir = await ensureUniqueLocalDir(
-    `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
-  )
-  const resultExecute = await window.electron.invoke(
-    'start-local-executable-run',
-    {
-      executablePath: config.executablePath,
-      runDirectory: runDir,
-      parametersPayload: await resolveParameterFileReferences(
-        getExecutableParametersPayload(),
-        'local',
-        settingsState.local.workingDirectory
-      ),
-      parametersFileName: config.parametersFileName,
-      internalJobId,
-      mpi: config.useMpi
-        ? {
-            launcher: {
-              kind: settingsState.local.mpiLauncher.kind,
-              extraArgs: settingsState.local.mpiLauncher.extraArgs,
-            },
-            processes: config.tasksPerNode,
-          }
-        : undefined,
-    }
-  )
-
-  // local runs have no external scheduler ID — both keys are the same internalJobId.
-  await jobIdMapState.add(
-    internalJobId,
-    internalJobId,
-    'executable',
-    resultExecute.runDirectory
-  )
-  toastState.add({ message: `Started local executable run ${internalJobId}` })
-
-  const finalState = await localJobPolling(
-    String(internalJobId),
-    1000,
-    24 * 60 * 60 * 1000
-  )
-  await jobsState.update()
-  toastState.add({
-    message: `Job id ${internalJobId}: ${finalState}`,
-    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-  })
-}
-
-const exportAndEvalExecutableRemote = async (
-  config: ExecutableJobConfig,
-  runName?: string
-): Promise<void> => {
-  // Unique, legible per-run subdir so back-to-back runs don't clobber a shared job.sh.
-  const runDir = await ensureUniqueRemoteDir(
-    `${settingsState.remote.workingDirectory}/${buildDirName('run', runName)}`
-  )
-
-  const jobId = await submitExecutableStageRemote({
-    parameters: getExecutableParametersPayload(),
-    stageDir: runDir,
-    config,
-    dependencyJobIds: [],
-  })
-  toastState.add({ message: `Submitted job ${jobId}` })
-
-  const finalState = await jobPolling(jobId, 10 * 1000, 24 * 60 * 60 * 1000)
-  toastState.add({
-    message: `Job id ${jobId}: ${finalState}`,
-    type: finalState === JobStatus.COMPLETED ? 'success' : 'error',
-  })
 }
 
 /**

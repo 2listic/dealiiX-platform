@@ -50,6 +50,11 @@ export type ExecutablePipelineStage = {
 /** A pipeline stage, discriminated on `type`. */
 export type PipelineStage = CoralPipelineStage | ExecutablePipelineStage
 
+/** What a scheduler launches: a pipeline stage, or a single run shaped like one. */
+export type StageJob =
+  | Pick<CoralPipelineStage, 'type' | 'name' | 'graph' | 'config'>
+  | Pick<ExecutablePipelineStage, 'type' | 'name' | 'parameters' | 'config'>
+
 /** Stage fields stored on a canvas node's `data` (the stage minus `id`/`type`/`position`, which live on the xyflow node). */
 export type CoralStageData = Omit<
   CoralPipelineStage,

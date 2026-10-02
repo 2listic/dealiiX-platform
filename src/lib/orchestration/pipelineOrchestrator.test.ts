@@ -242,7 +242,7 @@ describe("runPipeline('local')", () => {
 })
 
 describe('runPipelineOnScheduler', () => {
-  /** A scheduler recording each submit; handles are `h-<stage id>`. */
+  /** A scheduler recording each submit; job ids are `h-<stage id>`. */
   const fakeScheduler = (
     terminal: Record<string, string> = {}
   ): StageScheduler & {
@@ -253,12 +253,12 @@ describe('runPipelineOnScheduler', () => {
       submitted,
       workingDirectory: () => '/work',
       allocateDirectory: vi.fn(async (dir: string) => `${dir}-x`),
-      submitStage: vi.fn(async (stage, stageDir, parentHandles) => {
-        submitted.push({ stageDir, parents: parentHandles })
+      submitStage: vi.fn(async (stage, stageDir, parentJobIds) => {
+        submitted.push({ stageDir, parents: parentJobIds })
         return `h-${stage.id}`
       }),
       waitForTerminal: vi.fn(
-        async (handle: string) => terminal[handle] ?? JobStatus.COMPLETED
+        async (jobId: string) => terminal[jobId] ?? JobStatus.COMPLETED
       ),
     }
   }
@@ -278,7 +278,7 @@ describe('runPipelineOnScheduler', () => {
     expect(scheduler.submitted[0].stageDir).toBe('/work/pipeline-run-x/stage-a')
   })
 
-  it("passes each stage its parents' handles", async () => {
+  it("passes each stage its parents' job ids", async () => {
     // a → c ← b (fan-in)
     const scheduler = fakeScheduler()
     const p = pipeline(

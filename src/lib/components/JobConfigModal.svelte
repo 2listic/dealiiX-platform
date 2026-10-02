@@ -2,14 +2,11 @@
   import { onMount } from 'svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
-  import type {
-    CoralJobConfig,
-    ExecutableJobConfig,
-  } from '../types/jobConfigTypes'
-  import {
-    exportAndEvalCoralGraph,
-    exportAndEvalExecutable,
-  } from '../utils/sshMessages'
+  import type { StageJob } from '../types/pipelineTypes'
+  import type { PipelineProgress } from '../orchestration/pipelineOrchestrator'
+  import { runSingle } from '../orchestration/singleRun'
+  import { buildGraphPayload } from '../utils/sshMessages'
+  import { jobsState } from '../stores/jobsStore.svelte'
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
@@ -78,49 +75,57 @@
       return
     }
 
+    // Close first so the modal doesn't block the UI during the long-running job.
     getModal(modalId)?.close()
 
-    // A single run executes the executable configured in Settings for its location.
-    const target = isRemoteExecution
-      ? settingsState.remote
-      : settingsState.local
-
-    // Close first so the modal doesn't block the UI during the long-running job.
     const trimmedRunName = runName.trim() || undefined
+    const resources = {
+      nodes: isRemoteExecution ? nodes : 1,
+      tasksPerNode,
+      timeLimit,
+      useMpi: mpiEnabled,
+    }
 
-    const run = isExecutableMode
-      ? exportAndEvalExecutable(
-          location,
-          {
-            executablePath: target.executablePath,
-            parametersFileName,
-            nodes: isRemoteExecution ? nodes : 1,
-            tasksPerNode,
-            timeLimit,
-            useMpi: mpiEnabled,
-          } satisfies ExecutableJobConfig,
-          trimmedRunName
-        )
-      : exportAndEvalCoralGraph(
-          location,
-          getNodesSnapshot(),
-          getEdgesSnapshot(),
-          {
-            nodes: isRemoteExecution ? nodes : 1,
-            tasksPerNode,
-            timeLimit,
-            useMpi: mpiEnabled,
-          } satisfies CoralJobConfig,
-          trimmedRunName
-        )
+    const run = async () => {
+      const job: StageJob = isExecutableMode
+        ? {
+            type: 'executableStage',
+            name: trimmedRunName ?? 'executable run',
+            parameters: parametersState.snapshot,
+            config: {
+              ...resources,
+              // A single run executes the executable configured in Settings for its location.
+              executablePath: settingsState[location].executablePath,
+              parametersFileName,
+            },
+          }
+        : {
+            type: 'coralStage',
+            name: trimmedRunName ?? 'coral run',
+            // Parsed without MPI; the launch injects the MPI block from the config.
+            graph: buildGraphPayload(
+              getNodesSnapshot(),
+              getEdgesSnapshot(),
+              false
+            ),
+            config: resources,
+          }
+      await runSingle(location, job, trimmedRunName, handleProgress)
+    }
 
-    run.catch((error) => {
+    run().catch((error) => {
       console.error('Failed to execute graph:', error)
       toastState.add({
         message: error.message || 'Failed to execute graph',
         type: 'error',
       })
     })
+  }
+
+  /** Surfaces a run's progress as toasts, refreshing the jobs table once it has a result. */
+  const handleProgress = (event: PipelineProgress) => {
+    toastState.add({ message: event.message, type: event.type })
+    if (event.type !== 'info') jobsState.update()
   }
 
   const handleCancel = () => {

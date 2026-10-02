@@ -1,12 +1,13 @@
 /**
- * Local launch of a single pipeline stage, split in two so a local scheduler can
- * check and record every stage when the pipeline is submitted (like `sbatch`)
- * and start each one later, once its parents have completed.
+ * Local launch of one stage (a pipeline stage or a single run), split in two so
+ * a local scheduler can check and record every stage when the pipeline is
+ * submitted (like `sbatch`) and start each one later, once its parents have
+ * completed.
  */
 
 import { jobIdMapState } from '../stores/jobsStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
-import type { PipelineStage } from '../types/pipelineTypes'
+import type { StageJob } from '../types/pipelineTypes'
 import type { MpiResourceConfig } from '../types/jobConfigTypes'
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import {
@@ -27,13 +28,13 @@ export type PreparedLocalStage = {
  * Checks a stage's binaries exist locally, resolves its file references, and
  * records its job id, without starting anything.
  *
- * @param stage - The pipeline stage to prepare.
+ * @param stage - The stage to prepare.
  * @param stageDir - Absolute local directory the stage runs in.
  * @returns The job id and the start payload for {@link startPreparedStage}.
  * @throws {Error} If a binary is missing, an executable stage has no parameters, or the stage type is unknown.
  */
 export const prepareStageLocal = async (
-  stage: PipelineStage,
+  stage: StageJob,
   stageDir: string
 ): Promise<PreparedLocalStage> => {
   const workingDirectory = settingsState.local.workingDirectory
@@ -79,7 +80,7 @@ export const prepareStageLocal = async (
     }
   } else {
     throw new Error(
-      `Unknown stage type for stage ${(stage as { id: string }).id}`
+      `Unknown stage type for stage ${(stage as { name: string }).name}`
     )
   }
 

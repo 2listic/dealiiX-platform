@@ -40,7 +40,7 @@ vi.mock('../stores/settingsStore.svelte', () => ({
   settingsState: { local: { workingDirectory: '/work' } },
 }))
 
-const { localScheduler } = await import('./stageScheduler')
+const { localScheduler, schedulerFor } = await import('./stageScheduler')
 
 const stage = (id: string): PipelineStage =>
   ({ id, type: 'coralStage', name: id }) as PipelineStage
@@ -54,6 +54,18 @@ beforeEach(() => {
   startError = null
   prepareStageLocal.mockClear()
   startPreparedStage.mockClear()
+})
+
+describe('schedulerFor', () => {
+  it('gives the local scheduler for local runs', () => {
+    expect(schedulerFor('local', () => {}).workingDirectory()).toBe('/work')
+  })
+
+  it('rejects an unknown location', () => {
+    expect(() => schedulerFor('cloud' as never, () => {})).toThrow(
+      'Unknown execution location: cloud'
+    )
+  })
 })
 
 describe('localScheduler', () => {
