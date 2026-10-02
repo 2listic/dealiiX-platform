@@ -52,7 +52,7 @@ Temporary files produced during a session — plans, drafts, issue breakdowns, s
 
 ## Changelog
 
-Update `CHANGELOG.md` under `## [Unreleased]` alongside every commit that touches user-visible behaviour or project structure. Add entries under the appropriate section heading (e.g. `### SSH communication`, `### UI/UX`, `### Electron-Backend`). Write in plain prose — concise, general, no specific file names unless essential for clarity. Do not reference internal implementation details or refactors that have no user-visible effect.
+Update `CHANGELOG.md` under `## [Unreleased]` alongside every commit that touches user-visible behaviour or project structure. Add entries under the appropriate section heading (e.g. `### SSH communication`, `### UI/UX`, `### Electron-Backend`). Write in plain prose — concise, general, no specific file names unless essential for clarity. Do not reference internal implementation details or refactors that have no user-visible effect. Prefix each entry with a link to the PR that makes the change (`[#N](https://github.com/2listic/dealiiX-platform/pull/N)`), not the issue it closes; the PR links back to the issue.
 
 ## Architecture
 
