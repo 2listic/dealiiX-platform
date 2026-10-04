@@ -47,6 +47,26 @@ describe('node palette metadata', () => {
     expect(nodePaletteNodeName(groups[0].nodes[0], true)).toBe('Poisson · 2D')
   })
 
+  it('groups all elementary constructors under one palette group', () => {
+    const groups = groupNodesByOperation([
+      node('double', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
+      node('int', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
+      node('unsigned int', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
+      node('std::string', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
+      node('bool', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
+    ])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].displayName).toBe('Elementary')
+    expect(groups[0].nodes.map((item) => item.type)).toEqual([
+      'double',
+      'int',
+      'unsigned int',
+      'std::string',
+      'bool',
+    ])
+  })
+
   it('derives a readable label for legacy registries', () => {
     expect(nodeVariantName(node('legacy::operation<2>'))).toBe('Operation · 2D')
   })

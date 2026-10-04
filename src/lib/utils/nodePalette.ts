@@ -25,6 +25,9 @@ const humanize = (value: string): string => {
     : ''
 }
 
+const elementaryConstructorGroupKey = 'elementary-constructors'
+const elementaryConstructorGroupName = 'Elementary'
+
 /**
  * Returns the stable grouping key for a registry entry.
  *
@@ -36,6 +39,9 @@ const humanize = (value: string): string => {
  * @returns Stable key used to group the node in the palette.
  */
 export const nodePaletteKey = (node: StandardNodeDefinition): string => {
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
+    return elementaryConstructorGroupKey
+  }
   const group = overloadGroupKey(node)
   return group ? `operation:${group}` : `namespace:${nodeNamespace(node.type)}`
 }
@@ -190,6 +196,9 @@ export const nodeSimpleDisplayName = (type: string): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
+    return elementaryConstructorGroupName
+  }
   const explicitName =
     node.overload_group?.trim() ||
     node.display_name?.trim() ||
@@ -217,8 +226,9 @@ export const groupNodesByOperation = (
       continue
     }
 
-    const operation = node.operation?.trim()
-    const overloadGroup = node.overload_group?.trim()
+    const isElementary = node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
+    const operation = isElementary ? undefined : node.operation?.trim()
+    const overloadGroup = isElementary ? undefined : node.overload_group?.trim()
     const family =
       operation || overloadGroup ? undefined : nodeNamespace(node.type)
     groups.set(key, {
