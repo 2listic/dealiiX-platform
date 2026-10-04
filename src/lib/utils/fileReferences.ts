@@ -1,6 +1,12 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
-import { TypeField } from '../types/nodeTypes'
+import {
+  isStagedWorkingFileArgument,
+  TypeField,
+  type Argument,
+  type WorkingFileReference,
+} from '../types/nodeTypes'
+import { getNodeData, isNodeInRegistry } from '../stores/registryStore.svelte'
 import { isParameterLeaf } from './parameterFileFormat'
 import { shellEscape } from './shellEscape'
 
@@ -33,6 +39,136 @@ export const resolveGraphFileReferences = async <T extends object>(
   return mapGraphValues(graph, (value) => resolved.get(value) ?? value)
 }
 
+/** A source/destination pair for a staged working file. */
+export type StagedFileCopy = {
+  sourcePath: string
+  destinationPath: string
+}
+
+/**
+ * Prepares explicit staged working-file references for one graph execution.
+ * Ordinary file references keep the legacy existing-file-to-absolute-path
+ * behaviour. Staged references are discovered from target argument metadata
+ * reached through graph edges and are processed recursively in subnetworks.
+ * @param graph - CORAL network payload about to be submitted.
+ * @param location - Execution location whose filesystem is checked.
+ * @param workingDirectory - Persistent source directory for the location.
+ * @param runDirectory - Per-run directory used as Coral's current directory.
+ * @returns A copy of the graph ready for execution.
+ * @throws {Error} If a staged file is missing, has an unsafe path, or cannot be staged.
+ */
+export const prepareGraphFileReferences = async <T extends object>(
+  graph: T,
+  location: ExecutionLocation,
+  workingDirectory: string,
+  runDirectory: string
+): Promise<T> => {
+  const references: GraphValueReference[] = []
+  collectGraphReferences(graph, references)
+
+  const ordinaryValues = references
+    .filter((reference) => !reference.staged)
+    .map((reference) => reference.value)
+  const ordinaryResolved = await resolveExistingFiles(
+    ordinaryValues,
+    location,
+    workingDirectory
+  )
+
+  const stagedReferences = references.filter(
+    (
+      reference
+    ): reference is GraphValueReference & {
+      staged: WorkingFileReference
+    } => reference.staged !== undefined
+  )
+  const workingBase = normalizeDirectory(workingDirectory)
+  const runBase = normalizeDirectory(runDirectory)
+  if (stagedReferences.length > 0 && (!workingBase || !runBase)) {
+    throw new Error(
+      'Cannot stage working files without configured working and run directories'
+    )
+  }
+
+  const stagedPaths = stagedReferences.map((reference) => {
+    const logicalPath = normalizeLogicalPath(reference.value)
+    return {
+      reference,
+      logicalPath,
+      sourcePath: joinDirectory(workingBase, logicalPath),
+      destinationPath: joinDirectory(runBase, logicalPath),
+    }
+  })
+  const existingStagedPaths = new Set(
+    stagedPaths.length > 0
+      ? await findExistingFiles(
+          [...new Set(stagedPaths.map(({ sourcePath }) => sourcePath))],
+          location
+        )
+      : []
+  )
+  const replacements = new WeakMap<object, Map<string, string>>()
+  const copies = new Map<string, StagedFileCopy>()
+
+  for (const reference of references) {
+    const replacement = reference.staged
+      ? undefined
+      : ordinaryResolved.get(reference.value)
+    if (replacement !== undefined) {
+      setReplacement(replacements, reference, replacement)
+    }
+  }
+
+  for (const {
+    reference,
+    logicalPath,
+    sourcePath,
+    destinationPath,
+  } of stagedPaths) {
+    if (existingStagedPaths.has(sourcePath)) {
+      setReplacement(replacements, reference, logicalPath)
+      copies.set(destinationPath, { sourcePath, destinationPath })
+    } else if (reference.staged.create_if_missing) {
+      // The backend/application owns default-file generation on the first run.
+      setReplacement(replacements, reference, sourcePath)
+    } else {
+      throw new Error(
+        `Staged working file is missing and create_if_missing is false: ${sourcePath}`
+      )
+    }
+  }
+
+  const copyList = [...copies.values()]
+  if (copyList.length > 0) {
+    if (location === 'local') {
+      await window.electron.invoke('stage-local-files', { files: copyList })
+    } else if (location === 'remote') {
+      await window.electron.invoke('execute-ssh-with-key', {
+        command: buildRemoteStagedFileCommand(copyList),
+        rejectOnNonZeroCode: true,
+      })
+    }
+  }
+
+  return rewriteGraphValues(graph, replacements)
+}
+
+/**
+ * Builds the server-side command used to stage remote working files.
+ * @param copies - Source/destination pairs to copy on the remote host.
+ * @returns A safely quoted shell command, or an empty string for no copies.
+ */
+export const buildRemoteStagedFileCommand = (
+  copies: StagedFileCopy[]
+): string => {
+  return copies
+    .map(
+      ({ sourcePath, destinationPath }) =>
+        `mkdir -p ${shellEscape(parentDirectory(destinationPath))} && cp -- ${shellEscape(sourcePath)} ${shellEscape(destinationPath)}`
+    )
+    .join(' && ')
+}
+
 /**
  * Replaces each parameter value naming an existing file in the working
  * directory with that file's absolute path. Only leaf `value` fields are
@@ -63,8 +199,187 @@ export const resolveParameterFileReferences = async (
 
 // ── Private helpers ──
 
-type ProtocolNode = { type?: string; value?: unknown }
-type ProtocolGraph = { workflow?: { nodes?: Record<string, ProtocolNode> } }
+type ProtocolNode = {
+  type?: string
+  value?: unknown
+  arguments?: Argument[]
+  inputs?: number[]
+}
+type ProtocolEdge = {
+  source: string | number
+  target: string | number
+  target_input: number
+}
+type ProtocolGraph = {
+  workflow?: {
+    nodes?: Record<string, ProtocolNode>
+    edges?: Record<string, ProtocolEdge>
+  }
+}
+
+type GraphValueReference = {
+  graph: object
+  nodeId: string
+  value: string
+  staged?: WorkingFileReference
+}
+
+/** Collects ordinary and explicitly staged values from a graph hierarchy. */
+const collectGraphReferences = (
+  graph: unknown,
+  references: GraphValueReference[]
+): void => {
+  if (!isObject(graph)) return
+  const protocolGraph = graph as ProtocolGraph
+  const workflow = protocolGraph.workflow
+  if (!workflow?.nodes) return
+
+  const stagedBySource = new Map<string, WorkingFileReference>()
+  for (const edge of Object.values(workflow.edges ?? {})) {
+    const argument = getTargetInputArgument(
+      workflow.nodes[String(edge.target)],
+      edge.target_input
+    )
+    if (!isStagedWorkingFileArgument(argument)) continue
+
+    const sourceId = String(edge.source)
+    const previous = stagedBySource.get(sourceId)
+    if (previous && previous.create_if_missing !== argument.create_if_missing) {
+      throw new Error(
+        `Conflicting staged-file metadata for graph source node ${sourceId}`
+      )
+    }
+    stagedBySource.set(sourceId, argument)
+  }
+
+  for (const [nodeId, node] of Object.entries(workflow.nodes)) {
+    if (node.type === TypeField.CORAL_NETWORK) {
+      collectGraphReferences(node.value, references)
+    } else if (typeof node.value === 'string') {
+      references.push({
+        graph: graph as object,
+        nodeId,
+        value: node.value,
+        staged: stagedBySource.get(nodeId),
+      })
+    }
+  }
+}
+
+/** Finds the target argument reached by a protocol edge's target handle. */
+const getTargetInputArgument = (
+  targetNode: ProtocolNode | undefined,
+  targetInput: number
+): Argument | undefined => {
+  if (!targetNode) return undefined
+
+  let definition: { arguments?: Argument[]; inputs?: number[] } | undefined
+  if (Array.isArray(targetNode.arguments) && Array.isArray(targetNode.inputs)) {
+    definition = targetNode
+  } else if (targetNode.type && isNodeInRegistry(targetNode.type)) {
+    try {
+      definition = getNodeData(targetNode.type)
+    } catch {
+      return undefined
+    }
+  }
+  const argumentIndex = definition?.inputs?.[targetInput]
+  return argumentIndex === undefined
+    ? undefined
+    : definition?.arguments?.[argumentIndex]
+}
+
+/** Stores a replacement for one node in one graph level. */
+const setReplacement = (
+  replacements: WeakMap<object, Map<string, string>>,
+  reference: GraphValueReference,
+  value: string
+): void => {
+  let graphReplacements = replacements.get(reference.graph)
+  if (!graphReplacements) {
+    graphReplacements = new Map()
+    replacements.set(reference.graph, graphReplacements)
+  }
+  graphReplacements.set(reference.nodeId, value)
+}
+
+/** Rebuilds a graph hierarchy with execution-only file-reference replacements. */
+const rewriteGraphValues = <T>(
+  graph: T,
+  replacements: WeakMap<object, Map<string, string>>
+): T => {
+  if (!isObject(graph)) return graph
+  const protocolGraph = graph as ProtocolGraph
+  const workflow = protocolGraph.workflow
+  if (!workflow?.nodes) return graph
+  const graphReplacements = replacements.get(graph as object)
+  const nodes = Object.fromEntries(
+    Object.entries(workflow.nodes).map(([id, node]) => {
+      if (node.type === TypeField.CORAL_NETWORK) {
+        return [
+          id,
+          { ...node, value: rewriteGraphValues(node.value, replacements) },
+        ]
+      }
+      const replacement = graphReplacements?.get(id)
+      return replacement === undefined
+        ? [id, node]
+        : [id, { ...node, value: replacement }]
+    })
+  )
+  return { ...graph, workflow: { ...workflow, nodes } }
+}
+
+/** Normalizes a configured directory without removing the root slash. */
+const normalizeDirectory = (directory: string): string => {
+  const trimmed = directory.trim().replace(/[\\/]+$/, '')
+  return trimmed || (directory.trim().startsWith('/') ? '/' : '')
+}
+
+/** Validates and normalizes a logical path relative to a working directory. */
+const normalizeLogicalPath = (value: string): string => {
+  const normalized = value.trim().replaceAll('\\', '/')
+  if (
+    !normalized ||
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(normalized)
+  ) {
+    throw new Error(
+      `Staged working-file reference must be a non-empty relative path: ${value}`
+    )
+  }
+  const parts = normalized.split('/')
+  if (parts.some((part) => part === '..')) {
+    throw new Error(
+      `Staged working-file reference must stay inside its working directory: ${value}`
+    )
+  }
+  const logicalPath = parts.filter((part) => part && part !== '.').join('/')
+  if (!logicalPath) {
+    throw new Error(
+      `Staged working-file reference must be a non-empty relative path: ${value}`
+    )
+  }
+  return logicalPath
+}
+
+/** Joins a configured absolute directory and a logical relative path. */
+const joinDirectory = (directory: string, relativePath: string): string => {
+  return directory === '/' ? `/${relativePath}` : `${directory}/${relativePath}`
+}
+
+/** Returns the parent directory of a POSIX path. */
+const parentDirectory = (filePath: string): string => {
+  const separator = filePath.lastIndexOf('/')
+  return separator <= 0
+    ? separator === 0
+      ? '/'
+      : '.'
+    : filePath.slice(0, separator)
+}
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
 
 /** Rebuilds a graph with `mapValue` applied to every literal node value, recursing into subnetworks. */
 const mapGraphValues = <T>(

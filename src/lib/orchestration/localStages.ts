@@ -11,7 +11,7 @@ import type { StageJob } from '../types/pipelineTypes'
 import type { MpiResourceConfig } from '../types/jobConfigTypes'
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import {
-  resolveGraphFileReferences,
+  prepareGraphFileReferences,
   resolveParameterFileReferences,
 } from '../utils/fileReferences'
 import {
@@ -123,13 +123,14 @@ const prepareLocalStageGraph = async (
   workingDirectory: string,
   stageDir: string
 ): Promise<object> =>
-  await resolveGraphFileReferences(
+  await prepareGraphFileReferences(
     withMpiPlugin(
       await materializeProtocolGraphIfNeeded(graph, 'local', {}, stageDir),
       useMpi
     ),
     'local',
-    workingDirectory
+    workingDirectory,
+    stageDir
   )
 
 /** The local MPI launch for a stage: the configured launcher and its process count. */

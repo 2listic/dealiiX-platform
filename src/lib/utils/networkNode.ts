@@ -180,9 +180,8 @@ export const analyzeNetworkBoundary = (
             freeConnectionsMap[key] = {
               nodeId: node.id,
               argument: {
+                ...arg,
                 connection_type: arg.connection_type,
-                name: arg.name,
-                type: arg.type,
               },
               isFreeInput: true,
               isFreeOutput: false,
@@ -232,9 +231,8 @@ export const analyzeNetworkBoundary = (
               freeConnectionsMap[key] = {
                 nodeId: node.id,
                 argument: {
+                  ...arg,
                   connection_type: arg.connection_type,
-                  name: arg.name,
-                  type: arg.type,
                 },
                 isFreeInput: false,
                 isFreeOutput: true,
@@ -316,9 +314,8 @@ export const analyzeNetworkBoundary = (
 
     const currentIndex = argumentsArray.length
     argumentsArray.push({
+      ...conn.argument,
       connection_type: finalConnectionType,
-      name: conn.argument.name,
-      type: conn.argument.type,
     })
 
     // Step 4: Build inputs and outputs arrays
