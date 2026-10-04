@@ -81,6 +81,8 @@
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
+  import RefreshIcon from '../icons/RefreshIcon.svelte'
+  import SuccessIcon from '../icons/SuccessIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
@@ -119,7 +121,11 @@
     vtkVisualizerTarget,
   } from '../../utils/vtkVisualizer'
   import { openNewWindow } from '../../utils/sshMessages'
-  import { overloadStatus, resolveOverloadGraph } from '../../utils/overloadResolution'
+  import {
+    overloadInterfaceForCandidates,
+    overloadStatus,
+    resolveOverloadGraph,
+  } from '../../utils/overloadResolution'
 
   let {
     id,
@@ -145,6 +151,9 @@
     isOverloadNode && isOverloadNodeDefinition(data)
       ? overloadStatus(data, overloadCandidates)
       : null
+  )
+  let isOverloadFinalized = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data) && data.finalized === true
   )
   let color = $derived(nodeColors[type as keyof typeof nodeColors])
   let activeLocation = $derived(executionSelectionState.location)
@@ -357,6 +366,25 @@
       })
     }
   }
+
+  /** Toggles a resolved family between its concrete and union interfaces. */
+  const handleToggleOverloadFinalization = () => {
+    if (!isOverloadNodeDefinition(data)) return
+
+    const isFinalizing = data.finalized !== true
+    const candidate = overloadCandidates[0]
+    if (isFinalizing && !candidate) return
+
+    graphHistoryState.checkpoint()
+    updateNodeData(id, {
+      ...overloadInterfaceForCandidates(
+        isFinalizing ? [candidate] : data.candidates
+      ),
+      finalized: isFinalizing,
+      finalized_candidate_type: isFinalizing ? candidate?.type : undefined,
+    })
+    clearConnectionCache()
+  }
 </script>
 
 <div
@@ -372,7 +400,9 @@
       {#if isOverloadNode && currentOverloadStatus}
         <div class="overload-status" data-status={currentOverloadStatus}>
           {currentOverloadStatus === 'resolved'
-            ? 'resolved'
+            ? isOverloadFinalized
+              ? 'finalized'
+              : 'resolved'
             : currentOverloadStatus === 'partially_constrained'
               ? `${overloadCandidates.length} variants remain`
               : currentOverloadStatus === 'invalid'
@@ -430,6 +460,28 @@
           onclick={() => getModal(editNodeModalId)?.open()}
         >
           <EditIcon width="20px" height="20px" />
+        </button>
+      {/if}
+      {#if isOverloadNode && currentOverloadStatus === 'resolved'}
+        <button
+          class="node-button overload-finalize-button"
+          title={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          aria-label={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          onclick={(event) => {
+            event.stopPropagation()
+            handleToggleOverloadFinalization()
+          }}
+          onmousedown={(event) => event.stopPropagation()}
+        >
+          {#if isOverloadFinalized}
+            <RefreshIcon width="20px" height="20px" rotation={0} />
+          {:else}
+            <SuccessIcon width="20px" />
+          {/if}
         </button>
       {/if}
       <button

@@ -263,6 +263,10 @@ export type OverloadNodeDefinition = {
   overload_group: string
   display_name: string
   candidates: StandardNodeDefinition[]
+  /** Whether the user explicitly locked the currently resolved candidate. */
+  finalized?: boolean
+  /** Concrete candidate type selected when the family was finalized. */
+  finalized_candidate_type?: string
   name?: string
   is_valid?: boolean
 }

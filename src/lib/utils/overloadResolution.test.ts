@@ -11,6 +11,8 @@ import {
 import {
   createOverloadFamilies,
   createOverloadNodeDefinition,
+  overloadInputTypes,
+  overloadInterfaceForCandidates,
   overloadStatus,
   resolveOverloadGraph,
 } from './overloadResolution'
@@ -250,6 +252,32 @@ describe('overload families', () => {
     expect(
       overloadStatus(family, disconnected.candidatesByNodeId.gradient)
     ).toBe('unresolved')
+  })
+
+  it('finalizes one candidate and hides its alternate socket interface', () => {
+    const twoArgumentGradient = definition(
+      'gradient<with-label>',
+      ['ScalarField', 'std::string'],
+      'ScalarGradient',
+      'gradient'
+    )
+    const family = createOverloadNodeDefinition([
+      scalarGradient,
+      twoArgumentGradient,
+    ])
+    const finalized = {
+      ...family,
+      ...overloadInterfaceForCandidates([scalarGradient]),
+      finalized: true,
+      finalized_candidate_type: scalarGradient.type,
+    }
+    const result = resolveOverloadGraph([node('gradient', finalized)], [])
+
+    expect(
+      result.candidatesByNodeId.gradient.map((candidate) => candidate.type)
+    ).toEqual([scalarGradient.type])
+    expect(finalized.inputs).toEqual(scalarGradient.inputs)
+    expect(overloadInputTypes(finalized, 1)).toEqual([])
   })
 
   it('lowers a resolved family to its concrete Coral type', () => {
