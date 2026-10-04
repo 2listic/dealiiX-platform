@@ -124,7 +124,7 @@ export const overloadInputTypes = (
 ): string[] => {
   if (isOverloadNodeDefinition(node)) {
     return unique(
-      node.candidates.flatMap((candidate) =>
+      overloadCandidatesForNode(node).flatMap((candidate) =>
         definitionInputTypes(candidate, `input-${handleIndex}`)
       )
     )
@@ -140,7 +140,7 @@ export const overloadOutputTypes = (
 ): string[] => {
   if (isOverloadNodeDefinition(node)) {
     return unique(
-      node.candidates.flatMap((candidate) =>
+      overloadCandidatesForNode(node).flatMap((candidate) =>
         definitionOutputTypesForHandle(
           candidate,
           `output-${handleIndex}`,
@@ -154,6 +154,64 @@ export const overloadOutputTypes = (
     `output-${handleIndex}`,
     upstreamTypes
   )
+}
+
+/**
+ * Returns the candidates currently exposed by a family.
+ *
+ * Finalization is an editor-level lock: it keeps the full candidate list for
+ * reopening the family, but exposes only the selected concrete definition to
+ * connection discovery, resolution, and subnetwork boundary analysis.
+ *
+ * @param node - Frontend overload family.
+ * @returns The candidates active for the current editor state.
+ */
+export const overloadCandidatesForNode = (
+  node: OverloadNodeDefinition
+): StandardNodeDefinition[] => {
+  if (!node.finalized || !node.finalized_candidate_type) {
+    return node.candidates
+  }
+  return node.candidates.filter(
+    (candidate) => candidate.type === node.finalized_candidate_type
+  )
+}
+
+export type OverloadNodeInterface = Pick<
+  OverloadNodeDefinition,
+  'arguments' | 'inputs' | 'outputs'
+>
+
+/**
+ * Builds the visible socket interface for one or more concrete candidates.
+ *
+ * @param candidates - Concrete definitions represented by the interface.
+ * @returns A cloned concrete interface for one candidate, or the union interface for a family.
+ */
+export const overloadInterfaceForCandidates = (
+  candidates: StandardNodeDefinition[]
+): OverloadNodeInterface => {
+  if (candidates.length === 1) {
+    const candidate = candidates[0]
+    return {
+      arguments: candidate.arguments.map((argument) => ({ ...argument })),
+      inputs: [...candidate.inputs],
+      outputs: [...candidate.outputs],
+    }
+  }
+
+  const maxArguments = Math.max(
+    0,
+    ...candidates.map((candidate) => candidate.arguments.length)
+  )
+  const argumentsArray = Array.from({ length: maxArguments }, (_, index) =>
+    syntheticArgument(candidates, index)
+  )
+  return {
+    arguments: argumentsArray,
+    inputs: interfaceArgumentIndexes(candidates, 'inputs'),
+    outputs: interfaceArgumentIndexes(candidates, 'outputs'),
+  }
 }
 
 const syntheticArgument = (
@@ -202,22 +260,12 @@ export const createOverloadNodeDefinition = (
   const group = overloadGroupKey(candidates[0])
   if (!group) throw new Error('An overload family requires explicit metadata')
 
-  const maxArguments = Math.max(
-    0,
-    ...candidates.map((candidate) => candidate.arguments.length)
-  )
-  const argumentsArray = Array.from({ length: maxArguments }, (_, index) =>
-    syntheticArgument(candidates, index)
-  )
-  const inputs = interfaceArgumentIndexes(candidates, 'inputs')
-  const outputs = interfaceArgumentIndexes(candidates, 'outputs')
+  const interfaceData = overloadInterfaceForCandidates(candidates)
   const explicitGroup = candidates[0].overload_group?.trim()
 
   return {
     type: `frontend::overload<${group}>`,
-    arguments: argumentsArray,
-    inputs,
-    outputs,
+    ...interfaceData,
     node_type: NodeType.OVERLOAD,
     overload_group: group,
     display_name:
@@ -264,7 +312,7 @@ const nodeCandidates = (
   nodeId: string
 ): ConcreteNodeDefinition[] =>
   states.get(nodeId) ??
-  (isOverloadNodeDefinition(node) ? node.candidates : [node])
+  (isOverloadNodeDefinition(node) ? overloadCandidatesForNode(node) : [node])
 
 const nodeHandle = (edge: Edge, direction: 'source' | 'target'): string => {
   const handle = direction === 'source' ? edge.sourceHandle : edge.targetHandle
@@ -402,7 +450,7 @@ export const resolveOverloadGraph = (
     states.set(
       node.id,
       isOverloadNodeDefinition(node.data)
-        ? [...node.data.candidates]
+        ? [...overloadCandidatesForNode(node.data)]
         : [node.data]
     )
   }
