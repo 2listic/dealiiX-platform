@@ -58,6 +58,7 @@ describe('node palette metadata', () => {
 
     expect(groups).toHaveLength(1)
     expect(groups[0].displayName).toBe('Elementary')
+    expect(groups[0].family).toBeUndefined()
     expect(groups[0].nodes.map((item) => item.type)).toEqual([
       'double',
       'int',
@@ -96,6 +97,27 @@ describe('node palette metadata', () => {
       'Poisson · 2D',
       'ElasticStatic · 2D',
     ])
+  })
+
+  it('puts operations targeting one receiver in a shared category', () => {
+    const addProblem = node('Add problem to linear execution', {
+      operation: 'Add problem to linear execution',
+      display_name: 'Add problem',
+    })
+    const addConstraint = node('Add constraint to linear execution', {
+      operation: 'Add constraint to linear execution',
+      display_name: 'Add constraint',
+    })
+
+    const groups = groupNodesByOperation([addProblem, addConstraint])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].displayName).toBe('Linear execution')
+    expect(groups[0].children?.map((child) => child.displayName)).toEqual([
+      'Add problem',
+      'Add constraint',
+    ])
+    expect(groups[0].children?.flatMap((child) => child.nodes)).toHaveLength(2)
   })
 
   it('creates hierarchical legacy family groups by class specialization', () => {
