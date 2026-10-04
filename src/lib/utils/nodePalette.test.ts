@@ -107,15 +107,16 @@ describe('node palette metadata', () => {
 
     const familyGroups = groupNodesByFamily(groups[0].nodes)
 
-    expect(familyGroups.map((group) => group.displayName)).toEqual([
-      'Poisson · 2D',
-      'Poisson · 1D in 2D',
-    ])
-    expect(familyGroups[0].nodes.map(nodePaletteChildName)).toEqual([
-      'Solve',
-      'Make grid',
-    ])
-    expect(familyGroups[1].nodes.map(nodePaletteChildName)).toEqual(['Solve'])
+    expect(familyGroups.map((group) => group.displayName)).toEqual(['Poisson'])
+    expect(familyGroups[0].subgroups.map((group) => group.displayName)).toEqual(
+      ['2D', '1D in 2D']
+    )
+    expect(
+      familyGroups[0].subgroups[0].nodes.map(nodePaletteChildName)
+    ).toEqual(['Solve', 'Make grid'])
+    expect(
+      familyGroups[0].subgroups[1].nodes.map(nodePaletteChildName)
+    ).toEqual(['Solve'])
   })
 
   it('extracts the owner and operation from registry suffixes', () => {
@@ -126,7 +127,8 @@ describe('node palette metadata', () => {
     const familyGroups = groupNodesByFamily(groups[0].nodes)
 
     expect(nodeNamespace(definition.type)).toBe('ImmersX')
-    expect(familyGroups[0].displayName).toBe('CoupledPoisson · 2D')
+    expect(familyGroups[0].displayName).toBe('CoupledPoisson')
+    expect(familyGroups[0].subgroups[0].displayName).toBe('2D')
     expect(nodePaletteChildName(definition)).toBe('Residual norm')
     expect(nodePaletteNodeName(definition)).toBe('Residual norm')
   })
@@ -141,6 +143,22 @@ describe('node palette metadata', () => {
 
     expect(groups[0].displayName).toBe('Finite element space')
     expect(familyGroups[0].displayName).toBe('Function')
+    expect(familyGroups[0].subgroups[0].displayName).toBe('')
     expect(nodePaletteChildName(definition)).toBe('FiniteElementSpaceView · 2D')
+  })
+
+  it('hides a generated function alias when its concrete registration exists', () => {
+    const method = node('ImmersX::Poisson<2,2>::solve', {
+      node_type: NodeType.VOID_METHOD,
+    })
+    const wrapper = node(
+      'ImmersX::Poisson<2,2>::solve::std::function<void (ImmersX::PoissonSolver<2, 2> &)>',
+      { node_type: NodeType.VOID_FUNCTION }
+    )
+
+    const groups = groupNodesByOperation([method, wrapper])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].nodes.map((item) => item.type)).toEqual([method.type])
   })
 })
