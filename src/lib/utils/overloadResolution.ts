@@ -8,6 +8,7 @@ import {
   SELF,
   Type,
   type Argument,
+  getBaseTypes,
   type NodeDefinitions,
   type OverloadNodeDefinition,
   type StandardNodeDefinition,
@@ -70,16 +71,15 @@ const definitionOutputTypes = (
   if (outputIndex === SELF) {
     if (isSubGraphNodeDefinition(definition)) return [definition.type]
     if (definition.output_type) return [definition.output_type]
-    if (definition.base) return unique([definition.base, definition.type])
-    return [definition.type]
+    return unique([...getBaseTypes(definition), definition.type])
   }
 
   const argument = definition.arguments?.[outputIndex]
   if (!argument) return []
   return unique(
     argument.connection_type === ConnectionType.PASSTHROUGH
-      ? [argument.type, ...upstreamTypes]
-      : [argument.type]
+      ? [...getBaseTypes(argument), argument.type, ...upstreamTypes]
+      : [...getBaseTypes(argument), argument.type]
   )
 }
 

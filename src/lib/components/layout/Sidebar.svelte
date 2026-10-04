@@ -9,8 +9,8 @@
     HIDDEN_SIDEBAR_NODE_TYPES,
     nodeColors,
     type NodeType,
+    type NodeDefinitions,
     type SubGraphNodeDefinition,
-    type StandardNodeDefinition,
   } from '../../types/nodeTypes'
   import { returnNodeName } from '../../utils/canvasNodeUtils'
   import {
@@ -20,6 +20,7 @@
     nodePaletteNodeName,
     type NodePaletteGroup,
   } from '../../utils/nodePalette'
+  import { createOverloadNodeDefinition } from '../../utils/overloadResolution'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -43,6 +44,7 @@
         node.operation,
         node.display_name,
         node.variant_name,
+        node.overload_group,
         node.description,
       ]
         .filter(Boolean)
@@ -55,16 +57,14 @@
 
   const onDragStart = (
     event: DragEvent,
-    node: StandardNodeDefinition | SubGraphNodeDefinition,
+    node: NodeDefinitions,
     defaultName?: string
   ) => {
     if (!event.dataTransfer) {
       return
     }
     dndNodeDataState.current = defaultName
-      ? ({ ...node, name: defaultName } as
-          | StandardNodeDefinition
-          | SubGraphNodeDefinition)
+      ? ({ ...node, name: defaultName } as NodeDefinitions)
       : node
     event.dataTransfer.effectAllowed = 'move'
   }
@@ -74,7 +74,7 @@
   }
 
   const isCollapsibleGroup = (group: NodePaletteGroup): boolean =>
-    Boolean(group.family || group.operation)
+    Boolean(group.family || group.operation || group.overloadGroup)
 
   const collapseMode = (group: NodePaletteGroup): CollapseMode =>
     groupCollapseModes[group.key] ?? 'auto'
@@ -174,12 +174,13 @@
           class:collapse-off={mode === 'off'}
           class:family-filtered={Boolean(searchQuery.trim())}
         >
-          {#if showNodeNames && (group.nodes.length > 1 || group.family || group.operation)}
+          {#if showNodeNames && (group.nodes.length > 1 || group.family || group.operation || group.overloadGroup)}
             <div class="family-heading">
               <span
                 class="operation-label"
                 data-operation={group.operation ?? undefined}
                 data-family={group.family ?? undefined}
+                data-overload-group={group.overloadGroup ?? undefined}
                 transition:fade|global={{ duration: 250 }}
                 >{group.displayName}</span
               >
@@ -248,6 +249,33 @@
                   </div>
                 </div>
               {/each}
+            {:else if group.operation || group.overloadGroup}
+              {@const overloadNode =
+                group.nodes.length > 1
+                  ? createOverloadNodeDefinition(group.nodes)
+                  : group.nodes[0]}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                style="--borderColor: {returnNodeColor(overloadNode.node_type)}"
+                class="node"
+                data-testid="sidebar-node"
+                data-node-type={overloadNode.node_type}
+                data-operation={group.operation ?? undefined}
+                data-overload-group={group.overloadGroup ?? undefined}
+                ondragstart={(event) =>
+                  onDragStart(
+                    event,
+                    overloadNode,
+                    returnNodeName(overloadNode)
+                  )}
+                draggable={true}
+              >
+                {#if showNodeNames}
+                  <span transition:fade|global={{ duration: 250 }}>
+                    {group.displayName}
+                  </span>
+                {/if}
+              </div>
             {:else}
               {#each group.nodes as node (node.type)}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->

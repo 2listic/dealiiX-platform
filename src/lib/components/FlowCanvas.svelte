@@ -62,6 +62,7 @@
     type ConnectedNodeDraft,
     type ConnectStartParams,
   } from '../utils/canvasNodeUtils'
+  import { createOverloadFamilies } from '../utils/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
 
   const { screenToFlowPosition, getNode, getIntersectingNodes } =
@@ -91,6 +92,7 @@
     [NodeType.FUNCTION]: UnifiedNode,
     [NodeType.NETWORK]: UnifiedNode,
     [NodeType.PRIMITIVE]: UnifiedNode,
+    [NodeType.OVERLOAD]: UnifiedNode,
   }
 
   let selectedNodes = $derived(getNodes().filter((node) => node.selected))
@@ -264,7 +266,10 @@
     }
 
     // Resolve connection type and name plus compatible nodes for the originating handle.
-    const availableNodes = [...getStoredNetworkNodes(), ...getAvailableNodes()]
+    const availableNodes = [
+      ...getStoredNetworkNodes(),
+      ...createOverloadFamilies(getAvailableNodes()),
+    ]
     const resolved = resolveConnectionAndCompatibleNodes(
       connectStartParams,
       node,
@@ -391,6 +396,7 @@
     onconnectstart={handleConnectStart}
     onconnect={() => {
       graphHistoryState.checkpoint()
+      clearConnectionCache()
       connectStartParams = null
     }}
     onconnectend={handleConnectEnd}

@@ -1,9 +1,6 @@
-import type {
-  StandardNodeDefinition,
-  SubGraphNodeDefinition,
-} from '../types/nodeTypes'
+import type { NodeDefinitions } from '../types/nodeTypes'
 
-type DragNodeData = StandardNodeDefinition | SubGraphNodeDefinition | null
+type DragNodeData = NodeDefinitions | null
 
 let nodeData = $state<DragNodeData>(null)
 

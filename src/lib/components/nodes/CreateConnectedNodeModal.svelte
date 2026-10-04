@@ -12,7 +12,7 @@
     returnNodeSignature,
   } from '../../utils/canvasNodeUtils'
   import { nodePaletteNodeName } from '../../utils/nodePalette'
-  import { NodeType } from '../../types/nodeTypes'
+  import { isOverloadNodeDefinition, NodeType } from '../../types/nodeTypes'
 
   interface Props {
     modalId: string
@@ -42,7 +42,9 @@
   const optionPaletteName = (option: CompatibleNodeOption): string =>
     option.nodeDefinition.node_type === NodeType.NETWORK
       ? returnNodeName(option.nodeDefinition)
-      : nodePaletteNodeName(option.nodeDefinition, options.length > 1)
+      : isOverloadNodeDefinition(option.nodeDefinition)
+        ? returnNodeName(option.nodeDefinition)
+        : nodePaletteNodeName(option.nodeDefinition, options.length > 1)
 
   const optionDefaultNodeName = (option: CompatibleNodeOption): string =>
     returnNodeName(option.nodeDefinition)
