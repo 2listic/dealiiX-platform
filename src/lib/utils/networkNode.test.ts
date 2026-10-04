@@ -189,6 +189,33 @@ describe('networkNode utilities', () => {
     expect(networkNode.outputs).toEqual([0])
   })
 
+  it('copies every base type to a subnetwork self-output port', () => {
+    const derivedNode: StandardNodeDefinition = {
+      type: 'Derived',
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      node_type: NodeType.CONSTRUCTOR,
+      bases: ['Base', 'Root'],
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'DerivedNetwork',
+      [makeCanvasNode('1', derivedNode)],
+      []
+    )
+
+    expect(networkNode.arguments).toEqual([
+      {
+        connection_type: ConnectionType.OUTPUT,
+        name: 'self',
+        type: 'Derived',
+        bases: ['Base', 'Root'],
+      },
+    ])
+    expect(networkNode.outputs).toEqual([0])
+  })
+
   it('createNetworkNodeDefinition and analyzeNetworkBoundary produce the Step1 definition from its constituent nodes', () => {
     // The Step1 subgraph is nodes {3,5,8,10,11} from the flat graph fixture:
     //   3 (GridGenerator::generate_from_name_and_arguments<2>)

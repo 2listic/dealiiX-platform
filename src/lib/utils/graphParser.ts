@@ -25,6 +25,7 @@ import {
 } from './canvasNodeUtils'
 import {
   ConnectionType,
+  getBaseTypes,
   isSubGraphNodeDefinition,
   isTypeCompatible,
   SELF,
@@ -133,6 +134,8 @@ const validationNodeData = (
 
   return {
     ...getNodeData(node.type),
+    ...(node.base !== undefined && { base: node.base }),
+    ...(node.bases !== undefined && { bases: [...node.bases] }),
     ...(node.parameter_file && {
       parameter_file: node.parameter_file,
     }),
@@ -239,6 +242,10 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
       ...storeNodeData,
       position: protocolNode.position,
       ...(name && { name }),
+      ...(regularNode.base !== undefined && { base: regularNode.base }),
+      ...(regularNode.bases !== undefined && {
+        bases: [...regularNode.bases],
+      }),
       ...(regularNode.value !== undefined && { value: regularNode.value }),
       ...(regularNode.parameter_file && {
         parameter_file: {
@@ -462,7 +469,8 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         type: data.type,
         position: obj.position,
       }
-      if (data.base) node.base = data.base
+      const bases = getBaseTypes(data)
+      if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
       if (data.value !== undefined) node.value = data.value
       if (data.parameter_file?.exposures?.length) {

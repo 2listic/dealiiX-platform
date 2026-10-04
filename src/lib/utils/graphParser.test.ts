@@ -103,6 +103,32 @@ describe('validateGraphData', () => {
       expect(saved.workflow.nodes['1'].name).toBe('Run Laplace problem')
     })
 
+    it('round-trips the Coral bases metadata', () => {
+      const type = 'Derived'
+      const bases = ['Base', 'Root']
+      mockStore.nodeDataByType = {
+        [type]: {
+          type,
+          node_type: NodeType.CONSTRUCTOR,
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          bases,
+        },
+      }
+
+      const [node] = nodesFromProtocolToFlow({
+        '1': { type, bases },
+      })
+
+      expect(node.data.bases).toEqual(bases)
+      expect(parseGraphToProtocol([node], []).workflow.nodes['1']).toEqual({
+        type,
+        bases,
+        position: { x: 0, y: 0 },
+      })
+    })
+
     it('throws error when node type is not found', () => {
       // Modify type of second node to trigger node not in the registry
       const invalidType = 'type_not_registered'
