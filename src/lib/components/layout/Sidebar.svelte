@@ -73,8 +73,18 @@
     return nodeColors[nodeTypeName as keyof typeof nodeColors] ?? 'gray'
   }
 
+  const paletteNodeCount = (group: NodePaletteGroup): number =>
+    group.children?.reduce((count, child) => count + child.nodes.length, 0) ??
+    group.nodes.length
+
   const isCollapsibleGroup = (group: NodePaletteGroup): boolean =>
-    Boolean(group.family || group.operation || group.overloadGroup)
+    paletteNodeCount(group) > 1 &&
+    Boolean(
+      group.children?.length ||
+        group.family ||
+        group.operation ||
+        group.overloadGroup
+    )
 
   const collapseMode = (group: NodePaletteGroup): CollapseMode =>
     groupCollapseModes[group.key] ?? 'auto'
@@ -169,17 +179,19 @@
         <div
           class="node-group"
           class:family-group={Boolean(group.family)}
+          class:category-group={Boolean(group.children?.length)}
           class:collapsible-group={collapsible}
           class:collapse-on={mode === 'on'}
           class:collapse-off={mode === 'off'}
           class:family-filtered={Boolean(searchQuery.trim())}
         >
-          {#if showNodeNames && (group.nodes.length > 1 || group.family || group.operation || group.overloadGroup)}
+          {#if showNodeNames && (group.nodes.length > 1 || group.family || group.operation || group.overloadGroup || group.children?.length)}
             <div class="family-heading">
               <span
                 class="operation-label"
                 data-operation={group.operation ?? undefined}
                 data-family={group.family ?? undefined}
+                data-category={group.category ?? undefined}
                 data-overload-group={group.overloadGroup ?? undefined}
                 transition:fade|global={{ duration: 250 }}
                 >{group.displayName}</span
@@ -219,15 +231,49 @@
           {/if}
           <div
             class:family-nodes={Boolean(group.family)}
+            class:category-nodes={Boolean(group.children?.length)}
             class:collapsible-nodes={collapsible}
           >
-            {#if group.family}
+            {#if group.children}
+              {#each group.children as child (child.key)}
+                {@const childNode =
+                  child.nodes.length > 1
+                    ? createOverloadNodeDefinition(child.nodes)
+                    : child.nodes[0]}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  style="--borderColor: {returnNodeColor(childNode.node_type)}"
+                  class="node"
+                  data-testid="sidebar-node"
+                  data-node-type={childNode.node_type}
+                  data-category={group.category}
+                  data-operation={child.operation ?? undefined}
+                  data-overload-group={child.overloadGroup ?? undefined}
+                  ondragstart={(event) =>
+                    onDragStart(event, childNode, returnNodeName(childNode))}
+                  draggable={true}
+                >
+                  {#if showNodeNames}
+                    <span transition:fade|global={{ duration: 250 }}>
+                      {child.displayName}
+                    </span>
+                  {/if}
+                </div>
+              {/each}
+            {:else if group.family}
               {#each groupNodesByFamily(group.nodes) as family (family.key)}
+                {@const familyNodeCount = family.subgroups.reduce(
+                  (count, subgroup) => count + subgroup.nodes.length,
+                  0
+                )}
+                {@const showFamilyLabel = familyNodeCount > 1}
                 <div class="class-family">
-                  <span class="class-family-label">{family.displayName}</span>
+                  {#if showFamilyLabel}
+                    <span class="class-family-label">{family.displayName}</span>
+                  {/if}
                   {#each family.subgroups as subgroup (subgroup.key)}
                     <div class="subfamily-group">
-                      {#if subgroup.displayName}
+                      {#if subgroup.displayName && subgroup.nodes.length > 1}
                         <span class="subfamily-label"
                           >{subgroup.displayName}</span
                         >
@@ -243,8 +289,13 @@
                             data-testid="sidebar-node"
                             data-node-type={node.node_type}
                             data-family={group.family}
-                            data-class-family={family.displayName}
-                            data-subfamily={subgroup.displayName}
+                            data-class-family={showFamilyLabel
+                              ? family.displayName
+                              : undefined}
+                            data-subfamily={subgroup.displayName &&
+                            subgroup.nodes.length > 1
+                              ? subgroup.displayName
+                              : undefined}
                             ondragstart={(event) =>
                               onDragStart(event, node, returnNodeName(node))}
                             draggable={true}

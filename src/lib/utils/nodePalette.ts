@@ -6,9 +6,11 @@ export type NodePaletteGroup = {
   key: string
   operation?: string
   family?: string
+  category?: string
   overloadGroup?: string
   displayName: string
   nodes: StandardNodeDefinition[]
+  children?: NodePaletteGroup[]
 }
 
 /** A concrete specialization inside a legacy class family. */
@@ -34,6 +36,22 @@ const humanize = (value: string): string => {
 
 const elementaryConstructorGroupKey = 'elementary-constructors'
 const elementaryConstructorGroupName = 'Elementary'
+
+/**
+ * Returns the receiver category encoded by an explicit operation name.
+ *
+ * Coral operations such as "Add problem to linear execution" describe the
+ * receiver in their stable operation metadata even when the registry entry is
+ * a free function. Keeping that metadata-driven relationship lets the palette
+ * show the operation as a receiver method without changing its concrete node.
+ */
+const operationOwner = (node: StandardNodeDefinition): string | undefined => {
+  const operation = node.operation?.trim()
+  if (!operation) return undefined
+
+  const match = operation.match(/\bto\s+(.+)$/i)
+  return match?.[1]?.trim() || undefined
+}
 
 /**
  * Returns the stable grouping key for a registry entry.
@@ -278,7 +296,9 @@ export const groupNodesByOperation = (
     const operation = isElementary ? undefined : node.operation?.trim()
     const overloadGroup = isElementary ? undefined : node.overload_group?.trim()
     const family =
-      operation || overloadGroup ? undefined : nodeNamespace(node.type)
+      isElementary || operation || overloadGroup
+        ? undefined
+        : nodeNamespace(node.type)
     groups.set(key, {
       key,
       ...(operation ? { operation } : {}),
@@ -289,7 +309,35 @@ export const groupNodesByOperation = (
     })
   }
 
-  return [...groups.values()]
+  const topLevelGroups: NodePaletteGroup[] = []
+  const categoryGroups = new Map<string, NodePaletteGroup>()
+
+  for (const group of groups.values()) {
+    const categoryName = operationOwner(group.nodes[0])
+    if (!categoryName) {
+      topLevelGroups.push(group)
+      continue
+    }
+
+    const categoryKey = `category:${categoryName.toLowerCase()}`
+    const category = categoryGroups.get(categoryKey)
+    if (category) {
+      category.children!.push(group)
+      continue
+    }
+
+    const newCategory: NodePaletteGroup = {
+      key: categoryKey,
+      category: categoryName,
+      displayName: humanize(categoryName),
+      nodes: [],
+      children: [group],
+    }
+    categoryGroups.set(categoryKey, newCategory)
+    topLevelGroups.push(newCategory)
+  }
+
+  return topLevelGroups
 }
 
 /**
