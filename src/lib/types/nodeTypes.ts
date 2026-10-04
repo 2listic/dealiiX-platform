@@ -14,10 +14,32 @@ export enum ConnectionType {
   PASSTHROUGH = 'pass_through',
 }
 
+/** Metadata for an input whose value is a persistent working-file reference. */
+export type WorkingFileReference = {
+  file_scope: 'working'
+  staging: 'copy'
+  create_if_missing?: boolean
+}
+
 export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
+  /** Optional execution metadata supplied by the backend registry. */
+  file_scope?: WorkingFileReference['file_scope']
+  staging?: WorkingFileReference['staging']
+  create_if_missing?: WorkingFileReference['create_if_missing']
+}
+
+/**
+ * Tests whether an argument explicitly requests working-file staging.
+ * @param argument - Registry argument metadata.
+ * @returns Whether the argument is a staged working-file reference.
+ */
+export const isStagedWorkingFileArgument = (
+  argument: Argument | undefined
+): argument is Argument & WorkingFileReference => {
+  return argument?.file_scope === 'working' && argument.staging === 'copy'
 }
 
 /** The four scalar types that can be exposed by a frontend parameter port. */

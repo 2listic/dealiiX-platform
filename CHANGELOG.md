@@ -37,6 +37,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- CORAL graph inputs can now declare staged working-file references. Existing
+  files are copied into each run's directory while retaining their logical
+  relative paths, and missing files marked `create_if_missing` are passed as
+  absolute working-directory paths so the backend can generate defaults there.
 - [#225](https://github.com/2listic/dealiiX-platform/pull/225) Local Coral and executable runs can now use the configured `mpirun` launcher with an explicit process count. Each run executes in its own directory, locally and remotely, so run outputs do not collide. A graph value or parameter value naming an existing file under the configured working directory is written as that file's absolute path in the run's graph or parameter file, so inputs such as large meshes can be referenced by name and are reused without copying. Local executable runs now receive their parameters file by name rather than by full path, as remote runs already did, so programs that read their dimension from that path (such as step-70) run correctly locally.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Referenced parameter files are staged into isolated remote run directories while preserving their relative paths, including files exposed through nested subnetworks.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Connected parameter values are materialized only in each local run or remote stage directory, leaving the user's source files unchanged; existing file values are resolved to absolute paths in the run payload.

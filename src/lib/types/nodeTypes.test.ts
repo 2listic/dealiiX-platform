@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isTypeCompatible, Type } from './nodeTypes'
+import {
+  ConnectionType,
+  isStagedWorkingFileArgument,
+  isTypeCompatible,
+  Type,
+} from './nodeTypes'
 
 describe('isTypeCompatible', () => {
   it('accepts an exact type match', () => {
@@ -43,5 +48,31 @@ describe('isTypeCompatible', () => {
   it('does not widen C++-only numeric types outside the bool/int/float chain', () => {
     expect(isTypeCompatible(Type.INT, Type.DOUBLE)).toBe(false)
     expect(isTypeCompatible(Type.UNSIGNED, Type.INT)).toBe(false)
+  })
+})
+
+describe('isStagedWorkingFileArgument', () => {
+  it('recognises explicit working-file staging metadata', () => {
+    expect(
+      isStagedWorkingFileArgument({
+        connection_type: ConnectionType.INPUT,
+        name: 'parameters',
+        type: Type.STRING,
+        file_scope: 'working',
+        staging: 'copy',
+        create_if_missing: true,
+      })
+    ).toBe(true)
+  })
+
+  it('does not infer staging from incomplete metadata', () => {
+    expect(
+      isStagedWorkingFileArgument({
+        connection_type: ConnectionType.INPUT,
+        name: 'file',
+        type: Type.STRING,
+        file_scope: 'working',
+      })
+    ).toBe(false)
   })
 })

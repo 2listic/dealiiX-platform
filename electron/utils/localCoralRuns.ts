@@ -102,6 +102,26 @@ export const findExistingLocalFiles = async (
   return filePaths.filter((_, index) => exists[index])
 }
 
+export type LocalFileCopy = {
+  sourcePath: string
+  destinationPath: string
+}
+
+/**
+ * Copies persistent working files into a per-run directory.
+ * @param files - Source/destination pairs on the local filesystem.
+ * @returns Resolves after every file has been copied.
+ * @throws {Error} If a source cannot be read or a destination cannot be written.
+ */
+export const stageLocalFiles = async (
+  files: LocalFileCopy[]
+): Promise<void> => {
+  for (const { sourcePath, destinationPath } of files) {
+    await ensureDir(path.dirname(destinationPath))
+    await fs.promises.copyFile(sourcePath, destinationPath)
+  }
+}
+
 /**
  * Creates a local directory for exclusive use by a run: if the exact path
  * already exists (a slug was reused), retries with a timestamp-suffixed
