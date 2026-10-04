@@ -29,6 +29,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### UI/UX
 
+- [#234](https://github.com/2listic/dealiiX-platform/pull/234) Registry overload families now appear as one conceptual node in the palette and resolve to a concrete CORAL type from their connections; elementary constructors are grouped together while their concrete literal types remain available on the canvas.
 - [#225](https://github.com/2listic/dealiiX-platform/pull/225) Settings now explains the working directory and parameters file name fields: each run gets its own folder under the working directory, files placed there can be referenced by name, and the parameters file name is the default used when starting a run and is detected as JSON first, then PRM, during **Validate & Sync**.
 - Registry nodes are now grouped by logical operation or class family while retaining their concrete specializations for connections and serialization. Canvas instances use `display_name` for the logical node label; `variant_name` remains available for choosing a concrete specialization, and older graphs are migrated when they stored that variant label as the instance name.
 - VTK and PVD file values now expose an action to open the file in the configured visualizer through a path-confined deep link. Canvas nodes also provide an information view with their complete registry definition.
