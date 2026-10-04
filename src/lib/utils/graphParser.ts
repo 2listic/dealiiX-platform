@@ -181,6 +181,9 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
           ),
         },
       }),
+      ...(regularNode.working_file && {
+        working_file: { ...regularNode.working_file },
+      }),
     }
   }
 }
@@ -396,6 +399,9 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         node.parameter_file = {
           exposures: normalizeParameterExposures(data.parameter_file.exposures),
         }
+      }
+      if (data.working_file) {
+        node.working_file = { ...data.working_file }
       }
       acc[obj.id] = node
     }

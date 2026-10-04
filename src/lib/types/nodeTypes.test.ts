@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   ConnectionType,
+  DEFAULT_WORKING_FILE_REFERENCE,
   isStagedWorkingFileArgument,
+  isWorkingFileReference,
   isTypeCompatible,
   Type,
 } from './nodeTypes'
@@ -74,5 +76,26 @@ describe('isStagedWorkingFileArgument', () => {
         file_scope: 'working',
       })
     ).toBe(false)
+  })
+})
+
+describe('working-file metadata', () => {
+  it('provides working/copy/create-if-missing as the UI default', () => {
+    expect(DEFAULT_WORKING_FILE_REFERENCE).toEqual({
+      file_scope: 'working',
+      staging: 'copy',
+      create_if_missing: true,
+    })
+  })
+
+  it('recognises metadata persisted on a graph value', () => {
+    expect(
+      isWorkingFileReference({
+        file_scope: 'working',
+        staging: 'copy',
+        create_if_missing: true,
+      })
+    ).toBe(true)
+    expect(isWorkingFileReference({ file_scope: 'working' })).toBe(false)
   })
 })

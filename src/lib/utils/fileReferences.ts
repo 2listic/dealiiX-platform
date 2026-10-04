@@ -2,6 +2,7 @@ import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import {
   isStagedWorkingFileArgument,
+  isWorkingFileReference,
   TypeField,
   type Argument,
   type WorkingFileReference,
@@ -204,6 +205,7 @@ type ProtocolNode = {
   value?: unknown
   arguments?: Argument[]
   inputs?: number[]
+  working_file?: WorkingFileReference
 }
 type ProtocolEdge = {
   source: string | number
@@ -260,7 +262,9 @@ const collectGraphReferences = (
         graph: graph as object,
         nodeId,
         value: node.value,
-        staged: stagedBySource.get(nodeId),
+        staged: isWorkingFileReference(node.working_file)
+          ? node.working_file
+          : stagedBySource.get(nodeId),
       })
     }
   }
@@ -315,16 +319,21 @@ const rewriteGraphValues = <T>(
   const graphReplacements = replacements.get(graph as object)
   const nodes = Object.fromEntries(
     Object.entries(workflow.nodes).map(([id, node]) => {
+      const sanitizedNode = { ...node }
+      delete sanitizedNode.working_file
       if (node.type === TypeField.CORAL_NETWORK) {
         return [
           id,
-          { ...node, value: rewriteGraphValues(node.value, replacements) },
+          {
+            ...sanitizedNode,
+            value: rewriteGraphValues(node.value, replacements),
+          },
         ]
       }
       const replacement = graphReplacements?.get(id)
       return replacement === undefined
-        ? [id, node]
-        : [id, { ...node, value: replacement }]
+        ? [id, sanitizedNode]
+        : [id, { ...sanitizedNode, value: replacement }]
     })
   )
   return { ...graph, workflow: { ...workflow, nodes } }

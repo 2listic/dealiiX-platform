@@ -303,6 +303,11 @@ describe('parameter-node graph persistence', () => {
               },
             ],
           },
+          working_file: {
+            file_scope: 'working',
+            staging: 'copy',
+            create_if_missing: true,
+          },
         },
       },
       {
@@ -355,6 +360,11 @@ describe('parameter-node graph persistence', () => {
       type: 'double',
       input: true,
       output: true,
+    })
+    expect(savedNode.working_file).toEqual({
+      file_scope: 'working',
+      staging: 'copy',
+      create_if_missing: true,
     })
     expect(graph.workflow.edges['0'].target_handle).toBe(inputHandle)
     expect(graph.workflow.edges['1'].source_handle).toBe(outputHandle)

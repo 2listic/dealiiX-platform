@@ -8,6 +8,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - [#215](https://github.com/2listic/dealiiX-platform/issues/215) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Parameter-file nodes can now be edited from the graph, expose selected parameters as graph ports, and materialize connected values in the per-run copy while keeping frontend-only metadata out of the backend graph.
+- Parameter-file buttons now open the editor for existing `.prm` and `.json` files, or a staging-metadata dialog when the file is missing. The dialog defaults to `working / copy / create_if_missing: true` and persists the choice with the graph value.
 
 ### Project-Structure
 
