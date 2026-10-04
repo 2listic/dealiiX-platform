@@ -24,10 +24,18 @@ export const DEFAULT_WORKING_FILE_REFERENCE: WorkingFileReference = {
   create_if_missing: true,
 }
 
+export type InheritanceMetadata = {
+  /** All registered direct and indirect base types (CORAL >= coral#65). */
+  bases?: string[]
+  /** Legacy single-base field emitted by older CORAL registries. */
+  base?: string
+}
+
 export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
+} & InheritanceMetadata
 }
 
 /**
@@ -54,7 +62,6 @@ export const normalizeWorkingFileReference = (
 ): WorkingFileReference => ({
   create_if_missing: value.create_if_missing ?? true,
 })
-
 /** The four scalar types that can be exposed by a frontend parameter port. */
 export type ParameterPortType =
   | 'string'
@@ -209,14 +216,28 @@ export type StandardNodeDefinition = {
   description?: string
   name?: string
   derived?: string[]
-  base?: string
   method_name?: string
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
   /** Instance-level staging metadata for a string value naming a working file. */
   working_file?: WorkingFileReference
-}
+} & InheritanceMetadata
+
+/**
+ * Returns every ancestor advertised by a registry entry or socket argument.
+ *
+ * The `base` fallback keeps graphs and registries produced before coral#65
+ * compatible while `bases` preserves multiple and indirect inheritance.
+ * @param metadata - Registry or argument inheritance metadata.
+ * @returns Unique base types in registry order.
+ */
+export const getBaseTypes = (metadata: InheritanceMetadata): string[] => [
+  ...new Set([
+    ...(metadata.bases ?? []).filter(Boolean),
+    ...(metadata.base ? [metadata.base] : []),
+  ]),
+]
 
 export type RegisteredNodes = {
   [key: string]: StandardNodeDefinition
@@ -252,14 +273,13 @@ export type NetworkEdges = {
  */
 export type LeanStandardNode = {
   type: string
-  base?: string
   derived?: string[]
   value?: string
   name?: string
   position?: { x: number; y: number }
   parameter_file?: ParameterFileMetadata
   working_file?: WorkingFileReference
-}
+} & InheritanceMetadata
 
 /**
  * Full definition of a subgraph node — an encapsulated computational graph

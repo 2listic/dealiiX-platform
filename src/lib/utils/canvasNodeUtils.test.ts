@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 import {
+  ConnectionType,
   NodeType,
   TypeField,
   Type,
@@ -58,9 +59,44 @@ describe('canvasNodeUtils', () => {
     }
 
     expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
-      connectionType: 'dealii::FiniteElement<2, 2>',
+      connectionType: 'dealii::FiniteElement<2, 2> | dealii::FE_Q<2, 2>',
+      connectionTypes: ['dealii::FiniteElement<2, 2>', 'dealii::FE_Q<2, 2>'],
       connectionName: 'my_fe',
     })
+  })
+
+  it('uses every bases entry for connection suggestions', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Derived',
+        node_type: NodeType.CONSTRUCTOR,
+        arguments: [],
+        inputs: [],
+        outputs: [-1],
+        bases: ['Base', 'Root'],
+      },
+    }
+    const targetNode = {
+      type: 'Consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: ConnectionType.INPUT, name: 'value', type: 'Root' },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const outputInfo = getOutputTypeAndName(sourceNode, 'output-0')
+
+    expect(outputInfo?.connectionTypes).toEqual(['Base', 'Root', 'Derived'])
+    expect(
+      findCompatibleTargetNodesAsOptions(
+        [targetNode] as unknown as NodeDefinitions[],
+        outputInfo?.connectionTypes ?? []
+      )
+    ).toHaveLength(1)
   })
 
   it('uses output_type for function SELF outputs', () => {
