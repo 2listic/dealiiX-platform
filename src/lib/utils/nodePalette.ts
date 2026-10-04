@@ -11,11 +11,18 @@ export type NodePaletteGroup = {
   nodes: StandardNodeDefinition[]
 }
 
-/** A concrete class/template specialization inside a legacy namespace family. */
+/** A concrete specialization inside a legacy class family. */
 export type NodePaletteSubgroup = {
   key: string
   displayName: string
   nodes: StandardNodeDefinition[]
+}
+
+/** A legacy class family, optionally split into dimension specializations. */
+export type NodePaletteFamily = {
+  key: string
+  displayName: string
+  subgroups: NodePaletteSubgroup[]
 }
 
 const humanize = (value: string): string => {
@@ -102,17 +109,56 @@ const methodNodeTypes = new Set<NodeType>([
 const isMethodNode = (node: StandardNodeDefinition): boolean =>
   methodNodeTypes.has(node.node_type)
 
+/**
+ * Returns the concrete registry key without a generated std::function alias.
+ *
+ * Coral keeps both a method registration and the callable wrapper used by the
+ * registry. They are distinct concrete definitions, but exposing both in the
+ * palette gives users two buttons for the same action. The alias is removed
+ * only when its non-wrapper definition is present; graph serialization still
+ * uses the original concrete definition.
+ */
+const wrapperBaseType = (type: string): string | undefined => {
+  const marker = '::std::function<'
+  const index = type.indexOf(marker)
+  return index > 0 ? type.slice(0, index) : undefined
+}
+
+const deduplicateImplementationAliases = (
+  nodes: StandardNodeDefinition[]
+): StandardNodeDefinition[] => {
+  const concreteTypes = new Set(nodes.map((node) => node.type))
+  return nodes.filter((node) => {
+    const baseType = wrapperBaseType(node.type)
+    return !baseType || !concreteTypes.has(baseType)
+  })
+}
+
 /** Returns the class/template part that owns a legacy node. */
 const nodeOwnerType = (node: StandardNodeDefinition): string => {
   const parts = qualifiedTypeParts(node.type.trim())
   if (!parts.length) return node.type
   const ownerIndex = numericTemplatePartIndex(parts)
-  if (ownerIndex >= 0) return parts[ownerIndex]
+  if (ownerIndex >= 0) {
+    return typePartNameAndTag(parts[ownerIndex]).name
+  }
 
   const wrapperIndex = functionWrapperIndex(parts)
   return wrapperIndex >= 0
     ? (parts[wrapperIndex + 1] ?? node.type)
-    : (parts.at(-1) ?? node.type)
+    : isMethodNode(node) && parts.length > 1
+      ? (parts.at(-2) ?? node.type)
+      : (parts.at(-1) ?? node.type)
+}
+
+const nodeSpecializationKey = (node: StandardNodeDefinition): string => {
+  const tag = nodeDimensionTag(node.type)
+  return tag ? tag.slice(2) : 'default'
+}
+
+const nodeSpecializationName = (node: StandardNodeDefinition): string => {
+  const tag = nodeDimensionTag(node.type)
+  return tag ? tag.slice(2) : ''
 }
 
 /**
@@ -153,9 +199,11 @@ const nodeNumericTemplateTag = (type: string): string => {
   const parts = qualifiedTypeParts(type.trim())
   if (!parts.length) return ''
 
-  const last = typePartNameAndTag(parts.at(-1) ?? '')
-  if (last.tag) return last.tag
-  return parts.length >= 2 ? typePartNameAndTag(parts.at(-2) ?? '').tag : ''
+  for (let index = parts.length - 1; index >= 0; index -= 1) {
+    const tag = typePartNameAndTag(parts[index]).tag
+    if (tag) return tag
+  }
+  return ''
 }
 
 /**
@@ -218,7 +266,7 @@ export const groupNodesByOperation = (
 ): NodePaletteGroup[] => {
   const groups = new Map<string, NodePaletteGroup>()
 
-  for (const node of nodes) {
+  for (const node of deduplicateImplementationAliases(nodes)) {
     const key = nodePaletteKey(node)
     const existing = groups.get(key)
     if (existing) {
@@ -251,26 +299,38 @@ export const groupNodesByOperation = (
  */
 export const groupNodesByFamily = (
   nodes: StandardNodeDefinition[]
-): NodePaletteSubgroup[] => {
-  const groups = new Map<string, NodePaletteSubgroup>()
+): NodePaletteFamily[] => {
+  const families = new Map<string, NodePaletteFamily>()
 
-  for (const node of nodes) {
+  for (const node of deduplicateImplementationAliases(nodes)) {
     const ownerType = nodeOwnerType(node)
-    const key = ownerType
-    const existing = groups.get(key)
-    if (existing) {
-      existing.nodes.push(node)
-      continue
+    const family = families.get(ownerType)
+    if (!family) {
+      families.set(ownerType, {
+        key: ownerType,
+        displayName: nodeSimpleDisplayName(ownerType),
+        subgroups: [],
+      })
     }
 
-    groups.set(key, {
-      key,
-      displayName: nodeSimpleDisplayName(ownerType),
-      nodes: [node],
-    })
+    const currentFamily = families.get(ownerType)!
+    const specialization = nodeSpecializationKey(node)
+    const subgroupKey = `${ownerType}:${specialization}`
+    const subgroup = currentFamily.subgroups.find(
+      (candidate) => candidate.key === subgroupKey
+    )
+    if (subgroup) {
+      subgroup.nodes.push(node)
+    } else {
+      currentFamily.subgroups.push({
+        key: subgroupKey,
+        displayName: nodeSpecializationName(node),
+        nodes: [node],
+      })
+    }
   }
 
-  return [...groups.values()]
+  return [...families.values()]
 }
 
 /**

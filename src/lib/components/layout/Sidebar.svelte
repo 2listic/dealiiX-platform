@@ -222,31 +222,43 @@
             class:collapsible-nodes={collapsible}
           >
             {#if group.family}
-              {#each groupNodesByFamily(group.nodes) as subgroup (subgroup.key)}
-                <div class="subfamily-group">
-                  <span class="subfamily-label">{subgroup.displayName}</span>
-                  <div class="subfamily-nodes">
-                    {#each subgroup.nodes as node (node.type)}
-                      <!-- svelte-ignore a11y_no_static_element_interactions -->
-                      <div
-                        style="--borderColor: {returnNodeColor(node.node_type)}"
-                        class="node"
-                        data-testid="sidebar-node"
-                        data-node-type={node.node_type}
-                        data-family={group.family}
-                        data-subfamily={subgroup.displayName}
-                        ondragstart={(event) =>
-                          onDragStart(event, node, returnNodeName(node))}
-                        draggable={true}
-                      >
-                        {#if showNodeNames}
-                          <span transition:fade|global={{ duration: 250 }}>
-                            {nodePaletteChildName(node)}
-                          </span>
-                        {/if}
+              {#each groupNodesByFamily(group.nodes) as family (family.key)}
+                <div class="class-family">
+                  <span class="class-family-label">{family.displayName}</span>
+                  {#each family.subgroups as subgroup (subgroup.key)}
+                    <div class="subfamily-group">
+                      {#if subgroup.displayName}
+                        <span class="subfamily-label"
+                          >{subgroup.displayName}</span
+                        >
+                      {/if}
+                      <div class="subfamily-nodes">
+                        {#each subgroup.nodes as node (node.type)}
+                          <!-- svelte-ignore a11y_no_static_element_interactions -->
+                          <div
+                            style="--borderColor: {returnNodeColor(
+                              node.node_type
+                            )}"
+                            class="node"
+                            data-testid="sidebar-node"
+                            data-node-type={node.node_type}
+                            data-family={group.family}
+                            data-class-family={family.displayName}
+                            data-subfamily={subgroup.displayName}
+                            ondragstart={(event) =>
+                              onDragStart(event, node, returnNodeName(node))}
+                            draggable={true}
+                          >
+                            {#if showNodeNames}
+                              <span transition:fade|global={{ duration: 250 }}>
+                                {nodePaletteChildName(node)}
+                              </span>
+                            {/if}
+                          </div>
+                        {/each}
                       </div>
-                    {/each}
-                  </div>
+                    </div>
+                  {/each}
                 </div>
               {/each}
             {:else if group.operation || group.overloadGroup}
@@ -417,6 +429,21 @@
     flex-wrap: wrap;
     justify-content: flex-start;
     gap: 0.5rem;
+  }
+
+  .class-family {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .class-family-label {
+    width: 100%;
+    padding-left: 0.25rem;
+    font-weight: 600;
+    text-align: left;
   }
 
   .subfamily-label {
