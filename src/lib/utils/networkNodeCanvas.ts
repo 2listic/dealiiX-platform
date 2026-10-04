@@ -108,6 +108,9 @@ const toCanvasNodeFromProtocol = (
           })),
         },
       }),
+      ...(protocolNode.working_file && {
+        working_file: { ...protocolNode.working_file },
+      }),
     },
   }
 }

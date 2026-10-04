@@ -18,6 +18,27 @@ The declaration is explicit. A string is not treated as a staged file merely
 because its value looks like a filename or because a file with that name
 exists.
 
+When a graph string is recognised as a `.prm` or `.json` parameter filename,
+its node action opens the parameter editor if the file exists in the configured
+working directory. If it does not exist, the same action opens a staging
+metadata dialog. Saving that dialog stores an explicit `working_file` override
+on the graph value, defaulting to `working / copy / create_if_missing: true`:
+
+```json
+{
+  "type": "std::string",
+  "value": "configs/parameters.prm",
+  "working_file": {
+    "file_scope": "working",
+    "staging": "copy",
+    "create_if_missing": true
+  }
+}
+```
+
+The override is instance-specific and is also useful when the active registry
+does not yet provide staged-file metadata for the consuming argument.
+
 At execution time the platform treats the configured working directory as the
 persistent, user-editable source and the run directory as a per-run snapshot:
 

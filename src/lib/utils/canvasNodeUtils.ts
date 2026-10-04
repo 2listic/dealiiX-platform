@@ -68,6 +68,10 @@ const cloneNodeDefinition = (
           ),
         },
       }),
+    ...('working_file' in nodeDefinition &&
+      nodeDefinition.working_file && {
+        working_file: { ...nodeDefinition.working_file },
+      }),
   } as NodeDefinitions
 
   if ('value' in cloned && cloned.type === 'coral::Network') {

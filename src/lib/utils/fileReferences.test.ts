@@ -262,6 +262,46 @@ describe('prepareGraphFileReferences', () => {
     ])
   })
 
+  it('uses explicit graph metadata on a parameter filename when the registry is generic', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.prm']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = {
+      file_scope: 'working',
+      staging: 'copy',
+      create_if_missing: true,
+    }
+
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.prm')
+    expect(result.workflow.nodes['1'].working_file).toBeUndefined()
+    expect(copyCalls).toEqual([
+      [
+        {
+          sourcePath: '/work/configs/parameters.prm',
+          destinationPath: '/work/run-42/configs/parameters.prm',
+        },
+      ],
+    ])
+  })
+
   it('uses the absolute working path for a missing creatable file without creating a placeholder', async () => {
     registry.nodeDataByType = {
       'ParameterAcceptor::initialize': stagedTarget(true),
