@@ -19,6 +19,7 @@ import {
   getInputTypeAndName,
   getOutputTypeAndName,
   resolveConnectionAndCompatibleNodes,
+  resolveOutputTypeCandidates,
   returnNodeName,
   returnNodeSignature,
 } from './canvasNodeUtils'
@@ -97,6 +98,9 @@ describe('canvasNodeUtils', () => {
         outputInfo?.connectionTypes ?? []
       )
     ).toHaveLength(1)
+    expect(
+      resolveOutputTypeCandidates(sourceNode.data as NodeDefinitions, 0)
+    ).toEqual(['Base', 'Root', 'Derived'])
   })
 
   it('uses output_type for function SELF outputs', () => {
