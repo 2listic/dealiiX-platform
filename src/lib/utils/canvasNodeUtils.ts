@@ -149,7 +149,7 @@ export const createCustomEdge = (params: {
 
 /**
  * Returns the output type and label for a given source handle.
- * For `SELF` outputs the type is `base ?? type` (the node's own class).
+ * For `SELF` outputs the type is the concrete type plus all registered bases.
  * @param sourceNode - The node the connection was dragged from.
  * @param sourceHandle - Handle ID in the form `"output-<index>"`.
  * @returns The `connectionType` and `connectionName` for the handle, or `null` if the handle is invalid.
@@ -565,9 +565,9 @@ export const resolveInputArgument = (
 
 /**
  * Resolves the output type string for an output handle index on a node.
- * Handles the SELF case (`outputs[-1]`) by returning
- * `output_type ?? base ?? type`.
- * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `output_type`/`base`.
+ * Handles the SELF case (`outputs[-1]`) by returning the first concrete output
+ * type or registered base type.
+ * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `output_type`/inheritance metadata.
  * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The type string, or null if the index is out of range.
@@ -581,12 +581,11 @@ export const resolveOutputType = (
   }
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF)
-    return (
-      (data as StandardNodeDefinition).output_type ??
-      (data as StandardNodeDefinition).base ??
-      data.type
-    )
+  if (outputIndex === SELF) {
+    const standardData = data as StandardNodeDefinition
+    if (standardData.output_type) return standardData.output_type
+    return getBaseTypes(standardData)[0] ?? data.type
+  }
   return data.arguments?.[outputIndex]?.type ?? null
 }
 
@@ -618,10 +617,8 @@ export const resolveOutputTypeCandidates = (
     const standardData = data as StandardNodeDefinition
     if (standardData.output_type) {
       candidates.push(standardData.output_type)
-    } else if (standardData.base) {
-      candidates.push(standardData.base, data.type)
     } else {
-      candidates.push(data.type)
+      candidates.push(...getBaseTypes(standardData), data.type)
     }
   } else {
     const argument = data.arguments?.[outputIndex]
