@@ -1,10 +1,12 @@
 import { NodeType, type StandardNodeDefinition } from '../types/nodeTypes'
+import { overloadGroupKey } from './overloadResolution'
 
 /** A logical operation and the concrete registry definitions that implement it. */
 export type NodePaletteGroup = {
   key: string
   operation?: string
   family?: string
+  overloadGroup?: string
   displayName: string
   nodes: StandardNodeDefinition[]
 }
@@ -34,10 +36,8 @@ const humanize = (value: string): string => {
  * @returns Stable key used to group the node in the palette.
  */
 export const nodePaletteKey = (node: StandardNodeDefinition): string => {
-  const operation = node.operation?.trim()
-  return operation
-    ? `operation:${operation}`
-    : `namespace:${nodeNamespace(node.type)}`
+  const group = overloadGroupKey(node)
+  return group ? `operation:${group}` : `namespace:${nodeNamespace(node.type)}`
 }
 
 const qualifiedTypeParts = (type: string): string[] => {
@@ -190,7 +190,10 @@ export const nodeSimpleDisplayName = (type: string): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
-  const explicitName = node.display_name?.trim() || node.operation?.trim()
+  const explicitName =
+    node.overload_group?.trim() ||
+    node.display_name?.trim() ||
+    node.operation?.trim()
   return explicitName ? humanize(explicitName) : nodeNamespace(node.type)
 }
 
@@ -215,10 +218,13 @@ export const groupNodesByOperation = (
     }
 
     const operation = node.operation?.trim()
-    const family = operation ? undefined : nodeNamespace(node.type)
+    const overloadGroup = node.overload_group?.trim()
+    const family =
+      operation || overloadGroup ? undefined : nodeNamespace(node.type)
     groups.set(key, {
       key,
       ...(operation ? { operation } : {}),
+      ...(overloadGroup ? { overloadGroup } : {}),
       ...(family ? { family } : {}),
       displayName: nodePaletteDisplayName(node),
       nodes: [node],
@@ -296,7 +302,10 @@ export const nodePaletteNodeName = (
   if (hasSpecializations) return nodeVariantName(node)
 
   const explicitName =
-    registryName(node) || node.display_name?.trim() || node.operation?.trim()
+    registryName(node) ||
+    node.display_name?.trim() ||
+    node.operation?.trim() ||
+    node.overload_group?.trim()
   if (explicitName) return humanize(explicitName)
 
   const parts = qualifiedTypeParts(node.type.trim())
@@ -315,7 +324,10 @@ export const nodePaletteNodeName = (
  */
 export const nodePaletteChildName = (node: StandardNodeDefinition): string => {
   const explicitName =
-    registryName(node) || node.display_name?.trim() || node.operation?.trim()
+    registryName(node) ||
+    node.display_name?.trim() ||
+    node.operation?.trim() ||
+    node.overload_group?.trim()
   if (explicitName) return humanize(explicitName)
 
   const parts = qualifiedTypeParts(node.type.trim())

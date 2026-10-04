@@ -26,6 +26,7 @@ import {
 import {
   ConnectionType,
   getBaseTypes,
+  isOverloadNodeDefinition,
   isSubGraphNodeDefinition,
   isTypeCompatible,
   SELF,
@@ -38,6 +39,7 @@ import {
   type LeanNodes,
   type QualifiedLeanNodes,
   type QualifiedNetwork,
+  type NodeDefinitions,
   type StandardNodeDefinition,
   normalizeWorkingFileReference,
 } from '../types/nodeTypes'
@@ -49,6 +51,11 @@ import {
   parameterPortCoralType,
   normalizeParameterExposures,
 } from './parameterPorts'
+import {
+  overloadCandidateSignatures,
+  overloadStatus,
+  resolveOverloadGraph,
+} from './overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -447,8 +454,45 @@ export const removeQualifiedIds = (
  * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
+  // Families are editor state only: resolve their concrete candidates before
+  // constructing LeanNodes so the Coral protocol never sees a virtual type.
+  const overloadResolution = resolveOverloadGraph(
+    nodes as Node<NodeDefinitions>[],
+    edges
+  )
+  const overloadCandidatesById = overloadResolution.candidatesByNodeId
+
+  for (const canvasNode of nodes) {
+    const data = canvasNode.data as NodeDefinitions
+    if (!isOverloadNodeDefinition(data)) continue
+
+    const candidates = overloadCandidatesById[canvasNode.id] ?? []
+    if (candidates.length !== 1) {
+      const status = overloadStatus(data, candidates)
+      const signatures = overloadCandidateSignatures(candidates)
+      throw new Error(
+        `Cannot export graph: overload node "${data.name ?? data.display_name}" is ${status}. ` +
+          `Remaining candidates: ${signatures.length ? signatures.join(', ') : 'none'}`
+      )
+    }
+  }
+
+  const overloadEdgeIssue = overloadResolution.edgeIssues.find((issue) => {
+    const source = nodes.find((node) => node.id === issue.edge.source)
+    const target = nodes.find((node) => node.id === issue.edge.target)
+    const sourceData = source?.data as NodeDefinitions | undefined
+    const targetData = target?.data as NodeDefinitions | undefined
+    return (
+      (sourceData != null && isOverloadNodeDefinition(sourceData)) ||
+      (targetData != null && isOverloadNodeDefinition(targetData))
+    )
+  })
+  if (overloadEdgeIssue) {
+    throw new Error(`Cannot export graph: ${overloadEdgeIssue.message}`)
+  }
+
   const nodesGraph = nodes.reduce<LeanNodes>((acc, obj) => {
-    const data = obj.data as LeanStandardNode | SubGraphNodeDefinition
+    const data = obj.data as NodeDefinitions
 
     if (isSubGraphNodeDefinition(data)) {
       // Network nodes: get position, data fields + 'value' from registred node
@@ -464,16 +508,25 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         position: obj.position,
       }
     } else {
+      const concreteData = isOverloadNodeDefinition(data)
+        ? overloadCandidatesById[obj.id]?.[0]
+        : data
+      if (!concreteData) {
+        throw new Error(
+          `Cannot export graph: overload node "${data.name ?? data.display_name}" has no concrete candidate`
+        )
+      }
+
       // Regular nodes: only keep relevant fields not already present in the registry
       const node: LeanStandardNode = {
-        type: data.type,
+        type: concreteData.type,
         position: obj.position,
       }
-      const bases = getBaseTypes(data)
+      const bases = getBaseTypes(concreteData)
       if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
-      if (data.value !== undefined) node.value = data.value
-      if (data.parameter_file?.exposures?.length) {
+      if ('value' in data && data.value !== undefined) node.value = data.value
+      if ('parameter_file' in data && data.parameter_file?.exposures?.length) {
         node.parameter_file = {
           exposures: normalizeParameterExposures(data.parameter_file.exposures),
         }
