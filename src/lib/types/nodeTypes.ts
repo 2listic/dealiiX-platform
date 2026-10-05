@@ -36,7 +36,6 @@ export type Argument = {
   name: string
   type: Type
 } & InheritanceMetadata
-}
 
 /**
  * Tests whether an arbitrary value contains explicit working-file metadata.
