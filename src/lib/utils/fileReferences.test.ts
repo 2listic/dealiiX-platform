@@ -278,8 +278,6 @@ describe('prepareGraphFileReferences', () => {
     )
     const graph = stagedGraph() as any
     graph.workflow.nodes['1'].working_file = {
-      file_scope: 'working',
-      staging: 'copy',
       create_if_missing: true,
     }
 

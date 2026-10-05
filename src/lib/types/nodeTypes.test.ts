@@ -80,15 +80,15 @@ describe('isStagedWorkingFileArgument', () => {
 })
 
 describe('working-file metadata', () => {
-  it('provides working/copy/create-if-missing as the UI default', () => {
+  it('provides only create-if-missing as the UI metadata', () => {
     expect(DEFAULT_WORKING_FILE_REFERENCE).toEqual({
-      file_scope: 'working',
-      staging: 'copy',
       create_if_missing: true,
     })
   })
 
   it('recognises metadata persisted on a graph value', () => {
+    expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
+    expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
     expect(
       isWorkingFileReference({
         file_scope: 'working',

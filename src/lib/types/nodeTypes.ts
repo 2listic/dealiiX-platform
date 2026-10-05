@@ -16,15 +16,11 @@ export enum ConnectionType {
 
 /** Metadata for an input whose value is a persistent working-file reference. */
 export type WorkingFileReference = {
-  file_scope: 'working'
-  staging: 'copy'
   create_if_missing?: boolean
 }
 
 /** Default metadata applied when a missing parameter file is configured for staging. */
 export const DEFAULT_WORKING_FILE_REFERENCE: WorkingFileReference = {
-  file_scope: 'working',
-  staging: 'copy',
   create_if_missing: true,
 }
 
@@ -33,8 +29,8 @@ export type Argument = {
   name: string
   type: Type
   /** Optional execution metadata supplied by the backend registry. */
-  file_scope?: WorkingFileReference['file_scope']
-  staging?: WorkingFileReference['staging']
+  file_scope?: 'working'
+  staging?: 'copy'
   create_if_missing?: WorkingFileReference['create_if_missing']
 }
 
@@ -46,7 +42,13 @@ export type Argument = {
 export const isStagedWorkingFileArgument = (
   argument: Argument | undefined
 ): argument is Argument & WorkingFileReference => {
-  return isWorkingFileReference(argument)
+  if (!argument) return false
+  return (
+    argument.file_scope === 'working' &&
+    argument.staging === 'copy' &&
+    (argument.create_if_missing === undefined ||
+      typeof argument.create_if_missing === 'boolean')
+  )
 }
 
 /**
@@ -59,13 +61,23 @@ export const isWorkingFileReference = (
 ): value is WorkingFileReference => {
   if (!value || typeof value !== 'object') return false
   const reference = value as Partial<WorkingFileReference>
+  const legacy = value as { file_scope?: unknown; staging?: unknown }
+  const hasCreationFlag = 'create_if_missing' in reference
+  const hasLegacyStaging =
+    legacy.file_scope === 'working' && legacy.staging === 'copy'
   return (
-    reference.file_scope === 'working' &&
-    reference.staging === 'copy' &&
+    (hasCreationFlag || hasLegacyStaging) &&
     (reference.create_if_missing === undefined ||
       typeof reference.create_if_missing === 'boolean')
   )
 }
+
+/** Normalizes persisted working-file metadata while accepting the old shape. */
+export const normalizeWorkingFileReference = (
+  value: WorkingFileReference
+): WorkingFileReference => ({
+  create_if_missing: value.create_if_missing ?? true,
+})
 
 /** The four scalar types that can be exposed by a frontend parameter port. */
 export type ParameterPortType =

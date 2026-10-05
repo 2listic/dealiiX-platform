@@ -146,28 +146,35 @@
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
-  $effect(() => {
+  const checkParameterFileAvailability = async (): Promise<boolean> => {
     const fileName = data.value
     const checkId = ++parameterCheckId
     parameterFileAvailable = false
     parameterFileCheckPending = false
-    if (!isParameterFile || !workingDirectory) return
+    if (!isParameterFile || !workingDirectory) return false
 
     parameterFileCheckPending = true
     const target = parameterFileTarget(activeLocation, fileName)
-    void parameterFileExists(target)
-      .then((exists) => {
-        if (checkId === parameterCheckId) {
-          parameterFileAvailable = exists
-          parameterFileCheckPending = false
-        }
-      })
-      .catch(() => {
-        if (checkId === parameterCheckId) {
-          parameterFileAvailable = false
-          parameterFileCheckPending = false
-        }
-      })
+    try {
+      const exists = await parameterFileExists(target)
+      if (checkId !== parameterCheckId) return false
+      parameterFileAvailable = exists
+      return exists
+    } catch {
+      if (checkId !== parameterCheckId) return false
+      parameterFileAvailable = false
+      return false
+    } finally {
+      if (checkId === parameterCheckId) parameterFileCheckPending = false
+    }
+  }
+
+  $effect(() => {
+    isParameterFile
+    workingDirectory
+    activeLocation
+    data.value
+    void checkParameterFileAvailability()
   })
 
   const handleOpenParameters = async () => {
@@ -194,9 +201,11 @@
     }
   }
 
-  const handleParameterFileAction = () => {
+  const handleParameterFileAction = async () => {
     if (parameterFileCheckPending) return
-    if (parameterFileAvailable) {
+    // The run may have created a previously missing file. Refresh the
+    // filesystem state on every click before choosing the action.
+    if (await checkParameterFileAvailability()) {
       void handleOpenParameters()
     } else {
       getModal(stagedFileMetadataModalId)?.open()
@@ -328,10 +337,10 @@
             class="node-button"
             title={parameterFileAvailable
               ? 'Open parameters'
-              : 'Configure parameter file staging'}
+              : 'Configure parameter file creation'}
             aria-label={parameterFileAvailable
               ? 'Open parameters'
-              : 'Configure parameter file staging'}
+              : 'Configure parameter file creation'}
             disabled={parameterFileCheckPending}
             onclick={handleParameterFileAction}
           >
