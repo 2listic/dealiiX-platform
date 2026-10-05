@@ -50,6 +50,23 @@ describe('localParameterFiles', () => {
     ).resolves.toMatchObject({ content: 'set Value = 2\n' })
   })
 
+  it('creates a missing parameter file and its parent directory', async () => {
+    const workingDirectory = await makeWorkingDirectory()
+
+    await expect(
+      writeLocalParameterFile(
+        workingDirectory,
+        'generated/parameters.prm',
+        'set Value = 1\n'
+      )
+    ).resolves.toMatchObject({
+      filePath: path.join(workingDirectory, 'generated/parameters.prm'),
+    })
+    await expect(
+      readLocalParameterFile(workingDirectory, 'generated/parameters.prm')
+    ).resolves.toMatchObject({ content: 'set Value = 1\n' })
+  })
+
   it('does not expose files outside the working directory', async () => {
     const workingDirectory = await makeWorkingDirectory()
     expect(
