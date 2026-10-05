@@ -63,6 +63,9 @@ describe('materializeParameterGraph', () => {
               },
             ],
           },
+          working_file: {
+            create_if_missing: true,
+          },
         },
       },
       {
@@ -151,6 +154,9 @@ describe('materializeParameterGraph', () => {
     expect(result.edges[0].sourceHandle).toBe('output-0')
     expect(
       result.nodes.find((node) => node.id === '1')?.data.parameter_file
+    ).toBeUndefined()
+    expect(
+      result.nodes.find((node) => node.id === '1')?.data.working_file
     ).toBeUndefined()
     expect(result.nodes.find((node) => node.id === '1')?.data.value).toBe(
       '/run/parameters.prm'

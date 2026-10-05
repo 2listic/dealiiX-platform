@@ -44,7 +44,7 @@ import { parameterHandlePath } from './parameterPorts'
 import { buildDirName } from './slugify'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
-  resolveGraphFileReferences,
+  prepareGraphFileReferences,
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
@@ -196,10 +196,11 @@ export const submitCoralStageRemote = async ({
     {},
     stageDir
   )
-  const resolvedGraph = await resolveGraphFileReferences(
+  const resolvedGraph = await prepareGraphFileReferences(
     withMpiPlugin(executionGraph, useMpi),
     'remote',
-    settingsState.remote.workingDirectory
+    settingsState.remote.workingDirectory,
+    stageDir
   )
   await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
@@ -420,10 +421,11 @@ const exportAndEvalGraphLocal = async (
   const runDir = await ensureUniqueLocalDir(
     `${settingsState.local.workingDirectory}/${buildDirName('run', runName)}`
   )
-  const graphPayload = await resolveGraphFileReferences(
+  const graphPayload = await prepareGraphFileReferences(
     await buildExecutionGraphPayload('local', nodes, edges, useMpi, runDir),
     'local',
-    settingsState.local.workingDirectory
+    settingsState.local.workingDirectory,
+    runDir
   )
 
   const resultExecute = await window.electron.invoke('start-local-coral-run', {

@@ -18,6 +18,7 @@ import type { Edge, Node } from '@xyflow/svelte'
 import {
   ConnectionType,
   NodeType,
+  Type,
   type SubGraphNodeDefinition,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -97,6 +98,34 @@ describe('networkNode utilities', () => {
     expect(() => createNetworkNodeDefinition('Empty', [], [])).toThrow(
       'Cannot create network node from empty graph'
     )
+  })
+
+  it('preserves the input metadata on an exposed network input', () => {
+    const definition: StandardNodeDefinition = {
+      type: 'ParameterAcceptor::initialize',
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'parameters',
+          type: Type.STRING,
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+      node_type: NodeType.VOID_FUNCTION,
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'ParameterLoader',
+      [makeCanvasNode('1', definition)],
+      []
+    )
+
+    expect(networkNode.arguments[0]).toMatchObject({
+      connection_type: ConnectionType.INPUT,
+      name: 'parameters',
+      type: Type.STRING,
+    })
   })
 
   it('builds pass-through and input interfaces with handle bindings deterministically', () => {

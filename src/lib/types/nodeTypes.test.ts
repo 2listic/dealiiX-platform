@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isTypeCompatible, Type } from './nodeTypes'
+import {
+  DEFAULT_WORKING_FILE_REFERENCE,
+  isWorkingFileReference,
+  isTypeCompatible,
+  Type,
+} from './nodeTypes'
 
 describe('isTypeCompatible', () => {
   it('accepts an exact type match', () => {
@@ -43,5 +48,20 @@ describe('isTypeCompatible', () => {
   it('does not widen C++-only numeric types outside the bool/int/float chain', () => {
     expect(isTypeCompatible(Type.INT, Type.DOUBLE)).toBe(false)
     expect(isTypeCompatible(Type.UNSIGNED, Type.INT)).toBe(false)
+  })
+})
+
+describe('working-file metadata', () => {
+  it('provides only create-if-missing as the UI metadata', () => {
+    expect(DEFAULT_WORKING_FILE_REFERENCE).toEqual({
+      create_if_missing: true,
+    })
+  })
+
+  it('recognises metadata persisted on a graph value', () => {
+    expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
+    expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
+    expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
+    expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
   })
 })

@@ -35,6 +35,7 @@ import {
   type QualifiedLeanNodes,
   type QualifiedNetwork,
   type StandardNodeDefinition,
+  normalizeWorkingFileReference,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
@@ -180,6 +181,9 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
             regularNode.parameter_file.exposures
           ),
         },
+      }),
+      ...(regularNode.working_file && {
+        working_file: normalizeWorkingFileReference(regularNode.working_file),
       }),
     }
   }
@@ -396,6 +400,9 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         node.parameter_file = {
           exposures: normalizeParameterExposures(data.parameter_file.exposures),
         }
+      }
+      if (data.working_file) {
+        node.working_file = { ...data.working_file }
       }
       acc[obj.id] = node
     }

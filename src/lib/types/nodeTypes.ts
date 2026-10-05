@@ -14,11 +14,46 @@ export enum ConnectionType {
   PASSTHROUGH = 'pass_through',
 }
 
+/** Metadata for an input whose value is a persistent working-file reference. */
+export type WorkingFileReference = {
+  create_if_missing?: boolean
+}
+
+/** Default metadata applied when a missing parameter file is configured for staging. */
+export const DEFAULT_WORKING_FILE_REFERENCE: WorkingFileReference = {
+  create_if_missing: true,
+}
+
 export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
 }
+
+/**
+ * Tests whether an arbitrary value contains explicit working-file metadata.
+ * @param value - Value to inspect.
+ * @returns Whether the value requests working-directory staging.
+ */
+export const isWorkingFileReference = (
+  value: unknown
+): value is WorkingFileReference => {
+  if (!value || typeof value !== 'object') return false
+  const reference = value as Partial<WorkingFileReference>
+  const hasCreationFlag = 'create_if_missing' in reference
+  return (
+    hasCreationFlag &&
+    (reference.create_if_missing === undefined ||
+      typeof reference.create_if_missing === 'boolean')
+  )
+}
+
+/** Normalizes persisted working-file metadata while accepting the old shape. */
+export const normalizeWorkingFileReference = (
+  value: WorkingFileReference
+): WorkingFileReference => ({
+  create_if_missing: value.create_if_missing ?? true,
+})
 
 /** The four scalar types that can be exposed by a frontend parameter port. */
 export type ParameterPortType =
@@ -167,6 +202,8 @@ export type StandardNodeDefinition = {
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
+  /** Instance-level staging metadata for a string value naming a working file. */
+  working_file?: WorkingFileReference
 }
 
 export type RegisteredNodes = {
@@ -209,6 +246,7 @@ export type LeanStandardNode = {
   name?: string
   position?: { x: number; y: number }
   parameter_file?: ParameterFileMetadata
+  working_file?: WorkingFileReference
 }
 
 /**

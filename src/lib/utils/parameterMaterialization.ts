@@ -269,6 +269,10 @@ export const materializeParameterGraph = async (
         materializationDirectory,
         file.fileName
       )
+      // The parameter file already lives in the run directory. Keeping its
+      // source-file staging metadata would make the staging pass interpret
+      // this absolute run-local path as a new relative working-file input.
+      delete data.working_file
     }
     return file
   }

@@ -56,7 +56,7 @@ export const writeLocalParameterFile = async (
   content: string
 ): Promise<{ filePath: string }> => {
   const filePath = resolveParameterFile(workingDirectory, fileName)
-  await assertRegularFile(filePath)
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
   await fs.promises.writeFile(filePath, content, 'utf8')
   return { filePath }
 }
