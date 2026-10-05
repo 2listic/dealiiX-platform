@@ -100,6 +100,8 @@ export enum NodeType {
   VOID_FUNCTION = 'void_function',
   FUNCTION = 'function',
   NETWORK = 'network',
+  /** Frontend-only node that is lowered to one concrete registry definition. */
+  OVERLOAD = 'overload',
 }
 
 export enum TypeField {
@@ -129,6 +131,7 @@ export const nodeColors = {
   [NodeType.VOID_FUNCTION]: 'skyblue',
   [NodeType.FUNCTION]: 'skyblue',
   [NodeType.NETWORK]: 'darkorchid',
+  [NodeType.OVERLOAD]: 'skyblue',
   [NodeType.PRIMITIVE]: 'yellowgreen',
 }
 
@@ -207,6 +210,8 @@ export type StandardNodeDefinition = {
   output_type?: string
   /** Optional logical operation shared by concrete specializations. */
   operation?: string
+  /** Stable explicit grouping key for frontend overload families. */
+  overload_group?: string
   /** Optional user-facing label for the logical operation. */
   display_name?: string
   /** Optional user-facing label for one concrete operation specialization. */
@@ -240,6 +245,30 @@ export const getBaseTypes = (metadata: InheritanceMetadata): string[] => [
 
 export type RegisteredNodes = {
   [key: string]: StandardNodeDefinition
+}
+
+/**
+ * Frontend-only view of several concrete registry definitions.
+ *
+ * This type is intentionally not part of {@link LeanNodes}: it may exist while
+ * editing, but it must be lowered to one of `candidates` before a graph is
+ * serialized or executed.
+ */
+export type OverloadNodeDefinition = {
+  type: string
+  arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
+  node_type: NodeType.OVERLOAD
+  overload_group: string
+  display_name: string
+  candidates: StandardNodeDefinition[]
+  /** Whether the user explicitly locked the currently resolved candidate. */
+  finalized?: boolean
+  /** Concrete candidate type selected when the family was finalized. */
+  finalized_candidate_type?: string
+  name?: string
+  is_valid?: boolean
 }
 
 /**
@@ -303,7 +332,10 @@ export type SubGraphNodeDefinition = {
  * Union of all node definition types that can be placed on the canvas —
  * either a registry node or a stored subgraph node.
  */
-export type NodeDefinitions = StandardNodeDefinition | SubGraphNodeDefinition
+export type NodeDefinitions =
+  | StandardNodeDefinition
+  | OverloadNodeDefinition
+  | SubGraphNodeDefinition
 
 /**
  * Record of all lean protocol nodes in a serialized network.
@@ -366,6 +398,11 @@ export const isSubGraphNodeDefinition = (
     node.node_type === NodeType.NETWORK
   )
 }
+
+/** Type guard for the frontend-only overload family node. */
+export const isOverloadNodeDefinition = (
+  node: NodeDefinitions
+): node is OverloadNodeDefinition => node.node_type === NodeType.OVERLOAD
 
 // ── Private helpers ──
 

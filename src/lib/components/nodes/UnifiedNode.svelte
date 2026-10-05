@@ -2,6 +2,7 @@
   import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
+    OverloadNodeDefinition,
     StandardNodeDefinition as StandardNodeDefinitionType,
     NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
@@ -39,6 +40,7 @@
     FlowNodeType.FUNCTION
   >
   export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
+  export type Overload = FlowNode<OverloadNodeDefinition, FlowNodeType.OVERLOAD>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor
@@ -49,6 +51,7 @@
     | VoidFunction
     | Function
     | Network
+    | Overload
 </script>
 
 <script lang="ts">
@@ -56,6 +59,7 @@
     Handle,
     Position,
     useSvelteFlow,
+    type Node,
     type NodeProps,
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
@@ -77,6 +81,8 @@
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
+  import RefreshIcon from '../icons/RefreshIcon.svelte'
+  import SuccessIcon from '../icons/SuccessIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
@@ -101,9 +107,11 @@
     parameterPathLabel,
     parameterPortCoralType,
   } from '../../utils/parameterPorts'
-  import type {
-    StandardNodeDefinition,
-    WorkingFileReference,
+  import {
+    isOverloadNodeDefinition,
+    type NodeDefinitions,
+    type StandardNodeDefinition,
+    type WorkingFileReference,
   } from '../../types/nodeTypes'
   import { returnNodeName } from '../../utils/canvasNodeUtils'
   import { isVtkFileName } from '../../utils/vtkFileFormat'
@@ -113,6 +121,11 @@
     vtkVisualizerTarget,
   } from '../../utils/vtkVisualizer'
   import { openNewWindow } from '../../utils/sshMessages'
+  import {
+    overloadInterfaceForCandidates,
+    overloadStatus,
+    resolveOverloadGraph,
+  } from '../../utils/overloadResolution'
 
   let {
     id,
@@ -125,6 +138,23 @@
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
+  let isOverloadNode = $derived(data.node_type === NodeType.OVERLOAD)
+  let overloadCandidates = $derived.by(() => {
+    if (!isOverloadNode || !isOverloadNodeDefinition(data)) return []
+    const resolution = resolveOverloadGraph(
+      getNodesSnapshot() as Node<NodeDefinitions>[],
+      getEdgesSnapshot()
+    )
+    return resolution.candidatesByNodeId[id] ?? data.candidates
+  })
+  let currentOverloadStatus = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data)
+      ? overloadStatus(data, overloadCandidates)
+      : null
+  )
+  let isOverloadFinalized = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data) && data.finalized === true
+  )
   let color = $derived(nodeColors[type as keyof typeof nodeColors])
   let activeLocation = $derived(executionSelectionState.location)
   let workingDirectory = $derived(
@@ -132,13 +162,15 @@
       ? settingsState.local.workingDirectory
       : settingsState.remote.workingDirectory
   )
+  const valueForNode = (): string | undefined =>
+    'value' in data && data.value != null ? String(data.value) : undefined
   let isParameterFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isParameterFileName(data.value)
+      isParameterFileName(valueForNode())
   )
   let isVtkFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isVtkFileName(data.value)
+      isVtkFileName(valueForNode())
   )
   let parameterFileAvailable = $state(false)
   let parameterFileCheckPending = $state(false)
@@ -164,11 +196,11 @@
   let editNodeModalId = $derived(`edit-node-${id}`)
 
   const checkParameterFileAvailability = async (): Promise<boolean> => {
-    const fileName = data.value
+    const fileName = valueForNode()
     const checkId = ++parameterCheckId
     parameterFileAvailable = false
     parameterFileCheckPending = false
-    if (!isParameterFile || !workingDirectory) return false
+    if (!isParameterFile || !workingDirectory || !fileName) return false
 
     parameterFileCheckPending = true
     const target = parameterFileTarget(activeLocation, fileName)
@@ -190,14 +222,14 @@
     isParameterFile
     workingDirectory
     activeLocation
-    data.value
+    valueForNode()
     void checkParameterFileAvailability()
   })
 
   const handleOpenParameters = async () => {
     try {
       await parameterFileEditorState.open(
-        parameterFileTarget(activeLocation, data.value),
+        parameterFileTarget(activeLocation, valueForNode() ?? ''),
         {
           exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
           onExposureChange: (exposures) => {
@@ -237,7 +269,7 @@
 
   const handleOpenVtkFile = async () => {
     try {
-      const target = vtkVisualizerTarget(activeLocation, String(data.value))
+      const target = vtkVisualizerTarget(activeLocation, valueForNode() ?? '')
       if (!(await vtkVisualizerFileExists(target))) {
         throw new Error('VTK file is not available in the working directory')
       }
@@ -285,7 +317,7 @@
    */
   $effect(() => {
     if (isNumericType(data.type)) {
-      const value = data.value
+      const value = valueForNode()
       const expectedIsValid = isValidNum(value)
 
       // Only update if validation state differs from current state
@@ -334,6 +366,25 @@
       })
     }
   }
+
+  /** Toggles a resolved family between its concrete and union interfaces. */
+  const handleToggleOverloadFinalization = () => {
+    if (!isOverloadNodeDefinition(data)) return
+
+    const isFinalizing = data.finalized !== true
+    const candidate = overloadCandidates[0]
+    if (isFinalizing && !candidate) return
+
+    graphHistoryState.checkpoint()
+    updateNodeData(id, {
+      ...overloadInterfaceForCandidates(
+        isFinalizing ? [candidate] : data.candidates
+      ),
+      finalized: isFinalizing,
+      finalized_candidate_type: isFinalizing ? candidate?.type : undefined,
+    })
+    clearConnectionCache()
+  }
 </script>
 
 <div
@@ -346,6 +397,19 @@
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
       <div class="node-name" title={data.type}>{nodeDisplayName}</div>
+      {#if isOverloadNode && currentOverloadStatus}
+        <div class="overload-status" data-status={currentOverloadStatus}>
+          {currentOverloadStatus === 'resolved'
+            ? isOverloadFinalized
+              ? 'finalized'
+              : 'resolved'
+            : currentOverloadStatus === 'partially_constrained'
+              ? `${overloadCandidates.length} variants remain`
+              : currentOverloadStatus === 'invalid'
+                ? 'no compatible variant'
+                : `${overloadCandidates.length} variants`}
+        </div>
+      {/if}
     </div>
     <div class="node-buttons">
       {#if isNetworkNode}
@@ -396,6 +460,28 @@
           onclick={() => getModal(editNodeModalId)?.open()}
         >
           <EditIcon width="20px" height="20px" />
+        </button>
+      {/if}
+      {#if isOverloadNode && currentOverloadStatus === 'resolved'}
+        <button
+          class="node-button overload-finalize-button"
+          title={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          aria-label={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          onclick={(event) => {
+            event.stopPropagation()
+            handleToggleOverloadFinalization()
+          }}
+          onmousedown={(event) => event.stopPropagation()}
+        >
+          {#if isOverloadFinalized}
+            <RefreshIcon width="20px" height="20px" rotation={0} />
+          {:else}
+            <SuccessIcon width="20px" />
+          {/if}
         </button>
       {/if}
       <button
@@ -470,7 +556,7 @@
     <div style="display: flex; flex-direction: row; gap: 4vh">
       <div class="input-column">
         {#each data.inputs as i (i)}
-          {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
+          {#if ['input', 'pass_through'].includes(data.arguments[i]?.connection_type)}
             <div>
               <div class="input-label">
                 {data.arguments[i].name}
@@ -564,7 +650,7 @@
 {#if isParameterFile}
   <WorkingFileMetadataModal
     modalId={stagedFileMetadataModalId}
-    fileName={data.value}
+    fileName={valueForNode() ?? ''}
     currentMetadata={workingFileMetadata}
     onSave={handleWorkingFileMetadataSave}
   />
@@ -608,6 +694,19 @@
   .node-labels {
     display: flex;
     flex-direction: column;
+  }
+
+  .overload-status {
+    font-size: 0.7rem;
+    opacity: 0.8;
+  }
+
+  .overload-status[data-status='resolved'] {
+    color: #8fd694;
+  }
+
+  .overload-status[data-status='invalid'] {
+    color: #ff8a80;
   }
 
   .node-name {
