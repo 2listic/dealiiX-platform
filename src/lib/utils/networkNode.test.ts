@@ -100,7 +100,7 @@ describe('networkNode utilities', () => {
     )
   })
 
-  it('preserves staged-file metadata on an exposed network input', () => {
+  it('preserves the input metadata on an exposed network input', () => {
     const definition: StandardNodeDefinition = {
       type: 'ParameterAcceptor::initialize',
       arguments: [
@@ -108,9 +108,6 @@ describe('networkNode utilities', () => {
           connection_type: ConnectionType.INPUT,
           name: 'parameters',
           type: Type.STRING,
-          file_scope: 'working',
-          staging: 'copy',
-          create_if_missing: true,
         },
       ],
       inputs: [0],
@@ -125,9 +122,9 @@ describe('networkNode utilities', () => {
     )
 
     expect(networkNode.arguments[0]).toMatchObject({
-      file_scope: 'working',
-      staging: 'copy',
-      create_if_missing: true,
+      connection_type: ConnectionType.INPUT,
+      name: 'parameters',
+      type: Type.STRING,
     })
   })
 

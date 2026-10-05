@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ConnectionType,
   DEFAULT_WORKING_FILE_REFERENCE,
-  isStagedWorkingFileArgument,
   isWorkingFileReference,
   isTypeCompatible,
   Type,
@@ -53,32 +51,6 @@ describe('isTypeCompatible', () => {
   })
 })
 
-describe('isStagedWorkingFileArgument', () => {
-  it('recognises explicit working-file staging metadata', () => {
-    expect(
-      isStagedWorkingFileArgument({
-        connection_type: ConnectionType.INPUT,
-        name: 'parameters',
-        type: Type.STRING,
-        file_scope: 'working',
-        staging: 'copy',
-        create_if_missing: true,
-      })
-    ).toBe(true)
-  })
-
-  it('does not infer staging from incomplete metadata', () => {
-    expect(
-      isStagedWorkingFileArgument({
-        connection_type: ConnectionType.INPUT,
-        name: 'file',
-        type: Type.STRING,
-        file_scope: 'working',
-      })
-    ).toBe(false)
-  })
-})
-
 describe('working-file metadata', () => {
   it('provides only create-if-missing as the UI metadata', () => {
     expect(DEFAULT_WORKING_FILE_REFERENCE).toEqual({
@@ -89,13 +61,7 @@ describe('working-file metadata', () => {
   it('recognises metadata persisted on a graph value', () => {
     expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
     expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
-    expect(
-      isWorkingFileReference({
-        file_scope: 'working',
-        staging: 'copy',
-        create_if_missing: true,
-      })
-    ).toBe(true)
-    expect(isWorkingFileReference({ file_scope: 'working' })).toBe(false)
+    expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
+    expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
   })
 })

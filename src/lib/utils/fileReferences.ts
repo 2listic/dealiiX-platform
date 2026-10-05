@@ -1,14 +1,7 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
-import {
-  isStagedWorkingFileArgument,
-  isWorkingFileReference,
-  TypeField,
-  type Argument,
-  type WorkingFileReference,
-} from '../types/nodeTypes'
-import { getNodeData, isNodeInRegistry } from '../stores/registryStore.svelte'
-import { isParameterLeaf } from './parameterFileFormat'
+import { TypeField, type WorkingFileReference } from '../types/nodeTypes'
+import { isParameterLeaf, isParameterFileName } from './parameterFileFormat'
 import { shellEscape } from './shellEscape'
 
 /**
@@ -47,10 +40,12 @@ export type StagedFileCopy = {
 }
 
 /**
- * Prepares explicit staged working-file references for one graph execution.
- * Ordinary file references keep the legacy existing-file-to-absolute-path
- * behaviour. Staged references are discovered from target argument metadata
- * reached through graph edges and are processed recursively in subnetworks.
+ * Prepares parameter-file references for one graph execution. Existing `.prm`
+ * and `.json` files are copied into the run directory and retain their logical
+ * relative path in the graph. Missing files with creation enabled are passed
+ * as absolute paths in the configured working directory so Coral can create
+ * them there. All other strings keep the legacy existing-file-to-absolute-path
+ * behaviour.
  * @param graph - CORAL network payload about to be submitted.
  * @param location - Execution location whose filesystem is checked.
  * @param workingDirectory - Persistent source directory for the location.
@@ -68,7 +63,7 @@ export const prepareGraphFileReferences = async <T extends object>(
   collectGraphReferences(graph, references)
 
   const ordinaryValues = references
-    .filter((reference) => !reference.staged)
+    .filter((reference) => !reference.parameterFile)
     .map((reference) => reference.value)
   const ordinaryResolved = await resolveExistingFiles(
     ordinaryValues,
@@ -76,22 +71,22 @@ export const prepareGraphFileReferences = async <T extends object>(
     workingDirectory
   )
 
-  const stagedReferences = references.filter(
+  const parameterReferences = references.filter(
     (
       reference
     ): reference is GraphValueReference & {
-      staged: WorkingFileReference
-    } => reference.staged !== undefined
+      parameterFile: WorkingFileReference
+    } => reference.parameterFile !== undefined
   )
   const workingBase = normalizeDirectory(workingDirectory)
   const runBase = normalizeDirectory(runDirectory)
-  if (stagedReferences.length > 0 && (!workingBase || !runBase)) {
+  if (parameterReferences.length > 0 && (!workingBase || !runBase)) {
     throw new Error(
       'Cannot stage working files without configured working and run directories'
     )
   }
 
-  const stagedPaths = stagedReferences.map((reference) => {
+  const stagedPaths = parameterReferences.map((reference) => {
     const logicalPath = normalizeLogicalPath(reference.value)
     return {
       reference,
@@ -112,7 +107,7 @@ export const prepareGraphFileReferences = async <T extends object>(
   const copies = new Map<string, StagedFileCopy>()
 
   for (const reference of references) {
-    const replacement = reference.staged
+    const replacement = reference.parameterFile
       ? undefined
       : ordinaryResolved.get(reference.value)
     if (replacement !== undefined) {
@@ -129,10 +124,10 @@ export const prepareGraphFileReferences = async <T extends object>(
     if (existingStagedPaths.has(sourcePath)) {
       setReplacement(replacements, reference, logicalPath)
       copies.set(destinationPath, { sourcePath, destinationPath })
-    } else if (reference.staged.create_if_missing) {
+    } else if (reference.parameterFile.create_if_missing === true) {
       // The backend/application owns default-file generation on the first run.
       setReplacement(replacements, reference, sourcePath)
-    } else {
+    } else if (reference.parameterFile.create_if_missing === false) {
       throw new Error(
         `Staged working file is missing and create_if_missing is false: ${sourcePath}`
       )
@@ -203,19 +198,11 @@ export const resolveParameterFileReferences = async (
 type ProtocolNode = {
   type?: string
   value?: unknown
-  arguments?: Argument[]
-  inputs?: number[]
   working_file?: WorkingFileReference
-}
-type ProtocolEdge = {
-  source: string | number
-  target: string | number
-  target_input: number
 }
 type ProtocolGraph = {
   workflow?: {
     nodes?: Record<string, ProtocolNode>
-    edges?: Record<string, ProtocolEdge>
   }
 }
 
@@ -223,10 +210,10 @@ type GraphValueReference = {
   graph: object
   nodeId: string
   value: string
-  staged?: WorkingFileReference
+  parameterFile?: WorkingFileReference
 }
 
-/** Collects ordinary and explicitly staged values from a graph hierarchy. */
+/** Collects ordinary and parameter-file values from a graph hierarchy. */
 const collectGraphReferences = (
   graph: unknown,
   references: GraphValueReference[]
@@ -236,24 +223,6 @@ const collectGraphReferences = (
   const workflow = protocolGraph.workflow
   if (!workflow?.nodes) return
 
-  const stagedBySource = new Map<string, WorkingFileReference>()
-  for (const edge of Object.values(workflow.edges ?? {})) {
-    const argument = getTargetInputArgument(
-      workflow.nodes[String(edge.target)],
-      edge.target_input
-    )
-    if (!isStagedWorkingFileArgument(argument)) continue
-
-    const sourceId = String(edge.source)
-    const previous = stagedBySource.get(sourceId)
-    if (previous && previous.create_if_missing !== argument.create_if_missing) {
-      throw new Error(
-        `Conflicting staged-file metadata for graph source node ${sourceId}`
-      )
-    }
-    stagedBySource.set(sourceId, argument)
-  }
-
   for (const [nodeId, node] of Object.entries(workflow.nodes)) {
     if (node.type === TypeField.CORAL_NETWORK) {
       collectGraphReferences(node.value, references)
@@ -262,35 +231,12 @@ const collectGraphReferences = (
         graph: graph as object,
         nodeId,
         value: node.value,
-        staged: isWorkingFileReference(node.working_file)
-          ? node.working_file
-          : stagedBySource.get(nodeId),
+        parameterFile: isRelativeParameterFileName(node.value)
+          ? { create_if_missing: node.working_file?.create_if_missing }
+          : undefined,
       })
     }
   }
-}
-
-/** Finds the target argument reached by a protocol edge's target handle. */
-const getTargetInputArgument = (
-  targetNode: ProtocolNode | undefined,
-  targetInput: number
-): Argument | undefined => {
-  if (!targetNode) return undefined
-
-  let definition: { arguments?: Argument[]; inputs?: number[] } | undefined
-  if (Array.isArray(targetNode.arguments) && Array.isArray(targetNode.inputs)) {
-    definition = targetNode
-  } else if (targetNode.type && isNodeInRegistry(targetNode.type)) {
-    try {
-      definition = getNodeData(targetNode.type)
-    } catch {
-      return undefined
-    }
-  }
-  const argumentIndex = definition?.inputs?.[targetInput]
-  return argumentIndex === undefined
-    ? undefined
-    : definition?.arguments?.[argumentIndex]
 }
 
 /** Stores a replacement for one node in one graph level. */
@@ -371,6 +317,12 @@ const normalizeLogicalPath = (value: string): string => {
   }
   return logicalPath
 }
+
+/** Returns whether a relative graph value names a parameter file. */
+const isRelativeParameterFileName = (value: unknown): value is string =>
+  isParameterFileName(value) &&
+  !value.trim().startsWith('/') &&
+  !/^[A-Za-z]:[\\/]/.test(value.trim())
 
 /** Joins a configured absolute directory and a logical relative path. */
 const joinDirectory = (directory: string, relativePath: string): string => {
