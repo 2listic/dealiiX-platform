@@ -38,6 +38,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### SSH communication
 
+- Local graph parameter materialization now creates the per-run parameter file and any required parent directories instead of requiring that run-local file to exist already.
 - CORAL graph inputs can now declare staged working-file references. Existing
   files are copied into each run's directory while retaining their logical
   relative paths, and missing files marked `create_if_missing` are passed as
