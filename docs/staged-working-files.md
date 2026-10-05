@@ -1,43 +1,26 @@
 # Staged working files
 
-CORAL graph inputs can declare that a string is a persistent working-file
-reference. The registry puts the metadata on the target argument:
-
-```json
-{
-  "connection_type": "input",
-  "name": "parameters",
-  "type": "std::string",
-  "file_scope": "working",
-  "staging": "copy",
-  "create_if_missing": true
-}
-```
-
-The declaration is explicit. A string is not treated as a staged file merely
-because its value looks like a filename or because a file with that name
-exists.
+Parameter-file graph inputs are identified by their `.prm` or `.json`
+extension. They do not depend on registry metadata: an existing parameter
+file is copied into the isolated run directory, while a missing file is either
+created in the working directory or rejected according to the optional
+`create_if_missing` graph flag.
 
 When a graph string is recognised as a `.prm` or `.json` parameter filename,
 its node action opens the parameter editor if the file exists in the configured
-working directory. If it does not exist, the same action opens a staging
-metadata dialog. Saving that dialog stores an explicit `working_file` override
-on the graph value, defaulting to `working / copy / create_if_missing: true`:
+working directory. If it does not exist, the same action opens a creation
+dialog. Saving that dialog stores only the optional `create_if_missing` flag
+on the graph value:
 
 ```json
 {
   "type": "std::string",
   "value": "configs/parameters.prm",
   "working_file": {
-    "file_scope": "working",
-    "staging": "copy",
     "create_if_missing": true
   }
 }
 ```
-
-The override is instance-specific and is also useful when the active registry
-does not yet provide staged-file metadata for the consuming argument.
 
 At execution time the platform treats the configured working directory as the
 persistent, user-editable source and the run directory as a per-run snapshot:
@@ -69,7 +52,6 @@ filesystem. Remote runs create parent directories and use a safely quoted
 server-side `cp` command over SSH; file contents are not downloaded to the
 desktop and uploaded again.
 
-The frontend accepts and preserves these optional argument fields in the
-registry. A Coral registry producer must emit the metadata for a target input
-before the platform can apply the staged-file behaviour; no node-name or
-`ParameterAcceptor` special case is used here.
+Only the `create_if_missing` flag is persisted as graph metadata. The staging
+decision itself is based on the parameter-file extension and the existence
+check, not on backend registry fields.

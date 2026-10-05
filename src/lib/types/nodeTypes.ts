@@ -28,27 +28,6 @@ export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
-  /** Optional execution metadata supplied by the backend registry. */
-  file_scope?: 'working'
-  staging?: 'copy'
-  create_if_missing?: WorkingFileReference['create_if_missing']
-}
-
-/**
- * Tests whether an argument explicitly requests working-file staging.
- * @param argument - Registry argument metadata.
- * @returns Whether the argument is a staged working-file reference.
- */
-export const isStagedWorkingFileArgument = (
-  argument: Argument | undefined
-): argument is Argument & WorkingFileReference => {
-  if (!argument) return false
-  return (
-    argument.file_scope === 'working' &&
-    argument.staging === 'copy' &&
-    (argument.create_if_missing === undefined ||
-      typeof argument.create_if_missing === 'boolean')
-  )
 }
 
 /**
@@ -61,12 +40,9 @@ export const isWorkingFileReference = (
 ): value is WorkingFileReference => {
   if (!value || typeof value !== 'object') return false
   const reference = value as Partial<WorkingFileReference>
-  const legacy = value as { file_scope?: unknown; staging?: unknown }
   const hasCreationFlag = 'create_if_missing' in reference
-  const hasLegacyStaging =
-    legacy.file_scope === 'working' && legacy.staging === 'copy'
   return (
-    (hasCreationFlag || hasLegacyStaging) &&
+    hasCreationFlag &&
     (reference.create_if_missing === undefined ||
       typeof reference.create_if_missing === 'boolean')
   )

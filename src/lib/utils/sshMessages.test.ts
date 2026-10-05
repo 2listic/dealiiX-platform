@@ -182,7 +182,7 @@ describe('submitCoralStageRemote parameter staging', () => {
     })
 
     expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
-      '/app/shared-data/nested/poisson.prm'
+      'nested/poisson.prm'
     )
   })
 

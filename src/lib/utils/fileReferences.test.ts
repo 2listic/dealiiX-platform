@@ -1,23 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import {
-  ConnectionType,
-  NodeType,
-  Type,
-  type StandardNodeDefinition,
-} from '../types/nodeTypes'
-
-const registry = vi.hoisted(() => ({
-  nodeDataByType: {} as Record<string, StandardNodeDefinition>,
-}))
-
-vi.mock('../stores/registryStore.svelte', () => ({
-  getNodeData: vi.fn((type: string): StandardNodeDefinition => {
-    const node = registry.nodeDataByType[type]
-    if (!node) throw new Error(`Node type '${type}' was not found`)
-    return structuredClone(node)
-  }),
-  isNodeInRegistry: vi.fn((type: string) => type in registry.nodeDataByType),
-}))
 
 import {
   buildRemoteStagedFileCommand,
@@ -31,7 +12,6 @@ vi.stubGlobal('window', { electron: { invoke } })
 
 beforeEach(() => {
   invoke.mockReset()
-  registry.nodeDataByType = {}
 })
 
 /** Answers the local file check with the subset of requested paths in `existing`. */
@@ -50,23 +30,6 @@ const leaf = (value: string) => ({
   documentation: value,
   pattern: '.*',
   pattern_description: '[Anything]',
-})
-
-const stagedTarget = (createIfMissing = false): StandardNodeDefinition => ({
-  type: 'ParameterAcceptor::initialize',
-  arguments: [
-    {
-      connection_type: ConnectionType.INPUT,
-      name: 'parameters',
-      type: Type.STRING,
-      file_scope: 'working',
-      staging: 'copy',
-      create_if_missing: createIfMissing,
-    },
-  ],
-  inputs: [0],
-  outputs: [],
-  node_type: NodeType.VOID_FUNCTION,
 })
 
 const stagedGraph = (value = 'configs/parameters.prm') => ({
@@ -227,9 +190,6 @@ describe('prepareGraphFileReferences', () => {
   })
 
   it('copies an existing staged file locally and keeps its relative graph path', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(),
-    }
     const copyCalls: unknown[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
@@ -262,7 +222,7 @@ describe('prepareGraphFileReferences', () => {
     ])
   })
 
-  it('uses explicit graph metadata on a parameter filename when the registry is generic', async () => {
+  it('copies an existing parameter file regardless of graph metadata', async () => {
     const copyCalls: unknown[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
@@ -300,10 +260,33 @@ describe('prepareGraphFileReferences', () => {
     ])
   })
 
+  it('copies an existing JSON parameter file without registry metadata', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.json']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+
+    const result = await prepareGraphFileReferences(
+      stagedGraph('configs/parameters.json'),
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.json')
+    expect(copyCalls).toHaveLength(1)
+  })
+
   it('uses the absolute working path for a missing creatable file without creating a placeholder', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(true),
-    }
     const channels: string[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
@@ -313,8 +296,10 @@ describe('prepareGraphFileReferences', () => {
       }
     )
 
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = { create_if_missing: true }
     const result = await prepareGraphFileReferences(
-      stagedGraph(),
+      graph,
       'local',
       '/work',
       '/work/run-42'
@@ -327,27 +312,18 @@ describe('prepareGraphFileReferences', () => {
   })
 
   it('rejects a missing non-creatable staged file before execution', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(),
-    }
     stubLocalFiles([])
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = { create_if_missing: false }
 
     await expect(
-      prepareGraphFileReferences(
-        stagedGraph(),
-        'local',
-        '/work',
-        '/work/run-42'
-      )
+      prepareGraphFileReferences(graph, 'local', '/work', '/work/run-42')
     ).rejects.toThrow(
       'Staged working file is missing and create_if_missing is false: /work/configs/parameters.prm'
     )
   })
 
   it('preserves nested paths and copies the same staged file only once', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(),
-    }
     const copyCalls: unknown[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
@@ -395,9 +371,6 @@ describe('prepareGraphFileReferences', () => {
   })
 
   it('recurses into nested subnetworks', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(),
-    }
     const copyCalls: unknown[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
@@ -437,9 +410,6 @@ describe('prepareGraphFileReferences', () => {
   })
 
   it('stages an existing file remotely without uploading its contents', async () => {
-    registry.nodeDataByType = {
-      'ParameterAcceptor::initialize': stagedTarget(),
-    }
     const commands: string[] = []
     invoke.mockImplementation(
       async (channel: string, payload: Record<string, unknown>) => {
