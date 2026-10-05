@@ -35,6 +35,7 @@ import {
   type QualifiedLeanNodes,
   type QualifiedNetwork,
   type StandardNodeDefinition,
+  normalizeWorkingFileReference,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
@@ -182,7 +183,7 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
         },
       }),
       ...(regularNode.working_file && {
-        working_file: { ...regularNode.working_file },
+        working_file: normalizeWorkingFileReference(regularNode.working_file),
       }),
     }
   }

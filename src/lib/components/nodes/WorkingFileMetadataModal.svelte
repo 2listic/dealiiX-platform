@@ -15,20 +15,11 @@
 
   let { modalId, fileName, currentMetadata, onSave }: Props = $props()
 
-  let fileScope = $state<WorkingFileReference['file_scope']>(
-    DEFAULT_WORKING_FILE_REFERENCE.file_scope
-  )
-  let staging = $state<WorkingFileReference['staging']>(
-    DEFAULT_WORKING_FILE_REFERENCE.staging
-  )
   let createIfMissing = $state(
     DEFAULT_WORKING_FILE_REFERENCE.create_if_missing ?? true
   )
 
   const resetForm = () => {
-    fileScope =
-      currentMetadata?.file_scope ?? DEFAULT_WORKING_FILE_REFERENCE.file_scope
-    staging = currentMetadata?.staging ?? DEFAULT_WORKING_FILE_REFERENCE.staging
     createIfMissing =
       currentMetadata?.create_if_missing ??
       DEFAULT_WORKING_FILE_REFERENCE.create_if_missing ??
@@ -42,8 +33,6 @@
 
   const save = () => {
     onSave({
-      file_scope: fileScope,
-      staging,
       create_if_missing: createIfMissing,
     })
     getModal(modalId)?.close()
@@ -65,27 +54,16 @@
     <h2>Configure parameter file</h2>
     <p>
       <code>{fileName}</code> does not exist in the configured working directory.
-      Choose how it should be handled when the graph runs.
+      Choose whether the graph may create it when it runs.
     </p>
-
-    <label for={`${modalId}-scope`}>File scope</label>
-    <select id={`${modalId}-scope`} bind:value={fileScope}>
-      <option value="working">working</option>
-    </select>
-
-    <label for={`${modalId}-staging`}>Staging</label>
-    <select id={`${modalId}-staging`} bind:value={staging}>
-      <option value="copy">copy to the run directory</option>
-    </select>
 
     <label class="checkbox-label">
       <input type="checkbox" bind:checked={createIfMissing} />
-      Create the file if it is missing
+      Allow creation if missing
     </label>
     <span class="hint">
-      The default is <code>working / copy / true</code>. The first run gives the
-      backend the absolute working path so it can generate the file; later runs
-      stage it as a relative path.
+      If enabled, the first run gives the backend the working path so it can
+      generate the file. Later runs open the generated parameter file directly.
     </span>
 
     <div class="button-container">
@@ -109,14 +87,6 @@
   p {
     margin: 0 0 0.5rem;
     line-height: 1.4;
-  }
-
-  select {
-    padding: 0.4rem;
-    border: 1px solid var(--ternary-color);
-    border-radius: 6px;
-    background: var(--secondary-color);
-    color: var(--ternary-color);
   }
 
   .checkbox-label {

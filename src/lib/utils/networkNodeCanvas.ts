@@ -14,6 +14,7 @@ import {
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
   isSubGraphNodeDefinition,
+  normalizeWorkingFileReference,
 } from '../types/nodeTypes'
 import { handleIdToIndex, createCustomEdge } from './canvasNodeUtils'
 import {
@@ -109,7 +110,7 @@ const toCanvasNodeFromProtocol = (
         },
       }),
       ...(protocolNode.working_file && {
-        working_file: { ...protocolNode.working_file },
+        working_file: normalizeWorkingFileReference(protocolNode.working_file),
       }),
     },
   }

@@ -64,8 +64,6 @@ describe('materializeParameterGraph', () => {
             ],
           },
           working_file: {
-            file_scope: 'working',
-            staging: 'copy',
             create_if_missing: true,
           },
         },
