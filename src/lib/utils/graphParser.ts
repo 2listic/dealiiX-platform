@@ -531,7 +531,7 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
           exposures: normalizeParameterExposures(data.parameter_file.exposures),
         }
       }
-      if (data.working_file) {
+      if ('working_file' in data && data.working_file) {
         node.working_file = { ...data.working_file }
       }
       acc[obj.id] = node
