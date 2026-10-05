@@ -100,7 +100,10 @@ const toCanvasNodeFromProtocol = (
       position,
       ...(protocolNode.name && { name: protocolNode.name }),
       ...(protocolNode.value !== undefined && { value: protocolNode.value }),
-      ...(protocolNode.base && { base: protocolNode.base }),
+      ...(protocolNode.base !== undefined && { base: protocolNode.base }),
+      ...(protocolNode.bases !== undefined && {
+        bases: [...protocolNode.bases],
+      }),
       ...(protocolNode.parameter_file && {
         parameter_file: {
           exposures: protocolNode.parameter_file.exposures.map((exposure) => ({

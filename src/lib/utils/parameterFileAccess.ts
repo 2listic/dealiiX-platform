@@ -1,5 +1,8 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
+import { normalizeRelativeParameterPath } from './workspacePath'
+
+export { normalizeRelativeParameterPath } from './workspacePath'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -10,37 +13,6 @@ export type ParameterFileTarget = {
 export type ParameterFileContent = {
   content: string
   resolvedPath: string
-}
-
-/** Normalises a relative POSIX path and rejects traversal outside its root. */
-export const normalizeRelativeParameterPath = (fileName: string): string => {
-  const normalized = fileName.trim().replaceAll('\\', '/')
-  if (
-    !normalized ||
-    normalized.startsWith('/') ||
-    /^[A-Za-z]:\//.test(normalized)
-  ) {
-    throw new Error(
-      'Parameter file names must be relative to the working directory'
-    )
-  }
-
-  const parts: string[] = []
-  for (const part of normalized.split('/')) {
-    if (!part || part === '.') continue
-    if (part === '..') {
-      if (parts.length === 0) {
-        throw new Error(
-          'Parameter file must remain inside the working directory'
-        )
-      }
-      parts.pop()
-    } else {
-      parts.push(part)
-    }
-  }
-  if (parts.length === 0) throw new Error('Parameter file name is empty')
-  return parts.join('/')
 }
 
 const shellEscape = (value: string): string =>
@@ -57,6 +29,12 @@ const remoteCommand = async (command: string, rejectOnNonZeroCode = true) =>
     rejectOnNonZeroCode,
   })
 
+/**
+ * Resolves a parameter or data filename against the active execution settings.
+ * @param location - Execution location containing the file.
+ * @param fileName - Relative filename inside the working directory.
+ * @returns Target containing the working directory and filename.
+ */
 export const parameterFileTarget = (
   location: ExecutionLocation,
   fileName: string
@@ -69,6 +47,11 @@ export const parameterFileTarget = (
   fileName,
 })
 
+/**
+ * Checks whether a parameter or data file exists at its target.
+ * @param target - File target to check.
+ * @returns Promise resolving to whether the file exists.
+ */
 export const parameterFileExists = async (
   target: ParameterFileTarget
 ): Promise<boolean> => {
@@ -89,6 +72,12 @@ export const parameterFileExists = async (
   }
 }
 
+/**
+ * Reads a parameter or data file from its target.
+ * @param target - File target to read.
+ * @returns Promise resolving to file content and resolved path.
+ * @throws Error when the target has no working directory or cannot be read.
+ */
 export const readParameterFile = async (
   target: ParameterFileTarget
 ): Promise<ParameterFileContent> => {
@@ -111,6 +100,13 @@ export const readParameterFile = async (
   }
 }
 
+/**
+ * Writes content to a parameter or data file target.
+ * @param target - File target to write.
+ * @param content - Content to write.
+ * @returns Promise resolved after the write completes.
+ * @throws Error when the target has no working directory or cannot be written.
+ */
 export const writeParameterFile = async (
   target: ParameterFileTarget,
   content: string

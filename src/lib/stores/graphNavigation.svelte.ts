@@ -20,12 +20,13 @@ import {
 import {
   handleIdToIndex,
   resolveInputArgument,
-  resolveOutputType,
+  resolveOutputTypeCandidates,
 } from '../utils/canvasNodeUtils'
 import type {
   NodeDefinitions,
   SubGraphNodeDefinition,
 } from '../types/nodeTypes'
+import { getBaseTypes, isTypeCompatible } from '../types/nodeTypes'
 import { toastState } from './toastsStore.svelte.js'
 import { graphStackState } from './graphStack.svelte'
 
@@ -382,13 +383,13 @@ const filterStaleParentEdges = (
       }
       const expectedType = updatedNetworkNode.arguments[argIndex]?.type
       const sourceNode = parentNodes.find((n) => n.id === edge.source)
-      const actualType = sourceNode
-        ? resolveOutputType(
+      const actualTypes = sourceNode
+        ? resolveOutputTypeCandidates(
             sourceNode.data as NodeDefinitions,
             handleIdToIndex(edge.sourceHandle as string)
           )
-        : null
-      if (actualType !== expectedType) {
+        : []
+      if (!actualTypes.some((type) => isTypeCompatible(type, expectedType))) {
         removedCount++
         return false
       }
@@ -400,15 +401,21 @@ const filterStaleParentEdges = (
         removedCount++
         return false
       }
-      const expectedType = updatedNetworkNode.arguments[argIndex]?.type
+      const outputArgument = updatedNetworkNode.arguments[argIndex]
       const targetNode = parentNodes.find((n) => n.id === edge.target)
-      const actualType = targetNode
+      const targetType = targetNode
         ? resolveInputArgument(
             targetNode.data as NodeDefinitions,
             handleIdToIndex(edge.targetHandle as string)
           )?.type
         : null
-      if (actualType !== expectedType) {
+      const outputTypes = outputArgument
+        ? [outputArgument.type, ...getBaseTypes(outputArgument)]
+        : []
+      if (
+        !targetType ||
+        !outputTypes.some((type) => isTypeCompatible(type, targetType))
+      ) {
         removedCount++
         return false
       }

@@ -4,7 +4,7 @@ import type {
   StandardNodeDefinition,
   RegisteredNodes,
 } from '../types/nodeTypes'
-import { Type } from '../types/nodeTypes'
+import { ConnectionType, NodeType, Type } from '../types/nodeTypes'
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
 import validQualifiedGraphNetworkNode from '../../../test_files/network-mwe-simplified-network-node-qualified.json'
 import defaultRegistry from '../data/defaultNodes.json'
@@ -37,6 +37,7 @@ import {
   removeQualifiedIds,
   parseGraphToProtocol,
   edgesFromProtocolToFlow,
+  nodesFromProtocolToFlow,
 } from './graphParser'
 import { parameterHandle } from './parameterPorts'
 
@@ -79,6 +80,55 @@ describe('validateGraphData', () => {
       expect(invalidEdges).toHaveLength(0)
     })
 
+    it('migrates an automatically persisted variant name to display_name', () => {
+      const type = 'RunLaplace<2>'
+      mockStore.nodeDataByType = {
+        [type]: {
+          type,
+          node_type: NodeType.FUNCTION,
+          arguments: [],
+          inputs: [],
+          outputs: [],
+          display_name: 'Run Laplace problem',
+          variant_name: 'Run · 2D',
+        },
+      }
+
+      const [node] = nodesFromProtocolToFlow({
+        '1': { type, name: 'Run · 2D' },
+      })
+
+      expect(node.data.name).toBe('Run Laplace problem')
+      const saved = parseGraphToProtocol([node], [])
+      expect(saved.workflow.nodes['1'].name).toBe('Run Laplace problem')
+    })
+
+    it('round-trips the Coral bases metadata', () => {
+      const type = 'Derived'
+      const bases = ['Base', 'Root']
+      mockStore.nodeDataByType = {
+        [type]: {
+          type,
+          node_type: NodeType.CONSTRUCTOR,
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          bases,
+        },
+      }
+
+      const [node] = nodesFromProtocolToFlow({
+        '1': { type, bases },
+      })
+
+      expect(node.data.bases).toEqual(bases)
+      expect(parseGraphToProtocol([node], []).workflow.nodes['1']).toEqual({
+        type,
+        bases,
+        position: { x: 0, y: 0 },
+      })
+    })
+
     it('throws error when node type is not found', () => {
       // Modify type of second node to trigger node not in the registry
       const invalidType = 'type_not_registered'
@@ -119,6 +169,140 @@ describe('validateGraphData', () => {
       expect(Object.keys(validEdges)).toHaveLength(8)
       expect(invalidEdges).toHaveLength(1)
       expect(invalidEdges[0].edgeId).toBe('1')
+    })
+
+    it('uses output_type when validating a function SELF output', () => {
+      const sourceType =
+        'Finite element space::std::function<ImmersX::FiniteElementSpaceView<2, 2> (const ImmersX::ElasticStaticProblem<2, 2> &)>'
+      const targetType =
+        'Scalar field::std::function<ImmersX::Field<2, 2, dealii::FEValuesExtractors::Scalar> (const ImmersX::FiniteElementSpaceView<2, 2> &, const std::string &)>'
+
+      mockStore.nodeDataByType = {
+        [sourceType]: {
+          type: sourceType,
+          node_type: NodeType.FUNCTION,
+          arguments: [
+            {
+              connection_type: 'input',
+              name: 'problem',
+              type: 'ImmersX::ElasticStaticProblem<2, 2>',
+            },
+          ],
+          inputs: [0],
+          outputs: [-1],
+          output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        },
+        [targetType]: {
+          type: targetType,
+          node_type: NodeType.FUNCTION,
+          arguments: [
+            {
+              connection_type: 'input',
+              name: 'space',
+              type: 'ImmersX::FiniteElementSpaceView<2,2>',
+            },
+            { connection_type: 'input', name: 'name', type: 'std::string' },
+          ],
+          inputs: [0, 1],
+          outputs: [-1],
+          output_type: 'ImmersX::Field<2,2,Scalar>',
+        },
+      } as unknown as RegisteredNodes
+
+      const functionGraph = {
+        workflow: {
+          nodes: {
+            '6': { type: sourceType },
+            '8': { type: targetType },
+          },
+          edges: {
+            '6': {
+              source: 6,
+              target: 8,
+              source_output: 0,
+              target_input: 0,
+            },
+          },
+        },
+      } as unknown as Network
+
+      const [validEdges, invalidEdges] = validateGraphData(functionGraph)
+
+      expect(Object.keys(validEdges)).toEqual(['6'])
+      expect(invalidEdges).toHaveLength(0)
+    })
+
+    it('keeps the concrete type when a derived value crosses a pass-through node', () => {
+      const baseType = 'dealii::ParameterAcceptor'
+      const derivedType = 'ImmersX::PoissonParameters<2,2>'
+      const passThroughType = 'Initialize parameters'
+      const targetType = 'ImmersX::Poisson<2,2>'
+
+      mockStore.nodeDataByType = {
+        [derivedType]: {
+          type: derivedType,
+          node_type: NodeType.CONSTRUCTOR,
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          base: baseType,
+        },
+        [passThroughType]: {
+          type: passThroughType,
+          node_type: NodeType.FUNCTION,
+          arguments: [
+            {
+              connection_type: ConnectionType.PASSTHROUGH,
+              name: 'parameter',
+              type: baseType,
+            },
+          ],
+          inputs: [0],
+          outputs: [0],
+        },
+        [targetType]: {
+          type: targetType,
+          node_type: NodeType.CONSTRUCTOR,
+          arguments: [
+            {
+              connection_type: ConnectionType.INPUT,
+              name: 'parameters',
+              type: derivedType,
+            },
+          ],
+          inputs: [0],
+          outputs: [-1],
+        },
+      } as unknown as RegisteredNodes
+
+      const passThroughGraph = {
+        workflow: {
+          nodes: {
+            '1': { type: derivedType },
+            '2': { type: passThroughType },
+            '3': { type: targetType },
+          },
+          edges: {
+            '1': {
+              source: 1,
+              target: 2,
+              source_output: 0,
+              target_input: 0,
+            },
+            '2': {
+              source: 2,
+              target: 3,
+              source_output: 0,
+              target_input: 0,
+            },
+          },
+        },
+      } as unknown as Network
+
+      const [validEdges, invalidEdges] = validateGraphData(passThroughGraph)
+
+      expect(Object.keys(validEdges)).toEqual(['1', '2'])
+      expect(invalidEdges).toHaveLength(0)
     })
   })
 
@@ -372,5 +556,29 @@ describe('parameter-node graph persistence', () => {
     const [validEdges, invalidEdges] = validateGraphData(graph)
     expect(Object.keys(validEdges)).toHaveLength(2)
     expect(invalidEdges).toHaveLength(0)
+  })
+
+  it('serializes only the concrete type, not palette metadata', () => {
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'GridGenerator::generate<2,2>',
+          operation: 'GridGenerator::generate',
+          display_name: 'Generate grid',
+          node_type: 'void_function',
+          arguments: [],
+          inputs: [],
+          outputs: [],
+        },
+      },
+    ] as any
+
+    const graph = parseGraphToProtocol(nodes, [])
+    expect(graph.workflow.nodes['1']).toEqual({
+      type: 'GridGenerator::generate<2,2>',
+      position: { x: 0, y: 0 },
+    })
   })
 })

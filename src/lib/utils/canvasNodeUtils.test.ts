@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 import {
+  ConnectionType,
   NodeType,
   TypeField,
   Type,
@@ -11,6 +12,7 @@ import {
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
+  canonicalNodeName,
   findCompatibleSourceNodesAsOptions,
   findCompatibleTargetNodesAsOptions,
   formatSuggestedNodeName,
@@ -18,7 +20,9 @@ import {
   getOutputTypeAndName,
   resolveConnectionAndCompatibleNodes,
   returnNodeName,
+  returnNodeSignature,
 } from './canvasNodeUtils'
+import { groupNodesByOperation } from './nodePalette'
 import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
@@ -55,9 +59,101 @@ describe('canvasNodeUtils', () => {
     }
 
     expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
-      connectionType: 'dealii::FiniteElement<2, 2>',
+      connectionType: 'dealii::FiniteElement<2, 2> | dealii::FE_Q<2, 2>',
+      connectionTypes: ['dealii::FiniteElement<2, 2>', 'dealii::FE_Q<2, 2>'],
       connectionName: 'my_fe',
     })
+  })
+
+  it('uses every bases entry for connection suggestions', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Derived',
+        node_type: NodeType.CONSTRUCTOR,
+        arguments: [],
+        inputs: [],
+        outputs: [-1],
+        bases: ['Base', 'Root'],
+      },
+    }
+    const targetNode = {
+      type: 'Consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: ConnectionType.INPUT, name: 'value', type: 'Root' },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const outputInfo = getOutputTypeAndName(sourceNode, 'output-0')
+
+    expect(outputInfo?.connectionTypes).toEqual(['Base', 'Root', 'Derived'])
+    expect(
+      findCompatibleTargetNodesAsOptions(
+        [targetNode] as unknown as NodeDefinitions[],
+        outputInfo?.connectionTypes ?? []
+      )
+    ).toHaveLength(1)
+  })
+
+  it('uses output_type for function SELF outputs', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.FUNCTION,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Finite element space::std::function<Space(const Problem &)>',
+        node_type: NodeType.FUNCTION,
+        arguments: [
+          {
+            connection_type: 'input',
+            name: 'problem',
+            type: 'ImmersX::ElasticStaticProblem<2, 2>',
+          },
+        ],
+        inputs: [0],
+        outputs: [-1],
+        output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+      },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'ImmersX::FiniteElementSpaceView<2,2>',
+      connectionName:
+        'Finite element space::std::function<Space(const Problem &)>',
+    })
+
+    const scalarFieldNode = {
+      type: 'Scalar field::std::function<Field(const Space &, const string &)>',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        },
+        { connection_type: 'input', name: 'name', type: 'std::string' },
+      ],
+      inputs: [0, 1],
+      outputs: [-1],
+      output_type: 'ImmersX::Field<2,2,Scalar>',
+    }
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: '1', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [scalarFieldNode] as unknown as NodeDefinitions[]
+    )
+
+    expect(resolved?.connectionType).toBe(
+      'ImmersX::FiniteElementSpaceView<2,2>'
+    )
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      scalarFieldNode.type
+    )
   })
 
   it('falls back to the node type when an elementary constructor has no base', () => {
@@ -251,6 +347,102 @@ describe('canvasNodeUtils', () => {
         outputs: [],
       })
     ).toBe('Target node type')
+  })
+
+  it('groups operation specializations but keeps legacy entries singleton', () => {
+    const specialized = [
+      {
+        ...registry['LaplaceProblem::run<1>'],
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      {
+        ...registry['LaplaceProblem::run<2>'],
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      registry['LaplaceProblem::run<3>'],
+    ] as NodeDefinitions[]
+
+    const groups = groupNodesByOperation(specialized as any)
+    expect(groups).toHaveLength(2)
+    expect(groups[0].displayName).toBe('Run Laplace problem')
+    expect(groups[0].nodes.map((node) => node.type)).toEqual([
+      'LaplaceProblem::run<1>',
+      'LaplaceProblem::run<2>',
+    ])
+    expect(groups[1].nodes).toHaveLength(1)
+  })
+
+  it('prefers a logical display name without changing concrete identity', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+    expect(returnNodeSignature(definition)).toBe('LaplaceProblem::run<2>')
+  })
+
+  it('uses the logical display name instead of the palette variant', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('repairs a persisted variant name when loading an older graph', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+      name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+    expect(canonicalNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('connects directly when an operation has one compatible specialization', () => {
+    const sourceNode = {
+      id: 'source',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: structuredClone(registry[Type.STRING]),
+    }
+    const stringSpecialization = {
+      type: 'consume_string',
+      operation: 'consume',
+      display_name: 'Consume',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: 'input', name: 'value', type: Type.STRING },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const intSpecialization = {
+      ...stringSpecialization,
+      type: 'consume_int',
+      arguments: [{ connection_type: 'input', name: 'value', type: Type.INT }],
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'source', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [stringSpecialization, intSpecialization] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      'consume_string'
+    )
   })
 
   it('clones created nodes and applies the requested name', () => {

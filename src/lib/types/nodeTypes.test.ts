@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_WORKING_FILE_REFERENCE,
+  HIDDEN_SIDEBAR_NODE_TYPES,
+  getBaseTypes,
   isWorkingFileReference,
   isTypeCompatible,
+  NodeType,
   Type,
 } from './nodeTypes'
 
@@ -61,7 +64,22 @@ describe('working-file metadata', () => {
   it('recognises metadata persisted on a graph value', () => {
     expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
     expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
-    expect(isWorkingFileReference({ create_if_missing: true })).toBe(true)
-    expect(isWorkingFileReference({ create_if_missing: false })).toBe(true)
+  })
+})
+
+describe('sidebar node visibility', () => {
+  it('keeps output-only value types out of the constructor palette', () => {
+    expect(HIDDEN_SIDEBAR_NODE_TYPES).toContain(NodeType.OUTPUT_ONLY)
+  })
+})
+
+describe('inheritance metadata', () => {
+  it('normalizes bases and the legacy base field without duplicates', () => {
+    expect(
+      getBaseTypes({
+        bases: ['Root', 'Base'],
+        base: 'Base',
+      })
+    ).toEqual(['Root', 'Base'])
   })
 })
