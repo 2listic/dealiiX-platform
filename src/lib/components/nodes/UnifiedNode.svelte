@@ -93,6 +93,7 @@
   import CubeIcon from '../icons/CubeIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
+  import { jobIdMapState } from '../../stores/jobsStore.svelte'
   import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
@@ -118,8 +119,7 @@
   import { isVtkFileName } from '../../utils/vtkFileFormat'
   import {
     buildVtkVisualizerUrl,
-    vtkVisualizerFileExists,
-    vtkVisualizerTarget,
+    findVtkVisualizerTarget,
   } from '../../utils/vtkVisualizer'
   import { openNewWindow } from '../../utils/sshMessages'
   import {
@@ -270,9 +270,15 @@
 
   const handleOpenVtkFile = async () => {
     try {
-      const target = vtkVisualizerTarget(activeLocation, valueForNode() ?? '')
-      if (!(await vtkVisualizerFileExists(target))) {
-        throw new Error('VTK file is not available in the working directory')
+      const target = await findVtkVisualizerTarget(
+        activeLocation,
+        valueForNode() ?? '',
+        jobIdMapState.getLatestRunWorkingDirectory()
+      )
+      if (!target) {
+        throw new Error(
+          'VTK file is not available in the working directory or the last run directory'
+        )
       }
       await openNewWindow(
         buildVtkVisualizerUrl(settingsState.urlVisualizer, target)

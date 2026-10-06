@@ -126,6 +126,20 @@ export const jobIdMapState = {
     return jobIdMap[jobIdScheduler]?.workingDirectory
   },
   /**
+   * Returns the working directory of the newest job in the active job list.
+   * The job list is kept newest-first for both local and remote execution.
+   * @returns The latest run directory, or undefined when it is unavailable.
+   */
+  getLatestRunWorkingDirectory(): string | undefined {
+    for (const row of jobs.slice(1)) {
+      const jobId = row[0]
+      if (!jobId) continue
+      const workingDirectory = jobIdMap[jobId]?.workingDirectory
+      if (workingDirectory) return workingDirectory
+    }
+    return undefined
+  },
+  /**
    * Resolves the full job entry by internal id (used by node-status lookups, which
    * only carry the internal id, to recover both backend kind and working directory).
    * @param jobIdInternal - The internal job ID.
