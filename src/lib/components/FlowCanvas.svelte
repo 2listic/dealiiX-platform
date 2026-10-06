@@ -64,9 +64,15 @@
   } from '../utils/canvasNodeUtils'
   import { createOverloadFamilies } from '../utils/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
+  import { graphViewportState } from '../stores/graphViewport.svelte'
 
-  const { screenToFlowPosition, getNode, getIntersectingNodes } =
+  const { screenToFlowPosition, getNode, getIntersectingNodes, getViewport } =
     useSvelteFlow()
+  const initialViewport = graphViewportState.value
+
+  const saveViewport = () => {
+    graphViewportState.save(getViewport())
+  }
 
   let isEditingBreadcrumb = $state(false)
   let breadcrumbNameDraft = $state('')
@@ -391,8 +397,11 @@
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}
     {nodeTypes}
-    fitView
+    fitView={!initialViewport}
+    initialViewport={initialViewport ?? undefined}
     {isValidConnection}
+    oninit={saveViewport}
+    onmove={saveViewport}
     onconnectstart={handleConnectStart}
     onconnect={() => {
       graphHistoryState.checkpoint()
