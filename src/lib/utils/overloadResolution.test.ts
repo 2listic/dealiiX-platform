@@ -100,6 +100,90 @@ describe('overload families', () => {
     expect(entries[0].display_name).toBe('Gradient')
   })
 
+  it('groups class methods into one family even when operations differ', () => {
+    const scalarKnownTerm = {
+      ...definition(
+        'known_term<scalar>',
+        ['KnownSourceScalar', 'TestScalar'],
+        'KnownTermScalar',
+        'Known term'
+      ),
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    }
+    const vectorKnownTerm = {
+      ...definition(
+        'known_term<vector>',
+        ['KnownSourceVector', 'TestVector'],
+        'KnownTermVector',
+        'Vector Known term'
+      ),
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    }
+
+    const entries = createOverloadFamilies([
+      scalarKnownTerm,
+      vectorKnownTerm,
+    ])
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].node_type).toBe(NodeType.OVERLOAD)
+    if (!isOverloadNodeDefinition(entries[0])) return
+    expect(entries[0].candidates).toEqual([scalarKnownTerm, vectorKnownTerm])
+  })
+
+  it('does not add callable implementation aliases to overload families', () => {
+    const scalarKnownTerm = {
+      ...definition(
+        'known_term<scalar>',
+        ['KnownSourceScalar', 'TestScalar'],
+        'KnownTermScalar',
+        'Known term'
+      ),
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    }
+    const scalarAlias = {
+      ...definition(
+        'known_term<scalar>::std::function<...>',
+        ['KnownSourceScalar', 'TestScalar'],
+        'KnownTermScalar',
+        'Known term'
+      ),
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    }
+    const vector = {
+      ...definition(
+        'known_term<vector>',
+        ['KnownSourceVector', 'TestVector'],
+        'KnownTermVector',
+        'Vector Known term'
+      ),
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    }
+
+    const entries = createOverloadFamilies([
+      scalarKnownTerm,
+      scalarAlias,
+      vector,
+    ])
+
+    expect(entries).toHaveLength(1)
+    if (!isOverloadNodeDefinition(entries[0])) return
+    expect(entries[0].candidates.map((candidate) => candidate.type)).toEqual([
+      scalarKnownTerm.type,
+      vector.type,
+    ])
+  })
+
   it('filters candidates from an input connection', () => {
     const family = createOverloadNodeDefinition([
       scalarGradient,

@@ -429,6 +429,31 @@ describe('canvasNodeUtils', () => {
     expect(returnNodeName(definition)).toBe('Boundary conditions')
   })
 
+  it('repairs old owner-prefixed constructor names', () => {
+    const definitions = [
+      ['Boundary conditions', 'BoundaryConditions'],
+      ['Linear execution', 'LinearExecution'],
+      ['Known term', 'KnownTerm'],
+    ] as const
+
+    for (const [displayName, className] of definitions) {
+      expect(
+        returnNodeName({
+          type: `${displayName}<2,2>`,
+          node_type: NodeType.FUNCTION,
+          arguments: [],
+          inputs: [],
+          outputs: [],
+          operation: displayName,
+          display_name: displayName,
+          class_name: className,
+          method_name: 'create',
+          name: `${displayName} -> ${displayName}`,
+        } as NodeDefinitions)
+      ).toBe(displayName)
+    }
+  })
+
   it('uses the logical display name instead of the palette variant', () => {
     const definition = {
       ...registry['LaplaceProblem::run<2>'],

@@ -26,7 +26,9 @@ import {
 import {
   displayTypeName,
   nodeConcreteSignature,
+  nodeLegacyOwnerDisplayName,
   nodeOwnerDisplayName,
+  nodePaletteDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
 } from './nodePalette'
@@ -383,6 +385,8 @@ export const canonicalNodeName = (
       registryNode.variant_name,
       registryNode.operation,
       registryNode.method_name,
+      nodePaletteDisplayName(registryNode),
+      nodeLegacyOwnerDisplayName(registryNode),
     ]
       .filter((value): value is string => Boolean(value?.trim()))
       .map((value) => value.trim())
