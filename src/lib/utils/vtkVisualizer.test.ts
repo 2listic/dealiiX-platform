@@ -46,23 +46,38 @@ describe('VTK visualizer deep links', () => {
     ).toThrow(/remain inside/)
   })
 
-  it('falls back to the latest run directory when the configured directory misses the file', async () => {
+  it('maps a file in the latest nested run directory to the visualizer root', async () => {
     access.parameterFileExists.mockImplementation(
       async (target: { workingDirectory: string }) =>
-        target.workingDirectory === '/remote/run-2'
+        target.workingDirectory === '/configured/workspace/run-2'
     )
 
     const target = await findVtkVisualizerTarget(
       'remote',
       'results/solution.pvd',
-      '/remote/run-2'
+      '/configured/workspace/run-2'
     )
 
     expect(access.parameterFileExists).toHaveBeenCalledTimes(2)
     expect(target).toEqual({
       location: 'remote',
-      workingDirectory: '/remote/run-2',
-      fileName: 'results/solution.pvd',
+      workingDirectory: '/configured/workspace',
+      fileName: 'run-2/results/solution.pvd',
     })
+  })
+
+  it('does not create a visualizer link for a run outside the configured root', async () => {
+    access.parameterFileExists.mockImplementation(
+      async (target: { workingDirectory: string }) =>
+        target.workingDirectory === '/other/run-2'
+    )
+
+    const target = await findVtkVisualizerTarget(
+      'remote',
+      'results/solution.pvd',
+      '/other/run-2'
+    )
+
+    expect(target).toBeUndefined()
   })
 })

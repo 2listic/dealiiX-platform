@@ -5,6 +5,7 @@ import {
   type ParameterFileTarget,
 } from './parameterFileAccess'
 import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
+import { normalizeRelativeParameterPath } from './workspacePath'
 
 export { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
 
@@ -28,9 +29,45 @@ export const vtkVisualizerTarget = (
     : configuredTarget
 }
 
+/** Normalizes directory separators and removes trailing separators. */
+const normalizeDirectory = (directory: string): string => {
+  const normalized = directory.trim().replaceAll('\\', '/')
+  const withoutTrailingSeparators = normalized.replace(/\/+$/, '')
+  return withoutTrailingSeparators || (normalized.startsWith('/') ? '/' : '')
+}
+
+/**
+ * Converts a file found below a run directory into a path below the configured
+ * visualizer directory. The visualizer intentionally rejects working
+ * directories other than its configured data directory, so a run directory
+ * outside that root cannot be represented by a safe deep link.
+ */
+const fileNameFromConfiguredDirectory = (
+  configuredDirectory: string,
+  fileDirectory: string,
+  fileName: string
+): string | undefined => {
+  const configured = normalizeDirectory(configuredDirectory)
+  const directory = normalizeDirectory(fileDirectory)
+  if (!configured || !directory) return undefined
+
+  const relativeFileName = normalizeRelativeParameterPath(fileName)
+  if (configured === directory) return relativeFileName
+
+  const configuredPrefix = configured === '/' ? '/' : `${configured}/`
+  if (!directory.startsWith(configuredPrefix)) return undefined
+
+  const relativeDirectory = directory.slice(configuredPrefix.length)
+  return relativeDirectory
+    ? `${relativeDirectory}/${relativeFileName}`
+    : relativeFileName
+}
+
 /**
  * Finds a VTK file in the configured working directory or the latest run
- * directory, preserving the directory where the file was found for the URL.
+ * directory. Files found in a run directory are returned relative to the
+ * configured working directory, which is the only working directory accepted
+ * by the visualizer endpoint.
  * @param location - Execution location containing the file.
  * @param fileName - Relative VTK filename.
  * @param latestRunDirectory - Most recent run directory, if available.
@@ -50,7 +87,19 @@ export const findVtkVisualizerTarget = async (
 
   for (const workingDirectory of uniqueDirectories) {
     const target = vtkVisualizerTarget(location, fileName, workingDirectory)
-    if (await vtkVisualizerFileExists(target)) return target
+    if (!(await vtkVisualizerFileExists(target))) continue
+
+    const visualizerFileName = fileNameFromConfiguredDirectory(
+      configuredTarget.workingDirectory,
+      workingDirectory,
+      fileName
+    )
+    if (!visualizerFileName) return undefined
+
+    return {
+      ...configuredTarget,
+      fileName: visualizerFileName,
+    }
   }
 
   return undefined
