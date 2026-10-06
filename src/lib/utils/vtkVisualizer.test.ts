@@ -1,7 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const access = vi.hoisted(() => ({
+  parameterFileExists: vi.fn(),
+  parameterFileTarget: vi.fn((location: string, fileName: string) => ({
+    location,
+    workingDirectory: '/configured/workspace',
+    fileName,
+  })),
+}))
+
+vi.mock('./parameterFileAccess', () => access)
+
+import { findVtkVisualizerTarget } from './vtkVisualizer'
 import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
 
 describe('VTK visualizer deep links', () => {
+  beforeEach(() => {
+    access.parameterFileExists.mockReset()
+  })
+
   it('passes the working directory and relative file to the visualizer', () => {
     const target = {
       workingDirectory: '/remote/workspace',
@@ -27,5 +44,25 @@ describe('VTK visualizer deep links', () => {
     expect(() =>
       buildVtkVisualizerUrl('http://localhost:8008', target)
     ).toThrow(/remain inside/)
+  })
+
+  it('falls back to the latest run directory when the configured directory misses the file', async () => {
+    access.parameterFileExists.mockImplementation(
+      async (target: { workingDirectory: string }) =>
+        target.workingDirectory === '/remote/run-2'
+    )
+
+    const target = await findVtkVisualizerTarget(
+      'remote',
+      'results/solution.pvd',
+      '/remote/run-2'
+    )
+
+    expect(access.parameterFileExists).toHaveBeenCalledTimes(2)
+    expect(target).toEqual({
+      location: 'remote',
+      workingDirectory: '/remote/run-2',
+      fileName: 'results/solution.pvd',
+    })
   })
 })
