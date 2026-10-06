@@ -114,6 +114,7 @@
     type WorkingFileReference,
   } from '../../types/nodeTypes'
   import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import { displayTypeName } from '../../utils/nodePalette'
   import { isVtkFileName } from '../../utils/vtkFileFormat'
   import {
     buildVtkVisualizerUrl,
@@ -396,7 +397,9 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      <div class="node-name" title={data.type}>{nodeDisplayName}</div>
+      <div class="node-name" title={displayTypeName(data.type)}>
+        {nodeDisplayName}
+      </div>
       {#if isOverloadNode && currentOverloadStatus}
         <div class="overload-status" data-status={currentOverloadStatus}>
           {currentOverloadStatus === 'resolved'
@@ -561,7 +564,9 @@
               <div class="input-label">
                 {data.arguments[i].name}
               </div>
-              <div class="input-type">{data.arguments[i].type}</div>
+              <div class="input-type">
+                {displayTypeName(data.arguments[i].type)}
+              </div>
             </div>
           {/if}
         {/each}
@@ -573,7 +578,9 @@
               <div class="output-label">
                 {data.arguments[i].name}
               </div>
-              <div class="output-type">{data.arguments[i].type}</div>
+              <div class="output-type">
+                {displayTypeName(data.arguments[i].type)}
+              </div>
             </div>
           {/if}
         {/each}

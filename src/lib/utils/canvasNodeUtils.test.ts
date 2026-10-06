@@ -339,6 +339,9 @@ describe('canvasNodeUtils', () => {
     expect(formatSuggestedNodeName('my_connection_name')).toBe(
       'My connection name'
     )
+    expect(formatSuggestedNodeName('ImmersX::LinearExecution')).toBe(
+      'LinearExecution'
+    )
   })
 
   it('builds default node names from the node definition type', () => {
@@ -387,6 +390,27 @@ describe('canvasNodeUtils', () => {
 
     expect(returnNodeName(definition)).toBe('Run Laplace problem')
     expect(returnNodeSignature(definition)).toBe('LaplaceProblem::run<2>')
+  })
+
+  it('includes the registered owner in canvas names', () => {
+    const definition = {
+      type: 'Add constraint to linear execution<2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'Add constraint to linear execution',
+      display_name: 'Add constraint',
+      class_name: 'LinearExecution',
+      method_name: 'add_constraint',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe(
+      'Linear execution -> Add constraint'
+    )
+    expect(returnNodeName({ ...definition, name: 'Add constraint' })).toBe(
+      'Linear execution -> Add constraint'
+    )
   })
 
   it('uses the logical display name instead of the palette variant', () => {

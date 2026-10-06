@@ -24,7 +24,9 @@ import {
   parameterPortCoralType,
 } from './parameterPorts'
 import {
+  displayTypeName,
   nodeConcreteSignature,
+  nodeOwnerDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
 } from './nodePalette'
@@ -342,7 +344,7 @@ export const getInputTypeAndName = (
  * @returns Display name (e.g. `"My node name"`), or `""` if input is blank.
  */
 export const formatSuggestedNodeName = (name: string): string => {
-  const normalized = name.replaceAll('_', ' ').trim()
+  const normalized = displayTypeName(name).replaceAll('_', ' ').trim()
   if (!normalized) {
     return ''
   }
@@ -371,7 +373,24 @@ export const canonicalNodeName = (
       registryNode.display_name?.trim() &&
       registryNode.variant_name?.trim() === node.name.trim()
     ) {
-      return registryNode.display_name.trim()
+      return registryNode.class_name
+        ? nodeOwnerDisplayName(registryNode)
+        : registryNode.display_name.trim()
+    }
+
+    const oldGeneratedNames = [
+      registryNode.display_name,
+      registryNode.variant_name,
+      registryNode.operation,
+      registryNode.method_name,
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .map((value) => value.trim())
+    if (
+      registryNode.class_name &&
+      oldGeneratedNames.includes(node.name.trim())
+    ) {
+      return nodeOwnerDisplayName(registryNode)
     }
   }
 
@@ -397,7 +416,7 @@ export const returnNodeName = (node: NodeDefinitions): string => {
       return formatSuggestedNodeName(node.display_name)
     }
     const registryNode = node as StandardNodeDefinition
-    return formatSuggestedNodeName(nodePaletteNodeName(registryNode))
+    return formatSuggestedNodeName(nodeOwnerDisplayName(registryNode))
   }
 
   return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))

@@ -3,6 +3,7 @@ import { NodeType, type StandardNodeDefinition } from '../types/nodeTypes'
 import {
   groupNodesByClass,
   groupNodesByOperation,
+  nodeOwnerDisplayName,
   nodeClassName,
   nodeDimensionTag,
   nodeNamespace,
@@ -173,7 +174,24 @@ describe('node palette metadata', () => {
       'Add scalar field',
       'Add vector field',
     ])
+    expect(nodeOwnerDisplayName(scalar)).toBe(
+      'Output handler -> Add scalar field'
+    )
+    expect(nodeOwnerDisplayName(vector)).toBe(
+      'Output handler -> Add vector field'
+    )
     expect(items[1]).toMatchObject({ kind: 'node' })
+  })
+
+  it('removes the ImmersX namespace from user-facing labels', () => {
+    const definition = node('ImmersX::LinearExecution<2>', {
+      operation: 'ImmersX::LinearExecution::solve',
+      display_name: 'ImmersX::Solve',
+      class_name: 'ImmersX::LinearExecution',
+      method_name: 'solve',
+    })
+
+    expect(nodeOwnerDisplayName(definition)).toBe('Linear execution -> Solve')
   })
 
   it('extracts the owner and operation from registry suffixes', () => {
