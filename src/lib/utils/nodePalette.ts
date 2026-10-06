@@ -1,31 +1,28 @@
 import { NodeType, type StandardNodeDefinition } from '../types/nodeTypes'
-import { overloadGroupKey } from './overloadResolution'
 
 /** A logical operation and the concrete registry definitions that implement it. */
 export type NodePaletteGroup = {
   key: string
   operation?: string
-  family?: string
-  category?: string
+  className?: string
+  methodName?: string
   overloadGroup?: string
   displayName: string
   nodes: StandardNodeDefinition[]
-  children?: NodePaletteGroup[]
 }
 
-/** A concrete specialization inside a legacy class family. */
-export type NodePaletteSubgroup = {
+/** A class-owned group of method operations shown together in the palette. */
+export type NodePaletteClassGroup = {
+  kind: 'class'
   key: string
   displayName: string
-  nodes: StandardNodeDefinition[]
+  groups: NodePaletteGroup[]
 }
 
-/** A legacy class family, optionally split into dimension specializations. */
-export type NodePaletteFamily = {
-  key: string
-  displayName: string
-  subgroups: NodePaletteSubgroup[]
-}
+/** A palette entry that is either free-standing or owned by a class. */
+export type NodePaletteItem =
+  | NodePaletteClassGroup
+  | { kind: 'node'; key: string; group: NodePaletteGroup }
 
 const humanize = (value: string): string => {
   const normalized = value.replaceAll('_', ' ').trim()
@@ -34,41 +31,46 @@ const humanize = (value: string): string => {
     : ''
 }
 
-const elementaryConstructorGroupKey = 'elementary-constructors'
-const elementaryConstructorGroupName = 'Elementary'
+const humanizeClassName = (value: string): string => {
+  const name = value
+    .split('::')
+    .at(-1)
+    ?.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2')
+    .trim()
 
-/**
- * Returns the receiver category encoded by an explicit operation name.
- *
- * Coral operations such as "Add problem to linear execution" describe the
- * receiver in their stable operation metadata even when the registry entry is
- * a free function. Keeping that metadata-driven relationship lets the palette
- * show the operation as a receiver method without changing its concrete node.
- */
-const operationOwner = (node: StandardNodeDefinition): string | undefined => {
-  const operation = node.operation?.trim()
-  if (!operation) return undefined
+  if (!name) return ''
 
-  const match = operation.match(/\bto\s+(.+)$/i)
-  return match?.[1]?.trim() || undefined
+  return name
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word, index) => {
+      if (index === 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1)
+      }
+      return /^[A-Z0-9]+$/.test(word) ? word : word.toLowerCase()
+    })
+    .join(' ')
 }
 
 /**
  * Returns the stable grouping key for a registry entry.
  *
- * Entries without `operation` are grouped by their namespace. This gives
- * legacy registries a useful family structure without changing their concrete
- * type identifiers.
+ * Methods and class constructors are grouped after their numeric template
+ * arguments have been removed. Consequently `Class<1, 2>` and `Class<2, 2>`
+ * share one palette entry, as do all dimensional specializations of
+ * `Class::method`.
  *
  * @param node - Concrete registry definition.
  * @returns Stable key used to group the node in the palette.
  */
 export const nodePaletteKey = (node: StandardNodeDefinition): string => {
   if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
-    return elementaryConstructorGroupKey
+    return `elementary:${node.type}`
   }
-  const group = overloadGroupKey(node)
-  return group ? `operation:${group}` : `namespace:${nodeNamespace(node.type)}`
+  const operation = node.operation?.trim()
+  if (operation) return `operation:${paletteOperationName(node)}`
+  if (isMethodNode(node)) return `method:${methodPaletteName(node.type)}`
+  return `type:${canonicalTypeName(node.type)}`
 }
 
 const qualifiedTypeParts = (type: string): string[] => {
@@ -152,32 +154,75 @@ const deduplicateImplementationAliases = (
   })
 }
 
-/** Returns the class/template part that owns a legacy node. */
-const nodeOwnerType = (node: StandardNodeDefinition): string => {
-  const parts = qualifiedTypeParts(node.type.trim())
-  if (!parts.length) return node.type
+/** Removes numeric template arguments while preserving the registry spelling. */
+const canonicalTypeName = (type: string): string =>
+  qualifiedTypeParts(type.trim())
+    .map((part) => readableTypePartName(part))
+    .join('::')
+
+/** Returns the compact `Class::method` spelling used by the palette. */
+const methodPaletteName = (type: string): string => {
+  const unwrappedType = wrapperBaseType(type) ?? type
+  const parts = qualifiedTypeParts(unwrappedType.trim())
+  if (parts.length < 2) return canonicalTypeName(unwrappedType)
+
   const ownerIndex = numericTemplatePartIndex(parts)
-  if (ownerIndex >= 0) {
-    return typePartNameAndTag(parts[ownerIndex]).name
+  const methodIndex =
+    ownerIndex >= 0 && ownerIndex === parts.length - 1
+      ? parts.length - 1
+      : ownerIndex >= 0 && ownerIndex + 1 < parts.length
+        ? ownerIndex + 1
+        : parts.length - 1
+  const owner = readableTypePartName(parts[methodIndex - 1] ?? '')
+  const method = readableTypePartName(parts[methodIndex] ?? '')
+  return [owner, method].filter(Boolean).join('::')
+}
+
+const paletteOperationName = (node: StandardNodeDefinition): string => {
+  const operation = node.operation?.trim() ?? ''
+  return operation.includes('::') ? canonicalTypeName(operation) : operation
+}
+
+const classPaletteName = (type: string): string => {
+  const parts = qualifiedTypeParts(type.trim())
+  return readableTypePartName(parts.at(-1) ?? type)
+}
+
+const methodMemberName = (node: StandardNodeDefinition): string => {
+  const explicitName = node.display_name?.trim()
+  if (explicitName) return humanize(explicitName)
+
+  const registeredName = node.method_name?.trim()
+  if (registeredName) return humanize(registeredName)
+
+  const operation = node.operation?.trim()
+  if (operation?.includes('::')) {
+    return humanize(operation.split('::').at(-1) ?? operation)
   }
 
-  const wrapperIndex = functionWrapperIndex(parts)
-  return wrapperIndex >= 0
-    ? (parts[wrapperIndex + 1] ?? node.type)
-    : isMethodNode(node) && parts.length > 1
-      ? (parts.at(-2) ?? node.type)
-      : (parts.at(-1) ?? node.type)
+  if (isMethodNode(node)) {
+    return humanize(methodPaletteName(node.type).split('::').at(-1) ?? '')
+  }
+
+  return nodePaletteDisplayName(node)
 }
 
-const nodeSpecializationKey = (node: StandardNodeDefinition): string => {
-  const tag = nodeDimensionTag(node.type)
-  return tag ? tag.slice(2) : 'default'
+/** Returns the explicit class owner advertised by a registry node. */
+const nodeClassOwnerName = (
+  node: StandardNodeDefinition
+): string | undefined => {
+  const explicitClass = node.class_name?.trim()
+  if (explicitClass) return classPaletteName(explicitClass)
+  return undefined
 }
 
-const nodeSpecializationName = (node: StandardNodeDefinition): string => {
-  const tag = nodeDimensionTag(node.type)
-  return tag ? tag.slice(2) : ''
-}
+const isClassMethodNode = (node: StandardNodeDefinition): boolean =>
+  Boolean(node.class_name?.trim())
+
+const classNodeTypes = new Set<NodeType>([
+  NodeType.EMPTY_CONSTRUCTOR,
+  NodeType.CONSTRUCTOR,
+])
 
 /**
  * Returns the namespace portion of a concrete registry type.
@@ -262,14 +307,22 @@ export const nodeSimpleDisplayName = (type: string): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
-  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) {
-    return elementaryConstructorGroupName
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) return node.type
+  if (node.class_name?.trim() && node.method_name?.trim()) {
+    return humanize(node.display_name?.trim() || node.method_name)
   }
-  const explicitName =
-    node.overload_group?.trim() ||
-    node.display_name?.trim() ||
-    node.operation?.trim()
-  return explicitName ? humanize(explicitName) : nodeNamespace(node.type)
+  if (isMethodNode(node)) {
+    if (node.display_name?.trim()) return humanize(node.display_name)
+    return node.operation?.includes('::')
+      ? paletteOperationName(node)
+      : methodPaletteName(node.type)
+  }
+  if (node.operation?.trim()) {
+    const operation = paletteOperationName(node)
+    return humanize(node.display_name?.trim() || operation)
+  }
+  if (classNodeTypes.has(node.node_type)) return classPaletteName(node.type)
+  return canonicalTypeName(node.type)
 }
 
 /**
@@ -292,93 +345,69 @@ export const groupNodesByOperation = (
       continue
     }
 
-    const isElementary = node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR
-    const operation = isElementary ? undefined : node.operation?.trim()
-    const overloadGroup = isElementary ? undefined : node.overload_group?.trim()
-    const family =
-      isElementary || operation || overloadGroup
-        ? undefined
-        : nodeNamespace(node.type)
+    const operation = node.operation?.trim()
+    const overloadGroup = node.overload_group?.trim()
+    const className = nodeClassOwnerName(node)
     groups.set(key, {
       key,
       ...(operation ? { operation } : {}),
+      ...(className ? { className } : {}),
+      ...(className ? { methodName: methodMemberName(node) } : {}),
       ...(overloadGroup ? { overloadGroup } : {}),
-      ...(family ? { family } : {}),
       displayName: nodePaletteDisplayName(node),
       nodes: [node],
     })
   }
 
-  const topLevelGroups: NodePaletteGroup[] = []
-  const categoryGroups = new Map<string, NodePaletteGroup>()
-
-  for (const group of groups.values()) {
-    const categoryName = operationOwner(group.nodes[0])
-    if (!categoryName) {
-      topLevelGroups.push(group)
-      continue
-    }
-
-    const categoryKey = `category:${categoryName.toLowerCase()}`
-    const category = categoryGroups.get(categoryKey)
-    if (category) {
-      category.children!.push(group)
-      continue
-    }
-
-    const newCategory: NodePaletteGroup = {
-      key: categoryKey,
-      category: categoryName,
-      displayName: humanize(categoryName),
-      nodes: [],
-      children: [group],
-    }
-    categoryGroups.set(categoryKey, newCategory)
-    topLevelGroups.push(newCategory)
-  }
-
-  return topLevelGroups
+  return [...groups.values()]
 }
 
 /**
- * Groups legacy namespace entries by their concrete class/template family.
- * @param nodes - Registry definitions to group.
- * @returns Concrete family subgroups.
+ * Groups method-like operations below their owning class while leaving all
+ * other nodes as free-standing palette entries. A class section is created
+ * even for one method; the distinction is whether the class has any methods,
+ * not how many overloads a method has.
  */
-export const groupNodesByFamily = (
+export const groupNodesByClass = (
   nodes: StandardNodeDefinition[]
-): NodePaletteFamily[] => {
-  const families = new Map<string, NodePaletteFamily>()
+): NodePaletteItem[] => {
+  const items: NodePaletteItem[] = []
+  const classGroups = new Map<string, NodePaletteClassGroup>()
 
-  for (const node of deduplicateImplementationAliases(nodes)) {
-    const ownerType = nodeOwnerType(node)
-    const family = families.get(ownerType)
-    if (!family) {
-      families.set(ownerType, {
-        key: ownerType,
-        displayName: nodeSimpleDisplayName(ownerType),
-        subgroups: [],
-      })
+  for (const group of groupNodesByOperation(nodes)) {
+    const firstNode = group.nodes[0]
+    if (!firstNode || !isClassMethodNode(firstNode)) {
+      items.push({ kind: 'node', key: `node:${group.key}`, group })
+      continue
     }
 
-    const currentFamily = families.get(ownerType)!
-    const specialization = nodeSpecializationKey(node)
-    const subgroupKey = `${ownerType}:${specialization}`
-    const subgroup = currentFamily.subgroups.find(
-      (candidate) => candidate.key === subgroupKey
-    )
-    if (subgroup) {
-      subgroup.nodes.push(node)
-    } else {
-      currentFamily.subgroups.push({
-        key: subgroupKey,
-        displayName: nodeSpecializationName(node),
-        nodes: [node],
-      })
+    const className = group.className || nodeClassOwnerName(firstNode)
+    if (!className) {
+      items.push({ kind: 'node', key: `node:${group.key}`, group })
+      continue
     }
+
+    const key = `class:${className.toLowerCase()}`
+    let classGroup = classGroups.get(key)
+    if (!classGroup) {
+      classGroup = {
+        kind: 'class',
+        key,
+        displayName: humanizeClassName(className),
+        groups: [],
+      }
+      classGroups.set(key, classGroup)
+      items.push(classGroup)
+    }
+
+    classGroup.groups.push({
+      ...group,
+      className,
+      methodName: group.methodName || methodMemberName(firstNode),
+    })
   }
 
-  return [...families.values()]
+  return items
 }
 
 /**
@@ -390,22 +419,16 @@ export const nodeConcreteSignature = (node: StandardNodeDefinition): string =>
   node.type
 
 /**
- * Returns the readable specialization label when a plugin provides one.
- * Legacy registries fall back to their concrete type exactly as before.
+ * Returns the readable specialization label when a plugin provides one;
+ * methods always retain their canonical `Class::method` spelling.
  *
  * @param node - Registry definition to label.
  * @returns Human-readable specialization label.
  */
 export const nodeVariantName = (node: StandardNodeDefinition): string =>
-  node.variant_name?.trim() ||
-  (node.operation?.trim() || node.display_name?.trim()
-    ? nodeConcreteSignature(node)
-    : nodeSimpleDisplayName(node.type))
-
-const registryName = (node: StandardNodeDefinition): string => {
-  const name = node.name?.trim()
-  return name && name !== node.type ? name : ''
-}
+  isMethodNode(node)
+    ? nodePaletteDisplayName(node)
+    : node.variant_name?.trim() || nodePaletteDisplayName(node)
 
 /**
  * Returns exactly the label used for a node in the palette.
@@ -418,54 +441,17 @@ export const nodePaletteNodeName = (
   hasSpecializations = false
 ): string => {
   if (hasSpecializations) return nodeVariantName(node)
-
-  const explicitName =
-    registryName(node) ||
-    node.display_name?.trim() ||
-    node.operation?.trim() ||
-    node.overload_group?.trim()
+  if (isMethodNode(node)) return nodePaletteDisplayName(node)
+  const explicitName = node.display_name?.trim() || node.operation?.trim()
   if (explicitName) return humanize(explicitName)
-
-  const parts = qualifiedTypeParts(node.type.trim())
-  const ownerIndex = numericTemplatePartIndex(parts)
-  if (ownerIndex >= 0 && parts.length > ownerIndex + 1) {
-    return nodePaletteChildName(node)
-  }
-
-  return nodeSimpleDisplayName(node.type)
+  return nodePaletteDisplayName(node)
 }
 
 /**
- * Returns the compact leaf label displayed below a legacy class family.
+ * Returns the canonical label for a palette node.
  * @param node - Registry definition to label.
  * @returns Human-readable leaf label.
  */
 export const nodePaletteChildName = (node: StandardNodeDefinition): string => {
-  const explicitName =
-    registryName(node) ||
-    node.display_name?.trim() ||
-    node.operation?.trim() ||
-    node.overload_group?.trim()
-  if (explicitName) return humanize(explicitName)
-
-  const parts = qualifiedTypeParts(node.type.trim())
-  const ownerIndex = numericTemplatePartIndex(parts)
-  if (ownerIndex >= 0 && parts.length > ownerIndex + 1) {
-    const member = typePartNameAndTag(parts[ownerIndex + 1])
-    return humanize(member.name)
-  }
-
-  const wrapperIndex = functionWrapperIndex(parts)
-  if (wrapperIndex >= 0) {
-    return node.output_type
-      ? nodeSimpleDisplayName(node.output_type)
-      : humanize(readableTypePartName(parts[wrapperIndex + 1] ?? ''))
-  }
-
-  if (!isMethodNode(node)) return nodePaletteNodeName(node)
-
-  const member = typePartNameAndTag(parts.at(-1) ?? node.type)
-  const name = humanize(member.name)
-  const tag = member.tag ? nodeDimensionTag(member.tag) : ''
-  return [name, tag].filter(Boolean).join(' ')
+  return nodePaletteNodeName(node)
 }

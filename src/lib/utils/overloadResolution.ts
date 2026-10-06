@@ -250,14 +250,21 @@ const interfaceArgumentIndexes = (
   })
 }
 
-/** Builds one frontend-only family from two or more concrete definitions. */
+/**
+ * Builds one frontend-only family from two or more concrete definitions.
+ *
+ * Palette groups may provide a synthetic family key and display name when
+ * several concrete registrations share one logical operation.
+ */
 export const createOverloadNodeDefinition = (
-  candidates: StandardNodeDefinition[]
+  candidates: StandardNodeDefinition[],
+  groupOverride?: string,
+  displayNameOverride?: string
 ): OverloadNodeDefinition => {
   if (candidates.length < 2) {
     throw new Error('An overload family requires at least two candidates')
   }
-  const group = overloadGroupKey(candidates[0])
+  const group = groupOverride?.trim() || overloadGroupKey(candidates[0])
   if (!group) throw new Error('An overload family requires explicit metadata')
 
   const interfaceData = overloadInterfaceForCandidates(candidates)
@@ -269,6 +276,7 @@ export const createOverloadNodeDefinition = (
     node_type: NodeType.OVERLOAD,
     overload_group: group,
     display_name:
+      displayNameOverride?.trim() ||
       explicitGroup ||
       candidates[0].display_name?.trim() ||
       candidates[0].operation?.trim() ||

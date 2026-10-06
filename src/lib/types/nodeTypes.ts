@@ -216,11 +216,14 @@ export type StandardNodeDefinition = {
   display_name?: string
   /** Optional user-facing label for one concrete operation specialization. */
   variant_name?: string
+  /** Stable owner class for method-like operations exposed by a plugin. */
+  class_name?: string
+  /** Stable logical member name for a method-like operation. */
+  method_name?: string
   /** Optional description shown as supplementary UI information. */
   description?: string
   name?: string
   derived?: string[]
-  method_name?: string
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
