@@ -413,6 +413,22 @@ describe('canvasNodeUtils', () => {
     )
   })
 
+  it('uses only the operation name for constructor canvas nodes', () => {
+    const definition = {
+      type: 'Boundary conditions<2,2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'Boundary conditions',
+      display_name: 'Boundary conditions',
+      class_name: 'BoundaryConditions',
+      method_name: 'create',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Boundary conditions')
+  })
+
   it('uses the logical display name instead of the palette variant', () => {
     const definition = {
       ...registry['LaplaceProblem::run<2>'],

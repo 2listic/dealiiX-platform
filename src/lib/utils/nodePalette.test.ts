@@ -194,6 +194,16 @@ describe('node palette metadata', () => {
     expect(nodeOwnerDisplayName(definition)).toBe('Linear execution -> Solve')
   })
 
+  it('does not prefix constructors with their owning class', () => {
+    const definition = node('Boundary conditions<2,2>', {
+      display_name: 'Boundary conditions',
+      class_name: 'BoundaryConditions',
+      method_name: 'create',
+    })
+
+    expect(nodeOwnerDisplayName(definition)).toBe('Boundary conditions')
+  })
+
   it('extracts the owner and operation from registry suffixes', () => {
     const definition = node('ImmersX::CoupledPoisson<2>::residual_norm', {
       node_type: NodeType.METHOD,

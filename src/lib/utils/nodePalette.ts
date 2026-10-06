@@ -330,11 +330,22 @@ export const nodePaletteDisplayName = (
   return displayTypeName(canonicalTypeName(node.type))
 }
 
+/**
+ * Returns whether a registry node represents a constructor operation.
+ *
+ * Coral can expose constructors either with an explicit constructor node type
+ * or as a typed function annotated with `method_name: "create"`.
+ */
+const isConstructorNode = (node: StandardNodeDefinition): boolean =>
+  node.node_type === NodeType.EMPTY_CONSTRUCTOR ||
+  node.node_type === NodeType.CONSTRUCTOR ||
+  node.method_name?.trim() === 'create'
+
 /** Returns the user-facing owner/member label used on the canvas. */
 export const nodeOwnerDisplayName = (node: StandardNodeDefinition): string => {
   const memberName = nodePaletteDisplayName(node)
   const ownerName = node.class_name?.trim()
-  if (!ownerName) return memberName
+  if (!ownerName || isConstructorNode(node)) return memberName
   return `${humanizeClassName(ownerName)} -> ${memberName}`
 }
 
