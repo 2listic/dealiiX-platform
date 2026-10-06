@@ -24,15 +24,19 @@ export type NodePaletteItem =
   | NodePaletteClassGroup
   | { kind: 'node'; key: string; group: NodePaletteGroup }
 
+/** Removes the ImmersX namespace from text rendered as a user-facing label. */
+export const displayTypeName = (value: string): string =>
+  value.replaceAll('ImmersX::', '')
+
 const humanize = (value: string): string => {
-  const normalized = value.replaceAll('_', ' ').trim()
+  const normalized = displayTypeName(value).replaceAll('_', ' ').trim()
   return normalized
     ? normalized.charAt(0).toUpperCase() + normalized.slice(1)
     : ''
 }
 
 const humanizeClassName = (value: string): string => {
-  const name = value
+  const name = displayTypeName(value)
     .split('::')
     .at(-1)
     ?.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2')
@@ -185,7 +189,7 @@ const paletteOperationName = (node: StandardNodeDefinition): string => {
 
 const classPaletteName = (type: string): string => {
   const parts = qualifiedTypeParts(type.trim())
-  return readableTypePartName(parts.at(-1) ?? type)
+  return displayTypeName(readableTypePartName(parts.at(-1) ?? type))
 }
 
 const methodMemberName = (node: StandardNodeDefinition): string => {
@@ -307,22 +311,31 @@ export const nodeSimpleDisplayName = (type: string): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
-  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR) return node.type
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
+    return displayTypeName(node.type)
   if (node.class_name?.trim() && node.method_name?.trim()) {
     return humanize(node.display_name?.trim() || node.method_name)
   }
   if (isMethodNode(node)) {
     if (node.display_name?.trim()) return humanize(node.display_name)
     return node.operation?.includes('::')
-      ? paletteOperationName(node)
-      : methodPaletteName(node.type)
+      ? displayTypeName(paletteOperationName(node))
+      : displayTypeName(methodPaletteName(node.type))
   }
   if (node.operation?.trim()) {
     const operation = paletteOperationName(node)
     return humanize(node.display_name?.trim() || operation)
   }
   if (classNodeTypes.has(node.node_type)) return classPaletteName(node.type)
-  return canonicalTypeName(node.type)
+  return displayTypeName(canonicalTypeName(node.type))
+}
+
+/** Returns the user-facing owner/member label used on the canvas. */
+export const nodeOwnerDisplayName = (node: StandardNodeDefinition): string => {
+  const memberName = nodePaletteDisplayName(node)
+  const ownerName = node.class_name?.trim()
+  if (!ownerName) return memberName
+  return `${humanizeClassName(ownerName)} -> ${memberName}`
 }
 
 /**
@@ -428,7 +441,9 @@ export const nodeConcreteSignature = (node: StandardNodeDefinition): string =>
 export const nodeVariantName = (node: StandardNodeDefinition): string =>
   isMethodNode(node)
     ? nodePaletteDisplayName(node)
-    : node.variant_name?.trim() || nodePaletteDisplayName(node)
+    : node.variant_name?.trim()
+      ? displayTypeName(node.variant_name.trim())
+      : nodePaletteDisplayName(node)
 
 /**
  * Returns exactly the label used for a node in the palette.
