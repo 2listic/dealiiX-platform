@@ -15,6 +15,7 @@
   import { returnNodeName } from '../../utils/canvasNodeUtils'
   import {
     groupNodesByClass,
+    nodeOwnerDisplayName,
     type NodePaletteGroup,
   } from '../../utils/nodePalette'
   import { createOverloadNodeDefinition } from '../../utils/overloadResolution'
@@ -52,7 +53,12 @@
   const classMethodLabel = (
     className: string,
     group: NodePaletteGroup
-  ): string => `${className} -> ${group.methodName ?? group.displayName}`
+  ): string => {
+    const firstNode = group.nodes[0]
+    return firstNode
+      ? nodeOwnerDisplayName(firstNode)
+      : `${className} -> ${group.methodName ?? group.displayName}`
+  }
 
   const onDragStart = (
     event: DragEvent,

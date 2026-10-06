@@ -39,11 +39,31 @@ export type OverloadResolution = {
 
 /** Returns the explicit metadata key used to form an overload family. */
 export const overloadGroupKey = (
-  node: Pick<StandardNodeDefinition, 'overload_group' | 'operation'>
-): string | undefined =>
-  node.overload_group?.trim() || node.operation?.trim() || undefined
+  node: Pick<
+    StandardNodeDefinition,
+    'class_name' | 'method_name' | 'overload_group' | 'operation'
+  >
+): string | undefined => {
+  const className = node.class_name?.trim()
+  const methodName = node.method_name?.trim()
+  if (className && methodName) return `method:${className}::${methodName}`
+  return node.overload_group?.trim() || node.operation?.trim() || undefined
+}
 
 const unique = (values: string[]): string[] => [...new Set(values)]
+
+/** Removes Coral's callable implementation alias when its concrete entry exists. */
+const deduplicateImplementationAliases = (
+  nodes: StandardNodeDefinition[]
+): StandardNodeDefinition[] => {
+  const concreteTypes = new Set(nodes.map((node) => node.type))
+  return nodes.filter((node) => {
+    const marker = '::std::function<'
+    const markerIndex = node.type.indexOf(marker)
+    if (markerIndex < 0) return true
+    return !concreteTypes.has(node.type.slice(0, markerIndex))
+  })
+}
 
 const definitionInputArgument = (
   definition: ConcreteNodeDefinition,
@@ -290,8 +310,9 @@ export const createOverloadNodeDefinition = (
 export const createOverloadFamilies = (
   nodes: StandardNodeDefinition[]
 ): NodeDefinitions[] => {
+  const concreteNodes = deduplicateImplementationAliases(nodes)
   const grouped = new Map<string, StandardNodeDefinition[]>()
-  for (const node of nodes) {
+  for (const node of concreteNodes) {
     const key = overloadGroupKey(node)
     if (!key) continue
     grouped.set(key, [...(grouped.get(key) ?? []), node])
@@ -299,7 +320,7 @@ export const createOverloadFamilies = (
 
   const emitted = new Set<string>()
   const result: NodeDefinitions[] = []
-  for (const node of nodes) {
+  for (const node of concreteNodes) {
     const key = overloadGroupKey(node)
     const candidates = key ? grouped.get(key) : undefined
     if (!key || !candidates || candidates.length < 2) {

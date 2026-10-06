@@ -204,6 +204,27 @@ describe('node palette metadata', () => {
     expect(nodeOwnerDisplayName(definition)).toBe('Boundary conditions')
   })
 
+  it('groups class methods by class and method instead of display operation', () => {
+    const scalar = node('Known term<Scalar>', {
+      operation: 'Known term',
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    })
+    const vector = node('Known term<Vector>', {
+      operation: 'Vector Known term',
+      display_name: 'Known term',
+      class_name: 'KnownTerm',
+      method_name: 'create',
+    })
+
+    const groups = groupNodesByOperation([scalar, vector])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].displayName).toBe('Known term')
+    expect(groups[0].nodes).toEqual([scalar, vector])
+  })
+
   it('extracts the owner and operation from registry suffixes', () => {
     const definition = node('ImmersX::CoupledPoisson<2>::residual_norm', {
       node_type: NodeType.METHOD,
