@@ -194,6 +194,18 @@ describe('node palette metadata', () => {
     expect(nodeOwnerDisplayName(definition)).toBe('Linear execution -> Solve')
   })
 
+  it('removes template specializations from class owners', () => {
+    const definition = node('ImmersX::FiberEmbeddedProblem<2>::prepare', {
+      display_name: 'Prepare',
+      class_name: 'ImmersX::FiberEmbeddedProblem<2>',
+      method_name: 'prepare',
+    })
+
+    expect(nodeOwnerDisplayName(definition)).toBe(
+      'Fiber embedded problem -> Prepare'
+    )
+  })
+
   it('does not prefix constructors with their owning class', () => {
     const definition = node('Boundary conditions<2,2>', {
       display_name: 'Boundary conditions',

@@ -39,6 +39,7 @@ const humanizeClassName = (value: string): string => {
   const name = displayTypeName(value)
     .split('::')
     .at(-1)
+    ?.replace(/<[^<>]*>$/, '')
     ?.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2')
     .trim()
 
