@@ -51,6 +51,11 @@
   import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import RemoteFilePicker from '../RemoteFilePicker.svelte'
+  import {
+    listRemoteGraphFiles,
+    readRemoteGraphFile,
+  } from '../../utils/remoteFilePicker'
 
   const { fitView } = useSvelteFlow()
 
@@ -62,6 +67,7 @@
   const JobConfigModalId = 'job-config-modal'
   const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const runNameModalId = 'pipeline-run-name-modal'
+  const remoteGraphPickerModalId = 'remote-graph-picker-modal'
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
   let hasParams = $derived(parametersState.value != null)
@@ -72,6 +78,10 @@
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
+  let remoteGraphFiles = $state<string[]>([])
+  let remoteGraphFilesLoading = $state(false)
+  let remoteGraphFilesError = $state('')
+  let remoteGraphImporting = $state(false)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -249,9 +259,29 @@
     })
   }
 
-  /**
-   * Loads a graph from a file removing the edges that have type mismatches
-   */
+  const importGraphData = async (
+    importedGraph: Parameters<typeof importGraphFromProtocol>[0],
+    successMessage = 'New graph was loaded'
+  ) => {
+    const { invalidEdges, registeredNetworkNodes } =
+      await importGraphFromProtocol(importedGraph)
+    invalidEdges.forEach((invalidEdge) => {
+      toastState.add({ message: invalidEdge.error, type: 'error' })
+    })
+    registeredNetworkNodes.forEach((nodeName) => {
+      toastState.add({
+        message: `Sub-graph node ${nodeName} was registered`,
+        type: 'success',
+      })
+    })
+    currentProjectState.clear()
+    console.log('imported graph nodes', getNodes())
+    console.log('imported graph edges', getEdges())
+    toastState.add({ message: successMessage })
+    fitView({ maxZoom: 1, minZoom: 1 })
+  }
+
+  /** Loads a graph from a local file, removing edges with type mismatches. */
   const loadGraphFromFile = async () => {
     const files = importGraphInput?.files
     if (files == null || files.length == 0) {
@@ -259,24 +289,7 @@
     }
     try {
       const importedGraphAsText = await readFileAsText(files[0])
-      const importedGraph = JSON.parse(importedGraphAsText)
-      const { invalidEdges, registeredNetworkNodes } =
-        await importGraphFromProtocol(importedGraph)
-      invalidEdges.forEach((invalidEdge) => {
-        toastState.add({ message: invalidEdge.error, type: 'error' })
-      })
-      registeredNetworkNodes.forEach((nodeName) => {
-        toastState.add({
-          message: `Sub-graph node ${nodeName} was registered`,
-          type: 'success',
-        })
-      })
-      currentProjectState.clear()
-      console.log('imported graph nodes', getNodes())
-      console.log('imported graph edges', getEdges())
-      toastState.add({ message: 'New graph was loaded' })
-      // Force a fit view to ensure the graph is visible
-      fitView({ maxZoom: 1, minZoom: 1 })
+      await importGraphData(JSON.parse(importedGraphAsText))
     } catch (error) {
       console.error('Failed to load graph:', error)
       toastState.add({
@@ -284,6 +297,54 @@
           error instanceof Error ? error.message : 'Failed to load graph',
         type: 'error',
       })
+    }
+  }
+
+  const loadRemoteGraphFiles = async () => {
+    remoteGraphFilesLoading = true
+    remoteGraphFilesError = ''
+    try {
+      remoteGraphFiles = await listRemoteGraphFiles(
+        settingsState.remote.workingDirectory
+      )
+    } catch (error) {
+      remoteGraphFiles = []
+      remoteGraphFilesError =
+        error instanceof Error ? error.message : 'Failed to list remote files'
+    } finally {
+      remoteGraphFilesLoading = false
+    }
+  }
+
+  const openRemoteGraphPicker = () => {
+    remoteGraphFiles = []
+    remoteGraphFilesError = ''
+    getModal(remoteGraphPickerModalId)?.open()
+    void loadRemoteGraphFiles()
+  }
+
+  const loadGraphFromRemoteFile = async (fileName: string) => {
+    remoteGraphImporting = true
+    try {
+      const importedGraph = JSON.parse(
+        await readRemoteGraphFile(
+          settingsState.remote.workingDirectory,
+          fileName
+        )
+      )
+      await importGraphData(importedGraph, `Loaded remote graph ${fileName}`)
+      getModal(remoteGraphPickerModalId)?.close()
+    } catch (error) {
+      console.error('Failed to load remote graph:', error)
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load remote graph',
+        type: 'error',
+      })
+    } finally {
+      remoteGraphImporting = false
     }
   }
 
@@ -618,6 +679,12 @@
           label="Import Graph"
           onclick={() => importGraphInput?.click()}
         />
+        {#if isRemote}
+          <SidebarGroupButtonItem
+            label="Import graph from remote"
+            onclick={openRemoteGraphPicker}
+          />
+        {/if}
         <SidebarGroupButtonItem
           label="Import Nodes"
           onclick={() => importNodesInput?.click()}
@@ -646,6 +713,19 @@
     accept=".json"
     style="display: none"
   />
+
+  <Modal id={remoteGraphPickerModalId} size="md">
+    <RemoteFilePicker
+      modalId={remoteGraphPickerModalId}
+      workingDirectory={settingsState.remote.workingDirectory}
+      files={remoteGraphFiles}
+      loading={remoteGraphFilesLoading}
+      importing={remoteGraphImporting}
+      error={remoteGraphFilesError}
+      onRefresh={loadRemoteGraphFiles}
+      onSelect={loadGraphFromRemoteFile}
+    />
+  </Modal>
 
   <!-- Parameters actions (executable single mode only) -->
   {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}
