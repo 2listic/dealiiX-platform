@@ -58,6 +58,29 @@ export type ConnectedNodeDraft = {
 }
 
 /**
+ * Adds one connection option for a node. Overload families expose a union
+ * interface, so several of their handles may accept the same source type;
+ * the connected-node picker should still present the family only once.
+ */
+const appendCompatibleNodeOption = (
+  options: CompatibleNodeOption[],
+  option: CompatibleNodeOption
+): void => {
+  if (
+    isOverloadNodeDefinition(option.nodeDefinition) &&
+    options.some(
+      (existing) =>
+        isOverloadNodeDefinition(existing.nodeDefinition) &&
+        existing.nodeDefinition.type === option.nodeDefinition.type
+    )
+  ) {
+    return
+  }
+
+  options.push(option)
+}
+
+/**
  * Shallow-clones a node definition so canvas node mutations don't affect the registry.
  * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
@@ -244,7 +267,7 @@ export const getOutputTypeAndName = (
  * @param availableNodes - All available node definitions to search.
  * @param sourceType - Output type to match against.
  * @param excludedNodeType - Node type to skip (usually the source node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all available nodes.
+ * @returns List of `CompatibleNodeOption` entries, one per matching input handle for concrete nodes and one per overload family.
  */
 export const findCompatibleTargetNodesAsOptions = (
   availableNodes: NodeDefinitions[],
@@ -270,7 +293,7 @@ export const findCompatibleTargetNodesAsOptions = (
         )
       )
         continue
-      options.push({
+      appendCompatibleNodeOption(options, {
         nodeDefinition,
         handleId: `input-${handleIndex}`,
         argumentName: argument?.name ?? inputTypes.join(' | '),
@@ -438,7 +461,7 @@ export const returnNodeSignature = (node: NodeDefinitions): string =>
  * @param availableNodes - All available node definitions to search.
  * @param expectedInputType - Input type to match against.
  * @param excludedNodeType - Node type to skip (usually the target node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all available nodes.
+ * @returns List of `CompatibleNodeOption` entries, one per matching output handle for concrete nodes and one per overload family.
  */
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
@@ -474,7 +497,7 @@ export const findCompatibleSourceNodesAsOptions = (
         )
       )
         continue
-      options.push({
+      appendCompatibleNodeOption(options, {
         nodeDefinition,
         handleId: `output-${handleIndex}`,
         argumentName: resolveOutputName(nodeDefinition, handleIndex),
@@ -670,6 +693,9 @@ export const resolveOutputName = (
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF) return data.name?.trim() || data.type
+  if (outputIndex === SELF) {
+    if (data.name?.trim()) return data.name.trim()
+    return returnNodeName(data)
+  }
   return data.arguments?.[outputIndex]?.name ?? null
 }

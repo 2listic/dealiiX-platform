@@ -135,6 +135,28 @@ describe('overload families', () => {
     expect(entries[0].candidates).toEqual([scalarKnownTerm, vectorKnownTerm])
   })
 
+  it('groups dimensional constructor variants into one family', () => {
+    const variant = (type: string): StandardNodeDefinition => ({
+      ...definition(type, [], 'dealii::ParameterAcceptor', ''),
+      display_name: 'DomainParameters',
+      node_type: NodeType.CONSTRUCTOR,
+    })
+
+    const entries = createOverloadFamilies([
+      variant('ImmersX::DomainParameters<1,2>'),
+      variant('ImmersX::DomainParameters<2,2>'),
+    ])
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0].node_type).toBe(NodeType.OVERLOAD)
+    if (!isOverloadNodeDefinition(entries[0])) return
+    expect(entries[0].display_name).toBe('DomainParameters')
+    expect(entries[0].candidates.map((candidate) => candidate.type)).toEqual([
+      'ImmersX::DomainParameters<1,2>',
+      'ImmersX::DomainParameters<2,2>',
+    ])
+  })
+
   it('does not add callable implementation aliases to overload families', () => {
     const scalarKnownTerm = {
       ...definition(

@@ -9,6 +9,7 @@ import {
   type NodeDefinitions,
   type RegisteredNodes,
   type RegisteredSubGraphNodes,
+  type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
@@ -24,6 +25,7 @@ import {
   returnNodeSignature,
 } from './canvasNodeUtils'
 import { groupNodesByOperation } from './nodePalette'
+import { createOverloadNodeDefinition } from './overloadResolution'
 import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
@@ -197,6 +199,46 @@ describe('canvasNodeUtils', () => {
     expect(options[0].argumentName).toBe('output_dir')
   })
 
+  it('offers one connected-node option for an overload family', () => {
+    const candidate = (
+      type: string,
+      inputTypes: string[]
+    ): StandardNodeDefinition => ({
+      type,
+      operation: 'Initialize parameters',
+      overload_group: 'Initialize parameters',
+      display_name: 'Initialize parameters',
+      arguments: inputTypes.map((inputType, index) => ({
+        connection_type: ConnectionType.INPUT,
+        name: `input ${index}`,
+        type: inputType as Type,
+      })),
+      inputs: inputTypes.map((_, index) => index),
+      outputs: [],
+      node_type: NodeType.FUNCTION,
+    })
+
+    const initializeParameters = createOverloadNodeDefinition([
+      candidate(
+        'initialize_parameters<one>',
+        ['dealii::ParameterAcceptor']
+      ),
+      candidate(
+        'initialize_parameters<two>',
+        ['dealii::ParameterAcceptor', 'dealii::ParameterAcceptor']
+      ),
+    ])
+
+    const options = findCompatibleTargetNodesAsOptions(
+      [initializeParameters],
+      'dealii::ParameterAcceptor'
+    )
+
+    expect(options).toHaveLength(1)
+    expect(options[0].nodeDefinition).toBe(initializeParameters)
+    expect(options[0].handleId).toBe('input-0')
+  })
+
   it('includes network nodes in compatibility results', () => {
     // step1 triangulation input free: string inputs at handles 1, 2, 4
     // dealii::FE_Q<2, 2>: uint input → no match
@@ -249,6 +291,26 @@ describe('canvasNodeUtils', () => {
     )
 
     expect(options).toHaveLength(0)
+  })
+
+  it('uses compact metadata for a constructor SELF output name', () => {
+    const domainParameters = {
+      type: 'ImmersX::DomainParameters<2,2>',
+      display_name: 'DomainParameters',
+      node_type: NodeType.CONSTRUCTOR,
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      output_type: 'dealii::ParameterAcceptor',
+    } as NodeDefinitions
+
+    const options = findCompatibleSourceNodesAsOptions(
+      [domainParameters],
+      'dealii::ParameterAcceptor'
+    )
+
+    expect(options).toHaveLength(1)
+    expect(options[0].argumentName).toBe('DomainParameters')
   })
 
   it('only offers scalar literal nodes for exposed parameter inputs', () => {

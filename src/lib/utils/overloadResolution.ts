@@ -18,6 +18,7 @@ import {
   parameterExposureForHandle,
   parameterPortCoralType,
 } from './parameterPorts'
+import { nodePaletteDisplayName, nodePaletteKey } from './nodePalette'
 
 type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition
 
@@ -306,29 +307,55 @@ export const createOverloadNodeDefinition = (
   }
 }
 
-/** Replaces explicitly grouped registry entries with one family tile. */
+/**
+ * Replaces registry entries for one logical operation with one family tile.
+ *
+ * Explicit overload metadata remains authoritative. When it is absent, use
+ * the same palette key that already collapses numeric template
+ * specializations, such as `Class<1,2>` and `Class<2,2>`. This keeps the
+ * connected-node picker aligned with the palette and preserves all concrete
+ * definitions as candidates for later overload resolution.
+ */
 export const createOverloadFamilies = (
   nodes: StandardNodeDefinition[]
 ): NodeDefinitions[] => {
   const concreteNodes = deduplicateImplementationAliases(nodes)
-  const grouped = new Map<string, StandardNodeDefinition[]>()
+  const grouped = new Map<
+    string,
+    { candidates: StandardNodeDefinition[]; displayName?: string }
+  >()
   for (const node of concreteNodes) {
-    const key = overloadGroupKey(node)
-    if (!key) continue
-    grouped.set(key, [...(grouped.get(key) ?? []), node])
+    const explicitKey = overloadGroupKey(node)
+    const key = explicitKey ?? `palette:${nodePaletteKey(node)}`
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.candidates.push(node)
+      continue
+    }
+    grouped.set(key, {
+      candidates: [node],
+      ...(explicitKey ? {} : { displayName: nodePaletteDisplayName(node) }),
+    })
   }
 
   const emitted = new Set<string>()
   const result: NodeDefinitions[] = []
   for (const node of concreteNodes) {
-    const key = overloadGroupKey(node)
-    const candidates = key ? grouped.get(key) : undefined
-    if (!key || !candidates || candidates.length < 2) {
+    const explicitKey = overloadGroupKey(node)
+    const key = explicitKey ?? `palette:${nodePaletteKey(node)}`
+    const family = grouped.get(key)
+    if (!family || family.candidates.length < 2) {
       result.push(node)
       continue
     }
     if (!emitted.has(key)) {
-      result.push(createOverloadNodeDefinition(candidates))
+      result.push(
+        createOverloadNodeDefinition(
+          family.candidates,
+          key,
+          family.displayName
+        )
+      )
       emitted.add(key)
     }
   }
