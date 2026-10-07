@@ -193,10 +193,17 @@ const getCoralRegistryMetadataRemote = async (
     pathToSsh: target.sshKeyPath,
   }
 
-  // Run coral register — stdout suppressed so the registry file is the only output later;
-  // stderr flows through SSH so errors surface in the rejection message.
+  // Keep successful registration output out of the SSH response, but replay the
+  // captured output when Coral fails because Coral reports load errors on stdout.
+  const probeLog = `/tmp/dealiix-coral-probe-$$.log`
   await connectToSSHWithKey(
-    `cd ${shellEscape(target.workingDirectory)} && ${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} register > /dev/null`,
+    `cd ${shellEscape(target.workingDirectory)} && ` +
+      `${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} ` +
+      `register > ${shellEscape(probeLog)} 2>&1; ` +
+      `status=$?; ` +
+      `if [ "$status" -ne 0 ]; then cat ${shellEscape(probeLog)}; fi; ` +
+      `rm -f ${shellEscape(probeLog)}; ` +
+      `exit "$status"`,
     sshConfig,
     { rejectOnNonZeroCode: true }
   )
