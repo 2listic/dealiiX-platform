@@ -367,7 +367,7 @@
     try {
       const target = await findVtkVisualizerTarget(
         activeLocation,
-        String(data.value),
+        valueForNode() ?? '',
         jobIdMapState.getLatestRunWorkingDirectory()
       )
       if (!target) {
@@ -666,10 +666,7 @@
 
   <!-- Input / output labels -->
   {#if data.arguments.length > 0}
-    <div
-      class="port-columns"
-      style="--port-row-count: {portRowCount};"
-    >
+    <div class="port-columns" style="--port-row-count: {portRowCount};">
       {#each data.inputs as i, index (i)}
         {#if ['input', 'pass_through'].includes(data.arguments[i]?.connection_type)}
           <div
