@@ -16,9 +16,12 @@ vi.stubGlobal('window', {
   },
 })
 
-const { ensureUniqueRemoteDir, submitExecutableStageRemote } = await import(
-  './sshMessages'
-)
+const {
+  ensureUniqueRemoteDir,
+  submitCoralStageRemote,
+  submitExecutableStageRemote,
+} = await import('./sshMessages')
+const { settingsState } = await import('../stores/settingsStore.svelte')
 
 beforeEach(() => {
   invoke.mockReset()
@@ -134,6 +137,38 @@ describe('submitExecutableStageRemote batch script', () => {
 
     expect(uploads['/data/stage-p0/parameters.json']).toContain(
       '"value": "/app/shared-data/mesh.vtu"'
+    )
+  })
+})
+
+describe('submitCoralStageRemote batch script', () => {
+  it('runs the Coral binary and plugin configured for the remote target', async () => {
+    const uploads: Record<string, string> = {}
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, string>) => {
+        if (channel === 'upload-file-ssh') {
+          uploads[payload.remotePath] = payload.content
+          return ''
+        }
+        return payload.command?.startsWith('sbatch') ? '4242' : ''
+      }
+    )
+
+    await submitCoralStageRemote({
+      graph: { workflow: { nodes: {}, edges: [] } },
+      stageDir: '/data/stage-p0',
+      config: {
+        nodes: 1,
+        tasksPerNode: 1,
+        timeLimit: '01:00:00',
+        useMpi: false,
+      },
+      dependencyJobIds: [],
+    })
+
+    const { coralBinaryPath, coralPluginPath } = settingsState.remote
+    expect(uploads['/data/stage-p0/job.sh']).toContain(
+      `${coralBinaryPath} --plugin ${coralPluginPath} run /data/stage-p0/graph.json`
     )
   })
 })

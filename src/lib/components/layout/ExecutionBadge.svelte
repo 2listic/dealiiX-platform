@@ -50,10 +50,7 @@
     onchange={onLocationChange}
   >
     {#each EXECUTION_LOCATIONS as loc (loc)}
-      <!-- pipeline runs remotely only, so local is unavailable in pipeline mode -->
-      <option value={loc} disabled={loc === 'local' && mode === 'pipeline'}>
-        {loc}
-      </option>
+      <option value={loc}>{loc}</option>
     {/each}
   </select>
   <!-- <span class="badge-sep">|</span> -->
@@ -66,8 +63,7 @@
     {#each BACKEND_KINDS as kind (kind)}
       <option value={kind}>{kind}</option>
     {/each}
-    <!-- pipeline requires remote, so it is unavailable while location is local -->
-    <option value="pipeline" disabled={location === 'local'}>pipeline</option>
+    <option value="pipeline">pipeline</option>
   </select>
 </div>
 

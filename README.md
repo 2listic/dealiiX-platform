@@ -161,6 +161,8 @@ The app supports four execution modes. See the dedicated guide for each:
 | **Local + Executable**            | DealiiX executable running locally, serial or single-host MPI                 | [docs/run-executable-local.md](docs/run-executable-local.md)   |
 | **Remote + Executable**           | Any deal.II executable run on a remote machine over SSH                       | [docs/run-executable-remote.md](docs/run-executable-remote.md) |
 
+Any of these can also run as a stage of a pipeline, locally or remotely: see [docs/run-pipelines.md](docs/run-pipelines.md).
+
 # Packaging
 
 Compile Electron Typescript + build the frontend with `npm run build` and then run the following commands to package the app.

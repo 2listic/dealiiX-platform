@@ -10,6 +10,7 @@
 <script lang="ts">
   import { Handle, Position, type NodeProps } from '@xyflow/svelte'
   import { pipelineState } from '../../stores/pipeline.svelte'
+  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { isValidSlurmTime, SLURM_TIME_HINT } from '../../utils/slurmTime'
   import { parseParametersFileWithFormat } from '../../utils/parameterFileFormat'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -17,6 +18,7 @@
   let { id, data }: NodeProps<ExecutableStageNodeType> = $props()
 
   let paramsInput: HTMLInputElement | undefined = $state()
+  let isRemote = $derived(executionSelectionState.location === 'remote')
   let total = $derived(data.config.nodes * data.config.tasksPerNode)
   let timeInvalid = $derived(!isValidSlurmTime(data.config.timeLimit))
 
@@ -51,6 +53,8 @@
 <div class="stage-node executable">
   <header>
     <span class="badge">exe</span>
+    <!-- Matches the stage-<id> output folder. -->
+    <span class="stage-id" title="Stage id">{id}</span>
     <input
       class="name"
       value={data.name}
@@ -109,20 +113,22 @@
 
   {#if data.config.useMpi}
     <div class="row">
+      {#if isRemote}
+        <label class="field">
+          Nodes
+          <input
+            type="number"
+            min="1"
+            value={data.config.nodes}
+            oninput={(e) =>
+              pipelineState.updateStageConfig(id, {
+                nodes: (e.currentTarget as HTMLInputElement).valueAsNumber || 1,
+              })}
+          />
+        </label>
+      {/if}
       <label class="field">
-        Nodes
-        <input
-          type="number"
-          min="1"
-          value={data.config.nodes}
-          oninput={(e) =>
-            pipelineState.updateStageConfig(id, {
-              nodes: (e.currentTarget as HTMLInputElement).valueAsNumber || 1,
-            })}
-        />
-      </label>
-      <label class="field">
-        Tasks/node
+        {isRemote ? 'Tasks/node' : 'Processes'}
         <input
           type="number"
           min="1"
@@ -134,23 +140,25 @@
             })}
         />
       </label>
-      <span class="total">= {total}</span>
+      {#if isRemote}<span class="total">= {total}</span>{/if}
     </div>
   {/if}
 
-  <label class="field">
-    Time limit
-    <input
-      type="text"
-      class:invalid={timeInvalid}
-      value={data.config.timeLimit ?? ''}
-      oninput={(e) =>
-        pipelineState.updateStageConfig(id, {
-          timeLimit: (e.currentTarget as HTMLInputElement).value,
-        })}
-    />
-    {#if timeInvalid}<span class="hint">{SLURM_TIME_HINT}</span>{/if}
-  </label>
+  {#if isRemote}
+    <label class="field">
+      Time limit
+      <input
+        type="text"
+        class:invalid={timeInvalid}
+        value={data.config.timeLimit ?? ''}
+        oninput={(e) =>
+          pipelineState.updateStageConfig(id, {
+            timeLimit: (e.currentTarget as HTMLInputElement).value,
+          })}
+      />
+      {#if timeInvalid}<span class="hint">{SLURM_TIME_HINT}</span>{/if}
+    </label>
+  {/if}
 </div>
 
 <Handle type="source" position={Position.Right} />
@@ -180,6 +188,10 @@
     font-weight: bold;
     color: #b08900;
     text-transform: uppercase;
+  }
+  .stage-id {
+    font-size: 0.7rem;
+    color: var(--ternary-color);
   }
   .name {
     flex: 1;
