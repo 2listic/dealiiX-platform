@@ -48,6 +48,7 @@ vi.mock('../utils/fileReferences', () => ({
 }))
 
 vi.mock('../utils/sshMessages', () => ({
+  materializeProtocolGraphIfNeeded: async (graph: object) => graph,
   withMpiPlugin: (network: object, useMpi: boolean) =>
     useMpi ? { plugin: 'mpi', ...network } : network,
 }))

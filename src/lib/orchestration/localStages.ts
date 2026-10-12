@@ -14,7 +14,10 @@ import {
   resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from '../utils/fileReferences'
-import { withMpiPlugin } from '../utils/sshMessages'
+import {
+  materializeProtocolGraphIfNeeded,
+  withMpiPlugin,
+} from '../utils/sshMessages'
 
 /** A stage checked and recorded at submit, ready to be started. */
 export type PreparedLocalStage = {
@@ -55,7 +58,8 @@ export const prepareStageLocal = async (
       graphPayload: await prepareLocalStageGraph(
         stage.graph as object,
         stage.config.useMpi,
-        workingDirectory
+        workingDirectory,
+        stageDir
       ),
       mpi,
     }
@@ -116,10 +120,14 @@ export const startPreparedStage = async (
 const prepareLocalStageGraph = async (
   graph: object,
   useMpi: boolean,
-  workingDirectory: string
+  workingDirectory: string,
+  stageDir: string
 ): Promise<object> =>
   await resolveGraphFileReferences(
-    withMpiPlugin(graph, useMpi),
+    withMpiPlugin(
+      await materializeProtocolGraphIfNeeded(graph, 'local', {}, stageDir),
+      useMpi
+    ),
     'local',
     workingDirectory
   )

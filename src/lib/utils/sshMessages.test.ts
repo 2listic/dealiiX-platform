@@ -216,8 +216,6 @@ describe('submitCoralStageRemote parameter staging', () => {
       },
       stageDir: '/app/shared-data/run-output',
       config: {
-        coralBinaryPath: '/opt/coral',
-        coralPluginPath: '/opt/plugin.so',
         nodes: 1,
         tasksPerNode: 2,
         timeLimit: '00:10:00',
@@ -325,8 +323,6 @@ describe('submitCoralStageRemote parameter staging', () => {
       },
       stageDir: '/app/shared-data/run-nested',
       config: {
-        coralBinaryPath: '/opt/coral',
-        coralPluginPath: '/opt/plugin.so',
         nodes: 1,
         tasksPerNode: 2,
         timeLimit: '00:10:00',
@@ -429,8 +425,6 @@ describe('submitCoralStageRemote parameter staging', () => {
       },
       stageDir: '/app/shared-data/run-dangling',
       config: {
-        coralBinaryPath: '/opt/coral',
-        coralPluginPath: '/opt/plugin.so',
         nodes: 1,
         tasksPerNode: 2,
         timeLimit: '00:10:00',
