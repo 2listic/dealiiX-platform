@@ -72,7 +72,6 @@
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
-  let isRemote = $derived(executionSelectionState.location === 'remote')
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
