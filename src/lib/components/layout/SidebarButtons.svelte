@@ -73,7 +73,6 @@
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
   let isRemote = $derived(executionSelectionState.location === 'remote')
-  let pipelineValidation = $derived(pipelineState.validation)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
