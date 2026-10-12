@@ -10,7 +10,6 @@ import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
   getBaseTypes,
-  isStagedWorkingFileArgument,
   NodeType,
   type Type,
   type StandardNodeDefinition,
@@ -129,13 +128,6 @@ export const analyzeNetworkBoundary = (
       name: argument.name,
       type: argument.type,
       ...(bases.length && { bases }),
-      ...(isStagedWorkingFileArgument(argument) && {
-        file_scope: argument.file_scope,
-        staging: argument.staging,
-        ...(argument.create_if_missing !== undefined && {
-          create_if_missing: argument.create_if_missing,
-        }),
-      }),
     }
   }
 
