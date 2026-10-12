@@ -39,7 +39,6 @@ import { parameterHandlePath } from './parameterPorts'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   prepareGraphFileReferences,
-  resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
