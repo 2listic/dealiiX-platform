@@ -78,6 +78,7 @@
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
+  let isRemote = $derived(executionSelectionState.location === 'remote')
   let remoteGraphFiles = $state<string[]>([])
   let remoteGraphFilesLoading = $state(false)
   let remoteGraphFilesError = $state('')
