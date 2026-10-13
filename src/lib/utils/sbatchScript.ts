@@ -26,6 +26,11 @@ export type SbatchScriptOptions = {
   mpi: SbatchMpiResources | null
 }
 
+/** Quotes a complete command line for use as a single shell argument. */
+const shellQuote = (value: string): string => {
+  return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
 /**
  * Builds the content of an sbatch script.
  *
@@ -54,10 +59,12 @@ export const buildSbatchScript = ({
   directives.push(`#SBATCH --time=${timeLimit}`)
 
   const launcher = mpi ? `${buildMpiLauncherCommand(mpi.launcher)} ` : ''
+  const fullCommand = `${launcher}${command}`
 
   return `#!/bin/bash
 ${directives.join('\n')}
 
-${launcher}${command}
+printf '%s\\n' ${shellQuote(`Command: ${fullCommand}`)}
+${fullCommand}
 `
 }

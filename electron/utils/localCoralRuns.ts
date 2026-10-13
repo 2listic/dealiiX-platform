@@ -66,6 +66,14 @@ const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
 }
 
+/** Quotes one argv item so the command written to the run log can be replayed in a shell. */
+const shellQuote = (value: string): string => {
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) return value
+  return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+const formatInvocation = (command: string, args: string[]): string =>
+  [command, ...args].map(shellQuote).join(' ')
 const dirExists = async (dirPath: string): Promise<boolean> => {
   try {
     return (await fs.promises.stat(dirPath)).isDirectory()
@@ -161,6 +169,10 @@ export const startLocalCoralRun = async ({
       )
     : { command: coralBinaryPath, args: executableArgs }
 
+  await fs.promises.appendFile(
+    logPath,
+    `Command: ${formatInvocation(invocation.command, invocation.args)}\n`
+  )
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(invocation.command, invocation.args, {
     cwd: runDirectory,
@@ -235,6 +247,10 @@ export const startLocalExecutableRun = async ({
         parametersName,
       ])
     : { command: executablePath, args: [parametersName] }
+  await fs.promises.appendFile(
+    logPath,
+    `Command: ${formatInvocation(invocation.command, invocation.args)}\n`
+  )
   const child = spawn(invocation.command, invocation.args, {
     cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
