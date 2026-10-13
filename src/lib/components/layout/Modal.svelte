@@ -184,6 +184,7 @@
       class="modal {size ?? ''}"
       transition:scale={{ duration: 200, start: 0.95 }}
       onclick={(e) => e.stopPropagation()}
+      onwheel={(e) => e.stopPropagation()}
     >
       <svg class="close" onclick={() => close()} viewBox="0 0 12 12">
         <circle cx="6" cy="6" r="6" />
@@ -225,6 +226,7 @@
     /* filter: drop-shadow(1px 1px var(--primary-color)); */
     padding: 1em;
     min-width: 300px;
+    overscroll-behavior: contain;
     /*min-height: 50vh; */
   }
 
