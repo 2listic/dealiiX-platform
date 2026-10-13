@@ -185,7 +185,7 @@ describe('submitCoralStageRemote parameter staging', () => {
       `${coralBinaryPath} --plugin ${coralPluginPath} run /app/shared-data/run-1/graph.json`
     )
     expect(uploads['/app/shared-data/run-1/graph.json']).toContain(
-      '/app/shared-data/nested/poisson.prm'
+      'nested/poisson.prm'
     )
   })
 
