@@ -22,6 +22,11 @@ import {
   parameterPathLabel,
   parameterPortCoralType,
 } from './parameterPorts'
+import {
+  nodeConcreteSignature,
+  nodePaletteNodeName,
+  nodeSimpleDisplayName,
+} from './nodePalette'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
@@ -309,13 +314,58 @@ export const formatSuggestedNodeName = (name: string): string => {
 }
 
 /**
- * Returns the display name for a node definition: prefers `name` over `type`,
- * replaces underscores with spaces, and capitalizes the first letter.
- * @param node - Registry node or stored subgraph node.
- * @returns Display name, or `""` if both `name` and `type` are blank.
+ * Returns the canonical persisted instance name for a node.
+ *
+ * The old UI stored `variant_name` as the default instance name. Migrate that
+ * generated value to the logical `display_name`, while preserving genuinely
+ * custom names and network-node identifiers.
+ *
+ * @param node - Node whose persisted instance name should be canonicalized.
+ * @returns Canonical instance name, or `undefined` when no name is stored.
  */
-export const returnNodeName = (node: NodeDefinitions): string =>
-  formatSuggestedNodeName(node.name ?? node.type)
+export const canonicalNodeName = (
+  node: NodeDefinitions
+): string | undefined => {
+  if (!node.name) return undefined
+
+  if (node.node_type !== NodeType.NETWORK) {
+    const registryNode = node as StandardNodeDefinition
+    if (
+      registryNode.display_name?.trim() &&
+      registryNode.variant_name?.trim() === node.name.trim()
+    ) {
+      return registryNode.display_name.trim()
+    }
+  }
+
+  return node.name
+}
+
+/**
+ * Returns the display name for a node definition.
+ *
+ * A persisted `name` is an instance label, except when it is the old
+ * automatically generated variant label. In that case use the logical
+ * `display_name` so loading an older graph also repairs its canvas label.
+ *
+ * @param node - Registry node or stored subgraph node.
+ * @returns Display name, or `""` if all available labels are blank.
+ */
+export const returnNodeName = (node: NodeDefinitions): string => {
+  const canonicalName = canonicalNodeName(node)
+  if (canonicalName) return formatSuggestedNodeName(canonicalName)
+
+  if (node.node_type !== NodeType.NETWORK) {
+    const registryNode = node as StandardNodeDefinition
+    return formatSuggestedNodeName(nodePaletteNodeName(registryNode))
+  }
+
+  return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))
+}
+
+/** Returns the concrete registry identifier for a picker/connection option. */
+export const returnNodeSignature = (node: NodeDefinitions): string =>
+  nodeConcreteSignature(node as StandardNodeDefinition)
 
 /**
  * Finds all available nodes that produce `expectedInputType` on any output handle.

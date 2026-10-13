@@ -80,6 +80,29 @@ describe('validateGraphData', () => {
       expect(invalidEdges).toHaveLength(0)
     })
 
+    it('migrates an automatically persisted variant name to display_name', () => {
+      const type = 'RunLaplace<2>'
+      mockStore.nodeDataByType = {
+        [type]: {
+          type,
+          node_type: NodeType.FUNCTION,
+          arguments: [],
+          inputs: [],
+          outputs: [],
+          display_name: 'Run Laplace problem',
+          variant_name: 'Run · 2D',
+        },
+      }
+
+      const [node] = nodesFromProtocolToFlow({
+        '1': { type, name: 'Run · 2D' },
+      })
+
+      expect(node.data.name).toBe('Run Laplace problem')
+      const saved = parseGraphToProtocol([node], [])
+      expect(saved.workflow.nodes['1'].name).toBe('Run Laplace problem')
+    })
+
     it('round-trips the Coral bases metadata', () => {
       const type = 'Derived'
       const bases = ['Base', 'Root']

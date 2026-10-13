@@ -12,6 +12,7 @@ import {
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
+  canonicalNodeName,
   findCompatibleSourceNodesAsOptions,
   findCompatibleTargetNodesAsOptions,
   formatSuggestedNodeName,
@@ -19,7 +20,9 @@ import {
   getOutputTypeAndName,
   resolveConnectionAndCompatibleNodes,
   returnNodeName,
+  returnNodeSignature,
 } from './canvasNodeUtils'
+import { groupNodesByOperation } from './nodePalette'
 import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
@@ -344,6 +347,102 @@ describe('canvasNodeUtils', () => {
         outputs: [],
       })
     ).toBe('Target node type')
+  })
+
+  it('groups operation specializations but keeps legacy entries singleton', () => {
+    const specialized = [
+      {
+        ...registry['LaplaceProblem::run<1>'],
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      {
+        ...registry['LaplaceProblem::run<2>'],
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      registry['LaplaceProblem::run<3>'],
+    ] as NodeDefinitions[]
+
+    const groups = groupNodesByOperation(specialized as any)
+    expect(groups).toHaveLength(2)
+    expect(groups[0].displayName).toBe('Run Laplace problem')
+    expect(groups[0].nodes.map((node) => node.type)).toEqual([
+      'LaplaceProblem::run<1>',
+      'LaplaceProblem::run<2>',
+    ])
+    expect(groups[1].nodes).toHaveLength(1)
+  })
+
+  it('prefers a logical display name without changing concrete identity', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+    expect(returnNodeSignature(definition)).toBe('LaplaceProblem::run<2>')
+  })
+
+  it('uses the logical display name instead of the palette variant', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('repairs a persisted variant name when loading an older graph', () => {
+    const definition = {
+      ...registry['LaplaceProblem::run<2>'],
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+      name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+    expect(canonicalNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('connects directly when an operation has one compatible specialization', () => {
+    const sourceNode = {
+      id: 'source',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: structuredClone(registry[Type.STRING]),
+    }
+    const stringSpecialization = {
+      type: 'consume_string',
+      operation: 'consume',
+      display_name: 'Consume',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: 'input', name: 'value', type: Type.STRING },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const intSpecialization = {
+      ...stringSpecialization,
+      type: 'consume_int',
+      arguments: [{ connection_type: 'input', name: 'value', type: Type.INT }],
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'source', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [stringSpecialization, intSpecialization] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      'consume_string'
+    )
   })
 
   it('clones created nodes and applies the requested name', () => {
