@@ -38,7 +38,7 @@ import { serializeParametersFile } from './parameterFileFormat'
 import { parameterHandlePath } from './parameterPorts'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
-  resolveGraphFileReferences,
+  prepareGraphFileReferences,
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
@@ -114,10 +114,11 @@ export const submitCoralStageRemote = async ({
     {},
     stageDir
   )
-  const resolvedGraph = await resolveGraphFileReferences(
+  const resolvedGraph = await prepareGraphFileReferences(
     withMpiPlugin(executionGraph, useMpi),
     'remote',
-    settingsState.remote.workingDirectory
+    settingsState.remote.workingDirectory,
+    stageDir
   )
   await uploadFileSsh(JSON.stringify(resolvedGraph), `${stageDir}/graph.json`)
   const batchScript = buildSbatchScript({
