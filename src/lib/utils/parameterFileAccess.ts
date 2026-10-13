@@ -1,12 +1,16 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
+import { findExistingFiles } from './fileReferences'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
   type ParameterFileFormat,
 } from './parameterFileFormat'
 import { shellEscape } from './shellEscape'
+import { normalizeRelativeParameterPath } from './workspacePath'
+
+export { normalizeRelativeParameterPath } from './workspacePath'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -23,37 +27,6 @@ export type LoadedParameterFile = {
   parameters: ParameterTree
   format: ParameterFileFormat
   resolvedPath: string
-}
-
-/** Normalises a relative POSIX path and rejects traversal outside its root. */
-export const normalizeRelativeParameterPath = (fileName: string): string => {
-  const normalized = fileName.trim().replaceAll('\\', '/')
-  if (
-    !normalized ||
-    normalized.startsWith('/') ||
-    /^[A-Za-z]:\//.test(normalized)
-  ) {
-    throw new Error(
-      'Parameter file names must be relative to the working directory'
-    )
-  }
-
-  const parts: string[] = []
-  for (const part of normalized.split('/')) {
-    if (!part || part === '.') continue
-    if (part === '..') {
-      if (parts.length === 0) {
-        throw new Error(
-          'Parameter file must remain inside the working directory'
-        )
-      }
-      parts.pop()
-    } else {
-      parts.push(part)
-    }
-  }
-  if (parts.length === 0) throw new Error('Parameter file name is empty')
-  return parts.join('/')
 }
 
 /**
@@ -95,6 +68,25 @@ export const parameterFileTarget = (
 })
 
 /**
+ * Checks whether a file exists at its target.
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns Whether the file exists; false without a working directory, for an
+ *   invalid name, or when the check itself fails.
+ */
+export const parameterFileExists = async (
+  target: ParameterFileTarget
+): Promise<boolean> => {
+  if (!target.workingDirectory) return false
+  try {
+    const path = parameterFilePath(target)
+    return (await findExistingFiles([path], target.location)).length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
  * Reads a parameter file from its target: through Electron IPC for `local`,
  * through an SSH `cat` for `remote`.
  *
@@ -132,6 +124,13 @@ export const readParameterFile = async (
   }
 }
 
+/**
+ * Writes content to a parameter or data file target.
+ * @param target - File target to write.
+ * @param content - Content to write.
+ * @returns Promise resolved after the write completes.
+ * @throws Error when the target has no working directory or cannot be written.
+ */
 export const writeParameterFile = async (
   target: ParameterFileTarget,
   content: string

@@ -9,7 +9,9 @@
   import {
     type CompatibleNodeOption,
     returnNodeName,
+    returnNodeSignature,
   } from '../../utils/canvasNodeUtils'
+  import { nodePaletteNodeName } from '../../utils/nodePalette'
   import { NodeType } from '../../types/nodeTypes'
 
   interface Props {
@@ -37,6 +39,14 @@
       ? `${option.nodeDefinition.name}-${option.handleId}`
       : `${option.nodeDefinition.type}-${option.handleId}`
 
+  const optionPaletteName = (option: CompatibleNodeOption): string =>
+    option.nodeDefinition.node_type === NodeType.NETWORK
+      ? returnNodeName(option.nodeDefinition)
+      : nodePaletteNodeName(option.nodeDefinition, options.length > 1)
+
+  const optionDefaultNodeName = (option: CompatibleNodeOption): string =>
+    returnNodeName(option.nodeDefinition)
+
   // Fires when `options` changes (i.e. modal opens with a new set of choices).
   // Resets selection to the first option.
   // The ternary guards against an empty array.
@@ -50,7 +60,7 @@
       (option) => optionId(option) === selectedOptionId
     )
     if (selectedOption) {
-      nodeName = returnNodeName(selectedOption.nodeDefinition)
+      nodeName = optionDefaultNodeName(selectedOption)
     }
   })
 
@@ -62,6 +72,16 @@
       return
     }
     onCreate(selectedOption, nodeName.trim())
+  }
+
+  const optionLabel = (option: CompatibleNodeOption): string => {
+    const showConcreteSignature = options.length > 1
+    const name = optionPaletteName(option)
+    const signature = showConcreteSignature
+      ? ` — ${returnNodeSignature(option.nodeDefinition)}`
+      : ''
+    const argument = option.argumentName ? ` (${option.argumentName})` : ''
+    return `${name}${signature}${argument}`
   }
 </script>
 
@@ -80,7 +100,7 @@
     >
       {#each options as option (optionId(option))}
         <option value={optionId(option)}>
-          {returnNodeName(option.nodeDefinition)} ({option.argumentName})
+          {optionLabel(option)}
         </option>
       {/each}
     </select>
