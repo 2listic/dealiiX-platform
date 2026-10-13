@@ -1,5 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+
 import {
+  buildRemoteStagedFileCommand,
+  prepareGraphFileReferences,
   resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from './fileReferences'
@@ -27,6 +30,18 @@ const leaf = (value: string) => ({
   documentation: value,
   pattern: '.*',
   pattern_description: '[Anything]',
+})
+
+const stagedGraph = (value = 'configs/parameters.prm') => ({
+  workflow: {
+    edges: {
+      '0': { source: 1, source_output: 0, target: 2, target_input: 0 },
+    },
+    nodes: {
+      '1': { type: 'std::string', value },
+      '2': { type: 'ParameterAcceptor::initialize' },
+    },
+  },
 })
 
 describe('resolveGraphFileReferences', () => {
@@ -147,6 +162,292 @@ describe('resolveGraphFileReferences', () => {
       relative
     )
     expect(invoke).not.toHaveBeenCalled()
+  })
+})
+
+describe('prepareGraphFileReferences', () => {
+  it('keeps ordinary existing files absolute and ordinary strings unchanged', async () => {
+    stubLocalFiles(['/work/mesh.vtu'])
+    const graph = {
+      workflow: {
+        edges: {},
+        nodes: {
+          '1': { type: 'std::string', value: 'mesh.vtu' },
+          '2': { type: 'std::string', value: 'not-a-file' },
+        },
+      },
+    }
+
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('/work/mesh.vtu')
+    expect(result.workflow.nodes['2'].value).toBe('not-a-file')
+  })
+
+  it('copies an existing staged file locally and keeps its relative graph path', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.prm']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+
+    const result = await prepareGraphFileReferences(
+      stagedGraph(),
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.prm')
+    expect(copyCalls).toEqual([
+      [
+        {
+          sourcePath: '/work/configs/parameters.prm',
+          destinationPath: '/work/run-42/configs/parameters.prm',
+        },
+      ],
+    ])
+  })
+
+  it('copies an existing parameter file regardless of graph metadata', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.prm']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = {
+      create_if_missing: true,
+    }
+
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.prm')
+    expect(result.workflow.nodes['1'].working_file).toBeUndefined()
+    expect(copyCalls).toEqual([
+      [
+        {
+          sourcePath: '/work/configs/parameters.prm',
+          destinationPath: '/work/run-42/configs/parameters.prm',
+        },
+      ],
+    ])
+  })
+
+  it('copies an existing JSON parameter file without registry metadata', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.json']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+
+    const result = await prepareGraphFileReferences(
+      stagedGraph('configs/parameters.json'),
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.json')
+    expect(copyCalls).toHaveLength(1)
+  })
+
+  it('uses the absolute working path for a missing creatable file without creating a placeholder', async () => {
+    const channels: string[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        channels.push(channel)
+        if (channel === 'find-existing-local-files') return []
+        throw new Error(channel)
+      }
+    )
+
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = { create_if_missing: true }
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe(
+      '/work/configs/parameters.prm'
+    )
+    expect(channels).toEqual(['find-existing-local-files'])
+  })
+
+  it('rejects a missing non-creatable staged file before execution', async () => {
+    stubLocalFiles([])
+    const graph = stagedGraph() as any
+    graph.workflow.nodes['1'].working_file = { create_if_missing: false }
+
+    await expect(
+      prepareGraphFileReferences(graph, 'local', '/work', '/work/run-42')
+    ).rejects.toThrow(
+      'Staged working file is missing and create_if_missing is false: /work/configs/parameters.prm'
+    )
+  })
+
+  it('preserves nested paths and copies the same staged file only once', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/bulk/parameters.prm']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+    const graph = {
+      workflow: {
+        edges: {
+          a: { source: 1, source_output: 0, target: 3, target_input: 0 },
+          b: { source: 2, source_output: 0, target: 3, target_input: 0 },
+        },
+        nodes: {
+          '1': { type: 'std::string', value: 'bulk/parameters.prm' },
+          '2': { type: 'std::string', value: 'bulk/parameters.prm' },
+          '3': { type: 'ParameterAcceptor::initialize' },
+        },
+      },
+    }
+
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('bulk/parameters.prm')
+    expect(result.workflow.nodes['2'].value).toBe('bulk/parameters.prm')
+    expect(copyCalls).toEqual([
+      [
+        {
+          sourcePath: '/work/bulk/parameters.prm',
+          destinationPath: '/work/run-42/bulk/parameters.prm',
+        },
+      ],
+    ])
+  })
+
+  it('recurses into nested subnetworks', async () => {
+    const copyCalls: unknown[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel === 'find-existing-local-files') {
+          return ['/work/configs/parameters.prm']
+        }
+        if (channel === 'stage-local-files') {
+          copyCalls.push(payload.files)
+          return undefined
+        }
+        throw new Error(channel)
+      }
+    )
+    const graph = {
+      workflow: {
+        edges: {},
+        nodes: {
+          '10': {
+            type: 'coral::Network',
+            value: stagedGraph(),
+          },
+        },
+      },
+    }
+
+    const result = await prepareGraphFileReferences(
+      graph,
+      'local',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['10'].value.workflow.nodes['1'].value).toBe(
+      'configs/parameters.prm'
+    )
+    expect(copyCalls).toHaveLength(1)
+  })
+
+  it('stages an existing file remotely without uploading its contents', async () => {
+    const commands: string[] = []
+    invoke.mockImplementation(
+      async (channel: string, payload: Record<string, unknown>) => {
+        if (channel !== 'execute-ssh-with-key') throw new Error(channel)
+        const command = String(payload.command)
+        commands.push(command)
+        if (command.startsWith('for p in')) {
+          return '/work/configs/parameters.prm\n'
+        }
+        return ''
+      }
+    )
+
+    const result = await prepareGraphFileReferences(
+      stagedGraph(),
+      'remote',
+      '/work',
+      '/work/run-42'
+    )
+
+    expect(result.workflow.nodes['1'].value).toBe('configs/parameters.prm')
+    expect(commands).toHaveLength(2)
+    expect(commands[1]).toContain(
+      "cp -- '/work/configs/parameters.prm' '/work/run-42/configs/parameters.prm'"
+    )
+  })
+
+  it('quotes every remote staging path safely', () => {
+    expect(
+      buildRemoteStagedFileCommand([
+        {
+          sourcePath: "/work/user's/config.prm",
+          destinationPath: '/work/run 42/configs/config.prm',
+        },
+      ])
+    ).toBe(
+      "mkdir -p '/work/run 42/configs' && cp -- '/work/user'\\''s/config.prm' '/work/run 42/configs/config.prm'"
+    )
   })
 })
 

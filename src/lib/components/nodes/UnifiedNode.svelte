@@ -59,6 +59,7 @@
     type NodeProps,
   } from '@xyflow/svelte'
   import { getModal } from '../layout/Modal.svelte'
+  import WorkingFileMetadataModal from './WorkingFileMetadataModal.svelte'
   import {
     nodeColors,
     NodeType,
@@ -98,7 +99,10 @@
     parameterPathLabel,
     parameterPortCoralType,
   } from '../../utils/parameterPorts'
-  import type { StandardNodeDefinition } from '../../types/nodeTypes'
+  import type {
+    StandardNodeDefinition,
+    WorkingFileReference,
+  } from '../../types/nodeTypes'
 
   let {
     id,
@@ -123,7 +127,12 @@
       isParameterFileName(data.value)
   )
   let parameterFileAvailable = $state(false)
+  let parameterFileCheckPending = $state(false)
   let parameterCheckId = 0
+  let stagedFileMetadataModalId = $derived(`working-file-${id}`)
+  let workingFileMetadata = $derived(
+    (data as StandardNodeDefinition).working_file
+  )
   let parameterInputs = $derived(
     parameterInputExposures(data as StandardNodeDefinition)
   )
@@ -137,20 +146,35 @@
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
-  $effect(() => {
+  const checkParameterFileAvailability = async (): Promise<boolean> => {
     const fileName = data.value
     const checkId = ++parameterCheckId
     parameterFileAvailable = false
-    if (!isParameterFile || !workingDirectory) return
+    parameterFileCheckPending = false
+    if (!isParameterFile || !workingDirectory) return false
 
+    parameterFileCheckPending = true
     const target = parameterFileTarget(activeLocation, fileName)
-    void parameterFileExists(target)
-      .then((exists) => {
-        if (checkId === parameterCheckId) parameterFileAvailable = exists
-      })
-      .catch(() => {
-        if (checkId === parameterCheckId) parameterFileAvailable = false
-      })
+    try {
+      const exists = await parameterFileExists(target)
+      if (checkId !== parameterCheckId) return false
+      parameterFileAvailable = exists
+      return exists
+    } catch {
+      if (checkId !== parameterCheckId) return false
+      parameterFileAvailable = false
+      return false
+    } finally {
+      if (checkId === parameterCheckId) parameterFileCheckPending = false
+    }
+  }
+
+  $effect(() => {
+    isParameterFile
+    workingDirectory
+    activeLocation
+    data.value
+    void checkParameterFileAvailability()
   })
 
   const handleOpenParameters = async () => {
@@ -175,6 +199,23 @@
         type: 'error',
       })
     }
+  }
+
+  const handleParameterFileAction = async () => {
+    if (parameterFileCheckPending) return
+    // The run may have created a previously missing file. Refresh the
+    // filesystem state on every click before choosing the action.
+    if (await checkParameterFileAvailability()) {
+      void handleOpenParameters()
+    } else {
+      getModal(stagedFileMetadataModalId)?.open()
+    }
+  }
+
+  const handleWorkingFileMetadataSave = (metadata: WorkingFileReference) => {
+    graphHistoryState.checkpoint()
+    updateNodeData(id, { working_file: metadata })
+    clearConnectionCache()
   }
 
   const isValidNum = (value: string | null | undefined) => {
@@ -291,12 +332,17 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
-        {#if isParameterFile && parameterFileAvailable}
+        {#if isParameterFile}
           <button
             class="node-button"
-            title="Open parameters"
-            aria-label="Open parameters"
-            onclick={handleOpenParameters}
+            title={parameterFileAvailable
+              ? 'Open parameters'
+              : 'Configure parameter file creation'}
+            aria-label={parameterFileAvailable
+              ? 'Open parameters'
+              : 'Configure parameter file creation'}
+            disabled={parameterFileCheckPending}
+            onclick={handleParameterFileAction}
           >
             <OpenIcon width="20px" height="20px" />
           </button>
@@ -459,6 +505,15 @@
   currentName={hasCustomName ? (data.name ?? data.type) : data.type}
 />
 
+{#if isParameterFile}
+  <WorkingFileMetadataModal
+    modalId={stagedFileMetadataModalId}
+    fileName={data.value}
+    currentMetadata={workingFileMetadata}
+    onSave={handleWorkingFileMetadataSave}
+  />
+{/if}
+
 <style>
   .custom-node {
     padding: 15px;
@@ -521,6 +576,11 @@
 
   .node-button:hover {
     border: 1px solid var(--border-color-hover);
+  }
+
+  .node-button:disabled {
+    cursor: wait;
+    opacity: 0.5;
   }
 
   input[type='text'] {

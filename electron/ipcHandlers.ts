@@ -25,6 +25,7 @@ import {
   getLocalRunLog,
   getLocalRunState,
   listLocalRuns,
+  stageLocalFiles,
   startLocalCoralRun,
   startLocalExecutableRun,
 } from './utils/localCoralRuns.js'
@@ -145,6 +146,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('find-existing-local-files', async (_event, { paths }) => {
     return await findExistingLocalFiles(paths)
+  })
+
+  ipcMain.handle('stage-local-files', async (_event, { files }) => {
+    await stageLocalFiles(files)
   })
 
   ipcMain.handle('get-local-cpu-count', () => os.cpus().length)
