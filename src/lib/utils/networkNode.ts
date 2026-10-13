@@ -9,6 +9,7 @@
 import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
+  getBaseTypes,
   NodeType,
   type Type,
   type StandardNodeDefinition,
@@ -117,13 +118,26 @@ export const analyzeNetworkBoundary = (
 
   const freeConnectionsMap: Record<string, FreeConnection> = {}
 
+  const copyBoundaryArgument = (
+    argument: StandardNodeDefinition['arguments'][number],
+    connectionType: ConnectionType = argument.connection_type
+  ): StandardNodeDefinition['arguments'][number] => {
+    const bases = getBaseTypes(argument)
+    return {
+      connection_type: connectionType,
+      name: argument.name,
+      type: argument.type,
+      ...(bases.length && { bases }),
+    }
+  }
+
   const registerFreeParameterPort = (
     nodeId: string,
     argument: StandardNodeDefinition['arguments'][number],
     handle: string,
     direction: 'input' | 'output'
   ) => {
-    const key = `${nodeId}-${argument.name}-${argument.type}`
+    const key = `${nodeId}-${argument.name}-${argument.type}-${getBaseTypes(argument).join('|')}`
     const existing = freeConnectionsMap[key]
     if (existing) {
       if (direction === 'input') existing.isFreeInput = true
@@ -134,11 +148,7 @@ export const analyzeNetworkBoundary = (
     }
     freeConnectionsMap[key] = {
       nodeId,
-      argument: {
-        connection_type: argument.connection_type,
-        name: argument.name,
-        type: argument.type,
-      },
+      argument: copyBoundaryArgument(argument),
       isFreeInput: direction === 'input',
       isFreeOutput: direction === 'output',
       inputHandles: direction === 'input' ? [handle] : [],
@@ -171,7 +181,7 @@ export const analyzeNetworkBoundary = (
           nodeData.arguments[argIndex]
         ) {
           const arg = nodeData.arguments[argIndex]
-          const key = `${node.id}-${arg.name}-${arg.type}`
+          const key = `${node.id}-${arg.name}-${arg.type}-${getBaseTypes(arg).join('|')}`
 
           const existing = freeConnectionsMap[key]
           if (existing) {
@@ -179,11 +189,7 @@ export const analyzeNetworkBoundary = (
           } else {
             freeConnectionsMap[key] = {
               nodeId: node.id,
-              argument: {
-                connection_type: arg.connection_type,
-                name: arg.name,
-                type: arg.type,
-              },
+              argument: copyBoundaryArgument(arg),
               isFreeInput: true,
               isFreeOutput: false,
               inputHandles: [targetHandle],
@@ -207,13 +213,17 @@ export const analyzeNetworkBoundary = (
         if (!isConnected) {
           // Handle SELF outputs (argIndex === -1)
           if (argIndex === -1) {
-            const key = `${node.id}-self-${nodeData.type}`
+            const data = nodeData as StandardNodeDefinition
+            const outputType = data.output_type ?? data.type
+            const bases = getBaseTypes(data)
+            const key = `${node.id}-self-${outputType}-${bases.join('|')}`
             freeConnectionsMap[key] = {
               nodeId: node.id,
               argument: {
                 connection_type: ConnectionType.OUTPUT,
                 name: 'self',
-                type: nodeData.type as Type,
+                type: outputType as Type,
+                ...(bases.length && { bases }),
               },
               isFreeInput: false,
               isFreeOutput: true,
@@ -223,7 +233,7 @@ export const analyzeNetworkBoundary = (
           } else if (nodeData.arguments && nodeData.arguments[argIndex]) {
             // Handle regular outputs with arguments
             const arg = nodeData.arguments[argIndex]
-            const key = `${node.id}-${arg.name}-${arg.type}`
+            const key = `${node.id}-${arg.name}-${arg.type}-${getBaseTypes(arg).join('|')}`
 
             const existing = freeConnectionsMap[key]
             if (existing) {
@@ -231,11 +241,7 @@ export const analyzeNetworkBoundary = (
             } else {
               freeConnectionsMap[key] = {
                 nodeId: node.id,
-                argument: {
-                  connection_type: arg.connection_type,
-                  name: arg.name,
-                  type: arg.type,
-                },
+                argument: copyBoundaryArgument(arg),
                 isFreeInput: false,
                 isFreeOutput: true,
                 inputHandles: [],
@@ -316,9 +322,9 @@ export const analyzeNetworkBoundary = (
 
     const currentIndex = argumentsArray.length
     argumentsArray.push({
+      ...conn.argument,
       connection_type: finalConnectionType,
-      name: conn.argument.name,
-      type: conn.argument.type,
+      ...(conn.argument.bases && { bases: [...conn.argument.bases] }),
     })
 
     // Step 4: Build inputs and outputs arrays

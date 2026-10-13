@@ -6,6 +6,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#226](https://github.com/2listic/dealiiX-platform/pull/226) Graph import, connections, and connection suggestions accept concrete derived values and their ancestors, preserving concrete types through pass-through nodes. Compiler-specific C++ type spellings are matched consistently with Coral.
+
 - [#216](https://github.com/2listic/dealiiX-platform/pull/216) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Parameter-file nodes can now be edited from the graph, expose selected parameters as graph ports, and materialize connected values in the per-run copy while keeping frontend-only metadata out of the backend graph.
 
@@ -40,7 +42,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### SSH communication
 
 - [#231](https://github.com/2listic/dealiiX-platform/pull/231) Single runs now start the same way as pipeline stages, locally and remotely. A local run checks that the CORAL binary and plugin, or the executable, exist before starting and names any that are missing. Two local runs started in quick succession can no longer receive the same job id and overwrite each other's status and log. Local run notifications now read "Submitted job …" like remote ones.
-- Local graph parameter materialization now creates the per-run parameter file and any required parent directories instead of requiring that run-local file to exist already.
+- [#226](https://github.com/2listic/dealiiX-platform/pull/226) Local graph parameter materialization now creates the per-run parameter file and any required parent directories instead of requiring that run-local file to exist already.
 - [#225](https://github.com/2listic/dealiiX-platform/pull/225) Local Coral and executable runs can now use the configured `mpirun` launcher with an explicit process count. Each run executes in its own directory, locally and remotely, so run outputs do not collide. A graph value or parameter value naming an existing file under the configured working directory is written as that file's absolute path in the run's graph or parameter file, so inputs such as large meshes can be referenced by name and are reused without copying. Local executable runs now receive their parameters file by name rather than by full path, as remote runs already did, so programs that read their dimension from that path (such as step-70) run correctly locally.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Referenced parameter files are staged into isolated remote run directories while preserving their relative paths, including files exposed through nested subnetworks.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Connected parameter values are materialized only in each local run or remote stage directory, leaving the user's source files unchanged; existing file values are resolved to absolute paths in the run payload.

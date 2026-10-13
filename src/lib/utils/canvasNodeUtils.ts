@@ -6,6 +6,8 @@
 
 import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
+  ConnectionType,
+  getBaseTypes,
   isTypeCompatible,
   NodeType,
   SELF,
@@ -136,7 +138,11 @@ export const createCustomEdge = (params: {
 export const getOutputTypeAndName = (
   sourceNode: Node,
   sourceHandle: string
-): { connectionType: string; connectionName: string } | null => {
+): {
+  connectionType: string
+  connectionName: string
+  connectionTypes?: string[]
+} | null => {
   const data = sourceNode.data as StandardNodeDefinition
   const parameterExposure = parameterExposureForHandle(
     data,
@@ -169,8 +175,13 @@ export const getOutputTypeAndName = (
   const defaultNodeName = data.name?.trim() || data.type
 
   if (outputIndex === SELF) {
+    const connectionTypes = [
+      ...getBaseTypes(data),
+      ...(data.output_type ? [data.output_type] : [data.type]),
+    ]
     return {
-      connectionType: data?.base ?? data.type,
+      connectionType: connectionTypes.join(' | '),
+      ...(connectionTypes.length > 1 && { connectionTypes }),
       connectionName: defaultNodeName,
     }
   }
@@ -186,8 +197,10 @@ export const getOutputTypeAndName = (
     return null
   }
 
+  const connectionTypes = [...getBaseTypes(argument), argument.type]
   return {
-    connectionType: argument.type,
+    connectionType: connectionTypes.join(' | '),
+    ...(connectionTypes.length > 1 && { connectionTypes }),
     connectionName: argument.name,
   }
 }
@@ -201,10 +214,11 @@ export const getOutputTypeAndName = (
  */
 export const findCompatibleTargetNodesAsOptions = (
   availableNodes: NodeDefinitions[],
-  sourceType: string,
+  sourceType: string | string[],
   excludedNodeType?: string
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
+  const sourceTypes = Array.isArray(sourceType) ? sourceType : [sourceType]
   for (const nodeDefinition of availableNodes) {
     if (nodeDefinition.node_type === NodeType.ABSTRACT) continue
     if (nodeDefinition.type === excludedNodeType) continue
@@ -215,7 +229,8 @@ export const findCompatibleTargetNodesAsOptions = (
     ) {
       const argument = resolveInputArgument(nodeDefinition, handleIndex)
       if (!argument) continue
-      if (!isTypeCompatible(sourceType, argument.type)) continue
+      if (!sourceTypes.some((type) => isTypeCompatible(type, argument.type)))
+        continue
       options.push({
         nodeDefinition,
         handleId: `input-${handleIndex}`,
@@ -235,7 +250,11 @@ export const findCompatibleTargetNodesAsOptions = (
 export const getInputTypeAndName = (
   targetNode: Node,
   targetHandle: string
-): { connectionType: string; connectionName: string } | null => {
+): {
+  connectionType: string
+  connectionName: string
+  connectionTypes?: string[]
+} | null => {
   const data = targetNode.data as StandardNodeDefinition
   const parameterExposure = parameterExposureForHandle(
     data,
@@ -304,11 +323,14 @@ export const returnNodeName = (node: NodeDefinitions): string =>
  */
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
-  expectedInputType: string,
+  expectedInputType: string | string[],
   excludedNodeType?: string,
   frontendScalarOnly = false
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
+  const expectedTypes = Array.isArray(expectedInputType)
+    ? expectedInputType
+    : [expectedInputType]
   for (const nodeDefinition of availableNodes) {
     if (nodeDefinition.node_type === NodeType.ABSTRACT) continue
     if (
@@ -325,9 +347,16 @@ export const findCompatibleSourceNodesAsOptions = (
       handleIndex < nodeDefinition.outputs.length;
       handleIndex++
     ) {
-      const outputType = resolveOutputType(nodeDefinition, handleIndex)
-      if (!outputType) continue
-      if (!isTypeCompatible(outputType, expectedInputType)) continue
+      const outputTypes = resolveOutputTypeCandidates(
+        nodeDefinition,
+        handleIndex
+      )
+      if (
+        !outputTypes.some((output) =>
+          expectedTypes.some((expected) => isTypeCompatible(output, expected))
+        )
+      )
+        continue
       options.push({
         nodeDefinition,
         handleId: `output-${handleIndex}`,
@@ -362,6 +391,7 @@ export const resolveConnectionAndCompatibleNodes = (
   if (!connectionInfo) return null
 
   const { connectionType, connectionName } = connectionInfo
+  const connectionTypes = connectionInfo.connectionTypes ?? [connectionType]
   const nodeType = (node.data as StandardNodeDefinition).type
   const targetIsParameterInput =
     connectStartParams.handleType === 'target' &&
@@ -370,12 +400,12 @@ export const resolveConnectionAndCompatibleNodes = (
     connectStartParams.handleType === 'source'
       ? findCompatibleTargetNodesAsOptions(
           availableNodes,
-          connectionType,
+          connectionTypes,
           nodeType
         ) // 'source'
       : findCompatibleSourceNodesAsOptions(
           availableNodes,
-          connectionType,
+          connectionTypes,
           targetIsParameterInput ? undefined : nodeType,
           targetIsParameterInput
         ) // 'target'
@@ -441,8 +471,9 @@ export const resolveInputArgument = (
 
 /**
  * Resolves the output type string for an output handle index on a node.
- * Handles the SELF case (`outputs[-1]`) by returning `base ?? type`.
- * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `base`.
+ * Handles the SELF case (`outputs[-1]`) by returning the first concrete output
+ * type or registered base type.
+ * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `output_type`/inheritance metadata.
  * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
  *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
  * @returns The type string, or null if the index is out of range.
@@ -453,9 +484,52 @@ export const resolveOutputType = (
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF)
-    return (data as StandardNodeDefinition).base ?? data.type
+  if (outputIndex === SELF) {
+    const standardData = data as StandardNodeDefinition
+    if (standardData.output_type) return standardData.output_type
+    return getBaseTypes(standardData)[0] ?? data.type
+  }
   return data.arguments?.[outputIndex]?.type ?? null
+}
+
+/**
+ * Resolves every type that may be observed at an output handle.
+ *
+ * A derived self-output is externally usable both as its registered base and
+ * as the concrete derived type. A pass-through output additionally preserves
+ * the concrete types resolved from its upstream input.
+ *
+ * @param data - The node definition containing the output metadata.
+ * @param handleIndex - Zero-based index into the node's `outputs` array.
+ * @param upstreamTypes - Concrete types propagated through a pass-through input.
+ * @returns Unique output types, or an empty array for an invalid handle.
+ */
+export const resolveOutputTypeCandidates = (
+  data: NodeDefinitions,
+  handleIndex: number,
+  upstreamTypes: string[] = []
+): string[] => {
+  const outputIndex = data.outputs?.[handleIndex]
+  if (outputIndex == null) return []
+
+  const candidates: string[] = []
+  if (outputIndex === SELF) {
+    const standardData = data as StandardNodeDefinition
+    if (standardData.output_type) {
+      candidates.push(...getBaseTypes(standardData), standardData.output_type)
+    } else {
+      candidates.push(...getBaseTypes(standardData), data.type)
+    }
+  } else {
+    const argument = data.arguments?.[outputIndex]
+    if (!argument) return []
+    candidates.push(...getBaseTypes(argument), argument.type)
+    if (argument.connection_type === ConnectionType.PASSTHROUGH) {
+      candidates.push(...upstreamTypes)
+    }
+  }
+
+  return [...new Set(candidates)]
 }
 
 /**

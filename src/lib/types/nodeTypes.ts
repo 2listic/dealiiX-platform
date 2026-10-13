@@ -8,17 +8,26 @@
 // export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
+import { canonicalTypeKey } from '../utils/canonicalTypeKey'
+
 export enum ConnectionType {
   INPUT = 'input',
   OUTPUT = 'output',
   PASSTHROUGH = 'pass_through',
 }
 
+export type InheritanceMetadata = {
+  /** All registered direct and indirect ancestors. */
+  bases?: string[]
+  /** Compatibility with older registries. */
+  base?: string
+}
+
 export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
-}
+} & InheritanceMetadata
 
 /** The four scalar types that can be exposed by a frontend parameter port. */
 export type ParameterPortType =
@@ -136,6 +145,12 @@ export const isTypeCompatible = (
   if (sourceType === Type.ANY || targetType === Type.ANY) return true
   if (sourceType === targetType) return true
   if (
+    sourceType &&
+    targetType &&
+    canonicalTypeKey(sourceType) === canonicalTypeKey(targetType)
+  )
+    return true
+  if (
     [Type.STRING, Type.STR].includes(sourceType as Type) &&
     [Type.STRING, Type.STR].includes(targetType as Type)
   ) {
@@ -160,14 +175,27 @@ export type StandardNodeDefinition = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   node_type: NodeType
+  /** Concrete value produced by a function's SELF output. */
+  output_type?: string
   name?: string
   derived?: string[]
-  base?: string
   method_name?: string
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
-}
+} & InheritanceMetadata
+
+/**
+ * Returns all ancestors, including the legacy single-base field.
+ * @param metadata - Node or argument inheritance metadata.
+ * @returns Unique ancestor types in registry order.
+ */
+export const getBaseTypes = (metadata: InheritanceMetadata): string[] => [
+  ...new Set([
+    ...(metadata.bases ?? []).filter(Boolean),
+    ...(metadata.base ? [metadata.base] : []),
+  ]),
+]
 
 export type RegisteredNodes = {
   [key: string]: StandardNodeDefinition
@@ -203,13 +231,12 @@ export type NetworkEdges = {
  */
 export type LeanStandardNode = {
   type: string
-  base?: string
   derived?: string[]
   value?: string
   name?: string
   position?: { x: number; y: number }
   parameter_file?: ParameterFileMetadata
-}
+} & InheritanceMetadata
 
 /**
  * Full definition of a subgraph node — an encapsulated computational graph

@@ -16,9 +16,9 @@ test('collapsing a selection into a subnetwork and exploding it restores the nod
   // force: bypasses Playwright's actionability wait so nodes can be selected
   // even when they appear small or partially covered at the fitView zoom level.
   await nodes.first().click({ force: true })
-  await page.keyboard.down('Control')
+  await page.keyboard.down('ControlOrMeta')
   await nodes.last().click({ force: true })
-  await page.keyboard.up('Control')
+  await page.keyboard.up('ControlOrMeta')
 
   // force: the button may overlap with the minimap at small window sizes
   await page
