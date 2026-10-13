@@ -10,8 +10,10 @@ import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
   getBaseTypes,
+  isOverloadNodeDefinition,
   NodeType,
   type Type,
+  type NodeDefinitions,
   type StandardNodeDefinition,
   TypeField,
   type SubGraphNodeDefinition,
@@ -23,6 +25,10 @@ import {
   parameterInputExposures,
   parameterOutputExposures,
 } from './parameterPorts'
+import {
+  overloadCandidatesForNode,
+  overloadInterfaceForCandidates,
+} from './overloadResolution'
 
 /**
  * Bidirectional handle maps for routing edges between an internal subgraph and
@@ -162,9 +168,18 @@ export const analyzeNetworkBoundary = (
   )
 
   for (const node of sortedNodes) {
-    const nodeData = node.data as
-      | StandardNodeDefinition
-      | SubGraphNodeDefinition
+    const rawNodeData = node.data as NodeDefinitions
+    // Rebuild a finalized family's interface here as a safeguard for stored
+    // canvas snapshots: alternate candidate ports must not become subnetwork
+    // boundary ports even if the snapshot still carries the union interface.
+    const nodeData = isOverloadNodeDefinition(rawNodeData)
+      ? {
+          ...rawNodeData,
+          ...overloadInterfaceForCandidates(
+            overloadCandidatesForNode(rawNodeData)
+          ),
+        }
+      : rawNodeData
 
     // Check for free inputs
     if (nodeData.inputs && Array.isArray(nodeData.inputs)) {

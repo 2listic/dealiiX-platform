@@ -2,6 +2,7 @@
   import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
+    OverloadNodeDefinition,
     StandardNodeDefinition as StandardNodeDefinitionType,
     NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
@@ -39,6 +40,7 @@
     FlowNodeType.FUNCTION
   >
   export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
+  export type Overload = FlowNode<OverloadNodeDefinition, FlowNodeType.OVERLOAD>
   export type UnifiedNodeType =
     | ElementaryConstructor
     | EmptyConstructor
@@ -49,6 +51,7 @@
     | VoidFunction
     | Function
     | Network
+    | Overload
 </script>
 
 <script lang="ts">
@@ -56,13 +59,16 @@
     Handle,
     Position,
     useSvelteFlow,
+    type Node,
     type NodeProps,
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
   import {
     nodeColors,
+    ConnectionType,
     NodeType,
     PARAMETER_FILE_COLOR,
+    SELF,
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
@@ -77,6 +83,8 @@
   import { clearConnectionCache } from '../../utils/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
+  import RefreshIcon from '../icons/RefreshIcon.svelte'
+  import SuccessIcon from '../icons/SuccessIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
@@ -97,14 +105,27 @@
     parameterFileUnavailableReason,
     useAsParameterFile,
   } from '../../utils/parameterNodeActions'
-  import type { StandardNodeDefinition } from '../../types/nodeTypes'
-  import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import {
+    isOverloadNodeDefinition,
+    type NodeDefinitions,
+    type StandardNodeDefinition,
+  } from '../../types/nodeTypes'
+  import {
+    resolveOutputTypeCandidates,
+    returnNodeName,
+  } from '../../utils/canvasNodeUtils'
+  import { displayTypeName } from '../../utils/nodePalette'
   import { isVtkFileName } from '../../utils/vtkFileFormat'
   import {
     buildVtkVisualizerUrl,
     findVtkVisualizerTarget,
   } from '../../utils/vtkVisualizer'
   import { openNewWindow } from '../../utils/sshMessages'
+  import {
+    overloadInterfaceForCandidates,
+    overloadStatus,
+    resolveOverloadGraph,
+  } from '../../utils/overloadResolution'
 
   let {
     id,
@@ -117,6 +138,9 @@
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
+  // An overload family node has no `value`.
+  const valueForNode = (): string | undefined =>
+    'value' in data && data.value != null ? String(data.value) : undefined
   let isLiteral = $derived(
     data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR ||
       data.node_type === NodeType.PRIMITIVE
@@ -129,7 +153,7 @@
     isLiteral &&
       !isParameterFile &&
       [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isParameterFileName(data.value)
+      isParameterFileName(valueForNode())
   )
   let color = $derived(
     isParameterFile
@@ -137,6 +161,23 @@
       : nodeColors[type as keyof typeof nodeColors]
   )
   let parameterFileUnavailable = $derived(parameterFileUnavailableReason())
+  let isOverloadNode = $derived(data.node_type === NodeType.OVERLOAD)
+  let overloadCandidates = $derived.by(() => {
+    if (!isOverloadNode || !isOverloadNodeDefinition(data)) return []
+    const resolution = resolveOverloadGraph(
+      getNodesSnapshot() as Node<NodeDefinitions>[],
+      getEdgesSnapshot()
+    )
+    return resolution.candidatesByNodeId[id] ?? data.candidates
+  })
+  let currentOverloadStatus = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data)
+      ? overloadStatus(data, overloadCandidates)
+      : null
+  )
+  let isOverloadFinalized = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data) && data.finalized === true
+  )
   let activeLocation = $derived(executionSelectionState.location)
   let workingDirectory = $derived(
     activeLocation === 'local'
@@ -145,8 +186,94 @@
   )
   let isVtkFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isVtkFileName(data.value)
+      isVtkFileName(valueForNode())
   )
+  type ArgumentPortRows = {
+    inputs: number[]
+    outputs: number[]
+    count: number
+    passthrough: number[]
+  }
+
+  const buildArgumentPortRows = (
+    definition: NodeDefinitions
+  ): ArgumentPortRows => {
+    const inputs: number[] = []
+    const outputs: number[] = []
+    const passThroughRows: Record<number, number> = {}
+    let nextRow = 0
+
+    definition.inputs.forEach((argumentIndex, handleIndex) => {
+      const argument = definition.arguments[argumentIndex]
+      const hasMatchingOutput =
+        argument?.connection_type === ConnectionType.PASSTHROUGH &&
+        definition.outputs.some((outputIndex) => outputIndex === argumentIndex)
+
+      if (hasMatchingOutput) {
+        const existingRow = passThroughRows[argumentIndex]
+        if (existingRow != null) {
+          inputs[handleIndex] = existingRow
+          return
+        }
+
+        passThroughRows[argumentIndex] = nextRow
+      }
+
+      inputs[handleIndex] = nextRow
+      nextRow += 1
+    })
+
+    definition.outputs.forEach((argumentIndex, handleIndex) => {
+      if (argumentIndex !== SELF) {
+        const passThroughRow = passThroughRows[argumentIndex]
+        if (passThroughRow != null) {
+          outputs[handleIndex] = passThroughRow
+          return
+        }
+      }
+
+      outputs[handleIndex] = nextRow
+      nextRow += 1
+    })
+
+    return {
+      inputs,
+      outputs,
+      count: nextRow,
+      passthrough: Object.values(passThroughRows),
+    }
+  }
+
+  let argumentPortRows = $derived.by(() => buildArgumentPortRows(data))
+  let portRowCount = $derived(Math.max(1, argumentPortRows.count))
+  const portPosition = (row: number): string =>
+    `${(100 / (portRowCount + 1)) * (row + 1) + 5}%`
+
+  const outputPortInfo = (argumentIndex: number, handleIndex: number) => {
+    if (argumentIndex === SELF) {
+      const outputTypes = resolveOutputTypeCandidates(data, handleIndex)
+      return {
+        name: 'output',
+        type: outputTypes.join(' | ') || 'unknown',
+      }
+    }
+
+    const argument = data.arguments[argumentIndex]
+    if (
+      !argument ||
+      ![ConnectionType.OUTPUT, ConnectionType.PASSTHROUGH].includes(
+        argument.connection_type
+      )
+    ) {
+      return null
+    }
+
+    return { name: argument.name, type: argument.type }
+  }
+  const isPassthroughArgument = (argumentIndex: number): boolean =>
+    data.arguments[argumentIndex]?.connection_type ===
+      ConnectionType.PASSTHROUGH &&
+    data.outputs.some((outputIndex) => outputIndex === argumentIndex)
   let nodeInfoModalId = $derived(`node-info-${id}`)
   let nodeInfoJson = $derived(JSON.stringify(data, null, 2))
   let nodeDisplayName = $derived(returnNodeName(data))
@@ -159,7 +286,7 @@
     try {
       const target = await findVtkVisualizerTarget(
         activeLocation,
-        String(data.value),
+        valueForNode() ?? '',
         jobIdMapState.getLatestRunWorkingDirectory()
       )
       if (!target) {
@@ -211,7 +338,7 @@
    */
   $effect(() => {
     if (isNumericType(data.type)) {
-      const value = data.value
+      const value = valueForNode()
       const expectedIsValid = isValidNum(value)
 
       // Only update if validation state differs from current state
@@ -260,6 +387,25 @@
       })
     }
   }
+
+  /** Toggles a resolved family between its concrete and union interfaces. */
+  const handleToggleOverloadFinalization = () => {
+    if (!isOverloadNodeDefinition(data)) return
+
+    const isFinalizing = data.finalized !== true
+    const candidate = overloadCandidates[0]
+    if (isFinalizing && !candidate) return
+
+    graphHistoryState.checkpoint()
+    updateNodeData(id, {
+      ...overloadInterfaceForCandidates(
+        isFinalizing ? [candidate] : data.candidates
+      ),
+      finalized: isFinalizing,
+      finalized_candidate_type: isFinalizing ? candidate?.type : undefined,
+    })
+    clearConnectionCache()
+  }
 </script>
 
 <div
@@ -271,9 +417,24 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      <div class="node-name" title={data.type}>{nodeDisplayName}</div>
+      <div class="node-name" title={displayTypeName(data.type)}>
+        {nodeDisplayName}
+      </div>
       {#if isParameterFile}
         <div class="node-type">parameter_file</div>
+      {/if}
+      {#if isOverloadNode && currentOverloadStatus}
+        <div class="overload-status" data-status={currentOverloadStatus}>
+          {currentOverloadStatus === 'resolved'
+            ? isOverloadFinalized
+              ? 'finalized'
+              : 'resolved'
+            : currentOverloadStatus === 'partially_constrained'
+              ? `${overloadCandidates.length} variants remain`
+              : currentOverloadStatus === 'invalid'
+                ? 'no compatible variant'
+                : `${overloadCandidates.length} variants`}
+        </div>
       {/if}
     </div>
     <div class="node-buttons">
@@ -324,6 +485,28 @@
           <EditIcon width="20px" height="20px" />
         </button>
       {/if}
+      {#if isOverloadNode && currentOverloadStatus === 'resolved'}
+        <button
+          class="node-button overload-finalize-button"
+          title={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          aria-label={isOverloadFinalized
+            ? 'Show alternative overload options'
+            : 'Finalize resolved overload'}
+          onclick={(event) => {
+            event.stopPropagation()
+            handleToggleOverloadFinalization()
+          }}
+          onmousedown={(event) => event.stopPropagation()}
+        >
+          {#if isOverloadFinalized}
+            <RefreshIcon width="20px" height="20px" rotation={0} />
+          {:else}
+            <SuccessIcon width="20px" />
+          {/if}
+        </button>
+      {/if}
       <button
         class="node-button"
         title="Show node definition"
@@ -353,13 +536,25 @@
     <!-- Draws its own handles, each next to the row it belongs to -->
     <ParameterFilePorts {id} data={data as StandardNodeDefinition} />
   {:else}
+    {#each argumentPortRows.passthrough as row (row)}
+      <div
+        class="passthrough-guide"
+        style="top: {portPosition(row)};"
+        title="This input is forwarded to the matching output."
+        aria-hidden="true"
+      >
+        <span>↔ passthrough</span>
+      </div>
+    {/each}
+
     <!-- Input handlers -->
     {#each data.inputs as i, index (i)}
       <Handle
         id={`input-${index}`}
         type="target"
         position={Position.Left}
-        style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
+        class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
+        style="top: {portPosition(argumentPortRows.inputs[index] ?? index)};"
       />
     {/each}
 
@@ -369,38 +564,46 @@
         id={`output-${index}`}
         type="source"
         position={Position.Right}
-        style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+        class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
+        style="top: {portPosition(argumentPortRows.outputs[index] ?? index)};"
       />
     {/each}
   {/if}
 
   <!-- Input / output labels -->
   {#if data.arguments.length > 0}
-    <div style="display: flex; flex-direction: row; gap: 4vh">
-      <div class="input-column">
-        {#each data.inputs as i (i)}
-          {#if ['input', 'pass_through'].includes(data.arguments[i].connection_type)}
-            <div>
-              <div class="input-label">
-                {data.arguments[i].name}
-              </div>
-              <div class="input-type">{data.arguments[i].type}</div>
+    <div class="port-columns" style="--port-row-count: {portRowCount};">
+      {#each data.inputs as i, index (i)}
+        {#if ['input', 'pass_through'].includes(data.arguments[i]?.connection_type)}
+          <div
+            class="port-label input-port"
+            style="grid-row: {(argumentPortRows.inputs[index] ?? index) + 1};"
+          >
+            <div class="input-label">
+              {data.arguments[i].name}
             </div>
-          {/if}
-        {/each}
-      </div>
-      <div class="output-column">
-        {#each data.outputs as i (i)}
-          {#if i != -1 && ['output', 'pass_through'].includes(data.arguments[i]?.connection_type)}
-            <div>
-              <div class="output-label">
-                {data.arguments[i].name}
-              </div>
-              <div class="output-type">{data.arguments[i].type}</div>
+            <div class="input-type">
+              {displayTypeName(data.arguments[i].type)}
             </div>
-          {/if}
-        {/each}
-      </div>
+          </div>
+        {/if}
+      {/each}
+      {#each data.outputs as i, index (index)}
+        {@const output = outputPortInfo(i, index)}
+        {#if output}
+          <div
+            class="port-label output-port"
+            style="grid-row: {(argumentPortRows.outputs[index] ?? index) + 1};"
+          >
+            <div class="output-label">
+              {output.name}
+            </div>
+            <div class="output-type">
+              {displayTypeName(output.type)}
+            </div>
+          </div>
+        {/if}
+      {/each}
     </div>
   {/if}
 
@@ -410,7 +613,7 @@
       {#if data.type === Type.BOOLEAN}
         <input
           type="checkbox"
-          value={data.value}
+          value={valueForNode()}
           oninput={(evt) => {
             graphHistoryState.checkpoint()
             updateNodeData(id, {
@@ -418,7 +621,7 @@
             })
           }}
         />
-        <span>{data.value === 'true' ? 'true' : 'false'}</span>
+        <span>{valueForNode() === 'true' ? 'true' : 'false'}</span>
       {:else}
         <!-- All other elementary constructors -->
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
@@ -426,7 +629,7 @@
           type="text"
           class:is-invalid={!isValid}
           class:vtk-file-input={isVtkFile}
-          value={data.value}
+          value={valueForNode()}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
           oninput={(evt) => {
@@ -464,6 +667,7 @@
 
 <style>
   .custom-node {
+    position: relative;
     padding: 15px;
     border-radius: 5px;
     background: var(--primary-color);
@@ -493,6 +697,19 @@
   .node-labels {
     display: flex;
     flex-direction: column;
+  }
+
+  .overload-status {
+    font-size: 0.7rem;
+    opacity: 0.8;
+  }
+
+  .overload-status[data-status='resolved'] {
+    color: #8fd694;
+  }
+
+  .overload-status[data-status='invalid'] {
+    color: #ff8a80;
   }
 
   .node-name {
@@ -603,6 +820,58 @@
       color-mix(in srgb, var(--button-vtk-bg, #287f8f) 35%, transparent);
   }
 
+  .port-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: repeat(var(--port-row-count), minmax(3.5rem, auto));
+    column-gap: 4vh;
+  }
+
+  .port-label {
+    align-self: center;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .input-port {
+    grid-column: 1;
+  }
+
+  .output-port {
+    grid-column: 2;
+  }
+
+  .passthrough-guide {
+    position: absolute;
+    left: 24%;
+    right: 24%;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: color-mix(in srgb, var(--border-color-hover) 72%, transparent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .passthrough-guide::before,
+  .passthrough-guide::after {
+    flex: 1;
+    border-top: 2px dashed currentColor;
+    content: '';
+  }
+
+  .passthrough-guide span {
+    padding: 0.15rem 0.4rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: var(--primary-color);
+  }
+
   .input-column {
     display: flex;
     flex-direction: column;
@@ -640,5 +909,10 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
+  }
+
+  :global(.passthrough-handle) {
+    background: var(--border-color-hover);
+    border-color: var(--border-color-hover);
   }
 </style>
