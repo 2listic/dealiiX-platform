@@ -13,9 +13,15 @@ import {
   handleIdToIndex,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
-import { ConnectionType, isTypeCompatible, NodeType } from '../types/nodeTypes'
+import {
+  ConnectionType,
+  isOverloadNodeDefinition,
+  isTypeCompatible,
+  NodeType,
+} from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { parameterHandlePath } from './parameterPorts'
+import { resolveOverloadGraph } from './overloadResolution'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -63,6 +69,29 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   if (!targetNode) {
     connectionCache.set(cacheKey, false)
     return false
+  }
+
+  if (
+    isOverloadNodeDefinition(sourceNode.data) ||
+    isOverloadNodeDefinition(targetNode.data)
+  ) {
+    const proposedEdge: Edge = {
+      id: cacheKey,
+      source: connection.source,
+      sourceHandle: connection.sourceHandle as string,
+      target: connection.target,
+      targetHandle: connection.targetHandle as string,
+    }
+    const resolution = resolveOverloadGraph(nodes, [...edges, proposedEdge])
+    const hasEmptyCandidates = Object.values(
+      resolution.candidatesByNodeId
+    ).some((candidates) => candidates.length === 0)
+    const hasInvalidProposedEdge = resolution.edgeIssues.some(
+      (issue) => issue.edge.id === cacheKey
+    )
+    const isValid = !hasEmptyCandidates && !hasInvalidProposedEdge
+    connectionCache.set(cacheKey, isValid)
+    return isValid
   }
 
   const targetHandle = connection.targetHandle as string

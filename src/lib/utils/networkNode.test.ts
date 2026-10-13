@@ -19,6 +19,7 @@ import {
   ConnectionType,
   NodeType,
   Type,
+  type NodeDefinitions,
   type SubGraphNodeDefinition,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -30,10 +31,11 @@ import {
   createNetworkNodeDefinition,
   analyzeNetworkBoundary,
 } from './networkNode'
+import { createOverloadNodeDefinition } from './overloadResolution'
 
 const makeCanvasNode = (
   id: string,
-  data: StandardNodeDefinition | SubGraphNodeDefinition,
+  data: NodeDefinitions,
   type = data.node_type,
   position = { x: 0, y: 0 }
 ): Node =>
@@ -214,6 +216,61 @@ describe('networkNode utilities', () => {
       },
     ])
     expect(networkNode.outputs).toEqual([0])
+  })
+
+  it('does not expose alternate overload handles after finalization', () => {
+    const scalarCandidate: StandardNodeDefinition = {
+      type: 'scalar-operation',
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'field',
+          type: 'ScalarField' as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+      node_type: NodeType.FUNCTION,
+      operation: 'operation',
+    }
+    const twoArgumentCandidate: StandardNodeDefinition = {
+      ...scalarCandidate,
+      type: 'scalar-operation-with-label',
+      arguments: [
+        ...scalarCandidate.arguments,
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'label',
+          type: Type.STRING,
+        },
+      ],
+      inputs: [0, 1],
+    }
+    const family = createOverloadNodeDefinition([
+      scalarCandidate,
+      twoArgumentCandidate,
+    ])
+    const finalizedFamily = {
+      ...family,
+      finalized: true,
+      finalized_candidate_type: scalarCandidate.type,
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'FinalizedOperation',
+      [makeCanvasNode('1', finalizedFamily)],
+      []
+    )
+
+    expect(networkNode.arguments).toEqual([
+      {
+        connection_type: ConnectionType.INPUT,
+        name: 'field',
+        type: 'ScalarField',
+      },
+    ])
+    expect(networkNode.inputs).toEqual([0])
+    expect(networkNode.outputs).toEqual([])
   })
 
   it('createNetworkNodeDefinition and analyzeNetworkBoundary produce the Step1 definition from its constituent nodes', () => {

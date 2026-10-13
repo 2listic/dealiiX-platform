@@ -8,6 +8,7 @@ import type { Edge, Node, XYPosition } from '@xyflow/svelte'
 import {
   ConnectionType,
   getBaseTypes,
+  isOverloadNodeDefinition,
   isTypeCompatible,
   NodeType,
   SELF,
@@ -23,10 +24,15 @@ import {
   parameterPortCoralType,
 } from './parameterPorts'
 import {
+  displayTypeName,
   nodeConcreteSignature,
+  nodeLegacyOwnerDisplayName,
+  nodeOwnerDisplayName,
+  nodePaletteDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
 } from './nodePalette'
+import { overloadInputTypes, overloadOutputTypes } from './overloadResolution'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {
@@ -49,6 +55,29 @@ export type ConnectedNodeDraft = {
   sourceType: string
   position: XYPosition
   connectStartParams: ConnectStartParams
+}
+
+/**
+ * Adds one connection option for a node. Overload families expose a union
+ * interface, so several of their handles may accept the same source type;
+ * the connected-node picker should still present the family only once.
+ */
+const appendCompatibleNodeOption = (
+  options: CompatibleNodeOption[],
+  option: CompatibleNodeOption
+): void => {
+  if (
+    isOverloadNodeDefinition(option.nodeDefinition) &&
+    options.some(
+      (existing) =>
+        isOverloadNodeDefinition(existing.nodeDefinition) &&
+        existing.nodeDefinition.type === option.nodeDefinition.type
+    )
+  ) {
+    return
+  }
+
+  options.push(option)
 }
 
 /**
@@ -79,6 +108,14 @@ const cloneNodeDefinition = (
       nodeDefinition.working_file && {
         working_file: { ...nodeDefinition.working_file },
       }),
+    ...(isOverloadNodeDefinition(nodeDefinition) && {
+      candidates: nodeDefinition.candidates.map((candidate) => ({
+        ...candidate,
+        arguments: candidate.arguments.map((argument) => ({ ...argument })),
+        inputs: [...candidate.inputs],
+        outputs: [...candidate.outputs],
+      })),
+    }),
   } as NodeDefinitions
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
@@ -139,7 +176,7 @@ export const createCustomEdge = (params: {
 
 /**
  * Returns the output type and label for a given source handle.
- * For `SELF` outputs the type is `base ?? type` (the node's own class).
+ * For `SELF` outputs the type is the concrete type plus all registered bases.
  * @param sourceNode - The node the connection was dragged from.
  * @param sourceHandle - Handle ID in the form `"output-<index>"`.
  * @returns The `connectionType` and `connectionName` for the handle, or `null` if the handle is invalid.
@@ -152,9 +189,21 @@ export const getOutputTypeAndName = (
   connectionName: string
   connectionTypes?: string[]
 } | null => {
-  const data = sourceNode.data as StandardNodeDefinition
+  const data = sourceNode.data as NodeDefinitions
+  const handleIndex = handleIdToIndex(sourceHandle)
+  if (isOverloadNodeDefinition(data) && !Number.isNaN(handleIndex)) {
+    const types = overloadOutputTypes(data, handleIndex)
+    if (!types.length) return null
+    return {
+      connectionType: types.join(' | '),
+      connectionTypes: types,
+      connectionName:
+        data.arguments[data.outputs[handleIndex] ?? 0]?.name ??
+        data.display_name,
+    }
+  }
   const parameterExposure = parameterExposureForHandle(
-    data,
+    data as StandardNodeDefinition,
     sourceHandle,
     'output'
   )
@@ -164,7 +213,6 @@ export const getOutputTypeAndName = (
       connectionName: parameterPathLabel(parameterExposure.path),
     }
   }
-  const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getOutputTypeAndName: invalid handle id', sourceHandle)
     return null
@@ -184,10 +232,10 @@ export const getOutputTypeAndName = (
   const defaultNodeName = data.name?.trim() || data.type
 
   if (outputIndex === SELF) {
-    const connectionTypes = [
-      ...getBaseTypes(data),
-      ...(data.output_type ? [data.output_type] : [data.type]),
-    ]
+    const standardData = data as StandardNodeDefinition
+    const connectionTypes = standardData.output_type
+      ? [standardData.output_type]
+      : [...getBaseTypes(standardData), data.type]
     return {
       connectionType: connectionTypes.join(' | '),
       ...(connectionTypes.length > 1 && { connectionTypes }),
@@ -219,7 +267,7 @@ export const getOutputTypeAndName = (
  * @param availableNodes - All available node definitions to search.
  * @param sourceType - Output type to match against.
  * @param excludedNodeType - Node type to skip (usually the source node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching input handle across all available nodes.
+ * @returns List of `CompatibleNodeOption` entries, one per matching input handle for concrete nodes and one per overload family.
  */
 export const findCompatibleTargetNodesAsOptions = (
   availableNodes: NodeDefinitions[],
@@ -237,13 +285,18 @@ export const findCompatibleTargetNodesAsOptions = (
       handleIndex++
     ) {
       const argument = resolveInputArgument(nodeDefinition, handleIndex)
-      if (!argument) continue
-      if (!sourceTypes.some((type) => isTypeCompatible(type, argument.type)))
+      const inputTypes = overloadInputTypes(nodeDefinition, handleIndex)
+      if (!argument && !inputTypes.length) continue
+      if (
+        !sourceTypes.some((source) =>
+          inputTypes.some((target) => isTypeCompatible(source, target))
+        )
+      )
         continue
-      options.push({
+      appendCompatibleNodeOption(options, {
         nodeDefinition,
         handleId: `input-${handleIndex}`,
-        argumentName: argument.name,
+        argumentName: argument?.name ?? inputTypes.join(' | '),
       })
     }
   }
@@ -264,9 +317,21 @@ export const getInputTypeAndName = (
   connectionName: string
   connectionTypes?: string[]
 } | null => {
-  const data = targetNode.data as StandardNodeDefinition
+  const data = targetNode.data as NodeDefinitions
+  const handleIndex = handleIdToIndex(targetHandle)
+  if (isOverloadNodeDefinition(data) && !Number.isNaN(handleIndex)) {
+    const types = overloadInputTypes(data, handleIndex)
+    if (!types.length) return null
+    return {
+      connectionType: types.join(' | '),
+      connectionTypes: types,
+      connectionName:
+        data.arguments[data.inputs[handleIndex] ?? 0]?.name ??
+        data.display_name,
+    }
+  }
   const parameterExposure = parameterExposureForHandle(
-    data,
+    data as StandardNodeDefinition,
     targetHandle,
     'input'
   )
@@ -276,7 +341,6 @@ export const getInputTypeAndName = (
       connectionName: parameterPathLabel(parameterExposure.path),
     }
   }
-  const handleIndex = handleIdToIndex(targetHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getInputTypeAndName: invalid handle id', targetHandle)
     return null
@@ -305,7 +369,7 @@ export const getInputTypeAndName = (
  * @returns Display name (e.g. `"My node name"`), or `""` if input is blank.
  */
 export const formatSuggestedNodeName = (name: string): string => {
-  const normalized = name.replaceAll('_', ' ').trim()
+  const normalized = displayTypeName(name).replaceAll('_', ' ').trim()
   if (!normalized) {
     return ''
   }
@@ -334,7 +398,26 @@ export const canonicalNodeName = (
       registryNode.display_name?.trim() &&
       registryNode.variant_name?.trim() === node.name.trim()
     ) {
-      return registryNode.display_name.trim()
+      return registryNode.class_name
+        ? nodeOwnerDisplayName(registryNode)
+        : registryNode.display_name.trim()
+    }
+
+    const oldGeneratedNames = [
+      registryNode.display_name,
+      registryNode.variant_name,
+      registryNode.operation,
+      registryNode.method_name,
+      nodePaletteDisplayName(registryNode),
+      nodeLegacyOwnerDisplayName(registryNode),
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .map((value) => value.trim())
+    if (
+      registryNode.class_name &&
+      oldGeneratedNames.includes(node.name.trim())
+    ) {
+      return nodeOwnerDisplayName(registryNode)
     }
   }
 
@@ -356,8 +439,11 @@ export const returnNodeName = (node: NodeDefinitions): string => {
   if (canonicalName) return formatSuggestedNodeName(canonicalName)
 
   if (node.node_type !== NodeType.NETWORK) {
+    if (isOverloadNodeDefinition(node)) {
+      return formatSuggestedNodeName(node.display_name)
+    }
     const registryNode = node as StandardNodeDefinition
-    return formatSuggestedNodeName(nodePaletteNodeName(registryNode))
+    return formatSuggestedNodeName(nodeOwnerDisplayName(registryNode))
   }
 
   return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))
@@ -365,7 +451,9 @@ export const returnNodeName = (node: NodeDefinitions): string => {
 
 /** Returns the concrete registry identifier for a picker/connection option. */
 export const returnNodeSignature = (node: NodeDefinitions): string =>
-  nodeConcreteSignature(node as StandardNodeDefinition)
+  isOverloadNodeDefinition(node)
+    ? node.candidates.map(nodeConcreteSignature).join('\n')
+    : nodeConcreteSignature(node as StandardNodeDefinition)
 
 /**
  * Finds all available nodes that produce `expectedInputType` on any output handle.
@@ -373,7 +461,7 @@ export const returnNodeSignature = (node: NodeDefinitions): string =>
  * @param availableNodes - All available node definitions to search.
  * @param expectedInputType - Input type to match against.
  * @param excludedNodeType - Node type to skip (usually the target node itself).
- * @returns List of `CompatibleNodeOption` entries, one per matching output handle across all available nodes.
+ * @returns List of `CompatibleNodeOption` entries, one per matching output handle for concrete nodes and one per overload family.
  */
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
@@ -401,17 +489,15 @@ export const findCompatibleSourceNodesAsOptions = (
       handleIndex < nodeDefinition.outputs.length;
       handleIndex++
     ) {
-      const outputTypes = resolveOutputTypeCandidates(
-        nodeDefinition,
-        handleIndex
-      )
+      const outputTypes = overloadOutputTypes(nodeDefinition, handleIndex)
+      if (!outputTypes.length) continue
       if (
         !outputTypes.some((output) =>
           expectedTypes.some((expected) => isTypeCompatible(output, expected))
         )
       )
         continue
-      options.push({
+      appendCompatibleNodeOption(options, {
         nodeDefinition,
         handleId: `output-${handleIndex}`,
         argumentName: resolveOutputName(nodeDefinition, handleIndex),
@@ -536,6 +622,9 @@ export const resolveOutputType = (
   data: NodeDefinitions,
   handleIndex: number
 ): string | null => {
+  if (isOverloadNodeDefinition(data)) {
+    return overloadOutputTypes(data, handleIndex)[0] ?? null
+  }
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
   if (outputIndex === SELF) {
@@ -563,6 +652,9 @@ export const resolveOutputTypeCandidates = (
   handleIndex: number,
   upstreamTypes: string[] = []
 ): string[] => {
+  if (isOverloadNodeDefinition(data)) {
+    return overloadOutputTypes(data, handleIndex, upstreamTypes)
+  }
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return []
 
@@ -601,6 +693,9 @@ export const resolveOutputName = (
 ): string | null => {
   const outputIndex = data.outputs?.[handleIndex]
   if (outputIndex == null) return null
-  if (outputIndex === SELF) return data.name?.trim() || data.type
+  if (outputIndex === SELF) {
+    if (data.name?.trim()) return data.name.trim()
+    return returnNodeName(data)
+  }
   return data.arguments?.[outputIndex]?.name ?? null
 }
