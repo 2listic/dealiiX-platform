@@ -7,6 +7,7 @@
   } from '../../types/settingsTypes'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
+  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
   import { warnIfUnvalidated } from '../../utils/settingsActions'
 
   // Two orthogonal-ish selectors: location, and mode (backend kind + pipeline view).
@@ -15,6 +16,11 @@
     viewModeState.value === 'pipeline'
       ? 'pipeline'
       : executionSelectionState.backendKind
+  )
+  // The open parameter file is bound to the location and graph it came from.
+  let disabled = $derived(parameterFileEditorState.isOpen)
+  let title = $derived(
+    disabled ? 'Close the parameter editor to change the execution' : undefined
   )
 
   // Selection lives in two leaf stores; the dropdowns write them directly and
@@ -46,6 +52,8 @@
   <select
     class="badge-select"
     aria-label="Execution location"
+    {disabled}
+    {title}
     value={location}
     onchange={onLocationChange}
   >
@@ -57,6 +65,8 @@
   <select
     class="badge-select"
     aria-label="Execution mode"
+    {disabled}
+    {title}
     value={mode}
     onchange={onModeChange}
   >
@@ -94,8 +104,13 @@
     border-radius: 40rem;
   }
 
-  .badge-select:hover {
+  .badge-select:hover:not(:disabled) {
     color: var(--border-color-hover);
+  }
+
+  .badge-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   /* No focus ring on pointer click… */

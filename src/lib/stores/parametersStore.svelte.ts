@@ -76,6 +76,14 @@ export const parametersState = {
       ? (stripUiMetadata($state.snapshot(parameters)) as ParameterTree)
       : null
   },
+  /**
+   * Persists edits made in place on the active tree, which the `value` setter
+   * does not see (leaf values are edited through the state proxy).
+   * @returns {void}
+   */
+  persist(): void {
+    void persist()
+  },
 }
 
 // ── Private helpers ──

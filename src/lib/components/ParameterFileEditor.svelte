@@ -34,12 +34,6 @@
 
 <div class="parameter-editor">
   {#if document}
-    <div class="editor-toolbar">
-      <div class="editor-heading">
-        <strong>Parameters</strong>
-        <span title={document.resolvedPath}>{document.target.fileName}</span>
-      </div>
-    </div>
     <div class="editor-content">
       <ParametersView
         parameters={document.parameters}
@@ -50,16 +44,27 @@
         onDirty={() => parameterFileEditorState.markDirty()}
       />
     </div>
-    <div class="editor-actions">
-      <Button
-        variant="action"
-        size="small"
-        disabled={!document.dirty || document.saving}
-        onclick={save}
-      >
-        {document.saving ? 'Saving…' : 'Save'}
-      </Button>
-      <Button size="small" onclick={backToGraph}>Back to graph</Button>
+    <div class="editor-footer">
+      <div class="editor-actions">
+        <Button
+          variant="action"
+          size="small"
+          disabled={!document.dirty || document.saving}
+          onclick={save}
+        >
+          {document.saving ? 'Saving…' : 'Save'}
+        </Button>
+        <Button size="small" onclick={backToGraph}>Back to graph</Button>
+      </div>
+      <div class="editor-info">
+        <span class="file-location" title={document.resolvedPath}>
+          {document.target.location} · {document.resolvedPath}
+        </span>
+        <span>
+          Values are saved to this file with Save. Exposed inputs and outputs
+          change the graph immediately and can be undone from the graph.
+        </span>
+      </div>
     </div>
   {:else}
     <div class="editor-loading">Opening parameters…</div>
@@ -77,43 +82,33 @@
     color: var(--ternary-color);
   }
 
-  .editor-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--primary-color);
-  }
-
-  .editor-heading {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .editor-heading span {
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .editor-content {
     min-height: 0;
     flex: 1;
   }
 
   .editor-content :global(.parameters-view) {
+    box-sizing: border-box;
     height: 100%;
+    /* Keeps the last rows scrollable above the footer. */
+    padding-bottom: 8rem;
+  }
+
+  .editor-footer {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    pointer-events: none;
   }
 
   .editor-actions {
-    position: absolute;
-    left: 1rem;
-    bottom: 1rem;
-    z-index: 10;
+    pointer-events: auto;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -122,6 +117,26 @@
     background: var(--surface-color);
     box-shadow: 0 0.2rem 0.8rem
       color-mix(in srgb, var(--ternary-color) 8%, transparent);
+  }
+
+  .editor-info {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--surface-color);
+    font-size: 0.8rem;
+  }
+
+  .file-location {
+    overflow: hidden;
+    font-family: monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.7;
   }
 
   .editor-loading {

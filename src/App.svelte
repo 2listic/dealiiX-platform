@@ -1,7 +1,7 @@
 <script lang="ts">
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
-  import ParametersView from './lib/components/ParametersView.svelte'
+  import ExecutableParametersView from './lib/components/ExecutableParametersView.svelte'
   import PipelineCanvas from './lib/components/PipelineCanvas.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
@@ -112,7 +112,7 @@
           {:else if isCoralMode}
             <FlowCanvas />
           {:else}
-            <ParametersView />
+            <ExecutableParametersView />
           {/if}
         </div>
       </div>

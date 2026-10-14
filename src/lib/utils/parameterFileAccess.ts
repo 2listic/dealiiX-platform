@@ -76,10 +76,14 @@ export const readParameterFile = async (
     throw new Error('A working directory is required to open parameters')
   }
   if (target.location === 'local') {
-    return await window.electron.invoke('read-local-parameter-file', {
-      workingDirectory: target.workingDirectory,
-      fileName: target.fileName,
-    })
+    const { filePath, content } = await window.electron.invoke(
+      'read-local-parameter-file',
+      {
+        workingDirectory: target.workingDirectory,
+        fileName: target.fileName,
+      }
+    )
+    return { resolvedPath: filePath, content }
   }
 
   const filePath = remotePath(target)
