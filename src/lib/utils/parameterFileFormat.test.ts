@@ -184,4 +184,30 @@ set Tolerance = 1e-8
       JSON.parse(serializeParametersFile(tree, 'parameters.json'))
     ).toEqual(tree)
   })
+
+  it('drops UI-only __extra flags from json and prm output', () => {
+    const leaf = {
+      value: '1e-8',
+      default_value: '1e-8',
+      documentation: '',
+      pattern: '.*',
+      pattern_description: '[Double]',
+    }
+    // A section duplicated in the editor, as ParametersView marks it.
+    const tree: ParameterTree = {
+      Solver: { Tolerance: leaf },
+      'Solver copy': { __extra: true, Tolerance: { ...leaf, __extra: true } },
+    }
+
+    const json = serializeParametersFile(tree, 'parameters.json')
+    const prm = serializeParametersFile(tree, 'parameters.prm')
+
+    expect(json).not.toContain('__extra')
+    expect(JSON.parse(json)).toEqual({
+      Solver: { Tolerance: leaf },
+      'Solver copy': { Tolerance: leaf },
+    })
+    expect(prm).not.toContain('__extra')
+    expect(prm).toContain('subsection Solver copy')
+  })
 })

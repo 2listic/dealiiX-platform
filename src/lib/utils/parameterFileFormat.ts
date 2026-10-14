@@ -1,4 +1,8 @@
-import type { ParameterLeaf, ParameterTree } from '../types/parameterTypes'
+import type {
+  ParameterLeaf,
+  ParameterNode,
+  ParameterTree,
+} from '../types/parameterTypes'
 
 export type ParameterFileFormat = 'json' | 'prm'
 export type ParsedParametersFile = {
@@ -353,15 +357,48 @@ export const stringifyPrmParameters = (tree: ParameterTree): string => {
 }
 
 /**
- * Serialises a ParameterTree to JSON or PRM text.
+ * Serialises a ParameterTree to JSON or PRM text, without the UI-only `__extra` flags.
  * Format is derived from `fileName`'s extension: `.prm` → PRM, otherwise JSON.
  * When `fileName` is absent, JSON is used as the default.
+ *
+ * @param tree     - Parameter tree to serialise.
+ * @param fileName - Optional filename whose extension selects the format.
+ * @returns The file content as text.
  */
 export const serializeParametersFile = (
   tree: ParameterTree,
   fileName?: string
 ): string => {
+  const clean = stripUiMetadata(tree)
   return getParameterFileFormat(fileName) === 'prm'
-    ? stringifyPrmParameters(tree)
-    : JSON.stringify(tree, null, 2)
+    ? stringifyPrmParameters(clean)
+    : JSON.stringify(clean, null, 2)
+}
+
+/**
+ * Returns a copy of a parameter tree without the UI-only `__extra` flags, at every depth.
+ *
+ * @param tree - Parameter tree to clean.
+ * @returns A new tree with the same entries and no `__extra` keys.
+ */
+export const stripUiMetadata = (tree: ParameterTree): ParameterTree =>
+  stripNode(tree) as ParameterTree
+
+// ── Private helpers ──
+
+const stripNode = (node: ParameterNode): ParameterNode => {
+  if (typeof node !== 'object' || node === null) {
+    return node
+  }
+
+  const entries = Object.entries(node)
+    .filter(([key]) => key !== '__extra')
+    .map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        return [key, stripNode(value as ParameterLeaf | ParameterTree)]
+      }
+      return [key, value]
+    })
+
+  return Object.fromEntries(entries) as ParameterLeaf | ParameterTree
 }
