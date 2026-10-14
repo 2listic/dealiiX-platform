@@ -82,6 +82,13 @@ export function registerIpcHandlers(): void {
     return filePaths?.[0] ?? null
   })
 
+  /**
+   * Reads a parameter file from the local working directory.
+   * @param workingDirectory - Local working directory the file must stay inside.
+   * @param fileName         - Path of the file relative to `workingDirectory`.
+   * @returns { filePath, content } — the resolved absolute path and the file text.
+   * @throws If the path escapes the working directory, or the file is missing or not a regular file.
+   */
   ipcMain.handle(
     'read-local-parameter-file',
     async (_event, { workingDirectory, fileName }) =>

@@ -132,6 +132,8 @@
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
+  // Opens this node's parameter file at the active location; read errors
+  // (e.g. a missing file) surface as a toast.
   const handleOpenParameters = async () => {
     try {
       await parameterFileEditorState.open(

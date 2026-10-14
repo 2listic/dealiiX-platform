@@ -57,6 +57,14 @@ const remoteCommand = async (command: string, rejectOnNonZeroCode = true) =>
     rejectOnNonZeroCode,
   })
 
+/**
+ * Builds the target of a parameter file at an execution location, taking the
+ * working directory from that location's settings.
+ *
+ * @param location - Execution location the file lives at.
+ * @param fileName - Path of the file relative to the working directory.
+ * @returns The location, its working directory (empty if not configured) and the file name.
+ */
 export const parameterFileTarget = (
   location: ExecutionLocation,
   fileName: string
@@ -69,6 +77,15 @@ export const parameterFileTarget = (
   fileName,
 })
 
+/**
+ * Reads a parameter file from its target: through Electron IPC for `local`,
+ * through an SSH `cat` for `remote`.
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns The file content and its resolved full path.
+ * @throws If the target has no working directory, the name escapes the working
+ *   directory, or the file is missing ("Parameter file not found: <full path>").
+ */
 export const readParameterFile = async (
   target: ParameterFileTarget
 ): Promise<ParameterFileContent> => {

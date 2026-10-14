@@ -43,6 +43,15 @@ export const parameterFileEditorState = {
   get opening() {
     return opening
   },
+  /**
+   * Reads and parses a parameter file and makes it the open document, which
+   * makes App show the editor in place of the canvas.
+   *
+   * @param target - Where the file lives.
+   * @param options - Id of the node that opened the file and its current exposures (copied).
+   * @returns Resolves once the document is open.
+   * @throws If the file cannot be read or parsed; the previous document is kept.
+   */
   async open(
     target: ParameterFileTarget,
     options: ParameterFileEditorOptions

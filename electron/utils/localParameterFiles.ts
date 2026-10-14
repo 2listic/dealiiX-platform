@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
+// Resolves `fileName` against the working directory and rejects any result
+// outside it (absolute names, `..` escapes).
 const resolveParameterFile = (
   workingDirectory: string,
   fileName: string
@@ -23,6 +25,8 @@ const resolveParameterFile = (
   return resolved
 }
 
+// Turns ENOENT into an error that names the full path, so the renderer's toast
+// shows where the file was looked for.
 const assertRegularFile = async (filePath: string): Promise<void> => {
   const stat = await fs.promises.stat(filePath).catch((error) => {
     if (error?.code === 'ENOENT') {
@@ -33,6 +37,15 @@ const assertRegularFile = async (filePath: string): Promise<void> => {
   if (!stat.isFile()) throw new Error(`Not a regular file: ${filePath}`)
 }
 
+/**
+ * Reads a parameter file that must lie inside the local working directory.
+ *
+ * @param workingDirectory - Local working directory used as the root.
+ * @param fileName - Path of the file relative to `workingDirectory`.
+ * @returns The resolved absolute path and the file content as UTF-8 text.
+ * @throws If the working directory is empty, the name is absolute or escapes
+ *   the working directory, or the file is missing or not a regular file.
+ */
 export const readLocalParameterFile = async (
   workingDirectory: string,
   fileName: string
