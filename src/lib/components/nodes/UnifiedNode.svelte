@@ -87,10 +87,7 @@
   import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
-  import {
-    parameterFileExists,
-    parameterFileTarget,
-  } from '../../utils/parameterFileAccess'
+  import { parameterFileTarget } from '../../utils/parameterFileAccess'
   import {
     parameterHandle,
     parameterInputExposures,
@@ -122,8 +119,6 @@
     [Type.STRING, Type.STR].includes(data.type as Type) &&
       isParameterFileName(data.value)
   )
-  let parameterFileAvailable = $state(false)
-  let parameterCheckId = 0
   let parameterInputs = $derived(
     parameterInputExposures(data as StandardNodeDefinition)
   )
@@ -136,22 +131,6 @@
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
-
-  $effect(() => {
-    const fileName = data.value
-    const checkId = ++parameterCheckId
-    parameterFileAvailable = false
-    if (!isParameterFile || !workingDirectory) return
-
-    const target = parameterFileTarget(activeLocation, fileName)
-    void parameterFileExists(target)
-      .then((exists) => {
-        if (checkId === parameterCheckId) parameterFileAvailable = exists
-      })
-      .catch(() => {
-        if (checkId === parameterCheckId) parameterFileAvailable = false
-      })
-  })
 
   const handleOpenParameters = async () => {
     try {
@@ -291,7 +270,8 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
-        {#if isParameterFile && parameterFileAvailable}
+        <!-- Shown without checking the file exists: if it is missing, open() throws and handleOpenParameters reports it in an error toast -->
+        {#if isParameterFile && workingDirectory}
           <button
             class="node-button"
             title="Open parameters"

@@ -30,7 +30,6 @@ import {
 } from './utils/localCoralRuns.js'
 import store from './utils/storage.js'
 import {
-  localParameterFileExists,
   readLocalParameterFile,
   writeLocalParameterFile,
 } from './utils/localParameterFiles.js'
@@ -82,12 +81,6 @@ export function registerIpcHandlers(): void {
     const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
     return filePaths?.[0] ?? null
   })
-
-  ipcMain.handle(
-    'local-parameter-file-exists',
-    async (_event, { workingDirectory, fileName }) =>
-      localParameterFileExists(workingDirectory, fileName)
-  )
 
   ipcMain.handle(
     'read-local-parameter-file',

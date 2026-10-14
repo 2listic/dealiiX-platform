@@ -24,21 +24,13 @@ const resolveParameterFile = (
 }
 
 const assertRegularFile = async (filePath: string): Promise<void> => {
-  const stat = await fs.promises.stat(filePath)
+  const stat = await fs.promises.stat(filePath).catch((error) => {
+    if (error?.code === 'ENOENT') {
+      throw new Error(`Parameter file not found: ${filePath}`)
+    }
+    throw error
+  })
   if (!stat.isFile()) throw new Error(`Not a regular file: ${filePath}`)
-}
-
-export const localParameterFileExists = async (
-  workingDirectory: string,
-  fileName: string
-): Promise<boolean> => {
-  try {
-    const filePath = resolveParameterFile(workingDirectory, fileName)
-    await assertRegularFile(filePath)
-    return true
-  } catch {
-    return false
-  }
 }
 
 export const readLocalParameterFile = async (

@@ -69,26 +69,6 @@ export const parameterFileTarget = (
   fileName,
 })
 
-export const parameterFileExists = async (
-  target: ParameterFileTarget
-): Promise<boolean> => {
-  if (!target.workingDirectory) return false
-  if (target.location === 'local') {
-    return await window.electron.invoke('local-parameter-file-exists', {
-      workingDirectory: target.workingDirectory,
-      fileName: target.fileName,
-    })
-  }
-
-  try {
-    const filePath = remotePath(target)
-    await remoteCommand(`test -f ${shellEscape(filePath)}`)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export const readParameterFile = async (
   target: ParameterFileTarget
 ): Promise<ParameterFileContent> => {
@@ -103,10 +83,13 @@ export const readParameterFile = async (
   }
 
   const filePath = remotePath(target)
+  const quoted = shellEscape(filePath)
+  // The SSH helper puts the command's output in its error, so the message
+  // names the missing path.
   return {
     resolvedPath: filePath,
     content: await remoteCommand(
-      `test -f ${shellEscape(filePath)} && cat ${shellEscape(filePath)}`
+      `if [ -f ${quoted} ]; then cat ${quoted}; else echo ${shellEscape(`Parameter file not found: ${filePath}`)}; exit 1; fi`
     ),
   }
 }
