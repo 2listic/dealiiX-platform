@@ -17,7 +17,7 @@
   import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
   import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
   import { jobsState } from './lib/stores/jobsStore.svelte'
-  import ParameterFileEditor from './lib/components/ParameterFileEditor.svelte'
+  import FileParametersView from './lib/components/FileParametersView.svelte'
   import { parameterFileEditorState } from './lib/stores/parameterFileEditor.svelte'
 
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
@@ -106,7 +106,7 @@
         </div>
         <div class="flow-wrapper">
           {#if isParameterEditorOpen}
-            <ParameterFileEditor />
+            <FileParametersView />
           {:else if viewMode === 'pipeline'}
             <PipelineCanvas />
           {:else if isCoralMode}
