@@ -137,14 +137,8 @@
       await parameterFileEditorState.open(
         parameterFileTarget(activeLocation, data.value),
         {
+          nodeId: id,
           exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
-          onExposureChange: (exposures) => {
-            graphHistoryState.checkpoint()
-            updateNodeData(id, {
-              parameter_file: { exposures },
-            })
-            clearConnectionCache()
-          },
         }
       )
     } catch (error) {

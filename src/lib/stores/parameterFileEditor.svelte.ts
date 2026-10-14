@@ -10,8 +10,12 @@ import {
   writeParameterFile,
   type ParameterFileTarget,
 } from '../utils/parameterFileAccess'
+import { clearConnectionCache } from '../utils/connectionsValidation'
+import { getNodes, setNodes } from './nodes.svelte'
+import { graphHistoryState } from './graphStack.svelte'
 
 export type ParameterFileDocument = {
+  nodeId: string
   target: ParameterFileTarget
   resolvedPath: string
   format: ParameterFileFormat
@@ -22,15 +26,12 @@ export type ParameterFileDocument = {
 }
 
 export type ParameterFileEditorOptions = {
+  nodeId: string
   exposures?: ParameterExposure[]
-  onExposureChange?: (_exposures: ParameterExposure[]) => void
 }
 
 let document = $state<ParameterFileDocument | null>(null)
 let opening = $state(false)
-let exposureChangeHandler:
-  | ((_exposures: ParameterExposure[]) => void)
-  | undefined
 
 export const parameterFileEditorState = {
   get document() {
@@ -44,7 +45,7 @@ export const parameterFileEditorState = {
   },
   async open(
     target: ParameterFileTarget,
-    options: ParameterFileEditorOptions = {}
+    options: ParameterFileEditorOptions
   ): Promise<void> {
     opening = true
     try {
@@ -54,6 +55,7 @@ export const parameterFileEditorState = {
         target.fileName
       )
       document = {
+        nodeId: options.nodeId,
         target,
         resolvedPath: loaded.resolvedPath,
         format: parsed.format,
@@ -65,7 +67,6 @@ export const parameterFileEditorState = {
           path: [...exposure.path],
         })),
       }
-      exposureChangeHandler = options.onExposureChange
     } finally {
       opening = false
     }
@@ -76,7 +77,7 @@ export const parameterFileEditorState = {
       ...exposure,
       path: [...exposure.path],
     }))
-    exposureChangeHandler?.(document.exposures)
+    setNodeExposures(document.nodeId, document.exposures)
   },
   replaceParameters(parameters: ParameterTree): void {
     if (!document) return
@@ -102,6 +103,31 @@ export const parameterFileEditorState = {
   },
   close(): void {
     document = null
-    exposureChangeHandler = undefined
   },
+}
+
+// ── Private helpers ──
+
+// Writes through the nodes store, which holds the graph level the editor was
+// opened from: the canvas is unmounted while the editor is open.
+const setNodeExposures = (
+  nodeId: string,
+  exposures: ParameterExposure[]
+): void => {
+  if (!getNodes().some((node) => node.id === nodeId)) return
+  graphHistoryState.checkpoint()
+  setNodes(
+    getNodes().map((node) =>
+      node.id === nodeId
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              parameter_file: { exposures: $state.snapshot(exposures) },
+            },
+          }
+        : node
+    )
+  )
+  clearConnectionCache()
 }
