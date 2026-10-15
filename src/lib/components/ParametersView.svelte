@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from './layout/Button.svelte'
+  import ToggleSwitch from './layout/ToggleSwitch.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type { ParameterTree } from '../types/parameterTypes'
@@ -222,11 +223,34 @@
 
 <div class="parameters-view">
   <div class="tree">
+    {#snippet exposureHeader(secondColumn: boolean)}
+      <div class="exposure-header" class:second-column={secondColumn}>
+        <div class="exposure-switches" aria-hidden="true">
+          <span>Input</span>
+          <span>Output</span>
+        </div>
+      </div>
+    {/snippet}
+
     {#snippet renderTree(tree: ParameterTree, depth: number, path: string[])}
-      {#each Object.entries(tree).filter(([key]) => key !== '__extra') as [key, val] (key)}
+      {@const entries = Object.entries(tree).filter(
+        ([key]) => key !== '__extra'
+      )}
+      {@const leafKeys = entries
+        .filter(([, node]) => isParameterLeaf(node))
+        .map(([key]) => key)}
+      {#each entries as [key, val] (key)}
         {#if isParameterLeaf(val)}
           {@const inputType = parsePatternType(val.pattern_description)}
           {@const exposure = exposureAt([...path, key])}
+          <!-- Column headers before a level's first leaf. Inside a section the
+               leaves can form two grid columns (≥900px), each needing its own. -->
+          {#if onExposureChange && key === leafKeys[0]}
+            {@render exposureHeader(false)}
+            {#if depth > 0 && leafKeys.length > 1}
+              {@render exposureHeader(true)}
+            {/if}
+          {/if}
           <div class="param-leaf">
             {#if val.documentation}
               <span
@@ -288,25 +312,23 @@
               {/if}
             </label>
             {#if onExposureChange}
-              <div class="exposure-switches" title="Graph connections">
-                <label class="exposure-switch">
-                  <input
-                    type="checkbox"
-                    checked={exposure?.input ?? false}
-                    onchange={(event) =>
-                      toggleExposure(event, [...path, key], val, 'input')}
-                  />
-                  <span>Expose as input</span>
-                </label>
-                <label class="exposure-switch">
-                  <input
-                    type="checkbox"
-                    checked={exposure?.output ?? false}
-                    onchange={(event) =>
-                      toggleExposure(event, [...path, key], val, 'output')}
-                  />
-                  <span>Expose as output</span>
-                </label>
+              <div class="exposure-switches">
+                <ToggleSwitch
+                  size="small"
+                  ariaLabel={`Expose ${key} as input`}
+                  title={`Expose ${key} as a graph input`}
+                  checked={exposure?.input ?? false}
+                  onchange={(event) =>
+                    toggleExposure(event, [...path, key], val, 'input')}
+                />
+                <ToggleSwitch
+                  size="small"
+                  ariaLabel={`Expose ${key} as output`}
+                  title={`Expose ${key} as a graph output`}
+                  checked={exposure?.output ?? false}
+                  onchange={(event) =>
+                    toggleExposure(event, [...path, key], val, 'output')}
+                />
               </div>
             {/if}
           </div>
@@ -493,7 +515,7 @@
     .section-content {
       display: grid;
       grid-template-columns: 1fr 1fr; /* two equal-width columns */
-      column-gap: 1.5rem;
+      column-gap: 2.5rem;
     }
 
     /* :global() needed because <details> rendered inside a snippet */
@@ -517,25 +539,33 @@
     min-width: 0;
   }
 
+  /* Two fixed-width columns at the right edge of the row; the header uses the
+     same box, so its labels sit over the switches. */
   .exposure-switches {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 8.5rem;
-    gap: 0.15rem;
+    display: grid;
+    grid-template-columns: repeat(2, 3rem);
+    justify-items: center;
+    align-items: center;
+    flex: 0 0 auto;
     font-size: 0.7rem;
   }
 
-  .exposure-switch {
-    display: flex !important;
-    align-items: center;
-    gap: 0.25rem !important;
-    white-space: nowrap;
+  .exposure-header {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.25rem 0.25rem 0;
+    opacity: 0.7;
   }
 
-  .exposure-switch input {
-    flex: 0 0 auto;
-    width: 0.85rem;
-    height: 0.85rem;
+  /* One column below 900px, so only the first header is needed there. */
+  .exposure-header.second-column {
+    display: none;
+  }
+
+  @media (min-width: 900px) {
+    .exposure-header.second-column {
+      display: flex;
+    }
   }
 
   .param-leaf input:disabled,
