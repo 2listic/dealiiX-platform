@@ -218,13 +218,6 @@
       .map((s) => s.trim())
       .filter(Boolean)
   }
-
-  $effect(() => {
-    if (parameters) {
-      // TODO: remove or print its snapshot
-      console.log('parameters changed:', parameters)
-    }
-  })
 </script>
 
 <div class="parameters-view">
