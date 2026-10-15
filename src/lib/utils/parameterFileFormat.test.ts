@@ -3,6 +3,7 @@ import type { ParameterTree } from '../types/parameterTypes'
 import {
   parseParametersFileWithFormat,
   isParameterFileName,
+  markAsExtra,
   parsePrmParameters,
   getParameterProbeFileNames,
   normalizeParameterFileName,
@@ -183,6 +184,27 @@ set Tolerance = 1e-8
     expect(
       JSON.parse(serializeParametersFile(tree, 'parameters.json'))
     ).toEqual(tree)
+  })
+
+  it('flags every level of a copied subtree as extra, turning bare values into leaves', () => {
+    const marked = markAsExtra({
+      Solver: {
+        value: '1',
+        default_value: '1',
+        documentation: '',
+        pattern: '.*',
+        pattern_description: '[Integer]',
+      },
+      Steps: 3,
+    }) as ParameterTree
+
+    expect(marked.__extra).toBe(true)
+    expect(marked.Solver).toMatchObject({ value: '1', __extra: true })
+    expect(marked.Steps).toMatchObject({
+      value: '3',
+      pattern_description: '[Text]',
+      __extra: true,
+    })
   })
 
   it('drops UI-only __extra flags from json and prm output', () => {

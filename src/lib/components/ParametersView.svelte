@@ -2,12 +2,13 @@
   import Button from './layout/Button.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
-  import type { ParameterTree, ParameterNode } from '../types/parameterTypes'
+  import type { ParameterTree } from '../types/parameterTypes'
   import type { ParameterExposure } from '../types/nodeTypes'
   import {
     isExtraNode,
     isParameterLeaf,
     isParameterTree,
+    markAsExtra,
   } from '../utils/parameterFileFormat'
   import {
     findParameterExposure,
@@ -76,26 +77,6 @@
   // sections stay open when the tree is mutated (e.g. after a duplication).
   function setInitialOpen(node: HTMLDetailsElement, open: boolean) {
     node.open = open
-  }
-
-  function cloneNodeAsExtra(node: ParameterNode): ParameterNode {
-    if (isParameterLeaf(node)) {
-      return { ...node, __extra: true }
-    }
-
-    const entries = Object.entries(node)
-      .filter(([key]) => key !== '__extra')
-      .map(([key, value]) => {
-        if (typeof value === 'object' && value !== null) {
-          return [key, cloneNodeAsExtra(value as ParameterNode)]
-        }
-        return [key, value]
-      })
-
-    return {
-      __extra: true,
-      ...Object.fromEntries(entries),
-    } as ParameterTree
   }
 
   /**
@@ -168,7 +149,7 @@
     }
 
     // mutation here propagates back to nextParameters.
-    parentTree[newName] = cloneNodeAsExtra(sourceNode) as ParameterTree
+    parentTree[newName] = markAsExtra(sourceNode) as ParameterTree
     // only this final assignment triggers Svelte reactivity.
     setParameters(nextParameters)
     toastState.add({

@@ -1,5 +1,11 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
+import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
+import {
+  parseParametersFileWithFormat,
+  serializeParametersAs,
+  type ParameterFileFormat,
+} from './parameterFileFormat'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -9,6 +15,12 @@ export type ParameterFileTarget = {
 
 export type ParameterFileContent = {
   content: string
+  resolvedPath: string
+}
+
+export type LoadedParameterFile = {
+  parameters: ParameterTree
+  format: ParameterFileFormat
   resolvedPath: string
 }
 
@@ -139,3 +151,39 @@ export const writeParameterFile = async (
     remotePath: filePath,
   })
 }
+
+/**
+ * Reads and parses a parameter file, detecting its format from the content
+ * (the extension is only a hint).
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns The parameter tree, the detected format and the resolved full path.
+ * @throws If the file cannot be read (see {@link readParameterFile}) or parsed.
+ */
+export const loadParameterFile = async (
+  target: ParameterFileTarget
+): Promise<LoadedParameterFile> => {
+  const { content, resolvedPath } = await readParameterFile(target)
+  const { data, format } = parseParametersFileWithFormat(
+    content,
+    target.fileName
+  )
+  return { parameters: data, format, resolvedPath }
+}
+
+/**
+ * Serialises a parameter tree in the given format and writes it to its target.
+ * Pass the format {@link loadParameterFile} detected to keep a file's format.
+ *
+ * @param target     - Location, working directory and relative file name.
+ * @param parameters - Tree to write.
+ * @param format     - Output format.
+ * @returns Resolves once the file is written.
+ * @throws If the file cannot be written (see {@link writeParameterFile}).
+ */
+export const saveParameterFile = async (
+  target: ParameterFileTarget,
+  parameters: ParameterTree,
+  format: ParameterFileFormat
+): Promise<void> =>
+  writeParameterFile(target, serializeParametersAs(parameters, format))

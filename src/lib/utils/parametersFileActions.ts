@@ -1,8 +1,4 @@
-import type {
-  ParameterLeaf,
-  ParameterNode,
-  ParameterTree,
-} from '../types/parameterTypes'
+import type { ParameterNode, ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
@@ -11,7 +7,7 @@ import { toastState } from '../stores/toastsStore.svelte'
 import {
   isExtraNode,
   isParameterLeaf,
-  isParameterTree,
+  markAsExtra,
   parseParametersFileWithFormat,
   serializeParametersFile,
 } from './parameterFileFormat'
@@ -145,16 +141,18 @@ export async function mergeWorkingDirectoryParameters(
 ): Promise<{ parameters: ParameterTree; resolvedPath: string } | null> {
   for (const fileName of new Set(fileNames.filter(Boolean))) {
     const target: ParameterFileTarget = { location, workingDirectory, fileName }
-    let loaded
+    let content
     try {
-      loaded = await readParameterFile(target)
+      content = await readParameterFile(target)
     } catch {
+      // Missing or unreadable: try the next name.
       continue
     }
-    const { data } = parseParametersFileWithFormat(loaded.content, fileName)
+    // Parse outside the try, so a malformed file is reported, not skipped.
+    const { data } = parseParametersFileWithFormat(content.content, fileName)
     return {
       parameters: mergeParametersTemplate(template, data, '', true).merged,
-      resolvedPath: loaded.resolvedPath,
+      resolvedPath: content.resolvedPath,
     }
   }
   return null
@@ -243,39 +241,6 @@ export async function saveParametersToWorkingDirectory(): Promise<void> {
 
 // ── Private helpers ──
 
-function coerceUploadedLeaf(value: unknown): ParameterLeaf {
-  if (isParameterLeaf(value)) {
-    return { ...value, __extra: true }
-  }
-
-  return {
-    value: String(value ?? ''),
-    default_value: String(value ?? ''),
-    documentation: 'Imported from uploaded parameter file',
-    pattern: '.*',
-    pattern_description: '[Text]',
-    __extra: true,
-  }
-}
-
-function includeExtraNode(node: unknown): ParameterNode {
-  if (isParameterLeaf(node)) {
-    return { ...node, __extra: true }
-  }
-
-  if (isParameterTree(node)) {
-    const entries = Object.entries(node)
-      .filter(([key]) => key !== '__extra')
-      .map(([key, value]) => [key, includeExtraNode(value)])
-    return {
-      __extra: true,
-      ...Object.fromEntries(entries),
-    } as ParameterTree
-  }
-
-  return coerceUploadedLeaf(node)
-}
-
 /**
  * Merges an uploaded file onto the canonical template tree.
  * The template is the authority for structure and metadata; the upload only contributes `value` fields.
@@ -349,7 +314,7 @@ function mergeParametersTemplate(
       if (!(key in template)) {
         extraPaths.push(currentPath ? `${currentPath}.${key}` : key)
         if (includeExtras) {
-          mergedEntries.push([key, includeExtraNode(value)])
+          mergedEntries.push([key, markAsExtra(value)])
         }
       }
     }

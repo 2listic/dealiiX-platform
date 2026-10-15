@@ -1,18 +1,12 @@
 import type { ParameterFileFormat } from '../utils/parameterFileFormat'
-import {
-  parseParametersFileWithFormat,
-  serializeParametersFile,
-} from '../utils/parameterFileFormat'
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ParameterExposure } from '../types/nodeTypes'
 import {
-  readParameterFile,
-  writeParameterFile,
+  loadParameterFile,
+  saveParameterFile,
   type ParameterFileTarget,
 } from '../utils/parameterFileAccess'
-import { clearConnectionCache } from '../utils/connectionsValidation'
-import { getNodes, setNodes } from './nodes.svelte'
-import { graphHistoryState } from './graphStack.svelte'
+import { setNodeParameterExposures } from '../utils/parameterNodeCanvas'
 
 export type ParameterFileDocument = {
   nodeId: string
@@ -58,17 +52,13 @@ export const parameterNodeEditorState = {
   ): Promise<void> {
     opening = true
     try {
-      const loaded = await readParameterFile(target)
-      const parsed = parseParametersFileWithFormat(
-        loaded.content,
-        target.fileName
-      )
+      const loaded = await loadParameterFile(target)
       document = {
         nodeId: options.nodeId,
         target,
         resolvedPath: loaded.resolvedPath,
-        format: parsed.format,
-        parameters: parsed.data,
+        format: loaded.format,
+        parameters: loaded.parameters,
         edited: false,
         saving: false,
         exposures: (options.exposures ?? []).map((exposure) => ({
@@ -86,7 +76,12 @@ export const parameterNodeEditorState = {
       ...exposure,
       path: [...exposure.path],
     }))
-    setNodeExposures(document.nodeId, document.exposures)
+    // Through the nodes store, which holds the graph level the editor was
+    // opened from: the canvas is unmounted while the editor is open.
+    setNodeParameterExposures(
+      document.nodeId,
+      $state.snapshot(document.exposures)
+    )
   },
   replaceParameters(parameters: ParameterTree): void {
     if (!document) return
@@ -100,11 +95,11 @@ export const parameterNodeEditorState = {
     if (!document) return
     document.saving = true
     try {
-      const content = serializeParametersFile(
+      await saveParameterFile(
+        document.target,
         document.parameters,
-        document.format === 'prm' ? 'parameters.prm' : 'parameters.json'
+        document.format
       )
-      await writeParameterFile(document.target, content)
       document.edited = false
     } finally {
       if (document) document.saving = false
@@ -113,30 +108,4 @@ export const parameterNodeEditorState = {
   close(): void {
     document = null
   },
-}
-
-// ── Private helpers ──
-
-// Writes through the nodes store, which holds the graph level the editor was
-// opened from: the canvas is unmounted while the editor is open.
-const setNodeExposures = (
-  nodeId: string,
-  exposures: ParameterExposure[]
-): void => {
-  if (!getNodes().some((node) => node.id === nodeId)) return
-  graphHistoryState.checkpoint()
-  setNodes(
-    getNodes().map((node) =>
-      node.id === nodeId
-        ? {
-            ...node,
-            data: {
-              ...node.data,
-              parameter_file: { exposures: $state.snapshot(exposures) },
-            },
-          }
-        : node
-    )
-  )
-  clearConnectionCache()
 }
