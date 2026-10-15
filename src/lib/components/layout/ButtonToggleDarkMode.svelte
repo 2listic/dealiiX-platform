@@ -1,19 +1,17 @@
 <script lang="ts">
   import { colorModeState } from '../../stores/colorModeStore.svelte'
+  import ToggleSwitch from './ToggleSwitch.svelte'
 
   let checked = $derived(colorModeState.value === 'dark')
-
-  const onChangeSwitch = async () => {
-    colorModeState.toggle()
-  }
 </script>
 
 <div id="button-dark-mode-wrapper">
-  <label class="switch">
-    <input bind:checked type="checkbox" onchange={onChangeSwitch} />
-    <span class="slider round" title="Switch between light and dark modes"
-    ></span>
-  </label>
+  <ToggleSwitch
+    {checked}
+    onchange={() => colorModeState.toggle()}
+    ariaLabel="Dark mode"
+    title="Switch between light and dark modes"
+  />
   <svg
     version="1.1"
     id="Icons"
@@ -51,57 +49,5 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-miterlimit: 10;
-  }
-
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 27px;
-  }
-
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--slider-bg);
-    -webkit-transition: 0.4s;
-    transition: 0.4s;
-  }
-
-  .slider:before {
-    position: absolute;
-    content: '';
-    height: 21px;
-    width: 21px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    -webkit-transition: 0.4s;
-    transition: 0.4s;
-  }
-
-  input:checked + .slider:before {
-    -webkit-transform: translateX(21px);
-    -ms-transform: translateX(21px);
-    transform: translateX(21px);
-  }
-
-  /* Rounded sliders */
-  .slider.round {
-    border-radius: 27px;
-  }
-
-  .slider.round:before {
-    border-radius: 50%;
   }
 </style>
