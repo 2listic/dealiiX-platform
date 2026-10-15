@@ -24,8 +24,8 @@
     onEdit: () => void
     /** Frontend-only parameter port exposure state. */
     exposures?: ParameterExposure[]
-    /** Called when a parameter input/output switch changes. */
-    onExposureChange?: (_exposures: ParameterExposure[]) => void
+    /** Called when a parameter input/output switch changes; false keeps the old state. */
+    onExposureChange?: (_exposures: ParameterExposure[]) => boolean
   }
 
   let {
@@ -65,7 +65,21 @@
     }
     updated[direction] = enabled
     if (updated.input || updated.output) next.push(updated)
-    onExposureChange?.(next)
+    return onExposureChange?.(next) ?? true
+  }
+
+  // A declined change leaves `exposures` as it was, so `checked` does not
+  // change and Svelte would not reset the box the user just clicked.
+  const toggleExposure = (
+    event: Event,
+    path: string[],
+    leaf: { pattern_description: string },
+    direction: 'input' | 'output'
+  ) => {
+    const box = event.target as HTMLInputElement
+    if (!setExposure(path, leaf, direction, box.checked)) {
+      box.checked = !box.checked
+    }
   }
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
@@ -287,12 +301,7 @@
                     type="checkbox"
                     checked={exposure?.input ?? false}
                     onchange={(event) =>
-                      setExposure(
-                        [...path, key],
-                        val,
-                        'input',
-                        (event.target as HTMLInputElement).checked
-                      )}
+                      toggleExposure(event, [...path, key], val, 'input')}
                   />
                   <span>Expose as input</span>
                 </label>
@@ -301,12 +310,7 @@
                     type="checkbox"
                     checked={exposure?.output ?? false}
                     onchange={(event) =>
-                      setExposure(
-                        [...path, key],
-                        val,
-                        'output',
-                        (event.target as HTMLInputElement).checked
-                      )}
+                      toggleExposure(event, [...path, key], val, 'output')}
                   />
                   <span>Expose as output</span>
                 </label>

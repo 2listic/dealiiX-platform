@@ -3,6 +3,8 @@
   import ParametersView from './ParametersView.svelte'
   import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import type { ParameterExposure } from '../types/nodeTypes'
+  import { staleParameterEdges } from '../utils/parameterNodeCanvas'
 
   let document = $derived(parameterNodeEditorState.document)
 
@@ -17,6 +19,21 @@
         type: 'error',
       })
     }
+  }
+
+  const changeExposures = (next: ParameterExposure[]): boolean => {
+    if (!document) return false
+    const removed = staleParameterEdges(document.nodeId, next).length
+    if (
+      removed > 0 &&
+      !window.confirm(
+        `This removes ${removed} ${removed === 1 ? 'connection' : 'connections'} from the graph. Continue?`
+      )
+    ) {
+      return false
+    }
+    parameterNodeEditorState.updateExposures(next)
+    return true
   }
 
   const backToGraph = () => {
@@ -38,8 +55,7 @@
       <ParametersView
         parameters={document.parameters}
         exposures={document.exposures}
-        onExposureChange={(next) =>
-          parameterNodeEditorState.updateExposures(next)}
+        onExposureChange={changeExposures}
         onChange={(next) => parameterNodeEditorState.replaceParameters(next)}
         onEdit={() => parameterNodeEditorState.markEdited()}
       />

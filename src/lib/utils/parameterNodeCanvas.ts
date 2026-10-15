@@ -5,14 +5,30 @@
  * Handle ids, port types and exposure lookups live in parameterPorts.ts.
  */
 
+import type { Edge } from '@xyflow/svelte'
 import type { ParameterExposure } from '../types/nodeTypes'
-import { getNodes, setNodes } from '../stores/nodes.svelte'
+import { getEdges, getNodes, setEdges, setNodes } from '../stores/nodes.svelte'
 import { graphHistoryState } from '../stores/graphStack.svelte'
 import { clearConnectionCache } from './connectionsValidation'
+import { findParameterExposure, parameterHandlePath } from './parameterPorts'
 
 /**
- * Replaces a node's parameter exposures in the nodes store, as one undoable
- * graph edit. Does nothing when the node is not in the current graph level.
+ * Returns the edges attached to parameter handles of a node that the given
+ * exposures would no longer provide.
+ *
+ * @param nodeId    - Id of the parameter-file node.
+ * @param exposures - The exposures the node would have.
+ * @returns The edges that would be left without a handle.
+ */
+export const staleParameterEdges = (
+  nodeId: string,
+  exposures: ParameterExposure[]
+): Edge[] => getEdges().filter((edge) => isStale(edge, nodeId, exposures))
+
+/**
+ * Replaces a node's parameter exposures in the nodes store and removes the
+ * edges whose parameter handle disappears, as one undoable graph edit. Does
+ * nothing when the node is not in the current graph level.
  *
  * @param nodeId    - Id of the parameter-file node.
  * @param exposures - New exposures; pass a plain snapshot, not a reactive proxy.
@@ -34,6 +50,27 @@ export const setNodeParameterExposures = (
         : node
     )
   )
+  setEdges(getEdges().filter((edge) => !isStale(edge, nodeId, exposures)))
   // Cached connection checks may refer to handles that came or went.
   clearConnectionCache()
+}
+
+// ── Private helpers ──
+
+const isStale = (
+  edge: Edge,
+  nodeId: string,
+  exposures: ParameterExposure[]
+): boolean => {
+  const target =
+    edge.target === nodeId ? parameterHandlePath(edge.targetHandle) : null
+  if (target?.direction === 'input') {
+    return !findParameterExposure(exposures, target.path)?.input
+  }
+  const source =
+    edge.source === nodeId ? parameterHandlePath(edge.sourceHandle) : null
+  if (source?.direction === 'output') {
+    return !findParameterExposure(exposures, source.path)?.output
+  }
+  return false
 }
