@@ -7,7 +7,7 @@
   } from '../../types/settingsTypes'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
-  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import { warnIfUnvalidated } from '../../utils/settingsActions'
 
   // Two orthogonal-ish selectors: location, and mode (backend kind + pipeline view).
@@ -18,7 +18,7 @@
       : executionSelectionState.backendKind
   )
   // The open parameter file is bound to the location and graph it came from.
-  let disabled = $derived(parameterFileEditorState.isOpen)
+  let disabled = $derived(parameterNodeEditorState.isOpen)
   let title = $derived(
     disabled ? 'Close the parameter editor to change the execution' : undefined
   )

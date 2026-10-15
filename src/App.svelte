@@ -18,11 +18,11 @@
   import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
   import { jobsState } from './lib/stores/jobsStore.svelte'
   import FileParametersView from './lib/components/FileParametersView.svelte'
-  import { parameterFileEditorState } from './lib/stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from './lib/stores/parameterNodeEditor.svelte'
 
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let viewMode = $derived(viewModeState.value)
-  let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
+  let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
 
   // Keep the per-location registry/params stores pointed at the active location
   // (covers the async load and any location switch). Also refreshes the jobs

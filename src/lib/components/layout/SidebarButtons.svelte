@@ -50,7 +50,7 @@
   import GridIcon from '../icons/GridIcon.svelte'
   import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
-  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
 
   const { fitView } = useSvelteFlow()
 
@@ -71,7 +71,7 @@
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
-  let isParameterEditorOpen = $derived(parameterFileEditorState.isOpen)
+  let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)

@@ -84,7 +84,7 @@
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
   import { parameterFileTarget } from '../../utils/parameterFileAccess'
@@ -136,7 +136,7 @@
   // (e.g. a missing file) surface as a toast.
   const handleOpenParameters = async () => {
     try {
-      await parameterFileEditorState.open(
+      await parameterNodeEditorState.open(
         parameterFileTarget(activeLocation, data.value),
         {
           nodeId: id,

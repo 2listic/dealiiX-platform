@@ -20,7 +20,7 @@
     /** Replaces the tree after structural edits (duplicate, delete). */
     onChange: (_parameters: ParameterTree) => void
     /** Reports a leaf value edited in place, which `onChange` does not see. */
-    onDirty: () => void
+    onEdit: () => void
     /** Frontend-only parameter port exposure state. */
     exposures?: ParameterExposure[]
     /** Called when a parameter input/output switch changes. */
@@ -30,14 +30,14 @@
   let {
     parameters,
     onChange,
-    onDirty,
+    onEdit,
     exposures = [],
     onExposureChange,
   }: Props = $props()
 
   const setParameters = (next: ParameterTree) => onChange(next)
 
-  const markDirty = () => onDirty()
+  const markEdited = () => onEdit()
 
   const exposureAt = (path: string[]) => findParameterExposure(exposures, path)
 
@@ -258,7 +258,7 @@
                     val.value = (e.target as HTMLInputElement).checked
                       ? 'true'
                       : 'false'
-                    markDirty()
+                    markEdited()
                   }}
                 />
               {:else if inputType === 'selection'}
@@ -267,7 +267,7 @@
                   disabled={exposure?.input ?? false}
                   onchange={(e) => {
                     val.value = (e.target as HTMLSelectElement).value
-                    markDirty()
+                    markEdited()
                   }}
                 >
                   {#each getSelectionOptions(val.pattern_description) as opt (opt)}
@@ -284,7 +284,7 @@
                     : 'any'}
                   onchange={(e) => {
                     val.value = (e.target as HTMLInputElement).value
-                    markDirty()
+                    markEdited()
                   }}
                 />
               {:else}
@@ -294,7 +294,7 @@
                   disabled={exposure?.input ?? false}
                   onchange={(e) => {
                     val.value = (e.target as HTMLInputElement).value
-                    markDirty()
+                    markEdited()
                   }}
                 />
               {/if}

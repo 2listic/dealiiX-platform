@@ -20,12 +20,12 @@ export type ParameterFileDocument = {
   resolvedPath: string
   format: ParameterFileFormat
   parameters: ParameterTree
-  dirty: boolean
+  edited: boolean
   saving: boolean
   exposures: ParameterExposure[]
 }
 
-export type ParameterFileEditorOptions = {
+export type ParameterNodeEditorOptions = {
   nodeId: string
   exposures?: ParameterExposure[]
 }
@@ -33,7 +33,7 @@ export type ParameterFileEditorOptions = {
 let document = $state<ParameterFileDocument | null>(null)
 let opening = $state(false)
 
-export const parameterFileEditorState = {
+export const parameterNodeEditorState = {
   get document() {
     return document
   },
@@ -54,7 +54,7 @@ export const parameterFileEditorState = {
    */
   async open(
     target: ParameterFileTarget,
-    options: ParameterFileEditorOptions
+    options: ParameterNodeEditorOptions
   ): Promise<void> {
     opening = true
     try {
@@ -69,7 +69,7 @@ export const parameterFileEditorState = {
         resolvedPath: loaded.resolvedPath,
         format: parsed.format,
         parameters: parsed.data,
-        dirty: false,
+        edited: false,
         saving: false,
         exposures: (options.exposures ?? []).map((exposure) => ({
           ...exposure,
@@ -91,10 +91,10 @@ export const parameterFileEditorState = {
   replaceParameters(parameters: ParameterTree): void {
     if (!document) return
     document.parameters = parameters
-    document.dirty = true
+    document.edited = true
   },
-  markDirty(): void {
-    if (document) document.dirty = true
+  markEdited(): void {
+    if (document) document.edited = true
   },
   async save(): Promise<void> {
     if (!document) return
@@ -105,7 +105,7 @@ export const parameterFileEditorState = {
         document.format === 'prm' ? 'parameters.prm' : 'parameters.json'
       )
       await writeParameterFile(document.target, content)
-      document.dirty = false
+      document.edited = false
     } finally {
       if (document) document.saving = false
     }

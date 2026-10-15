@@ -1,14 +1,14 @@
 <script lang="ts">
   import Button from './layout/Button.svelte'
   import ParametersView from './ParametersView.svelte'
-  import { parameterFileEditorState } from '../stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
 
-  let document = $derived(parameterFileEditorState.document)
+  let document = $derived(parameterNodeEditorState.document)
 
   const save = async () => {
     try {
-      await parameterFileEditorState.save()
+      await parameterNodeEditorState.save()
       toastState.add({ message: 'Parameters saved', type: 'success' })
     } catch (error) {
       toastState.add({
@@ -21,14 +21,14 @@
 
   const backToGraph = () => {
     if (
-      document?.dirty &&
+      document?.edited &&
       !window.confirm(
         'Discard unsaved parameter changes and return to the graph?'
       )
     ) {
       return
     }
-    parameterFileEditorState.close()
+    parameterNodeEditorState.close()
   }
 </script>
 
@@ -39,9 +39,9 @@
         parameters={document.parameters}
         exposures={document.exposures}
         onExposureChange={(next) =>
-          parameterFileEditorState.updateExposures(next)}
-        onChange={(next) => parameterFileEditorState.replaceParameters(next)}
-        onDirty={() => parameterFileEditorState.markDirty()}
+          parameterNodeEditorState.updateExposures(next)}
+        onChange={(next) => parameterNodeEditorState.replaceParameters(next)}
+        onEdit={() => parameterNodeEditorState.markEdited()}
       />
     </div>
     <div class="editor-footer">
@@ -49,7 +49,7 @@
         <Button
           variant="action"
           size="small"
-          disabled={!document.dirty || document.saving}
+          disabled={document.saving}
           onclick={save}
         >
           {document.saving ? 'Saving…' : 'Save'}
