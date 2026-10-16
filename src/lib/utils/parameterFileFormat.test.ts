@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { ParameterTree } from '../types/parameterTypes'
 import {
   parseParametersFileWithFormat,
+  isParameterFileName,
+  markAsExtra,
   parsePrmParameters,
   getParameterProbeFileNames,
   normalizeParameterFileName,
@@ -25,6 +27,13 @@ end
 `
 
 describe('parameterFileFormat', () => {
+  it('recognizes JSON and PRM parameter filenames case-insensitively', () => {
+    expect(isParameterFileName('poisson.prm')).toBe(true)
+    expect(isParameterFileName('nested/Poisson.JSON')).toBe(true)
+    expect(isParameterFileName('poisson.txt')).toBe(false)
+    expect(isParameterFileName(42)).toBe(false)
+  })
+
   it('parses prm subsections and set values into a parameter tree', () => {
     const parsed = parsePrmParameters(samplePrm)
     const error = parsed.Error as ParameterTree
@@ -175,5 +184,52 @@ set Tolerance = 1e-8
     expect(
       JSON.parse(serializeParametersFile(tree, 'parameters.json'))
     ).toEqual(tree)
+  })
+
+  it('flags every level of a copied subtree as extra, turning bare values into leaves', () => {
+    const marked = markAsExtra({
+      Solver: {
+        value: '1',
+        default_value: '1',
+        documentation: '',
+        pattern: '.*',
+        pattern_description: '[Integer]',
+      },
+      Steps: 3,
+    }) as ParameterTree
+
+    expect(marked.__extra).toBe(true)
+    expect(marked.Solver).toMatchObject({ value: '1', __extra: true })
+    expect(marked.Steps).toMatchObject({
+      value: '3',
+      pattern_description: '[Text]',
+      __extra: true,
+    })
+  })
+
+  it('drops UI-only __extra flags from json and prm output', () => {
+    const leaf = {
+      value: '1e-8',
+      default_value: '1e-8',
+      documentation: '',
+      pattern: '.*',
+      pattern_description: '[Double]',
+    }
+    // A section duplicated in the editor, as ParametersView marks it.
+    const tree: ParameterTree = {
+      Solver: { Tolerance: leaf },
+      'Solver copy': { __extra: true, Tolerance: { ...leaf, __extra: true } },
+    }
+
+    const json = serializeParametersFile(tree, 'parameters.json')
+    const prm = serializeParametersFile(tree, 'parameters.prm')
+
+    expect(json).not.toContain('__extra')
+    expect(JSON.parse(json)).toEqual({
+      Solver: { Tolerance: leaf },
+      'Solver copy': { Tolerance: leaf },
+    })
+    expect(prm).not.toContain('__extra')
+    expect(prm).toContain('subsection Solver copy')
   })
 })

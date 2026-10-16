@@ -29,6 +29,10 @@ import {
   startLocalExecutableRun,
 } from './utils/localCoralRuns.js'
 import store from './utils/storage.js'
+import {
+  readLocalParameterFile,
+  writeLocalParameterFile,
+} from './utils/localParameterFiles.js'
 
 /**
  * Registers all IPC handlers for the main process.
@@ -77,6 +81,25 @@ export function registerIpcHandlers(): void {
     const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
     return filePaths?.[0] ?? null
   })
+
+  /**
+   * Reads a parameter file from the local working directory.
+   * @param workingDirectory - Local working directory the file must stay inside.
+   * @param fileName         - Path of the file relative to `workingDirectory`.
+   * @returns { filePath, content } — the resolved absolute path and the file text.
+   * @throws If the path escapes the working directory, or the file is missing or not a regular file.
+   */
+  ipcMain.handle(
+    'read-local-parameter-file',
+    async (_event, { workingDirectory, fileName }) =>
+      readLocalParameterFile(workingDirectory, fileName)
+  )
+
+  ipcMain.handle(
+    'write-local-parameter-file',
+    async (_event, { workingDirectory, fileName, content }) =>
+      writeLocalParameterFile(workingDirectory, fileName, content)
+  )
 
   /**
    * Shows a native save dialog and writes the parameter file.
