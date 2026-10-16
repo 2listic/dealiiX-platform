@@ -293,7 +293,7 @@ npm run test                                          # Run all unit tests
 npx vitest run src/lib/utils/graphParser.test.ts      # Run a single test file
 ```
 
-Test files follow the pattern `src/**/*.test.{js,ts}`. Tests run in a Node environment with Svelte plugin and `browser` resolve conditions (no globals — use explicit imports from `vitest`).
+Test files follow the pattern `src/**/*.test.{js,ts}` or `electron/**/*.test.ts`. Tests run in a Node environment with Svelte plugin and `browser` resolve conditions (no globals — use explicit imports from `vitest`).
 
 ### E2E Tests (Tier 1 — Playwright + Electron)
 
