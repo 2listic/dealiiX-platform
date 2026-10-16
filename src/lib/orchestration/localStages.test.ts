@@ -48,14 +48,15 @@ vi.mock('../utils/fileReferences', () => ({
 }))
 
 vi.mock('../utils/sshMessages', () => ({
-  materializeProtocolGraphIfNeeded: vi.fn(async (graph: object) => graph),
   withMpiPlugin: (network: object, useMpi: boolean) =>
     useMpi ? { plugin: 'mpi', ...network } : network,
 }))
 
-const { materializeProtocolGraphIfNeeded } = await import(
-  '../utils/sshMessages'
-)
+vi.mock('./materializeNetwork', () => ({
+  materializeNetwork: vi.fn(async (graph: object) => graph),
+}))
+
+const { materializeNetwork } = await import('./materializeNetwork')
 
 const { prepareStageLocal, startPreparedStage } = await import('./localStages')
 
@@ -107,11 +108,9 @@ describe('prepareStageLocal', () => {
       '/p/stage-a'
     )
 
-    expect(materializeProtocolGraphIfNeeded).toHaveBeenCalledWith(
+    expect(materializeNetwork).toHaveBeenCalledWith(
       { workflow: 'a' },
-      'local',
-      {},
-      '/p/stage-a'
+      expect.objectContaining({ location: 'local', runDirectory: '/p/stage-a' })
     )
     expect(prepared.channel).toBe('start-local-coral-run')
     expect(prepared.payload).toEqual({

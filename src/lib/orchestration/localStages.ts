@@ -14,10 +14,9 @@ import {
   resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from '../utils/fileReferences'
-import {
-  materializeProtocolGraphIfNeeded,
-  withMpiPlugin,
-} from '../utils/sshMessages'
+import { getNodeData } from '../stores/registryStore.svelte'
+import { withMpiPlugin } from '../utils/sshMessages'
+import { materializeNetwork } from './materializeNetwork'
 
 /** A stage checked and recorded at submit, ready to be started. */
 export type PreparedLocalStage = {
@@ -125,7 +124,11 @@ const prepareLocalStageGraph = async (
 ): Promise<object> =>
   await resolveGraphFileReferences(
     withMpiPlugin(
-      await materializeProtocolGraphIfNeeded(graph, 'local', {}, stageDir),
+      await materializeNetwork(graph, {
+        location: 'local',
+        runDirectory: stageDir,
+        definitionOf: getNodeData,
+      }),
       useMpi
     ),
     'local',

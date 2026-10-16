@@ -53,16 +53,13 @@ vi.mock('../utils/fileReferences', () => ({
   resolveGraphFileReferences: async (graph: unknown) => graph,
 }))
 
-const { materializeProtocolGraphIfNeeded } = await import(
-  '../utils/sshMessages'
-)
+const { materializeNetwork } = await import('./materializeNetwork')
 const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
   await import('../utils/graphParser')
 const { createNetworkNodeDefinition } = await import('../utils/networkNode')
 const { parameterHandle } = await import('../utils/parameterPorts')
-const { addNetworkNode, mergeRegistry, removeNetworkNode } = await import(
-  '../stores/registryStore.svelte'
-)
+const { addNetworkNode, getNodeData, mergeRegistry, removeNetworkNode } =
+  await import('../stores/registryStore.svelte')
 
 type Nodes = Network['workflow']['nodes']
 
@@ -70,12 +67,11 @@ const RUN = '/run'
 
 /** Materializes a submitted graph (saved form, qualified ids) into `/run`. */
 const materialize = async (network: Network): Promise<QualifiedNetwork> =>
-  (await materializeProtocolGraphIfNeeded(
-    addQualifiedIds(network),
-    'remote',
-    {},
-    RUN
-  )) as QualifiedNetwork
+  (await materializeNetwork(addQualifiedIds(network), {
+    location: 'remote',
+    runDirectory: RUN,
+    definitionOf: getNodeData,
+  })) as QualifiedNetwork
 
 const network = (nodes: Nodes, edges: NetworkEdge[] = []): Network =>
   ({
@@ -169,7 +165,11 @@ describe('parameter materialization at submit', () => {
     const graph = addQualifiedIds(network({ '0': literal('double', '1.5') }))
 
     expect(
-      await materializeProtocolGraphIfNeeded(graph, 'remote', {}, RUN)
+      await materializeNetwork(graph, {
+        location: 'remote',
+        runDirectory: RUN,
+        definitionOf: getNodeData,
+      })
     ).toBe(graph)
   })
 
@@ -320,68 +320,79 @@ describe('parameter materialization at submit', () => {
     ).rejects.toThrow(/computed at runtime/)
   })
 
-  // Known bugs, fixed by materializing on the protocol (decision 2).
-
-  it.fails(
-    'keeps parent edges on the right port when two boundary outputs share name and type',
-    async () => {
-      files.set('/work/a.prm', prm({ Refinement: '1' }))
-      // Before materialization the free outputs are 0:self, 2:self, 3:self.
-      // Dropping the parameter edge frees 1:self, so 3:self moves to output 3.
-      const sub = await subnetwork(
-        'duplicate outputs',
-        network(
-          {
-            '0': parameterFile('a.prm', [
-              exposure(['Refinement'], 'int', 'input'),
-            ]),
-            '1': literal('int', '4'),
-            '2': literal('double', '1.5'),
-            '3': literal('double', '2.5'),
-          },
-          [connect(1, 0, 0, ['Refinement'])]
-        )
-      )
-
-      const result = await materialize(
-        network({ '0': sub, '1': { type: 'consume_double' } }, [
-          connect(0, 2, 1, 0),
-        ])
-      )
-
-      expect(edgesOf(result)).toEqual([
-        { source: 0, source_output: 3, target: 1, target_input: 0 },
-      ])
-    }
-  )
-
-  it.fails(
-    'rejects a parameter output used through a subnetwork boundary',
-    async () => {
-      files.set('/work/a.prm', prm({ Tolerance: '1e-3' }))
-      const sub = await subnetwork(
-        'boundary output',
-        network({
+  it('keeps parent edges on the right port when two boundary outputs share name and type', async () => {
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+    // Before materialization the free outputs are 0:self, 2:self, 3:self.
+    // Dropping the parameter edge frees 1:self, so 3:self moves to output 3.
+    const sub = await subnetwork(
+      'duplicate outputs',
+      network(
+        {
           '0': parameterFile('a.prm', [
-            exposure(['Tolerance'], 'double', 'output'),
+            exposure(['Refinement'], 'int', 'input'),
           ]),
-        })
+          '1': literal('int', '4'),
+          '2': literal('double', '1.5'),
+          '3': literal('double', '2.5'),
+        },
+        [connect(1, 0, 0, ['Refinement'])]
       )
-      const output = sub.outputs.indexOf(
-        sub.arguments.findIndex((argument) => argument.name === 'Tolerance')
+    )
+
+    const result = await materialize(
+      network({ '0': sub, '1': { type: 'consume_double' } }, [
+        connect(0, 2, 1, 0),
+      ])
+    )
+
+    expect(edgesOf(result)).toEqual([
+      { source: 0, source_output: 3, target: 1, target_input: 0 },
+    ])
+  })
+
+  it('turns a parameter output used through a subnetwork boundary into a literal', async () => {
+    files.set('/work/a.prm', prm({ Tolerance: '1e-3' }))
+    files.set('/work/b.prm', prm({ Tolerance: '1' }))
+    const sub = await subnetwork(
+      'boundary output',
+      network({
+        '0': parameterFile('a.prm', [
+          exposure(['Tolerance'], 'double', 'output'),
+        ]),
+      })
+    )
+    const output = sub.outputs.indexOf(
+      sub.arguments.findIndex((argument) => argument.name === 'Tolerance')
+    )
+
+    const result = await materialize(
+      network(
+        {
+          '0': sub,
+          '1': { type: 'consume_double' },
+          '2': parameterFile('b.prm', [
+            exposure(['Tolerance'], 'double', 'input'),
+          ]),
+        },
+        [connect(0, output, 1, 0), connect(0, output, 2, ['Tolerance'])]
       )
+    )
 
-      await expect(
-        materialize(
-          network({ '0': sub, '1': { type: 'consume_double' } }, [
-            connect(0, output, 1, 0),
-          ])
-        )
-      ).rejects.toThrow(/Tolerance/)
-    }
-  )
+    expect(files.get('/run/b.prm')).toMatch(/set Tolerance\s*=\s*1e-3/)
+    expect(result.workflow.nodes['3']).toMatchObject({
+      type: 'double',
+      value: '1e-3',
+    })
+    expect(edgesOf(result)).toEqual([
+      { source: 3, source_output: 0, target: 1, target_input: 0 },
+    ])
+    const materializedSub = result.workflow.nodes['0'] as typeof sub
+    expect(materializedSub.arguments).not.toContainEqual(
+      expect.objectContaining({ name: 'Tolerance' })
+    )
+  })
 
-  it.fails('rejects two nodes binding the same file differently', async () => {
+  it('rejects two nodes binding the same file differently', async () => {
     files.set('/work/a.prm', prm({ Refinement: '1' }))
 
     await expect(
@@ -403,32 +414,69 @@ describe('parameter materialization at submit', () => {
     ).rejects.toThrow(/a\.prm/)
   })
 
-  it.fails(
-    'materializes a nested subnetwork that is not in the registry',
-    async () => {
-      // Loading a saved graph registers only its top-level subnetworks.
-      files.set('/work/a.prm', prm({ Refinement: '1' }))
-      const inner = await subnetwork(
-        'unregistered inner',
+  it('materializes a nested subnetwork that is not in the registry', async () => {
+    // Loading a saved graph registers only its top-level subnetworks.
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+    const inner = await subnetwork(
+      'unregistered inner',
+      network(
+        {
+          '0': parameterFile('a.prm', [
+            exposure(['Refinement'], 'int', 'input'),
+          ]),
+          '1': literal('int', '4'),
+        },
+        [connect(1, 0, 0, ['Refinement'])]
+      )
+    )
+    const outer = await subnetwork('registered outer', network({ '0': inner }))
+    await removeNetworkNode('unregistered inner')
+
+    await materialize(network({ '0': outer }))
+
+    expect(files.get('/run/a.prm')).toMatch(/set Refinement\s*=\s*4/)
+  })
+
+  it('binds a top-level literal through two subnetwork boundaries', async () => {
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+    const inner = await subnetwork(
+      'two levels inner',
+      network({
+        '0': parameterFile('a.prm', [exposure(['Refinement'], 'int', 'input')]),
+        '1': literal('double', '1.5'),
+      })
+    )
+    const outer = await subnetwork('two levels outer', network({ '0': inner }))
+    const input = outer.inputs.indexOf(
+      outer.arguments.findIndex((argument) => argument.name === 'Refinement')
+    )
+
+    const result = await materialize(
+      network({ '0': literal('int', '4'), '1': outer }, [
+        connect(0, 0, 1, input),
+      ])
+    )
+
+    expect(files.get('/run/a.prm')).toMatch(/set Refinement\s*=\s*4/)
+    expect(edgesOf(result)).toEqual([])
+    const materializedOuter = result.workflow.nodes['1'] as typeof outer
+    expect(materializedOuter.inputs).toEqual([])
+  })
+
+  it('rejects a cycle between parameter files', async () => {
+    files.set('/work/a.prm', prm({ Size: '1' }))
+    files.set('/work/b.prm', prm({ Size: '1' }))
+
+    await expect(
+      materialize(
         network(
           {
-            '0': parameterFile('a.prm', [
-              exposure(['Refinement'], 'int', 'input'),
-            ]),
-            '1': literal('int', '4'),
+            '0': parameterFile('a.prm', [exposure(['Size'], 'int', 'both')]),
+            '1': parameterFile('b.prm', [exposure(['Size'], 'int', 'both')]),
           },
-          [connect(1, 0, 0, ['Refinement'])]
+          [connect(0, ['Size'], 1, ['Size']), connect(1, ['Size'], 0, ['Size'])]
         )
       )
-      const outer = await subnetwork(
-        'registered outer',
-        network({ '0': inner })
-      )
-      await removeNetworkNode('unregistered inner')
-
-      await materialize(network({ '0': outer }))
-
-      expect(files.get('/run/a.prm')).toMatch(/set Refinement\s*=\s*4/)
-    }
-  )
+    ).rejects.toThrow(/Cyclic parameter-file dependency: 0 -> 1 -> 0/)
+  })
 })
