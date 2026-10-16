@@ -7,7 +7,8 @@ import type { ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   parseParametersFileWithFormat,
-  serializeParametersFile,
+  serializeParametersAs,
+  type ParameterFileFormat,
 } from './parameterFileFormat'
 import {
   parameterAtPath,
@@ -33,7 +34,7 @@ type MaterializedGraph = {
 
 type LoadedParameterFile = {
   tree: ParameterTree
-  format: 'json' | 'prm'
+  format: ParameterFileFormat
   fileName: string
   dirty: boolean
 }
@@ -257,10 +258,7 @@ export const materializeParameterGraph = async (
       }
       await writeParameterFile(
         destination,
-        serializeParametersFile(
-          file.tree,
-          file.format === 'prm' ? 'parameters.prm' : 'parameters.json'
-        )
+        serializeParametersAs(file.tree, file.format)
       )
       file.dirty = false
     }

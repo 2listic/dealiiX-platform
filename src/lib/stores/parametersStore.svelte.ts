@@ -1,9 +1,6 @@
-import type {
-  ParameterLeaf,
-  ParameterTree,
-  ParameterNode,
-} from '../types/parameterTypes'
+import type { ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
+import { stripUiMetadata } from '../utils/parameterFileFormat'
 
 type ParamsByLocation = Record<ExecutionLocation, ParameterTree | null>
 
@@ -73,8 +70,16 @@ export const parametersState = {
   get snapshot() {
     const parameters = paramsByLocation[activeLocation]
     return parameters
-      ? (stripUiMetadata($state.snapshot(parameters)) as ParameterTree)
+      ? stripUiMetadata($state.snapshot(parameters) as ParameterTree)
       : null
+  },
+  /**
+   * Persists edits made in place on the active tree, which the `value` setter
+   * does not see (leaf values are edited through the state proxy).
+   * @returns {void}
+   */
+  persist(): void {
+    void persist()
   },
 }
 
@@ -89,21 +94,4 @@ const persist = async () => {
       $state.snapshot(paramsByLocation)
     )
   }
-}
-
-const stripUiMetadata = (node: ParameterNode): ParameterNode => {
-  if (typeof node !== 'object' || node === null) {
-    return node
-  }
-
-  const entries = Object.entries(node)
-    .filter(([key]) => key !== '__extra')
-    .map(([key, value]) => {
-      if (typeof value === 'object' && value !== null) {
-        return [key, stripUiMetadata(value as ParameterLeaf | ParameterTree)]
-      }
-      return [key, value]
-    })
-
-  return Object.fromEntries(entries) as ParameterLeaf | ParameterTree
 }

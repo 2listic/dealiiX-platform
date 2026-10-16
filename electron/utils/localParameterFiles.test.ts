@@ -3,7 +3,6 @@ import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  localParameterFileExists,
   readLocalParameterFile,
   writeLocalParameterFile,
 } from './localParameterFiles'
@@ -37,9 +36,6 @@ describe('localParameterFiles', () => {
       'set Value = 1\n'
     )
 
-    expect(
-      await localParameterFileExists(workingDirectory, 'nested/parameters.prm')
-    ).toBe(true)
     await writeLocalParameterFile(
       workingDirectory,
       'nested/parameters.prm',
@@ -69,18 +65,17 @@ describe('localParameterFiles', () => {
 
   it('does not expose files outside the working directory', async () => {
     const workingDirectory = await makeWorkingDirectory()
-    expect(
-      await localParameterFileExists(workingDirectory, '../outside.prm')
-    ).toBe(false)
     await expect(
       readLocalParameterFile(workingDirectory, '../outside.prm')
     ).rejects.toThrow('must remain inside')
   })
 
-  it('reports missing files without throwing during availability checks', async () => {
+  it('names the resolved path when the parameter file is missing', async () => {
     const workingDirectory = await makeWorkingDirectory()
-    expect(
-      await localParameterFileExists(workingDirectory, 'missing.json')
-    ).toBe(false)
+    await expect(
+      readLocalParameterFile(workingDirectory, 'missing.json')
+    ).rejects.toThrow(
+      `Parameter file not found: ${path.join(workingDirectory, 'missing.json')}`
+    )
   })
 })

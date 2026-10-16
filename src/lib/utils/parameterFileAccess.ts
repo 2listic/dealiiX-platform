@@ -1,5 +1,11 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
+import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
+import {
+  parseParametersFileWithFormat,
+  serializeParametersAs,
+  type ParameterFileFormat,
+} from './parameterFileFormat'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -9,6 +15,12 @@ export type ParameterFileTarget = {
 
 export type ParameterFileContent = {
   content: string
+  resolvedPath: string
+}
+
+export type LoadedParameterFile = {
+  parameters: ParameterTree
+  format: ParameterFileFormat
   resolvedPath: string
 }
 
@@ -57,6 +69,14 @@ const remoteCommand = async (command: string, rejectOnNonZeroCode = true) =>
     rejectOnNonZeroCode,
   })
 
+/**
+ * Builds the target of a parameter file at an execution location, taking the
+ * working directory from that location's settings.
+ *
+ * @param location - Execution location the file lives at.
+ * @param fileName - Path of the file relative to the working directory.
+ * @returns The location, its working directory (empty if not configured) and the file name.
+ */
 export const parameterFileTarget = (
   location: ExecutionLocation,
   fileName: string
@@ -69,26 +89,15 @@ export const parameterFileTarget = (
   fileName,
 })
 
-export const parameterFileExists = async (
-  target: ParameterFileTarget
-): Promise<boolean> => {
-  if (!target.workingDirectory) return false
-  if (target.location === 'local') {
-    return await window.electron.invoke('local-parameter-file-exists', {
-      workingDirectory: target.workingDirectory,
-      fileName: target.fileName,
-    })
-  }
-
-  try {
-    const filePath = remotePath(target)
-    await remoteCommand(`test -f ${shellEscape(filePath)}`)
-    return true
-  } catch {
-    return false
-  }
-}
-
+/**
+ * Reads a parameter file from its target: through Electron IPC for `local`,
+ * through an SSH `cat` for `remote`.
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns The file content and its resolved full path.
+ * @throws If the target has no working directory, the name escapes the working
+ *   directory, or the file is missing ("Parameter file not found: <full path>").
+ */
 export const readParameterFile = async (
   target: ParameterFileTarget
 ): Promise<ParameterFileContent> => {
@@ -96,17 +105,24 @@ export const readParameterFile = async (
     throw new Error('A working directory is required to open parameters')
   }
   if (target.location === 'local') {
-    return await window.electron.invoke('read-local-parameter-file', {
-      workingDirectory: target.workingDirectory,
-      fileName: target.fileName,
-    })
+    const { filePath, content } = await window.electron.invoke(
+      'read-local-parameter-file',
+      {
+        workingDirectory: target.workingDirectory,
+        fileName: target.fileName,
+      }
+    )
+    return { resolvedPath: filePath, content }
   }
 
   const filePath = remotePath(target)
+  const quoted = shellEscape(filePath)
+  // The SSH helper puts the command's output in its error, so the message
+  // names the missing path.
   return {
     resolvedPath: filePath,
     content: await remoteCommand(
-      `test -f ${shellEscape(filePath)} && cat ${shellEscape(filePath)}`
+      `if [ -f ${quoted} ]; then cat ${quoted}; else echo ${shellEscape(`Parameter file not found: ${filePath}`)}; exit 1; fi`
     ),
   }
 }
@@ -135,3 +151,39 @@ export const writeParameterFile = async (
     remotePath: filePath,
   })
 }
+
+/**
+ * Reads and parses a parameter file, detecting its format from the content
+ * (the extension is only a hint).
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns The parameter tree, the detected format and the resolved full path.
+ * @throws If the file cannot be read (see {@link readParameterFile}) or parsed.
+ */
+export const loadParameterFile = async (
+  target: ParameterFileTarget
+): Promise<LoadedParameterFile> => {
+  const { content, resolvedPath } = await readParameterFile(target)
+  const { data, format } = parseParametersFileWithFormat(
+    content,
+    target.fileName
+  )
+  return { parameters: data, format, resolvedPath }
+}
+
+/**
+ * Serialises a parameter tree in the given format and writes it to its target.
+ * Pass the format {@link loadParameterFile} detected to keep a file's format.
+ *
+ * @param target     - Location, working directory and relative file name.
+ * @param parameters - Tree to write.
+ * @param format     - Output format.
+ * @returns Resolves once the file is written.
+ * @throws If the file cannot be written (see {@link writeParameterFile}).
+ */
+export const saveParameterFile = async (
+  target: ParameterFileTarget,
+  parameters: ParameterTree,
+  format: ParameterFileFormat
+): Promise<void> =>
+  writeParameterFile(target, serializeParametersAs(parameters, format))

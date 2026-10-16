@@ -84,13 +84,10 @@
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { parameterFileEditorState } from '../../stores/parameterFileEditor.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
-  import {
-    parameterFileExists,
-    parameterFileTarget,
-  } from '../../utils/parameterFileAccess'
+  import { parameterFileTarget } from '../../utils/parameterFileAccess'
   import {
     parameterHandle,
     parameterInputExposures,
@@ -122,8 +119,6 @@
     [Type.STRING, Type.STR].includes(data.type as Type) &&
       isParameterFileName(data.value)
   )
-  let parameterFileAvailable = $state(false)
-  let parameterCheckId = 0
   let parameterInputs = $derived(
     parameterInputExposures(data as StandardNodeDefinition)
   )
@@ -137,35 +132,15 @@
 
   let editNodeModalId = $derived(`edit-node-${id}`)
 
-  $effect(() => {
-    const fileName = data.value
-    const checkId = ++parameterCheckId
-    parameterFileAvailable = false
-    if (!isParameterFile || !workingDirectory) return
-
-    const target = parameterFileTarget(activeLocation, fileName)
-    void parameterFileExists(target)
-      .then((exists) => {
-        if (checkId === parameterCheckId) parameterFileAvailable = exists
-      })
-      .catch(() => {
-        if (checkId === parameterCheckId) parameterFileAvailable = false
-      })
-  })
-
+  // Opens this node's parameter file at the active location; read errors
+  // (e.g. a missing file) surface as a toast.
   const handleOpenParameters = async () => {
     try {
-      await parameterFileEditorState.open(
+      await parameterNodeEditorState.open(
         parameterFileTarget(activeLocation, data.value),
         {
+          nodeId: id,
           exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
-          onExposureChange: (exposures) => {
-            graphHistoryState.checkpoint()
-            updateNodeData(id, {
-              parameter_file: { exposures },
-            })
-            clearConnectionCache()
-          },
         }
       )
     } catch (error) {
@@ -291,7 +266,8 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
-        {#if isParameterFile && parameterFileAvailable}
+        <!-- Shown without checking the file exists: if it is missing, open() throws and handleOpenParameters reports it in an error toast -->
+        {#if isParameterFile && workingDirectory}
           <button
             class="node-button"
             title="Open parameters"

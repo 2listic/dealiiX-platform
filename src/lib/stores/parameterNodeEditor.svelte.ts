@@ -1,38 +1,33 @@
 import type { ParameterFileFormat } from '../utils/parameterFileFormat'
-import {
-  parseParametersFileWithFormat,
-  serializeParametersFile,
-} from '../utils/parameterFileFormat'
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ParameterExposure } from '../types/nodeTypes'
 import {
-  readParameterFile,
-  writeParameterFile,
+  loadParameterFile,
+  saveParameterFile,
   type ParameterFileTarget,
 } from '../utils/parameterFileAccess'
+import { setNodeParameterExposures } from '../utils/parameterNodeCanvas'
 
 export type ParameterFileDocument = {
+  nodeId: string
   target: ParameterFileTarget
   resolvedPath: string
   format: ParameterFileFormat
   parameters: ParameterTree
-  dirty: boolean
+  edited: boolean
   saving: boolean
   exposures: ParameterExposure[]
 }
 
-export type ParameterFileEditorOptions = {
+export type ParameterNodeEditorOptions = {
+  nodeId: string
   exposures?: ParameterExposure[]
-  onExposureChange?: (_exposures: ParameterExposure[]) => void
 }
 
 let document = $state<ParameterFileDocument | null>(null)
 let opening = $state(false)
-let exposureChangeHandler:
-  | ((_exposures: ParameterExposure[]) => void)
-  | undefined
 
-export const parameterFileEditorState = {
+export const parameterNodeEditorState = {
   get document() {
     return document
   },
@@ -42,30 +37,35 @@ export const parameterFileEditorState = {
   get opening() {
     return opening
   },
+  /**
+   * Reads and parses a parameter file and makes it the open document, which
+   * makes App show the editor in place of the canvas.
+   *
+   * @param target - Where the file lives.
+   * @param options - Id of the node that opened the file and its current exposures (copied).
+   * @returns Resolves once the document is open.
+   * @throws If the file cannot be read or parsed; the previous document is kept.
+   */
   async open(
     target: ParameterFileTarget,
-    options: ParameterFileEditorOptions = {}
+    options: ParameterNodeEditorOptions
   ): Promise<void> {
     opening = true
     try {
-      const loaded = await readParameterFile(target)
-      const parsed = parseParametersFileWithFormat(
-        loaded.content,
-        target.fileName
-      )
+      const loaded = await loadParameterFile(target)
       document = {
+        nodeId: options.nodeId,
         target,
         resolvedPath: loaded.resolvedPath,
-        format: parsed.format,
-        parameters: parsed.data,
-        dirty: false,
+        format: loaded.format,
+        parameters: loaded.parameters,
+        edited: false,
         saving: false,
         exposures: (options.exposures ?? []).map((exposure) => ({
           ...exposure,
           path: [...exposure.path],
         })),
       }
-      exposureChangeHandler = options.onExposureChange
     } finally {
       opening = false
     }
@@ -76,32 +76,36 @@ export const parameterFileEditorState = {
       ...exposure,
       path: [...exposure.path],
     }))
-    exposureChangeHandler?.(document.exposures)
+    // Through the nodes store, which holds the graph level the editor was
+    // opened from: the canvas is unmounted while the editor is open.
+    setNodeParameterExposures(
+      document.nodeId,
+      $state.snapshot(document.exposures)
+    )
   },
   replaceParameters(parameters: ParameterTree): void {
     if (!document) return
     document.parameters = parameters
-    document.dirty = true
+    document.edited = true
   },
-  markDirty(): void {
-    if (document) document.dirty = true
+  markEdited(): void {
+    if (document) document.edited = true
   },
   async save(): Promise<void> {
     if (!document) return
     document.saving = true
     try {
-      const content = serializeParametersFile(
+      await saveParameterFile(
+        document.target,
         document.parameters,
-        document.format === 'prm' ? 'parameters.prm' : 'parameters.json'
+        document.format
       )
-      await writeParameterFile(document.target, content)
-      document.dirty = false
+      document.edited = false
     } finally {
       if (document) document.saving = false
     }
   },
   close(): void {
     document = null
-    exposureChangeHandler = undefined
   },
 }
