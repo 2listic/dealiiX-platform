@@ -6,6 +6,7 @@
 
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import { buildMpiLauncherCommand } from './mpiLauncher'
+import { shellEscape } from './shellEscape'
 
 /** The resources and launcher an MPI job needs; absent for a serial job. */
 export type SbatchMpiResources = {
@@ -24,11 +25,6 @@ export type SbatchScriptOptions = {
   command: string
   /** MPI resources and launcher, or null for a serial job. */
   mpi: SbatchMpiResources | null
-}
-
-/** Quotes a complete command line for use as a single shell argument. */
-const shellQuote = (value: string): string => {
-  return `'${value.replaceAll("'", `'\\''`)}'`
 }
 
 /**
@@ -64,7 +60,7 @@ export const buildSbatchScript = ({
   return `#!/bin/bash
 ${directives.join('\n')}
 
-printf '%s\\n' ${shellQuote(`Command: ${fullCommand}`)}
+printf '%s\\n' ${shellEscape(`Command: ${fullCommand}`)}
 ${fullCommand}
 `
 }

@@ -98,6 +98,9 @@ export const nodeColors = {
   [NodeType.PRIMITIVE]: 'yellowgreen',
 }
 
+/** Border colour of a string literal marked as a parameter file. */
+export const PARAMETER_FILE_COLOR = 'darkorange'
+
 export enum Type {
   INT = 'int',
   UNSIGNED = 'unsigned',

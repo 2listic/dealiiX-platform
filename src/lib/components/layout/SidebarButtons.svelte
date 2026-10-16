@@ -6,7 +6,8 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import { mergeRegistry } from '../../stores/registryStore.svelte'
+  import { getNodeData, mergeRegistry } from '../../stores/registryStore.svelte'
+  import { materializeNetwork } from '../../orchestration/materializeNetwork'
   import { importGraphFromProtocol } from '../../utils/graphParser'
   import {
     mergeParametersFromFile,
@@ -42,6 +43,7 @@
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
+  import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
@@ -55,7 +57,6 @@
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
@@ -88,15 +89,17 @@
   let pipelineImportInput: HTMLInputElement | undefined = $state()
   let paramsFileInput: HTMLInputElement | undefined = $state()
 
-  const handleLoginLogout = () => {
-    if (token) {
-      getModal(logoutConfirmModalId)?.open()
-    } else {
+  const handleLoginLogout = async () => {
+    if (!token) {
       getModal(loginModalId)?.open()
+      return
     }
-  }
-
-  const handleOncofirmLogout = async () => {
+    const confirmed = await confirmAction({
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      confirmVariant: 'action',
+    })
+    if (!confirmed) return
     await auth.clearToken()
     toastState.add({ message: 'Logged out', type: 'success' })
   }
@@ -150,15 +153,25 @@
   }
 
   const handleAddCoralFromCanvas = () => {
-    const graph = buildGraphPayload(
-      getNodesSnapshot(),
-      getEdgesSnapshot(),
-      false
-    )
-    pipelineState.addCoralStage({
-      name: currentProjectState.name || 'canvas graph',
-      graph,
-    })
+    try {
+      const graph = buildGraphPayload(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        false
+      )
+      pipelineState.addCoralStage({
+        name: currentProjectState.name || 'canvas graph',
+        graph,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to add the canvas graph',
+        type: 'error',
+      })
+    }
   }
 
   const handleAddExecutable = () => {
@@ -407,37 +420,37 @@
     }
   }
 
-  const handleGraphDownload = () => {
+  /**
+   * Saves the graph as Coral runs it: each parameter file is copied next to
+   * it with its bound values applied, as at submit.
+   */
+  const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
       getModal(subnetworkWarningModalId)?.open()
       return
     }
     try {
-      // Parse current graph to Network JSON format
+      const picked = await window.electron.invoke('pick-save-path', {
+        defaultPath: `${currentProjectState.name || 'graph'}.json`,
+      })
+      if (!picked) return
       // TODO: add a modal to ask user if he wants the mpi version
-      const graphData = buildGraphPayload(
-        getNodesSnapshot(),
-        getEdgesSnapshot(),
-        false
+      const graphData = await materializeNetwork(
+        parseGraphWithQualifiedIds(getNodesSnapshot(), getEdgesSnapshot()),
+        {
+          location: executionSelectionState.location,
+          copyLocation: 'local',
+          copyDirectory: picked.directory,
+          definitionOf: getNodeData,
+        }
       )
-      const jsonString = JSON.stringify(graphData, null, 2)
-
-      // Create blob with JSON data + filename
-      const blob = new Blob([jsonString], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const filename = `${currentProjectState.name || 'graph'}.json`
-
-      // Create temporary anchor and trigger download
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = filename
-      document.body.appendChild(anchor)
-      anchor.click()
-
-      // Cleanup
-      document.body.removeChild(anchor)
-      URL.revokeObjectURL(url)
+      await window.electron.invoke('write-local-parameter-file', {
+        workingDirectory: picked.directory,
+        fileName: picked.fileName,
+        content: JSON.stringify(graphData, null, 2),
+      })
+      toastState.add({ message: `Graph saved in ${picked.directory}` })
     } catch (error) {
       console.error('Failed to download graph:', error)
       toastState.add({
@@ -476,14 +489,6 @@
     <Modal id={loginModalId}>
       <LoginForm modalId={loginModalId} />
     </Modal>
-
-    <ConfirmationModal
-      modalId={logoutConfirmModalId}
-      message="Are you sure you want to logout?"
-      confirmText="Logout"
-      confirmVariant="action"
-      onConfirm={handleOncofirmLogout}
-    />
   {/if}
 
   <ConfirmationModal

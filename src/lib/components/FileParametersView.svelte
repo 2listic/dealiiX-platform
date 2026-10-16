@@ -2,6 +2,7 @@
   import Button from './layout/Button.svelte'
   import ParametersView from './ParametersView.svelte'
   import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
+  import { confirmAction } from '../stores/confirmation.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type { ParameterExposure } from '../types/nodeTypes'
   import { staleParameterEdges } from '../utils/parameterNodeCanvas'
@@ -21,14 +22,18 @@
     }
   }
 
-  const changeExposures = (next: ParameterExposure[]): boolean => {
+  const changeExposures = async (
+    next: ParameterExposure[]
+  ): Promise<boolean> => {
     if (!document) return false
     const removed = staleParameterEdges(document.nodeId, next).length
     if (
       removed > 0 &&
-      !window.confirm(
-        `This removes ${removed} ${removed === 1 ? 'connection' : 'connections'} from the graph. Continue?`
-      )
+      !(await confirmAction({
+        message: `This removes ${removed} ${removed === 1 ? 'connection' : 'connections'} from the graph. Continue?`,
+        confirmText: 'Remove',
+        confirmVariant: 'delete',
+      }))
     ) {
       return false
     }
@@ -36,12 +41,14 @@
     return true
   }
 
-  const backToGraph = () => {
+  const backToGraph = async () => {
     if (
       document?.edited &&
-      !window.confirm(
-        'Discard unsaved parameter changes and return to the graph?'
-      )
+      !(await confirmAction({
+        message: 'Discard unsaved parameter changes and return to the graph?',
+        confirmText: 'Discard',
+        confirmVariant: 'delete',
+      }))
     ) {
       return
     }

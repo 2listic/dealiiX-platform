@@ -533,6 +533,32 @@ describe('parameter-node graph persistence', () => {
     expect(invalidEdges).toHaveLength(0)
   })
 
+  it('keeps the parameter-file marker of a node with no exposures', () => {
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'std::string',
+          node_type: 'elementary_constructor',
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+          value: 'poisson_2d.prm',
+          parameter_file: { exposures: [] },
+        },
+      },
+    ] as any
+
+    const graph = parseGraphToProtocol(nodes, [])
+    expect(graph.workflow.nodes['1']).toEqual({
+      type: 'std::string',
+      position: { x: 0, y: 0 },
+      value: 'poisson_2d.prm',
+      parameter_file: { exposures: [] },
+    })
+  })
+
   it('serializes only the concrete type, not palette metadata', () => {
     const nodes = [
       {

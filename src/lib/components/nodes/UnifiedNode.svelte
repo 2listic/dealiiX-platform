@@ -62,6 +62,7 @@
   import {
     nodeColors,
     NodeType,
+    PARAMETER_FILE_COLOR,
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
@@ -83,18 +84,14 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
+  import MarkIcon from '../icons/MarkIcon.svelte'
+  import ParameterFilePorts from './ParameterFilePorts.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
-  import { parameterFileTarget } from '../../utils/parameterFileAccess'
   import {
-    parameterHandle,
-    parameterInputExposures,
-    parameterOutputExposures,
-    parameterPathLabel,
-    parameterPortCoralType,
-  } from '../../utils/parameterPorts'
+    openParameterFile,
+    parameterFileUnavailableReason,
+    useAsParameterFile,
+  } from '../../utils/parameterNodeActions'
   import type { StandardNodeDefinition } from '../../types/nodeTypes'
 
   let {
@@ -108,49 +105,30 @@
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
-  let color = $derived(nodeColors[type as keyof typeof nodeColors])
-  let activeLocation = $derived(executionSelectionState.location)
-  let workingDirectory = $derived(
-    activeLocation === 'local'
-      ? settingsState.local.workingDirectory
-      : settingsState.remote.workingDirectory
+  let isLiteral = $derived(
+    data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR ||
+      data.node_type === NodeType.PRIMITIVE
   )
+  // Only a literal's value names a file, so a marker elsewhere is ignored.
   let isParameterFile = $derived(
-    [Type.STRING, Type.STR].includes(data.type as Type) &&
+    isLiteral && Boolean((data as StandardNodeDefinition).parameter_file)
+  )
+  let suggestsParameterFile = $derived(
+    isLiteral &&
+      !isParameterFile &&
+      [Type.STRING, Type.STR].includes(data.type as Type) &&
       isParameterFileName(data.value)
   )
-  let parameterInputs = $derived(
-    parameterInputExposures(data as StandardNodeDefinition)
+  let color = $derived(
+    isParameterFile
+      ? PARAMETER_FILE_COLOR
+      : nodeColors[type as keyof typeof nodeColors]
   )
-  let parameterOutputs = $derived(
-    parameterOutputExposures(data as StandardNodeDefinition)
-  )
-  let totalInputs = $derived(data.inputs.length + parameterInputs.length)
-  let totalOutputs = $derived(data.outputs.length + parameterOutputs.length)
+  let parameterFileUnavailable = $derived(parameterFileUnavailableReason())
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
-
-  // Opens this node's parameter file at the active location; read errors
-  // (e.g. a missing file) surface as a toast.
-  const handleOpenParameters = async () => {
-    try {
-      await parameterNodeEditorState.open(
-        parameterFileTarget(activeLocation, data.value),
-        {
-          nodeId: id,
-          exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
-        }
-      )
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to open parameters',
-        type: 'error',
-      })
-    }
-  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -242,11 +220,11 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      {#if hasCustomName}
-        <div class="node-name">{data.name}</div>
+      <div class="node-name">{hasCustomName ? data.name : data.type}</div>
+      {#if isParameterFile}
+        <div class="node-type">parameter_file</div>
+      {:else if hasCustomName}
         <div class="node-type">{data.type}</div>
-      {:else}
-        <div class="node-name">{data.type}</div>
       {/if}
     </div>
     <div class="node-buttons">
@@ -266,13 +244,14 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
-        <!-- Shown without checking the file exists: if it is missing, open() throws and handleOpenParameters reports it in an error toast -->
-        {#if isParameterFile && workingDirectory}
+        {#if isParameterFile}
           <button
             class="node-button"
-            title="Open parameters"
+            title={parameterFileUnavailable ?? 'Open parameters'}
             aria-label="Open parameters"
-            onclick={handleOpenParameters}
+            disabled={Boolean(parameterFileUnavailable)}
+            onclick={() =>
+              openParameterFile(id, data as StandardNodeDefinition)}
           >
             <OpenIcon width="20px" height="20px" />
           </button>
@@ -298,47 +277,30 @@
     </div>
   </div>
 
-  <!-- Input handlers -->
-  {#each data.inputs as i, index (i)}
-    <Handle
-      id={`input-${index}`}
-      type="target"
-      position={Position.Left}
-      style="top: {(100 / (totalInputs + 1)) * (index + 1) + 5}%;"
-    />
-  {/each}
-  {#each parameterInputs as exposure, index (parameterHandle('input', exposure.path))}
-    <Handle
-      id={parameterHandle('input', exposure.path)}
-      type="target"
-      position={Position.Left}
-      class="parameter-handle"
-      style="top: {(100 / (totalInputs + 1)) *
-        (data.inputs.length + index + 1) +
-        5}%;"
-    />
-  {/each}
+  {#if isParameterFile}
+    <!-- Draws its own handles, each next to the row it belongs to -->
+    <ParameterFilePorts {id} data={data as StandardNodeDefinition} />
+  {:else}
+    <!-- Input handlers -->
+    {#each data.inputs as i, index (i)}
+      <Handle
+        id={`input-${index}`}
+        type="target"
+        position={Position.Left}
+        style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
+      />
+    {/each}
 
-  <!-- Output handlers -->
-  {#each data.outputs as i, index (i)}
-    <Handle
-      id={`output-${index}`}
-      type="source"
-      position={Position.Right}
-      style="top: {(100 / (totalOutputs + 1)) * (index + 1) + 5}%;"
-    />
-  {/each}
-  {#each parameterOutputs as exposure, index (parameterHandle('output', exposure.path))}
-    <Handle
-      id={parameterHandle('output', exposure.path)}
-      type="source"
-      position={Position.Right}
-      class="parameter-handle"
-      style="top: {(100 / (totalOutputs + 1)) *
-        (data.outputs.length + index + 1) +
-        5}%;"
-    />
-  {/each}
+    <!-- Output handlers -->
+    {#each data.outputs as i, index (i)}
+      <Handle
+        id={`output-${index}`}
+        type="source"
+        position={Position.Right}
+        style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+      />
+    {/each}
+  {/if}
 
   <!-- Input / output labels -->
   {#if data.arguments.length > 0}
@@ -370,34 +332,9 @@
     </div>
   {/if}
 
-  {#if parameterInputs.length > 0 || parameterOutputs.length > 0}
-    <div class="parameter-port-columns">
-      <div class="input-column">
-        {#each parameterInputs as exposure (parameterHandle('input', exposure.path))}
-          <div class="parameter-port-label">
-            <div class="input-label">{parameterPathLabel(exposure.path)}</div>
-            <div class="input-type">
-              {parameterPortCoralType(exposure.type)}
-            </div>
-          </div>
-        {/each}
-      </div>
-      <div class="output-column">
-        {#each parameterOutputs as exposure (parameterHandle('output', exposure.path))}
-          <div class="parameter-port-label">
-            <div class="output-label">{parameterPathLabel(exposure.path)}</div>
-            <div class="output-type">
-              {parameterPortCoralType(exposure.type)}
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
   <!-- Elementary constructor / primitive literal input fields -->
-  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || data.node_type === NodeType.PRIMITIVE}
-    <div>
+  {#if isLiteral && !isParameterFile}
+    <div class="value-row">
       {#if data.type === Type.BOOLEAN}
         <input
           type="checkbox"
@@ -416,7 +353,6 @@
         <input
           type="text"
           class:is-invalid={!isValid}
-          class:parameter-file-input={isParameterFile}
           value={data.value}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
@@ -424,6 +360,17 @@
             updateNodeData(id, { value: evt.currentTarget.value })
           }}
         />
+      {/if}
+      {#if suggestsParameterFile}
+        <button
+          class="node-button"
+          title={parameterFileUnavailable ?? 'Use as parameter file'}
+          aria-label="Use as parameter file"
+          disabled={Boolean(parameterFileUnavailable)}
+          onclick={() => useAsParameterFile(id, data as StandardNodeDefinition)}
+        >
+          <MarkIcon width="20px" height="20px" />
+        </button>
       {/if}
     </div>
   {/if}
@@ -512,17 +459,24 @@
     border: 2px solid red;
   }
 
-  input.parameter-file-input {
-    background-color: var(--button-action-bg);
-    border-color: var(--button-action-bg);
-    color: white;
-    font-family: monospace;
+  .node-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
 
-  input.parameter-file-input:focus {
-    border-color: var(--button-action-hover);
-    outline: 2px solid
-      color-mix(in srgb, var(--button-action-bg) 35%, transparent);
+  .value-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .value-row input[type='text'] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .value-row .node-button {
+    align-self: center;
   }
 
   .input-column {
@@ -562,23 +516,5 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
-  }
-
-  :global(.parameter-handle) {
-    background: var(--button-action-bg);
-    border-color: var(--button-action-hover);
-  }
-
-  .parameter-port-columns {
-    display: flex;
-    flex-direction: row;
-    gap: 4vh;
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.25rem;
-  }
-
-  .parameter-port-label {
-    font-size: 0.8rem;
   }
 </style>

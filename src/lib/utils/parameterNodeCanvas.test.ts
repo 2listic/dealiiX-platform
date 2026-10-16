@@ -25,9 +25,12 @@ vi.mock('./connectionsValidation', () => ({
   clearConnectionCache: () => clearConnectionCache(),
 }))
 
-const { setNodeParameterExposures, staleParameterEdges } = await import(
-  './parameterNodeCanvas'
-)
+const {
+  markParameterFile,
+  setNodeParameterExposures,
+  staleParameterEdges,
+  unmarkParameterFile,
+} = await import('./parameterNodeCanvas')
 
 const refinements = ['Mesh', 'Refinements']
 const exposure: ParameterExposure = {
@@ -111,5 +114,53 @@ describe('setNodeParameterExposures', () => {
     expect(edges).toEqual([inputEdge, outputEdge, ordinaryEdge])
     expect(checkpoint).not.toHaveBeenCalled()
     expect(clearConnectionCache).not.toHaveBeenCalled()
+  })
+})
+
+describe('markParameterFile / unmarkParameterFile', () => {
+  beforeEach(() => {
+    nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: {
+          value: 'poisson.prm',
+          parameter_file: { exposures: [exposure] },
+        },
+      },
+      { id: '2', position: { x: 0, y: 0 }, data: { value: 3 } },
+    ]
+    edges = [inputEdge, outputEdge, ordinaryEdge]
+    checkpoint.mockReset()
+    clearConnectionCache.mockReset()
+  })
+
+  it('marks a node with no exposures as one undoable edit', () => {
+    markParameterFile('2')
+
+    expect(checkpoint).toHaveBeenCalledTimes(1)
+    expect(nodes[1].data).toEqual({
+      value: 3,
+      parameter_file: { exposures: [] },
+    })
+    expect(edges).toEqual([inputEdge, outputEdge, ordinaryEdge])
+  })
+
+  it('unmarks a node and removes the edges of its parameter handles', () => {
+    unmarkParameterFile('1')
+
+    expect(checkpoint).toHaveBeenCalledTimes(1)
+    expect(clearConnectionCache).toHaveBeenCalledTimes(1)
+    expect(nodes[0].data).toEqual({ value: 'poisson.prm' })
+    expect(edges).toEqual([ordinaryEdge])
+  })
+
+  it('does nothing when the node is not in the current graph level', () => {
+    const before = nodes
+
+    unmarkParameterFile('42')
+
+    expect(nodes).toBe(before)
+    expect(checkpoint).not.toHaveBeenCalled()
   })
 })

@@ -465,7 +465,8 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
       if (data.value !== undefined) node.value = data.value
-      if (data.parameter_file?.exposures?.length) {
+      // Kept with no exposures: the marker is what makes the node a parameter file.
+      if (data.parameter_file) {
         node.parameter_file = {
           exposures: normalizeParameterExposures(data.parameter_file.exposures),
         }
