@@ -185,6 +185,29 @@ export const parameterOutputExposures = (
     (exposure) => exposure.output
   )
 
+/**
+ * Groups exposures by their section (every path segment but the last), in
+ * the order each section first appears.
+ *
+ * @param exposures - The exposures, in persisted order.
+ * @returns One group per section, with its exposures in persisted order.
+ */
+export const groupExposuresBySection = (
+  exposures: ParameterExposure[]
+): { section: string[]; exposures: ParameterExposure[] }[] => {
+  const groups = new Map<
+    string,
+    { section: string[]; exposures: ParameterExposure[] }
+  >()
+  for (const exposure of exposures) {
+    const section = exposure.path.slice(0, -1)
+    const key = JSON.stringify(section)
+    if (!groups.has(key)) groups.set(key, { section, exposures: [] })
+    groups.get(key)!.exposures.push(exposure)
+  }
+  return [...groups.values()]
+}
+
 export const parameterExposureForHandle = (
   data: StandardNodeDefinition,
   handle: string | null | undefined,

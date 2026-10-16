@@ -1,28 +1,24 @@
 <!--
-  The parameter-file part of a node: the actions that mark it as a parameter
-  file or open its file, and the handles and labels of its exposed parameters.
-  A node is a parameter file when it has `parameter_file`; a `.json` / `.prm`
-  value on a string node only offers "Use as parameter file".
+  The body of a parameter-file node: the file path, read-only, with the
+  node's own handles and the Unmark button, then one row per exposed
+  parameter, grouped by section. Each row holds its handles, so a handle sits
+  next to the parameter it stands for. To point the node at another file,
+  unmark it, edit the value and mark it again.
 -->
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
-  import Button from '../layout/Button.svelte'
-  import { Type, type StandardNodeDefinition } from '../../types/nodeTypes'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
-  import { toastState } from '../../stores/toastsStore.svelte'
-  import { isParameterFileName } from '../../utils/parameterFileFormat'
-  import { parameterFileTarget } from '../../utils/parameterFileAccess'
+  import UnmarkIcon from '../icons/UnmarkIcon.svelte'
+  import ConfirmationModal from '../layout/ConfirmationModal.svelte'
+  import { getModal } from '../layout/Modal.svelte'
+  import type { StandardNodeDefinition } from '../../types/nodeTypes'
   import {
-    markParameterFile,
     staleParameterEdges,
     unmarkParameterFile,
   } from '../../utils/parameterNodeCanvas'
   import {
+    groupExposuresBySection,
+    normalizeParameterExposures,
     parameterHandle,
-    parameterInputExposures,
-    parameterOutputExposures,
     parameterPathLabel,
     parameterPortCoralType,
   } from '../../utils/parameterPorts'
@@ -30,146 +26,98 @@
   let {
     id,
     data,
-    inputCount,
-    outputCount,
   }: {
     /** Id of the node. */
     id: string
-    /** The node's data. */
+    /** The node's data; it carries `parameter_file`. */
     data: StandardNodeDefinition
-    /** Number of the node's ordinary input handles, placed above the parameter ones. */
-    inputCount: number
-    /** Number of the node's ordinary output handles, placed above the parameter ones. */
-    outputCount: number
   } = $props()
 
-  let isMarked = $derived(Boolean(data.parameter_file))
-  let suggestsMarking = $derived(
-    !isMarked &&
-      [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isParameterFileName(data.value)
+  let exposures = $derived(
+    normalizeParameterExposures(data.parameter_file?.exposures)
   )
-  let activeLocation = $derived(executionSelectionState.location)
-  let workingDirectory = $derived(
-    activeLocation === 'local'
-      ? settingsState.local.workingDirectory
-      : settingsState.remote.workingDirectory
-  )
-  let parameterInputs = $derived(parameterInputExposures(data))
-  let parameterOutputs = $derived(parameterOutputExposures(data))
-  let totalInputs = $derived(inputCount + parameterInputs.length)
-  let totalOutputs = $derived(outputCount + parameterOutputs.length)
-  let openTitle = $derived(
-    workingDirectory
-      ? undefined
-      : `Set the ${activeLocation} working directory in Settings first`
-  )
+  let sections = $derived(groupExposuresBySection(exposures))
 
-  // Opens the file at the active location without checking it exists first:
-  // a missing file makes open() throw, reported in an error toast.
-  const openParameters = async () => {
-    try {
-      await parameterNodeEditorState.open(
-        parameterFileTarget(activeLocation, data.value),
-        { nodeId: id, exposures: data.parameter_file?.exposures }
-      )
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to open parameters',
-        type: 'error',
-      })
-      return false
-    }
-    return true
-  }
+  let unmarkModalId = $derived(`unmark-parameter-file-${id}`)
+  let removedConnections = $state(0)
 
-  // Marks the node only once its file opened, so a mistyped path leaves no marker.
-  const useAsParameterFile = async () => {
-    if (await openParameters()) markParameterFile(id)
-  }
-
+  // Asks only when unmarking removes connections. The app's modal, not
+  // window.confirm: after a native dialog Electron can leave inputs unfocusable.
   const unmark = () => {
-    const removed = staleParameterEdges(id, []).length
-    if (
-      removed > 0 &&
-      !window.confirm(
-        `This removes ${removed} ${removed === 1 ? 'connection' : 'connections'} from the graph. Continue?`
-      )
-    ) {
+    removedConnections = staleParameterEdges(id, []).length
+    if (removedConnections === 0) {
+      unmarkParameterFile(id)
       return
     }
-    unmarkParameterFile(id)
+    getModal(unmarkModalId)?.open()
   }
 </script>
 
-{#each parameterInputs as exposure, index (parameterHandle('input', exposure.path))}
-  <Handle
-    id={parameterHandle('input', exposure.path)}
-    type="target"
-    position={Position.Left}
-    class="parameter-handle"
-    style="top: {(100 / (totalInputs + 1)) * (inputCount + index + 1) + 5}%;"
+<div class="row path-row">
+  {#each data.inputs as i, index (i)}
+    <Handle id={`input-${index}`} type="target" position={Position.Left} />
+  {/each}
+  <input
+    type="text"
+    class="path"
+    value={data.value}
+    title={data.value}
+    aria-label="Parameter file path"
+    disabled
   />
-{/each}
-{#each parameterOutputs as exposure, index (parameterHandle('output', exposure.path))}
-  <Handle
-    id={parameterHandle('output', exposure.path)}
-    type="source"
-    position={Position.Right}
-    class="parameter-handle"
-    style="top: {(100 / (totalOutputs + 1)) * (outputCount + index + 1) + 5}%;"
-  />
-{/each}
+  <button
+    class="unmark"
+    title="Stop using as parameter file"
+    aria-label="Stop using as parameter file"
+    onclick={unmark}
+  >
+    <UnmarkIcon width="20px" height="20px" />
+  </button>
+  {#each data.outputs as o, index (o)}
+    <Handle id={`output-${index}`} type="source" position={Position.Right} />
+  {/each}
+</div>
 
-{#if isMarked}
-  <div class="parameter-actions">
-    <Button
-      size="xsmall"
-      variant="action"
-      disabled={!workingDirectory}
-      title={openTitle}
-      onclick={openParameters}
-    >
-      Open parameters
-    </Button>
-    <Button size="xsmall" title="Stop using as parameter file" onclick={unmark}>
-      Unmark
-    </Button>
-  </div>
-{:else if suggestsMarking}
-  <div class="parameter-actions">
-    <Button
-      size="xsmall"
-      disabled={!workingDirectory}
-      title={openTitle}
-      onclick={useAsParameterFile}
-    >
-      Use as parameter file
-    </Button>
-  </div>
+{#if exposures.length === 0}
+  <div class="hint">Open the parameters to expose entries as ports.</div>
 {/if}
 
-{#if parameterInputs.length > 0 || parameterOutputs.length > 0}
-  <div class="parameter-ports">
-    <div class="port-column">
-      {#each parameterInputs as exposure (parameterHandle('input', exposure.path))}
-        <div class="port-label">
-          <div class="port-name">{parameterPathLabel(exposure.path)}</div>
-          <div class="port-type">{parameterPortCoralType(exposure.type)}</div>
-        </div>
-      {/each}
+{#each sections as group (JSON.stringify(group.section))}
+  {#if group.section.length > 0}
+    <div class="section">{parameterPathLabel(group.section)}</div>
+  {/if}
+  {#each group.exposures as exposure (JSON.stringify(exposure.path))}
+    <div class="row" title={parameterPathLabel(exposure.path)}>
+      {#if exposure.input}
+        <Handle
+          id={parameterHandle('input', exposure.path)}
+          type="target"
+          position={Position.Left}
+          class="parameter-handle"
+        />
+      {/if}
+      <span class="entry">{exposure.path.at(-1)}</span>
+      <span class="entry-type">{parameterPortCoralType(exposure.type)}</span>
+      {#if exposure.output}
+        <Handle
+          id={parameterHandle('output', exposure.path)}
+          type="source"
+          position={Position.Right}
+          class="parameter-handle"
+        />
+      {/if}
     </div>
-    <div class="port-column outputs">
-      {#each parameterOutputs as exposure (parameterHandle('output', exposure.path))}
-        <div class="port-label">
-          <div class="port-name">{parameterPathLabel(exposure.path)}</div>
-          <div class="port-type">{parameterPortCoralType(exposure.type)}</div>
-        </div>
-      {/each}
-    </div>
-  </div>
-{/if}
+  {/each}
+{/each}
+
+<ConfirmationModal
+  modalId={unmarkModalId}
+  title="Unmark parameter file"
+  message={`This removes ${removedConnections} ${removedConnections === 1 ? 'connection' : 'connections'} from the graph. Continue?`}
+  confirmText="Unmark"
+  confirmVariant="delete"
+  onConfirm={() => unmarkParameterFile(id)}
+/>
 
 <style>
   :global(.parameter-handle) {
@@ -177,40 +125,68 @@
     border-color: var(--button-action-hover);
   }
 
-  .parameter-actions {
+  /* Rows span the node's padding (15px) and border (2px), so a handle,
+     placed at the row's edge, sits on the node border like any other. */
+  .row {
+    position: relative;
     display: flex;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-  }
-
-  .parameter-ports {
-    display: flex;
-    flex-direction: row;
-    gap: 4vh;
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.25rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 -17px;
+    padding: 0.2rem 17px;
     font-size: 0.8rem;
   }
 
-  .port-column {
-    display: flex;
-    flex-direction: column;
+  .path-row {
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .path {
     flex: 1;
-    justify-content: space-evenly;
+    min-width: 0;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--secondary-color);
+    color: inherit;
+    font-size: 1rem;
+    text-overflow: ellipsis;
+    opacity: 0.8;
   }
 
-  .port-column.outputs {
-    align-items: end;
-    text-align: right;
+  .unmark {
+    cursor: pointer;
+    display: flex;
+    padding: 1px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background-color: var(--secondary-color);
   }
 
-  .port-name {
+  .unmark:hover {
+    border-color: var(--border-color-hover);
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .section {
+    margin-top: 0.4rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .entry {
     font-weight: bold;
-    margin-top: 1vh;
   }
 
-  .port-type {
+  .entry-type {
     font-family: monospace;
     font-size: smaller;
   }
