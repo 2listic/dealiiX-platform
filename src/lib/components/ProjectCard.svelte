@@ -7,7 +7,7 @@
   import Modal, { getModal } from './layout/Modal.svelte'
   import ShareProjectModal from './ShareProjectModal.svelte'
   import EditProjectForm from './EditProjectForm.svelte'
-  import ConfirmationModal from './layout/ConfirmationModal.svelte'
+  import { confirmAction } from '../stores/confirmation.svelte'
 
   interface Project {
     id: number
@@ -41,18 +41,18 @@
 
   let shareModalRef: ShareProjectModal
 
-  let deleteModalId = $derived(`delete-project-${project.id}`)
   let shareModalId = $derived(`share-project-${project.id}`)
   let updateProjectModal = $derived(`update-project-${project.id}`)
 
   const handleDelete = async () => {
-    getModal(deleteModalId)?.open()
-  }
-
-  const handleDeleteConfirm = async () => {
+    const confirmed = await confirmAction({
+      message: `Are you sure you want to delete project "${project.name}"?`,
+      confirmText: 'Delete',
+      confirmVariant: 'delete',
+    })
+    if (!confirmed) return
     try {
       await deleteProject(project.id)
-      getModal(deleteModalId)?.close()
       toastState.add({
         message: `Project "${project.name}" deleted successfully`,
         type: 'success',
@@ -68,7 +68,6 @@
           error instanceof Error ? error.message : 'Failed to delete project',
         type: 'error',
       })
-      getModal(deleteModalId)?.close()
     }
   }
 
@@ -161,14 +160,6 @@
     </div>
   </div>
 </div>
-
-<ConfirmationModal
-  modalId={deleteModalId}
-  message={`Are you sure you want to delete project "${project.name}"?`}
-  confirmText="Delete"
-  confirmVariant="delete"
-  onConfirm={handleDeleteConfirm}
-/>
 
 <ShareProjectModal
   bind:this={shareModalRef}

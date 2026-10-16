@@ -42,6 +42,7 @@
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
+  import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
@@ -55,7 +56,6 @@
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
@@ -88,15 +88,17 @@
   let pipelineImportInput: HTMLInputElement | undefined = $state()
   let paramsFileInput: HTMLInputElement | undefined = $state()
 
-  const handleLoginLogout = () => {
-    if (token) {
-      getModal(logoutConfirmModalId)?.open()
-    } else {
+  const handleLoginLogout = async () => {
+    if (!token) {
       getModal(loginModalId)?.open()
+      return
     }
-  }
-
-  const handleOncofirmLogout = async () => {
+    const confirmed = await confirmAction({
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      confirmVariant: 'action',
+    })
+    if (!confirmed) return
     await auth.clearToken()
     toastState.add({ message: 'Logged out', type: 'success' })
   }
@@ -486,14 +488,6 @@
     <Modal id={loginModalId}>
       <LoginForm modalId={loginModalId} />
     </Modal>
-
-    <ConfirmationModal
-      modalId={logoutConfirmModalId}
-      message="Are you sure you want to logout?"
-      confirmText="Logout"
-      confirmVariant="action"
-      onConfirm={handleOncofirmLogout}
-    />
   {/if}
 
   <ConfirmationModal
