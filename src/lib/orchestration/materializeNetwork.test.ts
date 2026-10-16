@@ -53,7 +53,9 @@ vi.mock('../utils/fileReferences', () => ({
   resolveGraphFileReferences: async (graph: unknown) => graph,
 }))
 
-const { materializeNetwork } = await import('./materializeNetwork')
+const { materializeNetwork, validateParameterBindings } = await import(
+  './materializeNetwork'
+)
 const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
   await import('../utils/graphParser')
 const { createNetworkNodeDefinition } = await import('../utils/networkNode')
@@ -478,5 +480,55 @@ describe('parameter materialization at submit', () => {
         )
       )
     ).rejects.toThrow(/Cyclic parameter-file dependency: 0 -> 1 -> 0/)
+  })
+})
+
+describe('validateParameterBindings', () => {
+  it('accepts valid bindings without reading any file', () => {
+    expect(() =>
+      validateParameterBindings(
+        network(
+          {
+            '0': parameterFile('missing.prm', [
+              exposure(['Refinement'], 'int', 'input'),
+            ]),
+            '1': literal('int', '4'),
+          },
+          [connect(1, 0, 0, ['Refinement'])]
+        ),
+        getNodeData
+      )
+    ).not.toThrow()
+  })
+
+  it('rejects an exposed input with no connection', () => {
+    expect(() =>
+      validateParameterBindings(
+        network({
+          '0': parameterFile('a.prm', [
+            exposure(['Refinement'], 'int', 'input'),
+          ]),
+        }),
+        getNodeData
+      )
+    ).toThrow(/requires exactly one input connection/)
+  })
+
+  it('rejects an exposed input fed twice', () => {
+    expect(() =>
+      validateParameterBindings(
+        network(
+          {
+            '0': parameterFile('a.prm', [
+              exposure(['Refinement'], 'int', 'input'),
+            ]),
+            '1': literal('int', '4'),
+            '2': literal('int', '5'),
+          },
+          [connect(1, 0, 0, ['Refinement']), connect(2, 0, 0, ['Refinement'])]
+        ),
+        getNodeData
+      )
+    ).toThrow(/requires exactly one input connection/)
   })
 })

@@ -150,15 +150,25 @@
   }
 
   const handleAddCoralFromCanvas = () => {
-    const graph = buildGraphPayload(
-      getNodesSnapshot(),
-      getEdgesSnapshot(),
-      false
-    )
-    pipelineState.addCoralStage({
-      name: currentProjectState.name || 'canvas graph',
-      graph,
-    })
+    try {
+      const graph = buildGraphPayload(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        false
+      )
+      pipelineState.addCoralStage({
+        name: currentProjectState.name || 'canvas graph',
+        graph,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to add the canvas graph',
+        type: 'error',
+      })
+    }
   }
 
   const handleAddExecutable = () => {
