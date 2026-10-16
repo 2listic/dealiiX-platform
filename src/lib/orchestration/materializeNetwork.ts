@@ -64,21 +64,28 @@ export type NodeDefinitionLookup = (type: string) => StandardNodeDefinition
  * parameter files is returned as is.
  * @param graph - The submitted graph in the saved form, with or without qualified ids.
  * @param options.location - Execution location holding the source files.
- * @param options.runDirectory - Directory the copies are written to; nodes get their absolute paths.
+ * @param options.copyLocation - Location the copies are written at; defaults to `location`. A download writes them on this machine.
+ * @param options.copyDirectory - Directory the copies are written to (the run folder, or the download folder); nodes get their absolute paths.
  * @param options.definitionOf - Registry lookup for the ports of standard nodes, which saved graphs keep lean.
  * @returns The graph for Coral, with qualified ids.
- * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing, a value does not fit its type, or two nodes bind the same file differently.
+ * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing, a value does not fit its type, two nodes bind the same file differently, or a copy would replace its source.
  */
 export const materializeNetwork = async (
   graph: object,
   options: {
     location: ExecutionLocation
-    runDirectory: string
+    copyLocation?: ExecutionLocation
+    copyDirectory: string
     definitionOf: NodeDefinitionLookup
   }
 ): Promise<object> => {
   if (!hasParameterFile(graph)) return graph
-  const { location, runDirectory, definitionOf } = options
+  const {
+    location,
+    copyLocation = location,
+    copyDirectory,
+    definitionOf,
+  } = options
   const bindings = parameterBindings(asNetwork(graph), definitionOf)
   bindings.validate()
 
@@ -126,8 +133,23 @@ export const materializeNetwork = async (
       )
     }
     if (!copy) {
+      // A copy keeps its source's relative path, so writing into the working
+      // directory itself would replace the source.
+      if (
+        copyLocation === location &&
+        withoutTrailingSlash(copyDirectory) ===
+          withoutTrailingSlash(source.workingDirectory)
+      ) {
+        throw new Error(
+          'Choose a folder other than the working directory: the parameter file copies would replace their sources'
+        )
+      }
       await writeParameterFile(
-        { ...source, workingDirectory: runDirectory },
+        {
+          location: copyLocation,
+          workingDirectory: copyDirectory,
+          fileName: source.fileName,
+        },
         content
       )
       copies.set(fileName, { content, nodeKey: key })
@@ -142,7 +164,7 @@ export const materializeNetwork = async (
     bindings,
     definitionOf,
     runCopyOf: (port) =>
-      `${runDirectory.replace(/[\\/]+$/, '')}/${normalizeRelativeParameterPath(String(standardNode(port).value))}`,
+      `${withoutTrailingSlash(copyDirectory)}/${normalizeRelativeParameterPath(String(standardNode(port).value))}`,
     valueOf: (source) =>
       outputValue(trees.get(nodeKey(source)) as ParameterTree, source.exposure),
   })
@@ -564,6 +586,9 @@ const level = (
   edges: edgesFromProtocolToFlow(network.workflow.edges),
   parent,
 })
+
+const withoutTrailingSlash = (path: string): string =>
+  path.replace(/[\\/]+$/, '')
 
 const asNetwork = (graph: object): Network =>
   removeQualifiedIds(graph as Network | QualifiedNetwork)

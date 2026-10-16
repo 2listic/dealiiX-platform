@@ -95,7 +95,7 @@ export const submitCoralStageRemote = async ({
   await ensureRemoteDir(stageDir)
   const executionGraph = await materializeNetwork(graph, {
     location: 'remote',
-    runDirectory: stageDir,
+    copyDirectory: stageDir,
     definitionOf: getNodeData,
   })
   const resolvedGraph = await resolveGraphFileReferences(

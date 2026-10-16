@@ -126,7 +126,7 @@ const prepareLocalStageGraph = async (
     withMpiPlugin(
       await materializeNetwork(graph, {
         location: 'local',
-        runDirectory: stageDir,
+        copyDirectory: stageDir,
         definitionOf: getNodeData,
       }),
       useMpi

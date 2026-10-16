@@ -110,7 +110,10 @@ describe('prepareStageLocal', () => {
 
     expect(materializeNetwork).toHaveBeenCalledWith(
       { workflow: 'a' },
-      expect.objectContaining({ location: 'local', runDirectory: '/p/stage-a' })
+      expect.objectContaining({
+        location: 'local',
+        copyDirectory: '/p/stage-a',
+      })
     )
     expect(prepared.channel).toBe('start-local-coral-run')
     expect(prepared.payload).toEqual({

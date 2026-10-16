@@ -23,6 +23,8 @@ vi.stubGlobal('window', {
 // Parameter files live in an in-memory file system keyed by absolute path:
 // sources under /work, run copies under /run.
 const files = vi.hoisted(() => new Map<string, string>())
+// The location of each written copy, by path.
+const writtenAt = vi.hoisted(() => new Map<string, string>())
 
 vi.mock('../utils/parameterFileAccess', () => ({
   normalizeRelativeParameterPath: (fileName: string) => fileName,
@@ -41,10 +43,12 @@ vi.mock('../utils/parameterFileAccess', () => ({
     return { resolvedPath: path, content }
   },
   writeParameterFile: async (
-    target: { workingDirectory: string; fileName: string },
+    target: { location: string; workingDirectory: string; fileName: string },
     content: string
   ) => {
-    files.set(`${target.workingDirectory}/${target.fileName}`, content)
+    const path = `${target.workingDirectory}/${target.fileName}`
+    files.set(path, content)
+    writtenAt.set(path, target.location)
   },
 }))
 
@@ -71,7 +75,7 @@ const RUN = '/run'
 const materialize = async (network: Network): Promise<QualifiedNetwork> =>
   (await materializeNetwork(addQualifiedIds(network), {
     location: 'remote',
-    runDirectory: RUN,
+    copyDirectory: RUN,
     definitionOf: getNodeData,
   })) as QualifiedNetwork
 
@@ -160,6 +164,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   files.clear()
+  writtenAt.clear()
 })
 
 describe('parameter materialization at submit', () => {
@@ -169,7 +174,7 @@ describe('parameter materialization at submit', () => {
     expect(
       await materializeNetwork(graph, {
         location: 'remote',
-        runDirectory: RUN,
+        copyDirectory: RUN,
         definitionOf: getNodeData,
       })
     ).toBe(graph)
@@ -228,6 +233,43 @@ describe('parameter materialization at submit', () => {
       value: '/run/a.prm',
       qualified_id: '0',
     })
+  })
+
+  it('writes the copies at copyLocation, reading the sources at location', async () => {
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+
+    await materializeNetwork(
+      addQualifiedIds(network({ '0': parameterFile('a.prm', []) })),
+      {
+        location: 'remote',
+        copyLocation: 'local',
+        copyDirectory: '/downloads',
+        definitionOf: getNodeData,
+      }
+    )
+
+    expect(writtenAt.get('/downloads/a.prm')).toBe('local')
+  })
+
+  it('refuses to write the copies over their sources', async () => {
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+    const graph = addQualifiedIds(network({ '0': parameterFile('a.prm', []) }))
+
+    await expect(
+      materializeNetwork(graph, {
+        location: 'local',
+        copyDirectory: '/work/',
+        definitionOf: getNodeData,
+      })
+    ).rejects.toThrow(/other than the working directory/)
+    // The same path on another machine is not the source.
+    await materializeNetwork(graph, {
+      location: 'remote',
+      copyLocation: 'local',
+      copyDirectory: '/work',
+      definitionOf: getNodeData,
+    })
+    expect(writtenAt.get('/work/a.prm')).toBe('local')
   })
 
   it('feeds a parameter output into another file', async () => {

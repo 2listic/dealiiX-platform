@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, nativeTheme, screen } from 'electron/main'
 import { dialog } from 'electron'
 import fs from 'fs'
 import os from 'os'
+import path from 'path'
 import type {
   AppSettings,
   ProbeRequest,
@@ -80,6 +81,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('pick-file', () => {
     const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
     return filePaths?.[0] ?? null
+  })
+
+  /**
+   * Shows a native save dialog for a JSON file without writing it.
+   * @param defaultPath - Pre-filled file name shown in the dialog.
+   * @returns { directory, fileName } of the chosen path, or null when canceled.
+   */
+  ipcMain.handle('pick-save-path', async (_event, { defaultPath }) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (result.canceled || !result.filePath) return null
+    return {
+      directory: path.dirname(result.filePath),
+      fileName: path.basename(result.filePath),
+    }
   })
 
   /**
