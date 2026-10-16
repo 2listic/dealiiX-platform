@@ -83,17 +83,10 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
-  import { isParameterFileName } from '../../utils/parameterFileFormat'
-  import { parameterFileTarget } from '../../utils/parameterFileAccess'
+  import ParameterFilePorts from './ParameterFilePorts.svelte'
   import {
-    parameterHandle,
     parameterInputExposures,
     parameterOutputExposures,
-    parameterPathLabel,
-    parameterPortCoralType,
   } from '../../utils/parameterPorts'
   import type { StandardNodeDefinition } from '../../types/nodeTypes'
 
@@ -109,48 +102,22 @@
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
   let color = $derived(nodeColors[type as keyof typeof nodeColors])
-  let activeLocation = $derived(executionSelectionState.location)
-  let workingDirectory = $derived(
-    activeLocation === 'local'
-      ? settingsState.local.workingDirectory
-      : settingsState.remote.workingDirectory
-  )
   let isParameterFile = $derived(
-    [Type.STRING, Type.STR].includes(data.type as Type) &&
-      isParameterFileName(data.value)
+    Boolean((data as StandardNodeDefinition).parameter_file)
   )
-  let parameterInputs = $derived(
-    parameterInputExposures(data as StandardNodeDefinition)
+  // Parameter handles sit below the ordinary ones, so both share the spacing.
+  let totalInputs = $derived(
+    data.inputs.length +
+      parameterInputExposures(data as StandardNodeDefinition).length
   )
-  let parameterOutputs = $derived(
-    parameterOutputExposures(data as StandardNodeDefinition)
+  let totalOutputs = $derived(
+    data.outputs.length +
+      parameterOutputExposures(data as StandardNodeDefinition).length
   )
-  let totalInputs = $derived(data.inputs.length + parameterInputs.length)
-  let totalOutputs = $derived(data.outputs.length + parameterOutputs.length)
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
-
-  // Opens this node's parameter file at the active location; read errors
-  // (e.g. a missing file) surface as a toast.
-  const handleOpenParameters = async () => {
-    try {
-      await parameterNodeEditorState.open(
-        parameterFileTarget(activeLocation, data.value),
-        {
-          nodeId: id,
-          exposures: (data as StandardNodeDefinition).parameter_file?.exposures,
-        }
-      )
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to open parameters',
-        type: 'error',
-      })
-    }
-  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -266,17 +233,6 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
-        <!-- Shown without checking the file exists: if it is missing, open() throws and handleOpenParameters reports it in an error toast -->
-        {#if isParameterFile && workingDirectory}
-          <button
-            class="node-button"
-            title="Open parameters"
-            aria-label="Open parameters"
-            onclick={handleOpenParameters}
-          >
-            <OpenIcon width="20px" height="20px" />
-          </button>
-        {/if}
         <button
           class="node-button"
           title="Edit name"
@@ -307,17 +263,6 @@
       style="top: {(100 / (totalInputs + 1)) * (index + 1) + 5}%;"
     />
   {/each}
-  {#each parameterInputs as exposure, index (parameterHandle('input', exposure.path))}
-    <Handle
-      id={parameterHandle('input', exposure.path)}
-      type="target"
-      position={Position.Left}
-      class="parameter-handle"
-      style="top: {(100 / (totalInputs + 1)) *
-        (data.inputs.length + index + 1) +
-        5}%;"
-    />
-  {/each}
 
   <!-- Output handlers -->
   {#each data.outputs as i, index (i)}
@@ -326,17 +271,6 @@
       type="source"
       position={Position.Right}
       style="top: {(100 / (totalOutputs + 1)) * (index + 1) + 5}%;"
-    />
-  {/each}
-  {#each parameterOutputs as exposure, index (parameterHandle('output', exposure.path))}
-    <Handle
-      id={parameterHandle('output', exposure.path)}
-      type="source"
-      position={Position.Right}
-      class="parameter-handle"
-      style="top: {(100 / (totalOutputs + 1)) *
-        (data.outputs.length + index + 1) +
-        5}%;"
     />
   {/each}
 
@@ -365,31 +299,6 @@
               <div class="output-type">{data.arguments[i].type}</div>
             </div>
           {/if}
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  {#if parameterInputs.length > 0 || parameterOutputs.length > 0}
-    <div class="parameter-port-columns">
-      <div class="input-column">
-        {#each parameterInputs as exposure (parameterHandle('input', exposure.path))}
-          <div class="parameter-port-label">
-            <div class="input-label">{parameterPathLabel(exposure.path)}</div>
-            <div class="input-type">
-              {parameterPortCoralType(exposure.type)}
-            </div>
-          </div>
-        {/each}
-      </div>
-      <div class="output-column">
-        {#each parameterOutputs as exposure (parameterHandle('output', exposure.path))}
-          <div class="parameter-port-label">
-            <div class="output-label">{parameterPathLabel(exposure.path)}</div>
-            <div class="output-type">
-              {parameterPortCoralType(exposure.type)}
-            </div>
-          </div>
         {/each}
       </div>
     </div>
@@ -426,6 +335,15 @@
         />
       {/if}
     </div>
+  {/if}
+
+  {#if !isNetworkNode}
+    <ParameterFilePorts
+      {id}
+      data={data as StandardNodeDefinition}
+      inputCount={data.inputs.length}
+      outputCount={data.outputs.length}
+    />
   {/if}
 </div>
 
@@ -562,23 +480,5 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
-  }
-
-  :global(.parameter-handle) {
-    background: var(--button-action-bg);
-    border-color: var(--button-action-hover);
-  }
-
-  .parameter-port-columns {
-    display: flex;
-    flex-direction: row;
-    gap: 4vh;
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.25rem;
-  }
-
-  .parameter-port-label {
-    font-size: 0.8rem;
   }
 </style>

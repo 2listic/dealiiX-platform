@@ -215,6 +215,21 @@ describe('parameter materialization at submit', () => {
     )
   })
 
+  it('runs a marked node with no exposures on a copy of its file', async () => {
+    files.set('/work/a.prm', prm({ Refinement: '1' }))
+
+    const result = await materialize(
+      network({ '0': parameterFile('a.prm', []) })
+    )
+
+    expect(files.get('/run/a.prm')).toMatch(/set Refinement\s*=\s*1/)
+    expect(result.workflow.nodes['0']).toEqual({
+      type: 'std::string',
+      value: '/run/a.prm',
+      qualified_id: '0',
+    })
+  })
+
   it('feeds a parameter output into another file', async () => {
     files.set('/work/a.prm', prm({ Size: '8' }))
     files.set('/work/b.prm', prm({ Size: '1' }))
