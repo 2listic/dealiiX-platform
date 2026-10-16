@@ -8,13 +8,8 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte'
   import UnmarkIcon from '../icons/UnmarkIcon.svelte'
-  import ConfirmationModal from '../layout/ConfirmationModal.svelte'
-  import { getModal } from '../layout/Modal.svelte'
   import type { StandardNodeDefinition } from '../../types/nodeTypes'
-  import {
-    staleParameterEdges,
-    unmarkParameterFile,
-  } from '../../utils/parameterNodeCanvas'
+  import { confirmUnmarkParameterFile } from '../../utils/parameterNodeActions'
   import {
     groupExposuresBySection,
     normalizeParameterExposures,
@@ -37,20 +32,6 @@
     normalizeParameterExposures(data.parameter_file?.exposures)
   )
   let sections = $derived(groupExposuresBySection(exposures))
-
-  let unmarkModalId = $derived(`unmark-parameter-file-${id}`)
-  let removedConnections = $state(0)
-
-  // Asks only when unmarking removes connections. The app's modal, not
-  // window.confirm: after a native dialog Electron can leave inputs unfocusable.
-  const unmark = () => {
-    removedConnections = staleParameterEdges(id, []).length
-    if (removedConnections === 0) {
-      unmarkParameterFile(id)
-      return
-    }
-    getModal(unmarkModalId)?.open()
-  }
 </script>
 
 <div class="row path-row">
@@ -69,7 +50,7 @@
     class="unmark"
     title="Stop using as parameter file"
     aria-label="Stop using as parameter file"
-    onclick={unmark}
+    onclick={() => confirmUnmarkParameterFile(id)}
   >
     <UnmarkIcon width="20px" height="20px" />
   </button>
@@ -109,15 +90,6 @@
     </div>
   {/each}
 {/each}
-
-<ConfirmationModal
-  modalId={unmarkModalId}
-  title="Unmark parameter file"
-  message={`This removes ${removedConnections} ${removedConnections === 1 ? 'connection' : 'connections'} from the graph. Continue?`}
-  confirmText="Unmark"
-  confirmVariant="delete"
-  onConfirm={() => unmarkParameterFile(id)}
-/>
 
 <style>
   :global(.parameter-handle) {

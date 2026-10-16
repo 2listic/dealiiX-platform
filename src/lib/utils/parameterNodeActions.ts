@@ -1,6 +1,7 @@
 /**
  * User actions on a parameter-file node, shared by its header buttons and its
- * value row: each reports failures in a toast.
+ * value row: each reports failures in a toast and asks before removing
+ * connections.
  *
  * The graph edits themselves live in parameterNodeCanvas.ts.
  */
@@ -11,7 +12,12 @@ import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parameterFileTarget } from './parameterFileAccess'
-import { markParameterFile } from './parameterNodeCanvas'
+import { confirmAction } from '../stores/confirmation.svelte'
+import {
+  markParameterFile,
+  staleParameterEdges,
+  unmarkParameterFile,
+} from './parameterNodeCanvas'
 
 /**
  * Returns why a parameter file cannot be opened at the active location, for a
@@ -71,4 +77,29 @@ export const useAsParameterFile = async (
   data: StandardNodeDefinition
 ): Promise<void> => {
   if (await openParameterFile(nodeId, data)) markParameterFile(nodeId)
+}
+
+/**
+ * Removes a node's parameter-file marker, after asking when that removes
+ * connections from the graph.
+ *
+ * @param nodeId - Id of the parameter-file node.
+ * @returns Resolves once the node is unmarked or the user declined.
+ */
+export const confirmUnmarkParameterFile = async (
+  nodeId: string
+): Promise<void> => {
+  const removed = staleParameterEdges(nodeId, []).length
+  if (
+    removed > 0 &&
+    !(await confirmAction({
+      title: 'Unmark parameter file',
+      message: `This removes ${removed} ${removed === 1 ? 'connection' : 'connections'} from the graph. Continue?`,
+      confirmText: 'Unmark',
+      confirmVariant: 'delete',
+    }))
+  ) {
+    return
+  }
+  unmarkParameterFile(nodeId)
 }
