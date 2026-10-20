@@ -615,13 +615,12 @@ const standardNode = (port: { level: Level; nodeId: string }) =>
     StandardNodeDefinition
 
 /** Whether any node, at any depth, carries `parameter_file`. */
-const hasParameterFile = (value: unknown): boolean => {
-  if (Array.isArray(value)) return value.some(hasParameterFile)
-  if (!value || typeof value !== 'object') return false
-  const record = value as Record<string, unknown>
-  if (record.parameter_file) return true
-  return Object.values(record).some(hasParameterFile)
-}
+const hasParameterFile = (graph: object): boolean =>
+  Object.values((graph as Network).workflow.nodes).some((node) =>
+    isSubGraphNodeDefinition(node)
+      ? hasParameterFile(node.value)
+      : Boolean(node.parameter_file)
+  )
 
 /**
  * A level's nodes with their ports, as {@link analyzeNetworkBoundary} reads
