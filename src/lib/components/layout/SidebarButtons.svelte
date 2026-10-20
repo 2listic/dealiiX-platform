@@ -6,8 +6,7 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import { getNodeData, mergeRegistry } from '../../stores/registryStore.svelte'
-  import { materializeNetwork } from '../../orchestration/materializeNetwork'
+  import { mergeRegistry } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../utils/graphParser'
   import {
     mergeParametersFromFile,
@@ -421,8 +420,8 @@
   }
 
   /**
-   * Saves the graph as Coral runs it: each parameter file is copied next to
-   * it with its bound values applied, as at submit.
+   * Saves the graph as the editor holds it, with its parameter-file markers,
+   * exposures and their connections, so Import Graph can load it back.
    */
   const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
@@ -435,15 +434,9 @@
         defaultPath: `${currentProjectState.name || 'graph'}.json`,
       })
       if (!picked) return
-      // TODO: add a modal to ask user if he wants the mpi version
-      const graphData = await materializeNetwork(
-        parseGraphWithQualifiedIds(getNodesSnapshot(), getEdgesSnapshot()),
-        {
-          location: executionSelectionState.location,
-          copyLocation: 'local',
-          copyDirectory: picked.directory,
-          definitionOf: getNodeData,
-        }
+      const graphData = parseGraphWithQualifiedIds(
+        getNodesSnapshot(),
+        getEdgesSnapshot()
       )
       await window.electron.invoke('write-local-parameter-file', {
         workingDirectory: picked.directory,

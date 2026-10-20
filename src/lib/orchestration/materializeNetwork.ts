@@ -63,29 +63,22 @@ export type NodeDefinitionLookup = (type: string) => StandardNodeDefinition
  * the run directory, and returns the graph Coral runs. A graph without
  * parameter files is returned as is.
  * @param graph - The submitted graph in the saved form, with or without qualified ids.
- * @param options.location - Execution location holding the source files.
- * @param options.copyLocation - Location the copies are written at; defaults to `location`. A download writes them on this machine.
- * @param options.copyDirectory - Directory the copies are written to (the run folder, or the download folder); nodes get their absolute paths.
+ * @param options.location - Execution location holding the source files and the run directory.
+ * @param options.copyDirectory - Directory the copies are written to (the run folder); nodes get their absolute paths.
  * @param options.definitionOf - Registry lookup for the ports of standard nodes, which saved graphs keep lean.
  * @returns The graph for Coral, with qualified ids.
- * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing, a value does not fit its type, two nodes bind the same file differently, or a copy would replace its source.
+ * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing, a value does not fit its type, or two nodes bind the same file differently.
  */
 export const materializeNetwork = async (
   graph: object,
   options: {
     location: ExecutionLocation
-    copyLocation?: ExecutionLocation
     copyDirectory: string
     definitionOf: NodeDefinitionLookup
   }
 ): Promise<object> => {
   if (!hasParameterFile(graph)) return graph
-  const {
-    location,
-    copyLocation = location,
-    copyDirectory,
-    definitionOf,
-  } = options
+  const { location, copyDirectory, definitionOf } = options
   const bindings = parameterBindings(asNetwork(graph), definitionOf)
   bindings.validate()
 
@@ -133,20 +126,9 @@ export const materializeNetwork = async (
       )
     }
     if (!copy) {
-      // A copy keeps its source's relative path, so writing into the working
-      // directory itself would replace the source.
-      if (
-        copyLocation === location &&
-        withoutTrailingSlash(copyDirectory) ===
-          withoutTrailingSlash(source.workingDirectory)
-      ) {
-        throw new Error(
-          'Choose a folder other than the working directory: the parameter file copies would replace their sources'
-        )
-      }
       await writeParameterFile(
         {
-          location: copyLocation,
+          location,
           workingDirectory: copyDirectory,
           fileName: source.fileName,
         },
