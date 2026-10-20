@@ -88,6 +88,15 @@ Parameter files referenced by a graph go here, and each run gets its own folder 
 3. On the `poisson_2d.prm` string node, click **Use as parameter file**, expose an entry (e.g. `Domain / Initial refinement`) as an input, and connect a string literal to it.
 4. Run. The run folder in `docker/shared-data/` holds a copy of `poisson_2d.prm` with the connected value, and `poisson_2d_used.prm`, which ImmersX writes next to the file it read. The source `poisson_2d.prm` is unchanged.
 
+### Ready-made graphs
+
+Two graphs in this repository's [examples/graphs/](../examples/graphs/) are already marked and connected. Copy their parameter files into `<immersx>/docker/shared-data/` first, then import them with **Import Graph**:
+
+| Graph                                                                                                                 | Parameter files                                                                                   | What it shows                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [immersx-poisson-2d-parameter-file.json](../examples/graphs/immersx-poisson-2d-parameter-file.json)                   | `<immersx>/coral/examples/poisson_2d.prm`                                                         | A literal bound to `Initial refinement`                                                                                                                           |
+| [immersx-poisson-2d-chained-parameter-files.json](../examples/graphs/immersx-poisson-2d-chained-parameter-files.json) | `poisson_2d.prm`, and [examples/parameters/refinement.prm](../examples/parameters/refinement.prm) | `refinement.prm` exposes `Mesh / Initial refinement` as an output, which feeds `poisson_2d.prm`'s `Initial refinement`; the run copy of `poisson_2d.prm` gets `4` |
+
 The other ImmersX examples are in `<immersx>/coral/examples/`, each with its parameter file.
 
 ## Troubleshooting

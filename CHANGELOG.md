@@ -17,7 +17,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
-- [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-coral-immersx-docker.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers.
+- [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-coral-immersx-docker.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers. Two ready-made ImmersX graphs in `examples/graphs/`, one with a parameter file and one with two chained files, go with it.
 
 ### Pipelines
 
