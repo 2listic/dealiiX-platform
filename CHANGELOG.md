@@ -15,6 +15,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - [#213](https://github.com/2listic/dealiiX-platform/pull/213) Added a top-level `examples/` folder for sample graphs, parameter files, and executables meant to be loaded and explored rather than used by the test suite, organised into `graphs/`, `parameters/`, and `executables/` subfolders. It now holds the deal.II step-40 Laplace example with MPI enabled and the step-4 Poisson example (2D and 3D) under `graphs/`, a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) under `parameters/`, and the step-70 executable source (previously under `local_runs/step-70`) under `executables/`.
 
+### Documentation
+
+- [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-coral-immersx-docker.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers.
+
 ### Pipelines
 
 - [#231](https://github.com/2listic/dealiiX-platform/pull/231) Pipelines can now run locally. Each stage starts once all of its parent stages have completed, independent branches run in parallel, and a failed stage cancels the stages that depend on it. When the location is local, stage cards ask for a number of processes and have no time limit. Each stage card and its run notifications show the stage id, which is also the name of the stage's output folder. Closing the app stops a local pipeline: stages that have not started yet never run. A new guide explains how to build and run pipelines.
