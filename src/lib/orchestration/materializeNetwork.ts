@@ -188,6 +188,38 @@ export const validateParameterBindings = (
   parameterBindings(asNetwork(graph), definitionOf).validate()
 }
 
+/**
+ * Checks whether an output of a subnetwork stands for a parameter output
+ * exposed by a node inside it, at any depth, so that it may feed an exposed
+ * parameter input like the parameter output itself.
+ * @param subnetwork - The subnetwork node, with its content in `value`.
+ * @param handle - The subnetwork's output handle (`output-<n>`).
+ * @param definitionOf - Registry lookup for the ports of standard nodes.
+ * @returns Whether the output leads to an exposed parameter output.
+ */
+export const isSubnetworkParameterOutput = (
+  subnetwork: SubGraphNodeDefinition,
+  handle: string,
+  definitionOf: NodeDefinitionLookup
+): boolean => {
+  if (!hasParameterFile(subnetwork.value)) return false
+  const bindings = parameterBindings(
+    asNetwork({ workflow: { nodes: { '0': subnetwork }, edges: {} } }),
+    definitionOf
+  )
+  try {
+    const source = bindings.outputPort({
+      level: bindings.root,
+      nodeId: '0',
+      handle,
+    })
+    return bindings.parameterSource(source) !== null
+  } catch {
+    // An output the subnetwork does not have, or an exposure it lost.
+    return false
+  }
+}
+
 // ── Private helpers ──
 
 /** One graph level: the top-level network or a subnetwork's content. */

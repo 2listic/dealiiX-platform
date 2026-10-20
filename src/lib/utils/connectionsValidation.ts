@@ -16,6 +16,12 @@ import {
 import { ConnectionType, isTypeCompatible, NodeType } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { parameterHandlePath } from './parameterPorts'
+import {
+  getNetworkNodeDefinition,
+  getNodeData,
+  isNodeInNetworkNodes,
+} from '../stores/registryStore.svelte'
+import { isSubnetworkParameterOutput } from '../orchestration/materializeNetwork'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -72,12 +78,14 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
 
   // Exposed parameter inputs are evaluated before execution. A computed
   // backend/subnetwork output cannot provide their value at that point; only
-  // a scalar literal or another parameter-file output is frontend-resolvable.
+  // a scalar literal or another parameter-file output, possibly through
+  // subnetwork boundaries, is frontend-resolvable.
   if (
     targetParameter?.direction === 'input' &&
     !sourceParameter &&
     sourceNode.data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
-    sourceNode.data.node_type !== NodeType.PRIMITIVE
+    sourceNode.data.node_type !== NodeType.PRIMITIVE &&
+    !isCanvasSubnetworkParameterOutput(sourceNode, sourceHandle)
   ) {
     connectionCache.set(cacheKey, false)
     return false
@@ -170,6 +178,21 @@ const canvasOutputTypeCandidates = (
   }
 
   return resolveOutputTypeCandidates(node.data, handleIndex, upstreamTypes)
+}
+
+/** Whether a subnetwork's output on the canvas stands for a parameter output inside it. */
+const isCanvasSubnetworkParameterOutput = (
+  node: Node<NodeDefinitions>,
+  handle: string
+): boolean => {
+  // Canvas subnetwork nodes carry no content; it lives in the registry.
+  const name = node.data.node_type === NodeType.NETWORK ? node.data.name : null
+  if (!name || !isNodeInNetworkNodes(name)) return false
+  return isSubnetworkParameterOutput(
+    getNetworkNodeDefinition(name),
+    handle,
+    getNodeData
+  )
 }
 
 const isTargetHandleConnected = (

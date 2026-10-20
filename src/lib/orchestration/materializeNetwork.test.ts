@@ -57,9 +57,11 @@ vi.mock('../utils/fileReferences', () => ({
   resolveGraphFileReferences: async (graph: unknown) => graph,
 }))
 
-const { materializeNetwork, validateParameterBindings } = await import(
-  './materializeNetwork'
-)
+const {
+  isSubnetworkParameterOutput,
+  materializeNetwork,
+  validateParameterBindings,
+} = await import('./materializeNetwork')
 const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
   await import('../utils/graphParser')
 const { createNetworkNodeDefinition } = await import('../utils/networkNode')
@@ -587,5 +589,88 @@ describe('validateParameterBindings', () => {
         getNodeData
       )
     ).toThrow(/requires exactly one input connection/)
+  })
+})
+
+describe('isSubnetworkParameterOutput', () => {
+  /** The output handle of the boundary argument named `name`. */
+  const outputHandle = (
+    sub: Awaited<ReturnType<typeof subnetwork>>,
+    name: string
+  ) =>
+    `output-${sub.outputs.indexOf(sub.arguments.findIndex((argument) => argument.name === name))}`
+
+  it('accepts an output standing for an exposed parameter output', async () => {
+    const sub = await subnetwork(
+      'parameter output source',
+      network({
+        '0': parameterFile('a.prm', [
+          exposure(['Tolerance'], 'double', 'output'),
+        ]),
+      })
+    )
+
+    expect(
+      isSubnetworkParameterOutput(
+        sub,
+        outputHandle(sub, 'Tolerance'),
+        getNodeData
+      )
+    ).toBe(true)
+  })
+
+  it('follows the output through a nested subnetwork', async () => {
+    const inner = await subnetwork(
+      'nested parameter output inner',
+      network({
+        '0': parameterFile('a.prm', [
+          exposure(['Tolerance'], 'double', 'output'),
+        ]),
+      })
+    )
+    const outer = await subnetwork(
+      'nested parameter output outer',
+      network({ '0': inner })
+    )
+
+    expect(
+      isSubnetworkParameterOutput(
+        outer,
+        outputHandle(outer, 'Tolerance'),
+        getNodeData
+      )
+    ).toBe(true)
+  })
+
+  it('rejects the other outputs of a subnetwork with a parameter file', async () => {
+    const sub = await subnetwork(
+      'parameter output and literal',
+      network({
+        '0': parameterFile('a.prm', [
+          exposure(['Tolerance'], 'double', 'output'),
+        ]),
+        '1': literal('double', '1.5'),
+      })
+    )
+    const tolerance = outputHandle(sub, 'Tolerance')
+    const others = sub.outputs
+      .map((_, index) => `output-${index}`)
+      .filter((handle) => handle !== tolerance)
+
+    expect(others.length).toBeGreaterThan(0)
+    for (const handle of others) {
+      expect(isSubnetworkParameterOutput(sub, handle, getNodeData)).toBe(false)
+    }
+  })
+
+  it('rejects a subnetwork without parameter files', async () => {
+    const sub = await subnetwork(
+      'literal only',
+      network({ '0': literal('double', '1.5') })
+    )
+
+    expect(isSubnetworkParameterOutput(sub, 'output-0', getNodeData)).toBe(
+      false
+    )
   })
 })
