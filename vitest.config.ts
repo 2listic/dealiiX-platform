@@ -4,7 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig({
   plugins: [svelte({ hot: false })],
   test: {
-    include: ['src/**/*.test.{js,ts}'],
+    include: ['src/**/*.test.{js,ts}', 'electron/**/*.test.ts'],
     environment: 'node',
     globals: false,
   },

@@ -1,19 +1,23 @@
-import type {
-  ParameterLeaf,
-  ParameterNode,
-  ParameterTree,
-} from '../types/parameterTypes'
+import type { ParameterNode, ParameterTree } from '../types/parameterTypes'
+import type { ExecutionLocation } from '../types/settingsTypes'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
+import { confirmAction } from '../stores/confirmation.svelte'
 import {
   isExtraNode,
   isParameterLeaf,
-  isParameterTree,
+  markAsExtra,
   parseParametersFileWithFormat,
   serializeParametersFile,
 } from './parameterFileFormat'
+import {
+  parameterFileTarget,
+  readParameterFile,
+  writeParameterFile,
+  type ParameterFileTarget,
+} from './parameterFileAccess'
 
 /**
  * Absolute path of the last parameters file the user merged from or saved to.
@@ -24,7 +28,7 @@ let lastParametersFilePath = ''
  * Reads a parameters file and merges it onto the active location's parameter tree.
  * The existing tree is the authority for structure and metadata; the upload only
  * contributes `value` fields. When the upload contains keys absent from the template,
- * the user is prompted (via `window.confirm`) before those extra keys are included.
+ * the user is asked (via `confirmAction`) before those extra keys are included.
  *
  * @param file - The user-selected parameters file (JSON or PRM).
  * @returns A promise that resolves once the merge has been applied (or aborted on error).
@@ -47,9 +51,12 @@ export async function mergeParametersFromFile(file: File): Promise<void> {
       const preview = extraPaths.slice(0, 5).join(', ')
       const suffix =
         extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
-      const includeExtras = window.confirm(
-        `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
-      )
+      const includeExtras = await confirmAction({
+        title: 'Sections not in the template',
+        message: `The uploaded file contains sections not present in the template: ${preview}${suffix}. Do you want to add them to the parameters table anyway?`,
+        confirmText: 'Add them',
+        confirmVariant: 'action',
+      })
       if (includeExtras) {
         // Second merge pass with includeExtras=true to include the extra keys.
         merged = mergeParametersTemplate(
@@ -120,40 +127,125 @@ export async function downloadParameters(): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
-// ── Private helpers ──
-
-function coerceUploadedLeaf(value: unknown): ParameterLeaf {
-  if (isParameterLeaf(value)) {
-    return { ...value, __extra: true }
-  }
-
-  return {
-    value: String(value ?? ''),
-    default_value: String(value ?? ''),
-    documentation: 'Imported from uploaded parameter file',
-    pattern: '.*',
-    pattern_description: '[Text]',
-    __extra: true,
-  }
-}
-
-function includeExtraNode(node: unknown): ParameterNode {
-  if (isParameterLeaf(node)) {
-    return { ...node, __extra: true }
-  }
-
-  if (isParameterTree(node)) {
-    const entries = Object.entries(node)
-      .filter(([key]) => key !== '__extra')
-      .map(([key, value]) => [key, includeExtraNode(value)])
+/**
+ * Merges the values of a parameters file in a working directory onto a template,
+ * trying each file name in turn. Keys the template lacks are kept, flagged `__extra`.
+ *
+ * @param location         - Execution location the working directory belongs to.
+ * @param workingDirectory - Working directory to look in.
+ * @param fileNames        - Candidate file names, relative to the working directory.
+ * @param template         - Tree giving the structure and metadata.
+ * @returns The merged tree and the path read, or null when no candidate could be read.
+ */
+export async function mergeWorkingDirectoryParameters(
+  location: ExecutionLocation,
+  workingDirectory: string,
+  fileNames: string[],
+  template: ParameterTree
+): Promise<{ parameters: ParameterTree; resolvedPath: string } | null> {
+  for (const fileName of new Set(fileNames.filter(Boolean))) {
+    const target: ParameterFileTarget = { location, workingDirectory, fileName }
+    let content
+    try {
+      content = await readParameterFile(target)
+    } catch {
+      // Missing or unreadable: try the next name.
+      continue
+    }
+    // Parse outside the try, so a malformed file is reported, not skipped.
+    const { data } = parseParametersFileWithFormat(content.content, fileName)
     return {
-      __extra: true,
-      ...Object.fromEntries(entries),
-    } as ParameterTree
+      parameters: mergeParametersTemplate(template, data, '', true).merged,
+      resolvedPath: content.resolvedPath,
+    }
+  }
+  return null
+}
+
+/**
+ * Replaces the active location's values with those of its parameters file in the
+ * working directory, after confirmation. Entries missing from the file keep their
+ * current values, since the pristine template is not kept after a probe.
+ *
+ * @returns A promise that resolves once the values are reloaded, or nothing was found.
+ */
+export async function reloadParametersFromWorkingDirectory(): Promise<void> {
+  const current = parametersState.value
+  if (!current) return
+  const location = executionSelectionState.location
+  const fileName = settingsState.getParametersFileName(location)
+  const { workingDirectory } = parameterFileTarget(location, fileName)
+  if (
+    !(await confirmAction({
+      message: `Replace the values in the app with those of ${fileName} in the working directory?`,
+      confirmText: 'Replace',
+      confirmVariant: 'action',
+    }))
+  ) {
+    return
   }
 
-  return coerceUploadedLeaf(node)
+  try {
+    const result = await mergeWorkingDirectoryParameters(
+      location,
+      workingDirectory,
+      [fileName],
+      current
+    )
+    if (!result) {
+      toastState.add({
+        message: `Could not read ${fileName} in ${workingDirectory || 'the working directory'}`,
+        type: 'error',
+      })
+      return
+    }
+    parametersState.value = result.parameters
+    toastState.add({
+      message: `Loaded values from ${result.resolvedPath}`,
+      type: 'success',
+    })
+  } catch (error) {
+    toastState.add({
+      message:
+        error instanceof Error ? error.message : 'Failed to reload parameters',
+      type: 'error',
+    })
+  }
 }
+
+/**
+ * Writes the active location's parameter tree to its parameters file in the
+ * working directory, overwriting it. Runs keep using their own copy in the run folder.
+ *
+ * @returns A promise that resolves once the file is written or the error toasted.
+ */
+export async function saveParametersToWorkingDirectory(): Promise<void> {
+  const snapshot = parametersState.snapshot
+  if (!snapshot) return
+  const location = executionSelectionState.location
+  const target = parameterFileTarget(
+    location,
+    settingsState.getParametersFileName(location)
+  )
+  try {
+    await writeParameterFile(
+      target,
+      serializeParametersFile(snapshot, target.fileName)
+    )
+    toastState.add({
+      message: `Parameters saved to ${target.workingDirectory}/${target.fileName}`,
+      type: 'success',
+    })
+  } catch (error) {
+    toastState.add({
+      message:
+        error instanceof Error ? error.message : 'Failed to save parameters',
+      type: 'error',
+    })
+  }
+}
+
+// ── Private helpers ──
 
 /**
  * Merges an uploaded file onto the canonical template tree.
@@ -228,7 +320,7 @@ function mergeParametersTemplate(
       if (!(key in template)) {
         extraPaths.push(currentPath ? `${currentPath}.${key}` : key)
         if (includeExtras) {
-          mergedEntries.push([key, includeExtraNode(value)])
+          mergedEntries.push([key, markAsExtra(value)])
         }
       }
     }

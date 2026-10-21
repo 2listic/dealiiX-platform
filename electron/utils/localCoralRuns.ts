@@ -5,6 +5,7 @@ import store from './storage.js'
 import { serializeParametersFile } from '../../src/lib/utils/parameterFileFormat.js'
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 import { buildLocalMpiArgs } from '../../src/lib/utils/mpiLauncher.js'
+import { shellEscape } from '../../src/lib/utils/shellEscape.js'
 import type { MpiLauncherSettings } from '../../src/lib/types/settingsTypes.js'
 
 const LOCAL_RUNS_KEY = 'localRuns'
@@ -66,6 +67,12 @@ const ensureDir = async (dirPath: string) => {
   await fs.promises.mkdir(dirPath, { recursive: true })
 }
 
+/** Quotes one argv item so the command written to the run log can be replayed in a shell. */
+const shellQuote = (value: string): string =>
+  /^[A-Za-z0-9_./:@%+=,-]+$/.test(value) ? value : shellEscape(value)
+
+const formatInvocation = (command: string, args: string[]): string =>
+  [command, ...args].map(shellQuote).join(' ')
 const dirExists = async (dirPath: string): Promise<boolean> => {
   try {
     return (await fs.promises.stat(dirPath)).isDirectory()
@@ -161,6 +168,10 @@ export const startLocalCoralRun = async ({
       )
     : { command: coralBinaryPath, args: executableArgs }
 
+  await fs.promises.appendFile(
+    logPath,
+    `Command: ${formatInvocation(invocation.command, invocation.args)}\n`
+  )
   const stdoutStream = fs.createWriteStream(logPath, { flags: 'a' })
   const child = spawn(invocation.command, invocation.args, {
     cwd: runDirectory,
@@ -235,6 +246,10 @@ export const startLocalExecutableRun = async ({
         parametersName,
       ])
     : { command: executablePath, args: [parametersName] }
+  await fs.promises.appendFile(
+    logPath,
+    `Command: ${formatInvocation(invocation.command, invocation.args)}\n`
+  )
   const child = spawn(invocation.command, invocation.args, {
     cwd: runDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],

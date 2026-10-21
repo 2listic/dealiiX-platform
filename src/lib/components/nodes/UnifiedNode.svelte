@@ -2,36 +2,42 @@
   import type { Node as FlowNode } from '@xyflow/svelte'
   import type {
     SubGraphNodeDefinition,
-    StandardNodeDefinition,
+    StandardNodeDefinition as StandardNodeDefinitionType,
     NodeType as FlowNodeType,
   } from '../../types/nodeTypes'
   // unused exports
   export type ElementaryConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.ELEMENTARY_CONSTRUCTOR
   >
   export type EmptyConstructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.EMPTY_CONSTRUCTOR
   >
   export type Constructor = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.CONSTRUCTOR
   >
-  export type Abstract = FlowNode<StandardNodeDefinition, FlowNodeType.ABSTRACT>
+  export type Abstract = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.ABSTRACT
+  >
   export type VoidMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_METHOD
   >
   export type VoidConstMethod = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_CONST_METHOD
   >
   export type VoidFunction = FlowNode<
-    StandardNodeDefinition,
+    StandardNodeDefinitionType,
     FlowNodeType.VOID_FUNCTION
   >
-  export type Function = FlowNode<StandardNodeDefinition, FlowNodeType.FUNCTION>
+  export type Function = FlowNode<
+    StandardNodeDefinitionType,
+    FlowNodeType.FUNCTION
+  >
   export type Network = FlowNode<SubGraphNodeDefinition, FlowNodeType.NETWORK>
   export type UnifiedNodeType =
     | ElementaryConstructor
@@ -56,6 +62,7 @@
   import {
     nodeColors,
     NodeType,
+    PARAMETER_FILE_COLOR,
     Type,
     isNumericType,
   } from '../../types/nodeTypes'
@@ -77,6 +84,15 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
+  import MarkIcon from '../icons/MarkIcon.svelte'
+  import ParameterFilePorts from './ParameterFilePorts.svelte'
+  import { isParameterFileName } from '../../utils/parameterFileFormat'
+  import {
+    openParameterFile,
+    parameterFileUnavailableReason,
+    useAsParameterFile,
+  } from '../../utils/parameterNodeActions'
+  import type { StandardNodeDefinition } from '../../types/nodeTypes'
 
   let {
     id,
@@ -89,7 +105,26 @@
   let isValid = $derived(data?.is_valid ?? true)
   let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
-  let color = $derived(nodeColors[type as keyof typeof nodeColors])
+  let isLiteral = $derived(
+    data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR ||
+      data.node_type === NodeType.PRIMITIVE
+  )
+  // Only a literal's value names a file, so a marker elsewhere is ignored.
+  let isParameterFile = $derived(
+    isLiteral && Boolean((data as StandardNodeDefinition).parameter_file)
+  )
+  let suggestsParameterFile = $derived(
+    isLiteral &&
+      !isParameterFile &&
+      [Type.STRING, Type.STR].includes(data.type as Type) &&
+      isParameterFileName(data.value)
+  )
+  let color = $derived(
+    isParameterFile
+      ? PARAMETER_FILE_COLOR
+      : nodeColors[type as keyof typeof nodeColors]
+  )
+  let parameterFileUnavailable = $derived(parameterFileUnavailableReason())
 
   const { updateNodeData } = useSvelteFlow()
 
@@ -185,11 +220,11 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      {#if hasCustomName}
-        <div class="node-name">{data.name}</div>
+      <div class="node-name">{hasCustomName ? data.name : data.type}</div>
+      {#if isParameterFile}
+        <div class="node-type">parameter_file</div>
+      {:else if hasCustomName}
         <div class="node-type">{data.type}</div>
-      {:else}
-        <div class="node-name">{data.type}</div>
       {/if}
     </div>
     <div class="node-buttons">
@@ -209,6 +244,18 @@
           <ExplosionIcon width="20px" height="20px" />
         </button>
       {:else}
+        {#if isParameterFile}
+          <button
+            class="node-button"
+            title={parameterFileUnavailable ?? 'Open parameters'}
+            aria-label="Open parameters"
+            disabled={Boolean(parameterFileUnavailable)}
+            onclick={() =>
+              openParameterFile(id, data as StandardNodeDefinition)}
+          >
+            <OpenIcon width="20px" height="20px" />
+          </button>
+        {/if}
         <button
           class="node-button"
           title="Edit name"
@@ -230,25 +277,30 @@
     </div>
   </div>
 
-  <!-- Input handlers -->
-  {#each data.inputs as i, index (i)}
-    <Handle
-      id={`input-${index}`}
-      type="target"
-      position={Position.Left}
-      style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
-    />
-  {/each}
+  {#if isParameterFile}
+    <!-- Draws its own handles, each next to the row it belongs to -->
+    <ParameterFilePorts {id} data={data as StandardNodeDefinition} />
+  {:else}
+    <!-- Input handlers -->
+    {#each data.inputs as i, index (i)}
+      <Handle
+        id={`input-${index}`}
+        type="target"
+        position={Position.Left}
+        style="top: {(100 / (data.inputs.length + 1)) * (index + 1) + 5}%;"
+      />
+    {/each}
 
-  <!-- Output handlers -->
-  {#each data.outputs as i, index (i)}
-    <Handle
-      id={`output-${index}`}
-      type="source"
-      position={Position.Right}
-      style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
-    />
-  {/each}
+    <!-- Output handlers -->
+    {#each data.outputs as i, index (i)}
+      <Handle
+        id={`output-${index}`}
+        type="source"
+        position={Position.Right}
+        style="top: {(100 / (data.outputs.length + 1)) * (index + 1) + 5}%;"
+      />
+    {/each}
+  {/if}
 
   <!-- Input / output labels -->
   {#if data.arguments.length > 0}
@@ -281,8 +333,8 @@
   {/if}
 
   <!-- Elementary constructor / primitive literal input fields -->
-  {#if data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR || data.node_type === NodeType.PRIMITIVE}
-    <div>
+  {#if isLiteral && !isParameterFile}
+    <div class="value-row">
       {#if data.type === Type.BOOLEAN}
         <input
           type="checkbox"
@@ -300,7 +352,7 @@
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
         <input
           type="text"
-          class={isValid ? '' : 'invalid'}
+          class:is-invalid={!isValid}
           value={data.value}
           onfocus={() => graphHistoryState.begin()}
           onblur={() => graphHistoryState.commit()}
@@ -308,6 +360,17 @@
             updateNodeData(id, { value: evt.currentTarget.value })
           }}
         />
+      {/if}
+      {#if suggestsParameterFile}
+        <button
+          class="node-button"
+          title={parameterFileUnavailable ?? 'Use as parameter file'}
+          aria-label="Use as parameter file"
+          disabled={Boolean(parameterFileUnavailable)}
+          onclick={() => useAsParameterFile(id, data as StandardNodeDefinition)}
+        >
+          <MarkIcon width="20px" height="20px" />
+        </button>
       {/if}
     </div>
   {/if}
@@ -392,8 +455,28 @@
     box-sizing: border-box;
   }
 
-  input.invalid {
+  input.is-invalid {
     border: 2px solid red;
+  }
+
+  .node-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .value-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .value-row input[type='text'] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .value-row .node-button {
+    align-self: center;
   }
 
   .input-column {

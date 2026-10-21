@@ -7,8 +7,13 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
+import { getNodeData } from '../stores/registryStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from './graphParser'
+import {
+  materializeNetwork,
+  validateParameterBindings,
+} from '../orchestration/materializeNetwork'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -87,10 +92,14 @@ export const submitCoralStageRemote = async ({
 }): Promise<string> => {
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
-
   await ensureRemoteDir(stageDir)
+  const executionGraph = await materializeNetwork(graph, {
+    location: 'remote',
+    copyDirectory: stageDir,
+    definitionOf: getNodeData,
+  })
   const resolvedGraph = await resolveGraphFileReferences(
-    withMpiPlugin(graph, useMpi),
+    withMpiPlugin(executionGraph, useMpi),
     'remote',
     settingsState.remote.workingDirectory
   )
@@ -186,17 +195,24 @@ export const withMpiPlugin = (network: object, useMpi: boolean): object => {
 
 /**
  * Builds the graph payload to upload from canvas nodes/edges, injecting the MPI
- * plugin block when MPI is enabled.
+ * plugin block when MPI is enabled. Parameter bindings are checked here, so an
+ * invalid one is reported when the graph is run, added as a stage or
+ * downloaded, not when a stage is submitted.
  * @param nodes - Canvas nodes (snapshots).
  * @param edges - Canvas edges (snapshots).
  * @param useMpi - Whether to inject the MPI plugin block.
  * @returns The CORAL network object ready to upload.
+ * @throws {Error} If a parameter binding is invalid (see {@link validateParameterBindings}).
  */
 export const buildGraphPayload = (
   nodes: Node[],
   edges: Edge[],
   useMpi: boolean
-): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
+): object => {
+  const network = parseGraphWithQualifiedIds(nodes, edges)
+  validateParameterBindings(network, getNodeData)
+  return withMpiPlugin(network, useMpi)
+}
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
 const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({

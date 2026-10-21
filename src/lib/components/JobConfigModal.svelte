@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import Button from './layout/Button.svelte'
+  import ToggleSwitch from './layout/ToggleSwitch.svelte'
   import type { StageJob } from '../types/pipelineTypes'
   import type { PipelineProgress } from '../orchestration/pipelineOrchestrator'
   import { runSingle } from '../orchestration/singleRun'
@@ -35,6 +36,9 @@
   )
   let hasParameters = $derived(parametersState.value !== null)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
+  let mpiLabel = $derived(
+    isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'
+  )
   let isRemoteExecution = $derived(location === 'remote')
   let mpiEnabled = $derived(useMpi)
   let totalProcesses = $derived(
@@ -248,12 +252,14 @@
     <div class="toggle-container">
       <div class="mpi-row">
         <span class="toggle-label">
-          {isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'}
+          {mpiLabel}
         </span>
-        <label class="switch">
-          <input type="checkbox" bind:checked={useMpi} />
-          <span class="slider round"></span>
-        </label>
+        <ToggleSwitch
+          ariaLabel={mpiLabel}
+          checked={useMpi}
+          onchange={(event) =>
+            (useMpi = (event.target as HTMLInputElement).checked)}
+        />
       </div>
     </div>
     <div class="button-container">
@@ -364,57 +370,6 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-  }
-
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 27px;
-  }
-
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--slider-bg);
-    transition: 0.4s;
-  }
-
-  .slider:before {
-    position: absolute;
-    content: '';
-    height: 21px;
-    width: 21px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-  }
-
-  input:checked + .slider {
-    background-color: var(--button-action-bg);
-  }
-
-  input:checked + .slider:before {
-    transform: translateX(21px);
-  }
-
-  .slider.round {
-    border-radius: 27px;
-  }
-
-  .slider.round:before {
-    border-radius: 50%;
   }
 
   .button-container {

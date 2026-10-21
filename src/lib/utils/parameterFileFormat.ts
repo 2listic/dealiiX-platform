@@ -1,4 +1,8 @@
-import type { ParameterLeaf, ParameterTree } from '../types/parameterTypes'
+import type {
+  ParameterLeaf,
+  ParameterNode,
+  ParameterTree,
+} from '../types/parameterTypes'
 
 export type ParameterFileFormat = 'json' | 'prm'
 export type ParsedParametersFile = {
@@ -9,6 +13,10 @@ export type ParsedParametersFile = {
 const PRM_EXTENSION_RE = /\.prm$/i
 const JSON_EXTENSION_RE = /\.json$/i
 const PARAMETER_EXTENSION_RE = /\.(json|prm)$/i
+
+/** Returns true for a string that names a JSON or deal.II parameter file. */
+export const isParameterFileName = (value: unknown): value is string =>
+  typeof value === 'string' && PARAMETER_EXTENSION_RE.test(value.trim())
 
 export const isParameterLeaf = (value: unknown): value is ParameterLeaf => {
   return (
@@ -32,6 +40,27 @@ export const isExtraNode = (value: unknown): boolean => {
   return typeof value === 'object' && value !== null && '__extra' in value
     ? Boolean((value as { __extra?: boolean }).__extra)
     : false
+}
+
+/**
+ * Returns a deep copy of a parameter node with every section and leaf flagged
+ * `__extra`, so the editor lets the user delete it. A value that is neither a
+ * leaf nor a section (e.g. a bare number in hand-written JSON) becomes a text leaf.
+ *
+ * @param node - The node to copy: a leaf, a section, or a bare value.
+ * @returns The flagged copy.
+ */
+export const markAsExtra = (node: unknown): ParameterNode => {
+  if (isParameterLeaf(node)) {
+    return { ...node, __extra: true }
+  }
+  if (isParameterTree(node)) {
+    const entries = Object.entries(node)
+      .filter(([key]) => key !== '__extra')
+      .map(([key, value]) => [key, markAsExtra(value)])
+    return { __extra: true, ...Object.fromEntries(entries) } as ParameterTree
+  }
+  return extraTextLeaf(node)
 }
 
 export const getParameterFileFormat = (
@@ -349,15 +378,70 @@ export const stringifyPrmParameters = (tree: ParameterTree): string => {
 }
 
 /**
- * Serialises a ParameterTree to JSON or PRM text.
+ * Serialises a ParameterTree to JSON or PRM text, without the UI-only `__extra` flags.
  * Format is derived from `fileName`'s extension: `.prm` → PRM, otherwise JSON.
  * When `fileName` is absent, JSON is used as the default.
+ *
+ * @param tree     - Parameter tree to serialise.
+ * @param fileName - Optional filename whose extension selects the format.
+ * @returns The file content as text.
  */
 export const serializeParametersFile = (
   tree: ParameterTree,
   fileName?: string
+): string => serializeParametersAs(tree, getParameterFileFormat(fileName))
+
+/**
+ * Serialises a ParameterTree in the given format, without the UI-only `__extra` flags.
+ * Use it when the format is known from the content rather than from a filename.
+ *
+ * @param tree   - Parameter tree to serialise.
+ * @param format - Output format.
+ * @returns The file content as text.
+ */
+export const serializeParametersAs = (
+  tree: ParameterTree,
+  format: ParameterFileFormat
 ): string => {
-  return getParameterFileFormat(fileName) === 'prm'
-    ? stringifyPrmParameters(tree)
-    : JSON.stringify(tree, null, 2)
+  const clean = stripUiMetadata(tree)
+  return format === 'prm'
+    ? stringifyPrmParameters(clean)
+    : JSON.stringify(clean, null, 2)
+}
+
+/**
+ * Returns a copy of a parameter tree without the UI-only `__extra` flags, at every depth.
+ *
+ * @param tree - Parameter tree to clean.
+ * @returns A new tree with the same entries and no `__extra` keys.
+ */
+export const stripUiMetadata = (tree: ParameterTree): ParameterTree =>
+  stripNode(tree) as ParameterTree
+
+// ── Private helpers ──
+
+const extraTextLeaf = (value: unknown): ParameterLeaf => ({
+  value: String(value ?? ''),
+  default_value: String(value ?? ''),
+  documentation: 'Imported from uploaded parameter file',
+  pattern: '.*',
+  pattern_description: '[Text]',
+  __extra: true,
+})
+
+const stripNode = (node: ParameterNode): ParameterNode => {
+  if (typeof node !== 'object' || node === null) {
+    return node
+  }
+
+  const entries = Object.entries(node)
+    .filter(([key]) => key !== '__extra')
+    .map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        return [key, stripNode(value as ParameterLeaf | ParameterTree)]
+      }
+      return [key, value]
+    })
+
+  return Object.fromEntries(entries) as ParameterLeaf | ParameterTree
 }
