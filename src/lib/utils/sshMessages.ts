@@ -7,19 +7,13 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
+import { getNodeData } from '../stores/registryStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
+import { parseGraphWithQualifiedIds } from './graphParser'
 import {
-  edgesFromProtocolToFlow,
-  nodesFromProtocolToFlow,
-  addQualifiedIds,
-  parseGraphWithQualifiedIds,
-  removeQualifiedIds,
-} from './graphParser'
-import { handleIdToIndex } from './canvasNodeUtils'
-import {
-  materializeParameterGraph,
-  scalarValueFromNode,
-} from './parameterMaterialization'
+  materializeNetwork,
+  validateParameterBindings,
+} from '../orchestration/materializeNetwork'
 import {
   JobStatus,
   normalizeJobStatus,
@@ -35,21 +29,12 @@ import type { SbatchMpiResources } from './sbatchScript'
 import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { serializeParametersFile } from './parameterFileFormat'
-import { parameterHandlePath } from './parameterPorts'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from './fileReferences'
 import { shellEscape } from './shellEscape'
-import { analyzeNetworkBoundary } from './networkNode'
-import {
-  isSubGraphNodeDefinition,
-  type Argument,
-  type Network,
-  type QualifiedNetwork,
-  type SubGraphNodeDefinition,
-} from '../types/nodeTypes'
 
 /**
  * Executes a test SSH command using password authentication.
@@ -108,12 +93,11 @@ export const submitCoralStageRemote = async ({
   const useMpi = config.useMpi
   const internalJobId = jobIdMapState.getNextKey()
   await ensureRemoteDir(stageDir)
-  const executionGraph = await materializeProtocolGraphIfNeeded(
-    graph,
-    'remote',
-    {},
-    stageDir
-  )
+  const executionGraph = await materializeNetwork(graph, {
+    location: 'remote',
+    copyDirectory: stageDir,
+    definitionOf: getNodeData,
+  })
   const resolvedGraph = await resolveGraphFileReferences(
     withMpiPlugin(executionGraph, useMpi),
     'remote',
@@ -142,192 +126,6 @@ export const submitCoralStageRemote = async ({
  */
 export const ensureUniqueLocalDir = async (dir: string): Promise<string> => {
   return await window.electron.invoke('ensure-unique-local-dir', { dir })
-}
-
-/** Converts a saved frontend graph back through the execution compiler when a
- * pipeline stage contains virtual parameter ports. Ordinary Coral graphs take
- * the fast path and remain byte-for-byte compatible with previous stages. */
-export const materializeProtocolGraphIfNeeded = async (
-  graph: object,
-  location: ExecutionLocation = 'remote',
-  boundaryInputValues: Record<number, string> = {},
-  materializationDirectory?: string
-): Promise<object> => {
-  const hasParameterMetadata = (value: unknown): boolean => {
-    if (Array.isArray(value)) return value.some(hasParameterMetadata)
-    if (!value || typeof value !== 'object') return false
-    const record = value as Record<string, unknown>
-    if (record.parameter_file) return true
-    return Object.values(record).some(hasParameterMetadata)
-  }
-  if (!hasParameterMetadata(graph)) return graph
-
-  const network = removeQualifiedIds(
-    graph as Parameters<typeof removeQualifiedIds>[0]
-  )
-  const boundary = analyzeNetworkBoundary(
-    nodesFromProtocolToFlow(network.workflow.nodes),
-    edgesFromProtocolToFlow(network.workflow.edges)
-  )
-  const parameterInputOverrides: Record<string, string> = {}
-  const inheritedNetworkInputs: Record<string, Record<number, string>> = {}
-  for (const [inputIndexText, value] of Object.entries(boundaryInputValues)) {
-    const inputIndex = Number(inputIndexText)
-    const binding = boundary.networkInputToInternalHandle[inputIndex]
-    if (!binding) continue
-    if (parameterHandlePath(binding.handleId)?.direction === 'input') {
-      parameterInputOverrides[`${binding.nodeId}::${binding.handleId}`] = value
-      continue
-    }
-    const nestedInputIndex = handleIdToIndex(binding.handleId)
-    if (!Number.isInteger(nestedInputIndex) || nestedInputIndex < 0) continue
-    inheritedNetworkInputs[binding.nodeId] ??= {}
-    inheritedNetworkInputs[binding.nodeId][nestedInputIndex] = value
-  }
-  const materialized = await materializeParameterGraph(
-    location,
-    nodesFromProtocolToFlow(network.workflow.nodes),
-    edgesFromProtocolToFlow(network.workflow.edges),
-    parameterInputOverrides,
-    materializationDirectory
-  )
-  const nestedNetwork = await materializeNestedProtocolGraphs(
-    network,
-    location,
-    materialized.nodes,
-    materialized.edges,
-    inheritedNetworkInputs,
-    materializationDirectory
-  )
-  const parsed = parseGraphWithQualifiedIds(
-    materialized.nodes,
-    materialized.edges
-  )
-
-  // parseGraphToProtocol obtains stored subnetwork values from the registry.
-  // Replace those snapshots with the recursively materialized values from the
-  // submitted graph, then let qualified-id generation add the parent prefix.
-  for (const [nodeId, node] of Object.entries(nestedNetwork.workflow.nodes)) {
-    if (!isSubGraphNodeDefinition(node)) continue
-    const parsedNode = parsed.workflow.nodes[nodeId]
-    if (isSubGraphNodeDefinition(parsedNode)) {
-      parsed.workflow.nodes[nodeId] = {
-        ...parsedNode,
-        arguments: node.arguments,
-        inputs: node.inputs,
-        outputs: node.outputs,
-        value: addQualifiedIds(node.value, parsedNode.qualified_id),
-      }
-    }
-  }
-  return parsed
-}
-
-/** Recursively materializes parameter nodes inside stored subnetworks. */
-const materializeNestedProtocolGraphs = async (
-  network: Network,
-  location: ExecutionLocation,
-  materializedNodes: Node[],
-  materializedEdges: Edge[],
-  inheritedNetworkInputs: Record<string, Record<number, string>>,
-  materializationDirectory?: string
-): Promise<Network> => {
-  const nodes = { ...network.workflow.nodes }
-  for (const [nodeId, node] of Object.entries(nodes)) {
-    if (!isSubGraphNodeDefinition(node)) continue
-    const childBoundaryValues = {
-      ...(inheritedNetworkInputs[nodeId] ?? {}),
-    }
-    for (const edge of materializedEdges.filter(
-      (candidate) => candidate.target === nodeId
-    )) {
-      const inputIndex = handleIdToIndex(edge.targetHandle as string)
-      if (!Number.isInteger(inputIndex) || inputIndex < 0) continue
-      const source = materializedNodes.find(
-        (candidate) => candidate.id === edge.source
-      )
-      const value = source
-        ? scalarValueFromNode(source, edge.sourceHandle as string)
-        : null
-      if (value === null) {
-        const argument = node.arguments[node.inputs[inputIndex]]
-        throw new Error(
-          `Exposed parameter input ${argument?.name ?? inputIndex} on ${node.name} requires a frontend-known scalar source`
-        )
-      }
-      childBoundaryValues[inputIndex] = value
-    }
-    const nested = await materializeProtocolGraphIfNeeded(
-      node.value,
-      location,
-      childBoundaryValues,
-      materializationDirectory
-    )
-    const nestedWithoutIds = removeQualifiedIds(
-      nested as Network | QualifiedNetwork
-    )
-    const nestedBoundary = analyzeNetworkBoundary(
-      nodesFromProtocolToFlow(nestedWithoutIds.workflow.nodes),
-      edgesFromProtocolToFlow(nestedWithoutIds.workflow.edges)
-    )
-    remapNestedNetworkEdges(materializedEdges, nodeId, node, nestedBoundary)
-    nodes[nodeId] = {
-      ...node,
-      arguments: nestedBoundary.argumentsArray,
-      inputs: nestedBoundary.inputsArray,
-      outputs: nestedBoundary.outputsArray,
-      value: nestedWithoutIds,
-    }
-  }
-  return { ...network, workflow: { ...network.workflow, nodes } }
-}
-
-const sameNetworkArgument = (left: Argument, right: Argument): boolean =>
-  left.name === right.name &&
-  left.type === right.type &&
-  left.connection_type === right.connection_type
-
-/**
- * Removes frontend-only parameter boundary ports and remaps the remaining
- * parent edges to the backend interface recomputed from the sanitized graph.
- */
-const remapNestedNetworkEdges = (
-  edges: Edge[],
-  networkNodeId: string,
-  originalNode: SubGraphNodeDefinition,
-  sanitizedBoundary: ReturnType<typeof analyzeNetworkBoundary>
-): void => {
-  const remapped = edges.flatMap((edge) => {
-    if (edge.target === networkNodeId) {
-      const oldInputIndex = handleIdToIndex(edge.targetHandle as string)
-      const oldArgumentIndex = originalNode.inputs[oldInputIndex]
-      const oldArgument = originalNode.arguments[oldArgumentIndex]
-      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
-        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
-      )
-      const newInputIndex =
-        sanitizedBoundary.inputsArray.indexOf(newArgumentIndex)
-      if (newInputIndex < 0) return []
-      return [{ ...edge, targetHandle: `input-${newInputIndex}` }]
-    }
-
-    if (edge.source === networkNodeId) {
-      const oldOutputIndex = handleIdToIndex(edge.sourceHandle as string)
-      const oldArgumentIndex = originalNode.outputs[oldOutputIndex]
-      const oldArgument = originalNode.arguments[oldArgumentIndex]
-      const newArgumentIndex = sanitizedBoundary.argumentsArray.findIndex(
-        (argument) => oldArgument && sameNetworkArgument(argument, oldArgument)
-      )
-      const newOutputIndex =
-        sanitizedBoundary.outputsArray.indexOf(newArgumentIndex)
-      if (newOutputIndex < 0) return []
-      return [{ ...edge, sourceHandle: `output-${newOutputIndex}` }]
-    }
-
-    return [edge]
-  })
-
-  edges.splice(0, edges.length, ...remapped)
 }
 
 /**
@@ -397,17 +195,24 @@ export const withMpiPlugin = (network: object, useMpi: boolean): object => {
 
 /**
  * Builds the graph payload to upload from canvas nodes/edges, injecting the MPI
- * plugin block when MPI is enabled.
+ * plugin block when MPI is enabled. Parameter bindings are checked here, so an
+ * invalid one is reported when the graph is run, added as a stage or
+ * downloaded, not when a stage is submitted.
  * @param nodes - Canvas nodes (snapshots).
  * @param edges - Canvas edges (snapshots).
  * @param useMpi - Whether to inject the MPI plugin block.
  * @returns The CORAL network object ready to upload.
+ * @throws {Error} If a parameter binding is invalid (see {@link validateParameterBindings}).
  */
 export const buildGraphPayload = (
   nodes: Node[],
   edges: Edge[],
   useMpi: boolean
-): object => withMpiPlugin(parseGraphWithQualifiedIds(nodes, edges), useMpi)
+): object => {
+  const network = parseGraphWithQualifiedIds(nodes, edges)
+  validateParameterBindings(network, getNodeData)
+  return withMpiPlugin(network, useMpi)
+}
 
 /** Pairs a stage's MPI resources with the remote target's configured launcher. */
 const remoteMpiResources = (config: MpiResourceConfig): SbatchMpiResources => ({

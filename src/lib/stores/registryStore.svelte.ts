@@ -296,7 +296,7 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
 
 // ── Private helpers ──
 
-// Preserve exact matches and Coral's first-match fallback for equivalent keys.
+// Canonical type key → the first active-registry key with that form, as Coral picks it.
 const canonicalRegistryKeys = $derived.by(() => {
   const keys: Record<string, string> = Object.create(null)
   for (const key of Object.keys(registries[activeLocation])) {
@@ -306,6 +306,7 @@ const canonicalRegistryKeys = $derived.by(() => {
   return keys
 })
 
+// The stored key for a type: an exact match, else the key with the same canonical spelling.
 const registryKey = (type: string): string | undefined =>
   Object.hasOwn(registries[activeLocation], type)
     ? type

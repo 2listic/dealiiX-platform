@@ -4,6 +4,7 @@ import { parametersState } from '../stores/parametersStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
+import { confirmAction } from '../stores/confirmation.svelte'
 import {
   isExtraNode,
   isParameterLeaf,
@@ -27,7 +28,7 @@ let lastParametersFilePath = ''
  * Reads a parameters file and merges it onto the active location's parameter tree.
  * The existing tree is the authority for structure and metadata; the upload only
  * contributes `value` fields. When the upload contains keys absent from the template,
- * the user is prompted (via `window.confirm`) before those extra keys are included.
+ * the user is asked (via `confirmAction`) before those extra keys are included.
  *
  * @param file - The user-selected parameters file (JSON or PRM).
  * @returns A promise that resolves once the merge has been applied (or aborted on error).
@@ -50,9 +51,12 @@ export async function mergeParametersFromFile(file: File): Promise<void> {
       const preview = extraPaths.slice(0, 5).join(', ')
       const suffix =
         extraPaths.length > 5 ? `, and ${extraPaths.length - 5} more` : ''
-      const includeExtras = window.confirm(
-        `Uploaded file contains sections not present in the template: ${preview}${suffix}.\n\nDo you want to add them to the parameters table anyway?`
-      )
+      const includeExtras = await confirmAction({
+        title: 'Sections not in the template',
+        message: `The uploaded file contains sections not present in the template: ${preview}${suffix}. Do you want to add them to the parameters table anyway?`,
+        confirmText: 'Add them',
+        confirmVariant: 'action',
+      })
       if (includeExtras) {
         // Second merge pass with includeExtras=true to include the extra keys.
         merged = mergeParametersTemplate(
@@ -172,9 +176,11 @@ export async function reloadParametersFromWorkingDirectory(): Promise<void> {
   const fileName = settingsState.getParametersFileName(location)
   const { workingDirectory } = parameterFileTarget(location, fileName)
   if (
-    !window.confirm(
-      `Replace the values in the app with those of ${fileName} in the working directory?`
-    )
+    !(await confirmAction({
+      message: `Replace the values in the app with those of ${fileName} in the working directory?`,
+      confirmText: 'Replace',
+      confirmVariant: 'action',
+    }))
   ) {
     return
   }

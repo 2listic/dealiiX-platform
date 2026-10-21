@@ -1,12 +1,15 @@
 /**
- * Canvas-level operations on parameter-file nodes: graph edits that change
- * which parameters a node exposes as ports.
+ * Canvas-level operations on parameter-file nodes: graph edits that mark a
+ * node as a parameter file and change which parameters it exposes as ports.
  *
  * Handle ids, port types and exposure lookups live in parameterPorts.ts.
  */
 
 import type { Edge } from '@xyflow/svelte'
-import type { ParameterExposure } from '../types/nodeTypes'
+import type {
+  ParameterExposure,
+  ParameterFileMetadata,
+} from '../types/nodeTypes'
 import { getEdges, getNodes, setEdges, setNodes } from '../stores/nodes.svelte'
 import { graphHistoryState } from '../stores/graphStack.svelte'
 import { clearConnectionCache } from './connectionsValidation'
@@ -37,25 +40,55 @@ export const staleParameterEdges = (
 export const setNodeParameterExposures = (
   nodeId: string,
   exposures: ParameterExposure[]
+): void => replaceParameterFile(nodeId, { exposures })
+
+/**
+ * Marks a node as a parameter file with no exposed parameters, as one
+ * undoable graph edit. Does nothing when the node is not in the current
+ * graph level.
+ *
+ * @param nodeId - Id of the string literal node naming the file.
+ * @returns {void}
+ */
+export const markParameterFile = (nodeId: string): void =>
+  replaceParameterFile(nodeId, { exposures: [] })
+
+/**
+ * Removes a node's parameter-file marker, and the edges attached to its
+ * parameter handles, as one undoable graph edit. Does nothing when the node
+ * is not in the current graph level. `staleParameterEdges(nodeId, [])` lists
+ * the edges this removes.
+ *
+ * @param nodeId - Id of the parameter-file node.
+ * @returns {void}
+ */
+export const unmarkParameterFile = (nodeId: string): void =>
+  replaceParameterFile(nodeId, undefined)
+
+// ── Private helpers ──
+
+/** Writes or removes a node's `parameter_file` and drops the edges left without a handle. */
+const replaceParameterFile = (
+  nodeId: string,
+  parameterFile: ParameterFileMetadata | undefined
 ): void => {
   if (!getNodes().some((node) => node.id === nodeId)) return
   graphHistoryState.checkpoint()
   setNodes(
-    getNodes().map((node) =>
-      node.id === nodeId
-        ? {
-            ...node,
-            data: { ...node.data, parameter_file: { exposures } },
-          }
-        : node
-    )
+    getNodes().map((node) => {
+      if (node.id !== nodeId) return node
+      const { parameter_file: _previous, ...data } = node.data
+      return {
+        ...node,
+        data: parameterFile ? { ...data, parameter_file: parameterFile } : data,
+      }
+    })
   )
+  const exposures = parameterFile?.exposures ?? []
   setEdges(getEdges().filter((edge) => !isStale(edge, nodeId, exposures)))
   // Cached connection checks may refer to handles that came or went.
   clearConnectionCache()
 }
-
-// ── Private helpers ──
 
 const isStale = (
   edge: Edge,

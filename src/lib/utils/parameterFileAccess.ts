@@ -6,6 +6,7 @@ import {
   serializeParametersAs,
   type ParameterFileFormat,
 } from './parameterFileFormat'
+import { shellEscape } from './shellEscape'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -54,9 +55,6 @@ export const normalizeRelativeParameterPath = (fileName: string): string => {
   if (parts.length === 0) throw new Error('Parameter file name is empty')
   return parts.join('/')
 }
-
-const shellEscape = (value: string): string =>
-  `'${String(value).replaceAll("'", `'\\''`)}'`
 
 const remotePath = (target: ParameterFileTarget): string => {
   const relative = normalizeRelativeParameterPath(target.fileName)

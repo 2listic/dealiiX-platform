@@ -470,29 +470,6 @@ export const resolveInputArgument = (
 }
 
 /**
- * Resolves the output type string for an output handle index on a node.
- * Handles the SELF case (`outputs[-1]`) by returning the first concrete output
- * type or registered base type.
- * @param {NodeDefinitions} data - The node data containing `outputs`, `arguments`, `type`, and optional `output_type`/inheritance metadata.
- * @param {number} handleIndex - Zero-based index into the node's `outputs` array,
- *   typically obtained by parsing a handle ID with {@link handleIdToIndex}.
- * @returns The type string, or null if the index is out of range.
- */
-export const resolveOutputType = (
-  data: NodeDefinitions,
-  handleIndex: number
-): string | null => {
-  const outputIndex = data.outputs?.[handleIndex]
-  if (outputIndex == null) return null
-  if (outputIndex === SELF) {
-    const standardData = data as StandardNodeDefinition
-    if (standardData.output_type) return standardData.output_type
-    return getBaseTypes(standardData)[0] ?? data.type
-  }
-  return data.arguments?.[outputIndex]?.type ?? null
-}
-
-/**
  * Resolves every type that may be observed at an output handle.
  *
  * A derived self-output is externally usable both as its registered base and

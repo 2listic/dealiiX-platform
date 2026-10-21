@@ -12,6 +12,8 @@
     confirmVariant?: 'default' | 'action' | 'delete'
     onConfirm: () => void
     onCancel?: () => void
+    /** Called on every close, after `onConfirm` or `onCancel` when a button closed it. */
+    onClose?: () => void
     closeOnBackdrop?: boolean
   }
 
@@ -24,6 +26,7 @@
     confirmVariant = 'default',
     onConfirm,
     onCancel,
+    onClose,
     closeOnBackdrop = true,
   }: Props = $props()
 
@@ -53,7 +56,7 @@
   })
 </script>
 
-<Modal id={modalId} {closeOnBackdrop} size="sm">
+<Modal id={modalId} {closeOnBackdrop} {onClose} size="sm">
   <div class="confirmation-modal">
     {#if title}
       <h2>{title}</h2>

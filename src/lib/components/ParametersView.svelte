@@ -3,6 +3,7 @@
   import ToggleSwitch from './layout/ToggleSwitch.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
+  import { confirmAction } from '../stores/confirmation.svelte'
   import type { ParameterTree } from '../types/parameterTypes'
   import type { ParameterExposure } from '../types/nodeTypes'
   import {
@@ -26,7 +27,9 @@
     /** Frontend-only parameter port exposure state. */
     exposures?: ParameterExposure[]
     /** Called when a parameter input/output switch changes; false keeps the old state. */
-    onExposureChange?: (_exposures: ParameterExposure[]) => boolean
+    onExposureChange?: (
+      _exposures: ParameterExposure[]
+    ) => boolean | Promise<boolean>
   }
 
   let {
@@ -71,14 +74,14 @@
 
   // A declined change leaves `exposures` as it was, so `checked` does not
   // change and Svelte would not reset the box the user just clicked.
-  const toggleExposure = (
+  const toggleExposure = async (
     event: Event,
     path: string[],
     leaf: { pattern_description: string },
     direction: 'input' | 'output'
   ) => {
     const box = event.target as HTMLInputElement
-    if (!setExposure(path, leaf, direction, box.checked)) {
+    if (!(await setExposure(path, leaf, direction, box.checked))) {
       box.checked = !box.checked
     }
   }
@@ -186,9 +189,17 @@
    * @param path - Path to the parent tree.
    * @param key  - Key of the node to delete within its parent.
    */
-  function deleteExtraNode(path: string[], key: string) {
+  async function deleteExtraNode(path: string[], key: string) {
     if (!parameters) return
-    if (!window.confirm(`Delete "${key}"? This cannot be undone.`)) return
+    if (
+      !(await confirmAction({
+        message: `Delete "${key}"? This cannot be undone.`,
+        confirmText: 'Delete',
+        confirmVariant: 'delete',
+      }))
+    ) {
+      return
+    }
     // Deep-clone so intermediate mutations don't touch the live reactive store.
     const next = $state.snapshot(parameters) as ParameterTree
     // parent is a reference into next — mutations propagate back via JS reference semantics.
