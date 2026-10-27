@@ -10,6 +10,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- Added MOX cardiac inflow examples for the complete arterial–venous ADAVN network and ADAN56, with portable solver parameters, single-thread MPI/Slurm launchers, checksum-verified inputs and last-cycle pressure-loop comparisons.
+
 - [#213](https://github.com/2listic/dealiiX-platform/pull/213) Added a top-level `examples/` folder for sample graphs, parameter files, and executables meant to be loaded and explored rather than used by the test suite, organised into `graphs/`, `parameters/`, and `executables/` subfolders. It now holds the deal.II step-40 Laplace example with MPI enabled and the step-4 Poisson example (2D and 3D) under `graphs/`, a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) under `parameters/`, and the step-70 executable source (previously under `local_runs/step-70`) under `executables/`.
 
 ### Pipelines
