@@ -2,6 +2,7 @@ import type {
   ExecutionSettings,
   ExecutionLocation,
   ExecutionMetadata,
+  ParametersTemplateMetadata,
   BackendKind,
   ProbeRequest,
   ProbeResponse,
@@ -12,6 +13,7 @@ import { setValueFor as setParamsFor } from '../stores/parametersStore.svelte'
 import { setRegistry } from '../stores/registryStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
+import { mergeWorkingDirectoryParameters } from './parametersFileActions'
 
 /**
  * Probes the given target, routes any synced payload (node registry or parameters
@@ -60,8 +62,10 @@ export const probeAndSaveExecution = async (
   const { status, metadata } = response
   if (status.outcome === 'error') return status
 
-  await applySyncedMetadata(location, metadata)
+  // Paths first: reading a remote parameters file goes through SSH, which takes
+  // its connection from the saved settings.
   await settingsState.saveExecutionPaths(execution)
+  await applySyncedMetadata(location, metadata, execution)
   await settingsState.recordProbe(location, backendKind, status)
   if (metadata?.kind === 'parametersTemplate' && metadata.parametersFileName) {
     await settingsState.saveParametersFileName(
@@ -105,7 +109,8 @@ export const warnIfUnvalidated = (
 
 const applySyncedMetadata = async (
   location: ExecutionLocation,
-  metadata: ExecutionMetadata
+  metadata: ExecutionMetadata,
+  execution: ExecutionSettings
 ) => {
   if (!metadata) return
 
@@ -115,6 +120,51 @@ const applySyncedMetadata = async (
   }
 
   if (metadata.kind === 'parametersTemplate') {
-    setParamsFor(location, metadata.data as unknown as ParameterTree)
+    setParamsFor(
+      location,
+      await withWorkingDirectoryValues(location, metadata, execution)
+    )
   }
+}
+
+// Values from the working directory's parameters file, merged onto the template.
+// The name typed in Settings comes first, then the one the probe reports, which
+// may differ in extension (it tries JSON first) and is the one Save writes to.
+const withWorkingDirectoryValues = async (
+  location: ExecutionLocation,
+  metadata: ParametersTemplateMetadata,
+  execution: ExecutionSettings
+): Promise<ParameterTree> => {
+  const template = metadata.data as unknown as ParameterTree
+  const { workingDirectory, parametersFileName } = execution[location]
+  if (!workingDirectory) return template
+  const fileNames = [
+    parametersFileName || 'parameters.json',
+    metadata.parametersFileName ?? '',
+  ]
+  try {
+    const result = await mergeWorkingDirectoryParameters(
+      location,
+      workingDirectory,
+      fileNames,
+      template
+    )
+    if (result) {
+      toastState.add({
+        message: `Loaded parameter values from ${result.resolvedPath}`,
+        type: 'success',
+      })
+      return result.parameters
+    }
+    toastState.add({
+      message: `No ${fileNames[0]} in the working directory: using the executable's defaults`,
+      type: 'info',
+    })
+  } catch (error) {
+    toastState.add({
+      message: `Could not load ${fileNames[0]}: ${(error as Error)?.message}. Using the executable's defaults`,
+      type: 'error',
+    })
+  }
+  return template
 }

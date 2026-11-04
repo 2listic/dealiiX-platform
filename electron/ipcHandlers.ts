@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, nativeTheme, screen } from 'electron/main'
 import { dialog } from 'electron'
 import fs from 'fs'
 import os from 'os'
+import path from 'path'
 import type {
   AppSettings,
   ProbeRequest,
@@ -29,6 +30,10 @@ import {
   startLocalExecutableRun,
 } from './utils/localCoralRuns.js'
 import store from './utils/storage.js'
+import {
+  readLocalParameterFile,
+  writeLocalParameterFile,
+} from './utils/localParameterFiles.js'
 
 /**
  * Registers all IPC handlers for the main process.
@@ -77,6 +82,42 @@ export function registerIpcHandlers(): void {
     const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
     return filePaths?.[0] ?? null
   })
+
+  /**
+   * Shows a native save dialog for a JSON file without writing it.
+   * @param defaultPath - Pre-filled file name shown in the dialog.
+   * @returns { directory, fileName } of the chosen path, or null when canceled.
+   */
+  ipcMain.handle('pick-save-path', async (_event, { defaultPath }) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (result.canceled || !result.filePath) return null
+    return {
+      directory: path.dirname(result.filePath),
+      fileName: path.basename(result.filePath),
+    }
+  })
+
+  /**
+   * Reads a parameter file from the local working directory.
+   * @param workingDirectory - Local working directory the file must stay inside.
+   * @param fileName         - Path of the file relative to `workingDirectory`.
+   * @returns { filePath, content } — the resolved absolute path and the file text.
+   * @throws If the path escapes the working directory, or the file is missing or not a regular file.
+   */
+  ipcMain.handle(
+    'read-local-parameter-file',
+    async (_event, { workingDirectory, fileName }) =>
+      readLocalParameterFile(workingDirectory, fileName)
+  )
+
+  ipcMain.handle(
+    'write-local-parameter-file',
+    async (_event, { workingDirectory, fileName, content }) =>
+      writeLocalParameterFile(workingDirectory, fileName, content)
+  )
 
   /**
    * Shows a native save dialog and writes the parameter file.

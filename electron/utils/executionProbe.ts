@@ -14,6 +14,7 @@ import path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { connectToSSHWithKey } from './sshConnections.js'
+import { shellEscape } from '../../src/lib/utils/shellEscape.js'
 import {
   getParameterProbeFileNames,
   parseParametersFileWithFormat,
@@ -21,10 +22,6 @@ import {
 } from '../../src/lib/utils/parameterFileFormat.js'
 
 const execFileAsync = promisify(execFile)
-
-const shellEscape = (value: string | number) => {
-  return `'${String(value).replaceAll("'", `'\\''`)}'`
-}
 
 const getExecutableParametersFileName = (
   target: ExecutionTargetSettings

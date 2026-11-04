@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 import {
+  ConnectionType,
   NodeType,
   TypeField,
   Type,
@@ -16,8 +17,10 @@ import {
   formatSuggestedNodeName,
   getInputTypeAndName,
   getOutputTypeAndName,
+  resolveConnectionAndCompatibleNodes,
   returnNodeName,
 } from './canvasNodeUtils'
+import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
 const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes
@@ -53,9 +56,101 @@ describe('canvasNodeUtils', () => {
     }
 
     expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
-      connectionType: 'dealii::FiniteElement<2, 2>',
+      connectionType: 'dealii::FiniteElement<2, 2> | dealii::FE_Q<2, 2>',
+      connectionTypes: ['dealii::FiniteElement<2, 2>', 'dealii::FE_Q<2, 2>'],
       connectionName: 'my_fe',
     })
+  })
+
+  it('uses every bases entry for connection suggestions', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Derived',
+        node_type: NodeType.CONSTRUCTOR,
+        arguments: [],
+        inputs: [],
+        outputs: [-1],
+        bases: ['Base', 'Root'],
+      },
+    }
+    const targetNode = {
+      type: 'Consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: ConnectionType.INPUT, name: 'value', type: 'Root' },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const outputInfo = getOutputTypeAndName(sourceNode, 'output-0')
+
+    expect(outputInfo?.connectionTypes).toEqual(['Base', 'Root', 'Derived'])
+    expect(
+      findCompatibleTargetNodesAsOptions(
+        [targetNode] as unknown as NodeDefinitions[],
+        outputInfo?.connectionTypes ?? []
+      )
+    ).toHaveLength(1)
+  })
+
+  it('uses output_type for function SELF outputs', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.FUNCTION,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Finite element space::std::function<Space(const Problem &)>',
+        node_type: NodeType.FUNCTION,
+        arguments: [
+          {
+            connection_type: 'input',
+            name: 'problem',
+            type: 'ImmersX::ElasticStaticProblem<2, 2>',
+          },
+        ],
+        inputs: [0],
+        outputs: [-1],
+        output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+      },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'ImmersX::FiniteElementSpaceView<2,2>',
+      connectionName:
+        'Finite element space::std::function<Space(const Problem &)>',
+    })
+
+    const scalarFieldNode = {
+      type: 'Scalar field::std::function<Field(const Space &, const string &)>',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        },
+        { connection_type: 'input', name: 'name', type: 'std::string' },
+      ],
+      inputs: [0, 1],
+      outputs: [-1],
+      output_type: 'ImmersX::Field<2,2,Scalar>',
+    }
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: '1', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [scalarFieldNode] as unknown as NodeDefinitions[]
+    )
+
+    expect(resolved?.connectionType).toBe(
+      'ImmersX::FiniteElementSpaceView<2,2>'
+    )
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      scalarFieldNode.type
+    )
   })
 
   it('falls back to the node type when an elementary constructor has no base', () => {
@@ -147,6 +242,43 @@ describe('canvasNodeUtils', () => {
     )
 
     expect(options).toHaveLength(0)
+  })
+
+  it('only offers scalar literal nodes for exposed parameter inputs', () => {
+    const targetHandle = parameterHandle('input', ['Solver', 'Tolerance'])
+    const targetNode = {
+      id: 'parameter',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        ...structuredClone(registry['std::string']),
+        parameter_file: {
+          exposures: [
+            {
+              path: ['Solver', 'Tolerance'],
+              type: 'string',
+              input: true,
+              output: false,
+            },
+          ],
+        },
+      },
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'parameter', handleId: targetHandle, handleType: 'target' },
+      targetNode,
+      [
+        networkNodes['step1 triangulation input free'],
+        registry['std::string'],
+      ] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(Type.STRING)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.node_type).toBe(
+      NodeType.ELEMENTARY_CONSTRUCTOR
+    )
   })
 
   it('matches a source typed "any" against a concrete target input', () => {

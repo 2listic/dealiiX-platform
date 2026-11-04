@@ -7,6 +7,7 @@ import {
 } from '../types/nodeTypes'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
+import { canonicalTypeKey } from '../utils/canonicalTypeKey'
 import { filterValidNodes } from '../utils/registryValidator'
 import type { ExecutionLocation } from '../types/settingsTypes'
 
@@ -171,11 +172,12 @@ export const getAvailableNodes = (): StandardNodeDefinition[] => {
  * @throws {Error} If the node type is not found in the registry
  */
 export const getNodeData = (type: string): StandardNodeDefinition => {
-  if (!isNodeInRegistry(type)) {
+  const key = registryKey(type)
+  if (key === undefined) {
     console.error(`Node type '${type}' was not found in the available nodes.`)
     throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
-  return $state.snapshot(registries[activeLocation][type])
+  return $state.snapshot(registries[activeLocation][key])
 }
 
 /**
@@ -184,7 +186,7 @@ export const getNodeData = (type: string): StandardNodeDefinition => {
  * @returns {boolean} True if present, false if not
  */
 export const isNodeInRegistry = (type: string): boolean => {
-  return type in registries[activeLocation]
+  return registryKey(type) !== undefined
 }
 
 // ============ Registered network nodes section (sidebar) ======================
@@ -291,3 +293,21 @@ export const getNetworkNodeDefinition = (
 export const isNodeInNetworkNodes = (name: string): boolean => {
   return name in networkNodes
 }
+
+// ── Private helpers ──
+
+// Canonical type key → the first active-registry key with that form, as Coral picks it.
+const canonicalRegistryKeys = $derived.by(() => {
+  const keys: Record<string, string> = Object.create(null)
+  for (const key of Object.keys(registries[activeLocation])) {
+    const canonical = canonicalTypeKey(key)
+    if (!Object.hasOwn(keys, canonical)) keys[canonical] = key
+  }
+  return keys
+})
+
+// The stored key for a type: an exact match, else the key with the same canonical spelling.
+const registryKey = (type: string): string | undefined =>
+  Object.hasOwn(registries[activeLocation], type)
+    ? type
+    : canonicalRegistryKeys[canonicalTypeKey(type)]

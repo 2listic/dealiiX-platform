@@ -42,6 +42,7 @@
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
   import ConfirmationModal from './ConfirmationModal.svelte'
+  import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
@@ -50,11 +51,11 @@
   import GridIcon from '../icons/GridIcon.svelte'
   import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
 
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  const logoutConfirmModalId = 'logout-confirm-modal'
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
@@ -70,6 +71,7 @@
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
+  let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -86,15 +88,17 @@
   let pipelineImportInput: HTMLInputElement | undefined = $state()
   let paramsFileInput: HTMLInputElement | undefined = $state()
 
-  const handleLoginLogout = () => {
-    if (token) {
-      getModal(logoutConfirmModalId)?.open()
-    } else {
+  const handleLoginLogout = async () => {
+    if (!token) {
       getModal(loginModalId)?.open()
+      return
     }
-  }
-
-  const handleOncofirmLogout = async () => {
+    const confirmed = await confirmAction({
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      confirmVariant: 'action',
+    })
+    if (!confirmed) return
     await auth.clearToken()
     toastState.add({ message: 'Logged out', type: 'success' })
   }
@@ -148,15 +152,25 @@
   }
 
   const handleAddCoralFromCanvas = () => {
-    const graph = buildGraphPayload(
-      getNodesSnapshot(),
-      getEdgesSnapshot(),
-      false
-    )
-    pipelineState.addCoralStage({
-      name: currentProjectState.name || 'canvas graph',
-      graph,
-    })
+    try {
+      const graph = buildGraphPayload(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        false
+      )
+      pipelineState.addCoralStage({
+        name: currentProjectState.name || 'canvas graph',
+        graph,
+      })
+    } catch (error) {
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to add the canvas graph',
+        type: 'error',
+      })
+    }
   }
 
   const handleAddExecutable = () => {
@@ -405,37 +419,31 @@
     }
   }
 
-  const handleGraphDownload = () => {
+  /**
+   * Saves the graph as the editor holds it, with its parameter-file markers,
+   * exposures and their connections, so Import Graph can load it back.
+   */
+  const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
       getModal(subnetworkWarningModalId)?.open()
       return
     }
     try {
-      // Parse current graph to Network JSON format
-      // TODO: add a modal to ask user if he wants the mpi version
-      const graphData = buildGraphPayload(
+      const picked = await window.electron.invoke('pick-save-path', {
+        defaultPath: `${currentProjectState.name || 'graph'}.json`,
+      })
+      if (!picked) return
+      const graphData = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
-        getEdgesSnapshot(),
-        false
+        getEdgesSnapshot()
       )
-      const jsonString = JSON.stringify(graphData, null, 2)
-
-      // Create blob with JSON data + filename
-      const blob = new Blob([jsonString], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const filename = `${currentProjectState.name || 'graph'}.json`
-
-      // Create temporary anchor and trigger download
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = filename
-      document.body.appendChild(anchor)
-      anchor.click()
-
-      // Cleanup
-      document.body.removeChild(anchor)
-      URL.revokeObjectURL(url)
+      await window.electron.invoke('write-local-parameter-file', {
+        workingDirectory: picked.directory,
+        fileName: picked.fileName,
+        content: JSON.stringify(graphData, null, 2),
+      })
+      toastState.add({ message: `Graph saved in ${picked.directory}` })
     } catch (error) {
       console.error('Failed to download graph:', error)
       toastState.add({
@@ -474,14 +482,6 @@
     <Modal id={loginModalId}>
       <LoginForm modalId={loginModalId} />
     </Modal>
-
-    <ConfirmationModal
-      modalId={logoutConfirmModalId}
-      message="Are you sure you want to logout?"
-      confirmText="Logout"
-      confirmVariant="action"
-      onConfirm={handleOncofirmLogout}
-    />
   {/if}
 
   <ConfirmationModal
@@ -530,52 +530,54 @@
     </Modal>
   {/if}
 
-  <!-- Run (unified: single job or pipeline) -->
-  <div class="button-container">
-    <label
-      for="execute-graph-button"
-      class="element-label"
-      title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-    >
-      <ExecuteIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="execute-graph-button"
-      onclick={handleExecution}
-      style="display: none"
-      aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-    ></button>
-    <span class="button-text">Run</span>
-  </div>
+  {#if !isParameterEditorOpen}
+    <!-- Run (unified: single job or pipeline) -->
+    <div class="button-container">
+      <label
+        for="execute-graph-button"
+        class="element-label"
+        title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+      >
+        <ExecuteIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="execute-graph-button"
+        onclick={handleExecution}
+        style="display: none"
+        aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+      ></button>
+      <span class="button-text">Run</span>
+    </div>
 
-  <JobConfigModal modalId={JobConfigModalId} />
-  <PipelineRunNameModal
-    modalId={runNameModalId}
-    onConfirm={handleRunPipeline}
-  />
+    <JobConfigModal modalId={JobConfigModalId} />
+    <PipelineRunNameModal
+      modalId={runNameModalId}
+      onConfirm={handleRunPipeline}
+    />
 
-  <!-- VTK Visualizer (standalone) -->
-  <div class="button-container">
-    <label
-      for="vtk-visualizer-button"
-      class="element-label"
-      class:disabled={!hasVisualizer}
-      title="Open VTK Visualizer"
-    >
-      <CubeIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="vtk-visualizer-button"
-      onclick={handleOpenVisualizer}
-      disabled={!hasVisualizer}
-      style="display: none"
-      aria-label="Open VTK Visualizer"
-    ></button>
-    <span class="button-text">Visualiz.</span>
-  </div>
+    <!-- VTK Visualizer (standalone) -->
+    <div class="button-container">
+      <label
+        for="vtk-visualizer-button"
+        class="element-label"
+        class:disabled={!hasVisualizer}
+        title="Open VTK Visualizer"
+      >
+        <CubeIcon width="30px" height="30px" />
+      </label>
+      <button
+        id="vtk-visualizer-button"
+        onclick={handleOpenVisualizer}
+        disabled={!hasVisualizer}
+        style="display: none"
+        aria-label="Open VTK Visualizer"
+      ></button>
+      <span class="button-text">Visualiz.</span>
+    </div>
+  {/if}
 
   <!-- Layout group (auto-layout + undo/redo) -->
-  {#if isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -604,7 +606,7 @@
   {/if}
 
   <!-- Import group -->
-  {#if isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
     <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
@@ -644,7 +646,7 @@
   />
 
   <!-- Parameters actions (executable single mode only) -->
-  {#if isExecutableMode && isSingleMode}
+  {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}
     <div class="button-container">
       <label
         for="add-params-button"
@@ -695,7 +697,7 @@
   {/if}
 
   <!-- Pipeline composition (pipeline mode only) -->
-  {#if isPipelineMode}
+  {#if !isParameterEditorOpen && isPipelineMode}
     <SidebarGroupButton title="Add stage">
       {#snippet icon()}
         <PlusIcon width="30px" height="30px" />

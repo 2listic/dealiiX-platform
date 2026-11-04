@@ -6,6 +6,7 @@
 
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import { buildMpiLauncherCommand } from './mpiLauncher'
+import { shellEscape } from './shellEscape'
 
 /** The resources and launcher an MPI job needs; absent for a serial job. */
 export type SbatchMpiResources = {
@@ -54,10 +55,12 @@ export const buildSbatchScript = ({
   directives.push(`#SBATCH --time=${timeLimit}`)
 
   const launcher = mpi ? `${buildMpiLauncherCommand(mpi.launcher)} ` : ''
+  const fullCommand = `${launcher}${command}`
 
   return `#!/bin/bash
 ${directives.join('\n')}
 
-${launcher}${command}
+printf '%s\\n' ${shellEscape(`Command: ${fullCommand}`)}
+${fullCommand}
 `
 }

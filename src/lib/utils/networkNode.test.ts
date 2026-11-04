@@ -18,6 +18,7 @@ import type { Edge, Node } from '@xyflow/svelte'
 import {
   ConnectionType,
   NodeType,
+  Type,
   type SubGraphNodeDefinition,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -99,6 +100,34 @@ describe('networkNode utilities', () => {
     )
   })
 
+  it('preserves the input metadata on an exposed network input', () => {
+    const definition: StandardNodeDefinition = {
+      type: 'ParameterAcceptor::initialize',
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'parameters',
+          type: Type.STRING,
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+      node_type: NodeType.VOID_FUNCTION,
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'ParameterLoader',
+      [makeCanvasNode('1', definition)],
+      []
+    )
+
+    expect(networkNode.arguments[0]).toMatchObject({
+      connection_type: ConnectionType.INPUT,
+      name: 'parameters',
+      type: Type.STRING,
+    })
+  })
+
   it('builds pass-through and input interfaces with handle bindings deterministically', () => {
     // Triangulation<2>::refine_global is the same node used as node '5' in the Step1
     // fixture. Wrapping it alone (no edges) leaves both its pass_through handles free,
@@ -157,6 +186,33 @@ describe('networkNode utilities', () => {
       },
     ])
     expect(networkNode.inputs).toEqual([])
+    expect(networkNode.outputs).toEqual([0])
+  })
+
+  it('copies every base type to a subnetwork self-output port', () => {
+    const derivedNode: StandardNodeDefinition = {
+      type: 'Derived',
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      node_type: NodeType.CONSTRUCTOR,
+      bases: ['Base', 'Root'],
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'DerivedNetwork',
+      [makeCanvasNode('1', derivedNode)],
+      []
+    )
+
+    expect(networkNode.arguments).toEqual([
+      {
+        connection_type: ConnectionType.OUTPUT,
+        name: 'self',
+        type: 'Derived',
+        bases: ['Base', 'Root'],
+      },
+    ])
     expect(networkNode.outputs).toEqual([0])
   })
 

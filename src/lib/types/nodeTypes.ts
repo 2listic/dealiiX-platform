@@ -8,16 +8,46 @@
 // export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
+import { canonicalTypeKey } from '../utils/canonicalTypeKey'
+
 export enum ConnectionType {
   INPUT = 'input',
   OUTPUT = 'output',
   PASSTHROUGH = 'pass_through',
 }
 
+export type InheritanceMetadata = {
+  /** All registered direct and indirect ancestors. */
+  bases?: string[]
+  /** Compatibility with older registries. */
+  base?: string
+}
+
 export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
+} & InheritanceMetadata
+
+/** The four scalar types that can be exposed by a frontend parameter port. */
+export type ParameterPortType =
+  | 'string'
+  | 'int'
+  | 'unsigned int'
+  | 'double'
+  | 'bool'
+
+/** Frontend-only exposure metadata for one parameter-file leaf. */
+export type ParameterExposure = {
+  path: string[]
+  type: ParameterPortType
+  input: boolean
+  output: boolean
+}
+
+/** Metadata persisted in the frontend graph, never written into the parameter file. */
+export type ParameterFileMetadata = {
+  exposures: ParameterExposure[]
 }
 
 export type InputIndex = number
@@ -68,6 +98,9 @@ export const nodeColors = {
   [NodeType.PRIMITIVE]: 'yellowgreen',
 }
 
+/** Border colour of a string literal marked as a parameter file. */
+export const PARAMETER_FILE_COLOR = 'darkorange'
+
 export enum Type {
   INT = 'int',
   UNSIGNED = 'unsigned',
@@ -114,6 +147,18 @@ export const isTypeCompatible = (
 ): boolean => {
   if (sourceType === Type.ANY || targetType === Type.ANY) return true
   if (sourceType === targetType) return true
+  if (
+    sourceType &&
+    targetType &&
+    canonicalTypeKey(sourceType) === canonicalTypeKey(targetType)
+  )
+    return true
+  if (
+    [Type.STRING, Type.STR].includes(sourceType as Type) &&
+    [Type.STRING, Type.STR].includes(targetType as Type)
+  ) {
+    return true
+  }
 
   const sourceRank = NUMERIC_WIDENING_RANK[sourceType as Type]
   const targetRank = NUMERIC_WIDENING_RANK[targetType as Type]
@@ -133,13 +178,27 @@ export type StandardNodeDefinition = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   node_type: NodeType
+  /** Concrete value produced by a function's SELF output. */
+  output_type?: string
   name?: string
   derived?: string[]
-  base?: string
   method_name?: string
   value?: any
   is_valid?: boolean
-}
+  parameter_file?: ParameterFileMetadata
+} & InheritanceMetadata
+
+/**
+ * Returns all ancestors, including the legacy single-base field.
+ * @param metadata - Node or argument inheritance metadata.
+ * @returns Unique ancestor types in registry order.
+ */
+export const getBaseTypes = (metadata: InheritanceMetadata): string[] => [
+  ...new Set([
+    ...(metadata.bases ?? []).filter(Boolean),
+    ...(metadata.base ? [metadata.base] : []),
+  ]),
+]
 
 export type RegisteredNodes = {
   [key: string]: StandardNodeDefinition
@@ -154,9 +213,13 @@ export type RegisteredSubGraphNodes = {
 
 export type NetworkEdge = {
   source: number
-  source_output: number
+  source_output?: number
   target: number
-  target_input: number
+  target_input?: number
+  /** Stable frontend handle, present for virtual parameter ports. */
+  source_handle?: string
+  /** Stable frontend handle, present for virtual parameter ports. */
+  target_handle?: string
 }
 
 export type NetworkEdges = {
@@ -171,12 +234,12 @@ export type NetworkEdges = {
  */
 export type LeanStandardNode = {
   type: string
-  base?: string
   derived?: string[]
   value?: string
   name?: string
   position?: { x: number; y: number }
-}
+  parameter_file?: ParameterFileMetadata
+} & InheritanceMetadata
 
 /**
  * Full definition of a subgraph node — an encapsulated computational graph

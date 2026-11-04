@@ -1,7 +1,7 @@
 <script lang="ts">
   import Modal, { getModal } from '../layout/Modal.svelte'
   import Button from '../layout/Button.svelte'
-  import ConfirmationModal from '../layout/ConfirmationModal.svelte'
+  import { confirmAction } from '../../stores/confirmation.svelte'
   import { isNodeInNetworkNodes } from '../../stores/registryStore.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
 
@@ -20,7 +20,6 @@
   }: Props = $props()
 
   let networkNodeName = $state('')
-  const confirmModalId = 'confirm-override-network-node'
 
   const submitCreate = async () => {
     try {
@@ -44,7 +43,7 @@
     }
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const name = networkNodeName.trim()
     if (!name) {
       toastState.add({
@@ -54,15 +53,17 @@
       return
     }
 
-    // Check if network node with same name already exists
-    if (isNodeInNetworkNodes(name)) {
-      getModal(confirmModalId)?.open()
+    if (
+      isNodeInNetworkNodes(name) &&
+      !(await confirmAction({
+        title: `Network Node with the name '${name}' Already Exists`,
+        message: 'Do you want to override it?',
+        confirmText: 'Override',
+        confirmVariant: 'action',
+      }))
+    ) {
       return
     }
-    submitCreate()
-  }
-
-  const handleConfirmOverride = () => {
     submitCreate()
   }
 
@@ -96,16 +97,6 @@
     </div>
   </form>
 </Modal>
-
-<ConfirmationModal
-  modalId={confirmModalId}
-  title="Network Node with the name '{networkNodeName.trim()}' Already Exists"
-  message="Do you want to override it?"
-  confirmText="Override"
-  cancelText="Cancel"
-  confirmVariant="action"
-  onConfirm={handleConfirmOverride}
-/>
 
 <style>
   h2 {

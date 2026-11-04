@@ -1,0 +1,3 @@
+subsection Mesh
+  set Initial refinement = 4
+end

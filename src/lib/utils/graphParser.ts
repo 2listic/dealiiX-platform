@@ -20,11 +20,14 @@ import {
 import {
   handleIdToIndex,
   resolveInputArgument,
-  resolveOutputType,
+  resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
 import {
+  ConnectionType,
+  getBaseTypes,
   isSubGraphNodeDefinition,
   isTypeCompatible,
+  SELF,
   TypeField,
   type Network,
   type NetworkEdge,
@@ -34,9 +37,16 @@ import {
   type LeanNodes,
   type QualifiedLeanNodes,
   type QualifiedNetwork,
+  type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
+import {
+  parameterExposureForHandle,
+  parameterHandlePath,
+  parameterPortCoralType,
+  normalizeParameterExposures,
+} from './parameterPorts'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -114,6 +124,67 @@ const addNetworkNodesFromGraph = async (
   return networkNodes
 }
 
+/** Returns the registry definition used to resolve graph edge types. */
+const validationNodeData = (
+  node: LeanNodes[string]
+): StandardNodeDefinition | SubGraphNodeDefinition => {
+  if (isSubGraphNodeDefinition(node)) return node
+
+  return {
+    ...getNodeData(node.type),
+    ...(node.base !== undefined && { base: node.base }),
+    ...(node.bases !== undefined && { bases: [...node.bases] }),
+    ...(node.parameter_file && {
+      parameter_file: node.parameter_file,
+    }),
+  }
+}
+
+/**
+ * Resolves all types that can leave a protocol output, following the concrete
+ * source of a pass-through argument when that source is already connected.
+ */
+const protocolOutputTypeCandidates = (
+  edges: NetworkEdges,
+  nodeDataById: Record<string, StandardNodeDefinition | SubGraphNodeDefinition>,
+  nodeId: number,
+  outputHandle: number,
+  resolving = new Set<string>()
+): string[] => {
+  const data = nodeDataById[String(nodeId)]
+  if (!data) return []
+
+  const outputIndex = data.outputs?.[outputHandle]
+  if (outputIndex == null) return []
+
+  const key = `${nodeId}:${outputHandle}`
+  if (resolving.has(key)) {
+    return resolveOutputTypeCandidates(data, outputHandle)
+  }
+
+  let upstreamTypes: string[] = []
+  if (outputIndex !== SELF) {
+    const argument = data.arguments?.[outputIndex]
+    if (argument?.connection_type === ConnectionType.PASSTHROUGH) {
+      const inputHandle = data.inputs?.indexOf(outputIndex) ?? -1
+      const upstream = Object.values(edges).find(
+        (edge) => edge.target === nodeId && edge.target_input === inputHandle
+      )
+      if (upstream?.source_output != null) {
+        upstreamTypes = protocolOutputTypeCandidates(
+          edges,
+          nodeDataById,
+          upstream.source,
+          upstream.source_output,
+          new Set(resolving).add(key)
+        )
+      }
+    }
+  }
+
+  return resolveOutputTypeCandidates(data, outputHandle, upstreamTypes)
+}
+
 /**
  * Takes nodes from the CORAL network JSON and transforms them into
  * xyflow-compatible node objects with positions and merged data.
@@ -161,11 +232,23 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
   } else {
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = getNodeData(protocolNode.type)
+    const regularNode = protocolNode as LeanStandardNode
     return {
       ...storeNodeData,
       position: protocolNode.position,
-      ...(protocolNode.name && { name: protocolNode.name }),
-      ...(protocolNode.value !== undefined && { value: protocolNode.value }),
+      ...(regularNode.name && { name: regularNode.name }),
+      ...(regularNode.base !== undefined && { base: regularNode.base }),
+      ...(regularNode.bases !== undefined && {
+        bases: [...regularNode.bases],
+      }),
+      ...(regularNode.value !== undefined && { value: regularNode.value }),
+      ...(regularNode.parameter_file && {
+        parameter_file: {
+          exposures: normalizeParameterExposures(
+            regularNode.parameter_file.exposures
+          ),
+        },
+      }),
     }
   }
 }
@@ -179,13 +262,18 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
 export const edgesFromProtocolToFlow = (edges: {
   [id: string]: NetworkEdge
 }): Edge[] => {
-  return Object.values(edges).map((edge) => ({
-    id: `xy-edge__${edge.source}output-${edge.source_output}-${edge.target}input-${edge.target_input}`,
-    source: edge.source.toString(),
-    target: edge.target.toString(),
-    sourceHandle: `output-${edge.source_output}`,
-    targetHandle: `input-${edge.target_input}`,
-  }))
+  return Object.values(edges).map((edge) => {
+    const sourceHandle =
+      edge.source_handle ?? `output-${edge.source_output ?? 0}`
+    const targetHandle = edge.target_handle ?? `input-${edge.target_input ?? 0}`
+    return {
+      id: `xy-edge__${edge.source}${sourceHandle}-${edge.target}${targetHandle}`,
+      source: edge.source.toString(),
+      target: edge.target.toString(),
+      sourceHandle,
+      targetHandle,
+    }
+  })
 }
 
 /**
@@ -224,6 +312,14 @@ export const validateGraphData = (
     error: string
   }> = []
 
+  const nodeDataById: Record<
+    string,
+    StandardNodeDefinition | SubGraphNodeDefinition
+  > = {}
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    nodeDataById[nodeId] = validationNodeData(node)
+  }
+
   Object.entries(edges).forEach(([edgeId, edge]) => {
     // Get source and target node from workflow
     const sourceNode = nodes[edge.source]
@@ -236,18 +332,33 @@ export const validateGraphData = (
     }
 
     // Get source and target node definition (from registry or networkNodes)
-    const sourceNodeData = isSubGraphNodeDefinition(sourceNode)
-      ? sourceNode
-      : getNodeData(sourceNode.type)
-    const targetNodeData = isSubGraphNodeDefinition(targetNode)
-      ? targetNode
-      : getNodeData(targetNode.type)
+    const sourceNodeData = nodeDataById[String(edge.source)]
+    const targetNodeData = nodeDataById[String(edge.target)]
 
-    // Determine source output type via outputs[] → arguments[] indirection
-    const sourceOutputType = resolveOutputType(
-      sourceNodeData,
-      edge.source_output
+    const sourceParameterExposure = parameterExposureForHandle(
+      sourceNodeData as StandardNodeDefinition,
+      edge.source_handle,
+      'output'
     )
+    const targetParameterExposure = parameterExposureForHandle(
+      targetNodeData as StandardNodeDefinition,
+      edge.target_handle,
+      'input'
+    )
+
+    // Virtual parameter handles are validated from their persisted metadata.
+    // Their numeric indices are intentionally absent from the backend protocol.
+    const sourceOutputTypes = sourceParameterExposure
+      ? [parameterPortCoralType(sourceParameterExposure.type)]
+      : edge.source_output == null
+        ? []
+        : protocolOutputTypeCandidates(
+            edges,
+            nodeDataById,
+            edge.source,
+            edge.source_output
+          )
+    const sourceOutputType = sourceOutputTypes[0] ?? null
     if (sourceOutputType == null) {
       throw new Error(
         `Edge ${edgeId}: Source node ${edge.source} has no output at index ${edge.source_output}`
@@ -255,10 +366,13 @@ export const validateGraphData = (
     }
 
     // Determine target input type via inputs[] → arguments[] indirection
-    const targetInputArg = resolveInputArgument(
-      targetNodeData,
-      edge.target_input
-    )
+    const targetInputArg = targetParameterExposure
+      ? {
+          type: parameterPortCoralType(targetParameterExposure.type),
+        }
+      : edge.target_input == null
+        ? null
+        : resolveInputArgument(targetNodeData, edge.target_input)
     if (!targetInputArg) {
       throw new Error(
         `Edge ${edgeId}: Target node ${edge.target} has no argument at index ${edge.target_input}`
@@ -266,7 +380,11 @@ export const validateGraphData = (
     }
 
     // Check if types are compatible (wildcard 'any' on either side, or numeric widening).
-    if (!isTypeCompatible(sourceOutputType, targetInputArg.type)) {
+    if (
+      !sourceOutputTypes.some((type) =>
+        isTypeCompatible(type, targetInputArg.type)
+      )
+    ) {
       const errorMessage = `Edge id: ${edgeId} - Type mismatch - source output type '${sourceOutputType}' does not match target input '${targetInputArg.type}'`
       console.warn(errorMessage)
       invalidEdges.push({
@@ -343,9 +461,16 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         type: data.type,
         position: obj.position,
       }
-      if (data.base) node.base = data.base
+      const bases = getBaseTypes(data)
+      if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
       if (data.value !== undefined) node.value = data.value
+      // Kept with no exposures: the marker is what makes the node a parameter file.
+      if (data.parameter_file) {
+        node.parameter_file = {
+          exposures: normalizeParameterExposures(data.parameter_file.exposures),
+        }
+      }
       acc[obj.id] = node
     }
 
@@ -353,11 +478,21 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
   }, {})
 
   const edgesGraph = edges.reduce<NetworkEdges>((acc, obj, index) => {
+    const sourceHandle = obj.sourceHandle as string
+    const targetHandle = obj.targetHandle as string
+    const sourceOutput = handleIdToIndex(sourceHandle)
+    const targetInput = handleIdToIndex(targetHandle)
     acc[index] = {
       source: parseInt(obj.source),
       target: parseInt(obj.target),
-      source_output: handleIdToIndex(obj.sourceHandle as string),
-      target_input: handleIdToIndex(obj.targetHandle as string),
+      ...(Number.isNaN(sourceOutput) ? {} : { source_output: sourceOutput }),
+      ...(Number.isNaN(targetInput) ? {} : { target_input: targetInput }),
+      ...(parameterHandlePath(sourceHandle)
+        ? { source_handle: sourceHandle }
+        : {}),
+      ...(parameterHandlePath(targetHandle)
+        ? { target_handle: targetHandle }
+        : {}),
     }
     return acc
   }, {})
