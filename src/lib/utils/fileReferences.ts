@@ -1,6 +1,6 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
-import { TypeField, type WorkingFileReference } from '../types/nodeTypes'
+import { TypeField } from '../types/nodeTypes'
 import { isParameterLeaf, isParameterFileName } from './parameterFileFormat'
 import { shellEscape } from './shellEscape'
 
@@ -194,6 +194,8 @@ export const resolveParameterFileReferences = async (
 }
 
 // ── Private helpers ──
+
+type WorkingFileReference = { create_if_missing?: boolean }
 
 type ProtocolNode = {
   type?: string

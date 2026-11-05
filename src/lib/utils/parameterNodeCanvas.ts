@@ -29,9 +29,10 @@ export const staleParameterEdges = (
 ): Edge[] => getEdges().filter((edge) => isStale(edge, nodeId, exposures))
 
 /**
- * Replaces a node's parameter exposures in the nodes store and removes the
- * edges whose parameter handle disappears, as one undoable graph edit. Does
- * nothing when the node is not in the current graph level.
+ * Replaces a node's parameter exposures in the nodes store, keeping the rest
+ * of its marker, and removes the edges whose parameter handle disappears, as
+ * one undoable graph edit. Does nothing when the node is not in the current
+ * graph level.
  *
  * @param nodeId    - Id of the parameter-file node.
  * @param exposures - New exposures; pass a plain snapshot, not a reactive proxy.
@@ -40,7 +41,11 @@ export const staleParameterEdges = (
 export const setNodeParameterExposures = (
   nodeId: string,
   exposures: ParameterExposure[]
-): void => replaceParameterFile(nodeId, { exposures })
+): void => {
+  const previous = getNodes().find((node) => node.id === nodeId)?.data
+    .parameter_file as ParameterFileMetadata | undefined
+  replaceParameterFile(nodeId, { ...previous, exposures })
+}
 
 /**
  * Marks a node as a parameter file with no exposed parameters, as one

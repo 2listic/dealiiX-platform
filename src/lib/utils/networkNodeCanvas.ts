@@ -14,9 +14,9 @@ import {
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
   isSubGraphNodeDefinition,
-  normalizeWorkingFileReference,
 } from '../types/nodeTypes'
 import { handleIdToIndex, createCustomEdge } from './canvasNodeUtils'
+import { normalizeParameterFile } from './parameterPorts'
 import {
   getEdgesSnapshot,
   getNextNodeId,
@@ -105,15 +105,7 @@ const toCanvasNodeFromProtocol = (
         bases: [...protocolNode.bases],
       }),
       ...(protocolNode.parameter_file && {
-        parameter_file: {
-          exposures: protocolNode.parameter_file.exposures.map((exposure) => ({
-            ...exposure,
-            path: [...exposure.path],
-          })),
-        },
-      }),
-      ...(protocolNode.working_file && {
-        working_file: normalizeWorkingFileReference(protocolNode.working_file),
+        parameter_file: normalizeParameterFile(protocolNode.parameter_file),
       }),
     },
   }

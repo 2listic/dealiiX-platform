@@ -62,6 +62,7 @@ const cloneNodeDefinition = (
     ...('parameter_file' in nodeDefinition &&
       nodeDefinition.parameter_file && {
         parameter_file: {
+          ...nodeDefinition.parameter_file,
           exposures: nodeDefinition.parameter_file.exposures.map(
             (exposure) => ({
               ...exposure,
@@ -69,10 +70,6 @@ const cloneNodeDefinition = (
             })
           ),
         },
-      }),
-    ...('working_file' in nodeDefinition &&
-      nodeDefinition.working_file && {
-        working_file: { ...nodeDefinition.working_file },
       }),
   } as NodeDefinitions
 
