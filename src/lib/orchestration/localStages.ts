@@ -11,7 +11,7 @@ import type { StageJob } from '../types/pipelineTypes'
 import type { MpiResourceConfig } from '../types/jobConfigTypes'
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import {
-  prepareGraphFileReferences,
+  resolveGraphFileReferences,
   resolveParameterFileReferences,
 } from '../utils/fileReferences'
 import { getNodeData } from '../stores/registryStore.svelte'
@@ -122,7 +122,7 @@ const prepareLocalStageGraph = async (
   workingDirectory: string,
   stageDir: string
 ): Promise<object> =>
-  await prepareGraphFileReferences(
+  await resolveGraphFileReferences(
     withMpiPlugin(
       await materializeNetwork(graph, {
         location: 'local',
@@ -132,8 +132,7 @@ const prepareLocalStageGraph = async (
       useMpi
     ),
     'local',
-    workingDirectory,
-    stageDir
+    workingDirectory
   )
 
 /** The local MPI launch for a stage: the configured launcher and its process count. */

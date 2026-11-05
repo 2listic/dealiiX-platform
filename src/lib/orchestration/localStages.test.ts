@@ -43,7 +43,7 @@ vi.mock('../stores/settingsStore.svelte', () => ({
 }))
 
 vi.mock('../utils/fileReferences', () => ({
-  prepareGraphFileReferences: async (graph: object) => graph,
+  resolveGraphFileReferences: async (graph: object) => graph,
   resolveParameterFileReferences: async (tree: object) => tree,
 }))
 
