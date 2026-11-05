@@ -52,11 +52,18 @@ export const setNodeParameterExposures = (
  * undoable graph edit. Does nothing when the node is not in the current
  * graph level.
  *
- * @param nodeId - Id of the string literal node naming the file.
+ * @param nodeId          - Id of the string literal node naming the file.
+ * @param createIfMissing - Whether a run creates the file when it is missing.
  * @returns {void}
  */
-export const markParameterFile = (nodeId: string): void =>
-  replaceParameterFile(nodeId, { exposures: [] })
+export const markParameterFile = (
+  nodeId: string,
+  createIfMissing = false
+): void =>
+  replaceParameterFile(nodeId, {
+    exposures: [],
+    ...(createIfMissing && { create_if_missing: true }),
+  })
 
 /**
  * Removes a node's parameter-file marker, and the edges attached to its

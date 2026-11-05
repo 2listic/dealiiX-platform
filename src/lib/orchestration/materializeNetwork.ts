@@ -49,6 +49,7 @@ import {
 } from '../utils/parameterPorts'
 import {
   normalizeRelativeParameterPath,
+  parameterFilePath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
@@ -627,10 +628,7 @@ const filesToCreate = async (
     const source = parameterFileTarget(location, String(node.value))
     // Without a working directory, reading the file reports the missing setting.
     if (!source.workingDirectory) continue
-    candidates.set(
-      nodeKey(port),
-      `${withoutTrailingSlash(source.workingDirectory)}/${normalizeRelativeParameterPath(source.fileName)}`
-    )
+    candidates.set(nodeKey(port), parameterFilePath(source))
   }
   if (candidates.size === 0) return candidates
   const existing = new Set(

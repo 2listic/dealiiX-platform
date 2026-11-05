@@ -157,6 +157,15 @@ describe('markParameterFile / unmarkParameterFile', () => {
     expect(edges).toEqual([inputEdge, outputEdge, ordinaryEdge])
   })
 
+  it('marks a node whose file the first run creates', () => {
+    markParameterFile('2', true)
+
+    expect(nodes[1].data).toEqual({
+      value: 3,
+      parameter_file: { exposures: [], create_if_missing: true },
+    })
+  })
+
   it('unmarks a node and removes the edges of its parameter handles', () => {
     unmarkParameterFile('1')
 

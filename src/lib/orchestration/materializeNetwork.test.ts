@@ -26,6 +26,8 @@ const files = vi.hoisted(() => new Map<string, string>())
 
 vi.mock('../utils/parameterFileAccess', () => ({
   normalizeRelativeParameterPath: (fileName: string) => fileName,
+  parameterFilePath: (target: { workingDirectory: string; fileName: string }) =>
+    `${target.workingDirectory}/${target.fileName}`,
   parameterFileTarget: (location: string, fileName: string) => ({
     location,
     workingDirectory: '/work',

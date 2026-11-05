@@ -11,7 +11,12 @@ import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parameterFileTarget } from './parameterFileAccess'
+import {
+  parameterFilePath,
+  parameterFileTarget,
+  type ParameterFileTarget,
+} from './parameterFileAccess'
+import { findExistingFiles } from './fileReferences'
 import { confirmAction } from '../stores/confirmation.svelte'
 import {
   markParameterFile,
@@ -55,28 +60,45 @@ export const openParameterFile = async (
     )
     return true
   } catch (error) {
-    toastState.add({
-      message:
-        error instanceof Error ? error.message : 'Failed to open parameters',
-      type: 'error',
-    })
+    reportOpenError(error)
     return false
   }
 }
 
 /**
  * Opens a node's file and marks the node as a parameter file. Marks it only
- * once the file opened, so a mistyped path leaves no marker.
+ * once the file opened, so a mistyped path leaves no marker. When the file is
+ * missing, asks whether the first run should create its defaults, and marks
+ * the node for that without opening the editor.
  *
  * @param nodeId - Id of the string literal node naming the file.
  * @param data   - The node's data: its value is the file name.
- * @returns Resolves once the editor opened and the node is marked, or the failure was reported.
+ * @returns Resolves once the node is marked, or the failure was reported.
  */
 export const useAsParameterFile = async (
   nodeId: string,
   data: StandardNodeDefinition
 ): Promise<void> => {
-  if (await openParameterFile(nodeId, data)) markParameterFile(nodeId)
+  const target = parameterFileTarget(
+    executionSelectionState.location,
+    data.value
+  )
+  try {
+    // The file opened in the editor: mark the node.
+    await parameterNodeEditorState.open(target, {
+      nodeId,
+      exposures: data.parameter_file?.exposures,
+    })
+    markParameterFile(nodeId)
+  } catch (error) {
+    // The read failed. If the file is missing and the user agrees, mark the
+    // node for creation on the first run; otherwise report the error.
+    if (await confirmCreateOnFirstRun(target)) {
+      markParameterFile(nodeId, true)
+    } else {
+      reportOpenError(error)
+    }
+  }
 }
 
 /**
@@ -102,4 +124,42 @@ export const confirmUnmarkParameterFile = async (
     return
   }
   unmarkParameterFile(nodeId)
+}
+
+// ── Private helpers ──
+
+const reportOpenError = (error: unknown): void => {
+  toastState.add({
+    message:
+      error instanceof Error ? error.message : 'Failed to open parameters',
+    type: 'error',
+  })
+}
+
+/**
+ * Asks whether the first run should create a file's defaults, only when the
+ * file is confirmed missing: a failed read can also mean an SSH or permission
+ * error, which keeps its toast.
+ */
+const confirmCreateOnFirstRun = async (
+  target: ParameterFileTarget
+): Promise<boolean> => {
+  // No working directory: the read error already says to configure one.
+  if (!target.workingDirectory) return false
+  let path: string
+  try {
+    path = parameterFilePath(target)
+    // The file exists, so the read failed for another reason.
+    const existing = await findExistingFiles([path], target.location)
+    if (existing.length > 0) return false
+  } catch {
+    // An invalid name or a failed check: keep the read error.
+    return false
+  }
+  return confirmAction({
+    title: 'Parameter file not found',
+    message: `Not found at ${path}. Create its defaults on the first run?`,
+    confirmText: 'Create on first run',
+    confirmVariant: 'action',
+  })
 }
