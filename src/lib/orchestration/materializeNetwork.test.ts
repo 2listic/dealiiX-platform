@@ -26,6 +26,8 @@ const files = vi.hoisted(() => new Map<string, string>())
 
 vi.mock('../utils/parameterFileAccess', () => ({
   normalizeRelativeParameterPath: (fileName: string) => fileName,
+  parameterFilePath: (target: { workingDirectory: string; fileName: string }) =>
+    `${target.workingDirectory}/${target.fileName}`,
   parameterFileTarget: (location: string, fileName: string) => ({
     location,
     workingDirectory: '/work',
@@ -51,6 +53,8 @@ vi.mock('../utils/parameterFileAccess', () => ({
 vi.mock('../utils/fileReferences', () => ({
   resolveParameterFileReferences: async (tree: unknown) => tree,
   resolveGraphFileReferences: async (graph: unknown) => graph,
+  findExistingFiles: async (paths: string[]) =>
+    paths.filter((path) => files.has(path)),
 }))
 
 const {
@@ -630,5 +634,62 @@ describe('isSubnetworkParameterOutput', () => {
     expect(isSubnetworkParameterOutput(sub, 'output-0', getNodeData)).toBe(
       false
     )
+  })
+})
+
+describe('create_if_missing', () => {
+  const createIfMissing = (
+    value: string,
+    exposures: ParameterExposure[] = []
+  ) => ({
+    type: 'std::string',
+    value,
+    parameter_file: { exposures, create_if_missing: true },
+  })
+
+  it('passes a missing file by its working-directory path, without a copy', async () => {
+    const result = await materialize(
+      network({ '0': createIfMissing('my-subfolder/poisson_2d.prm') })
+    )
+
+    expect(result.workflow.nodes['0']).toEqual({
+      type: 'std::string',
+      value: '/work/my-subfolder/poisson_2d.prm',
+      qualified_id: '0',
+    })
+    expect([...files.keys()]).toEqual([])
+  })
+
+  it('copies the file once it exists', async () => {
+    files.set('/work/my-subfolder/poisson_2d.prm', prm({ Refinement: '1' }))
+
+    const result = await materialize(
+      network({ '0': createIfMissing('my-subfolder/poisson_2d.prm') })
+    )
+
+    expect(result.workflow.nodes['0']).toMatchObject({
+      value: '/run/my-subfolder/poisson_2d.prm',
+    })
+    expect(files.get('/run/my-subfolder/poisson_2d.prm')).toMatch(
+      /set Refinement\s*=\s*1/
+    )
+  })
+
+  it('stops on a missing file that has exposures', async () => {
+    await expect(
+      materialize(
+        network({
+          '0': createIfMissing('poisson_2d.prm', [
+            exposure(['Refinement'], 'int', 'output'),
+          ]),
+        })
+      )
+    ).rejects.toThrow('/work/poisson_2d.prm not found')
+  })
+
+  it('stops on a missing file without the flag', async () => {
+    await expect(
+      materialize(network({ '0': parameterFile('poisson_2d.prm', []) }))
+    ).rejects.toThrow('/work/poisson_2d.prm not found')
   })
 })

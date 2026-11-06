@@ -48,6 +48,8 @@ export type ParameterExposure = {
 /** Metadata persisted in the frontend graph, never written into the parameter file. */
 export type ParameterFileMetadata = {
   exposures: ParameterExposure[]
+  /** When the file is missing at submit, run on its working-directory path so the backend writes its defaults there. */
+  create_if_missing?: boolean
 }
 
 export type InputIndex = number

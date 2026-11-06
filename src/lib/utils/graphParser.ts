@@ -45,7 +45,7 @@ import {
   parameterExposureForHandle,
   parameterHandlePath,
   parameterPortCoralType,
-  normalizeParameterExposures,
+  normalizeParameterFile,
 } from './parameterPorts'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
@@ -243,11 +243,7 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
       }),
       ...(regularNode.value !== undefined && { value: regularNode.value }),
       ...(regularNode.parameter_file && {
-        parameter_file: {
-          exposures: normalizeParameterExposures(
-            regularNode.parameter_file.exposures
-          ),
-        },
+        parameter_file: normalizeParameterFile(regularNode.parameter_file),
       }),
     }
   }
@@ -467,9 +463,7 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       if (data.value !== undefined) node.value = data.value
       // Kept with no exposures: the marker is what makes the node a parameter file.
       if (data.parameter_file) {
-        node.parameter_file = {
-          exposures: normalizeParameterExposures(data.parameter_file.exposures),
-        }
+        node.parameter_file = normalizeParameterFile(data.parameter_file)
       }
       acc[obj.id] = node
     }

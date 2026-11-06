@@ -56,7 +56,14 @@ export const normalizeRelativeParameterPath = (fileName: string): string => {
   return parts.join('/')
 }
 
-const remotePath = (target: ParameterFileTarget): string => {
+/**
+ * Returns a parameter file's absolute path in its working directory.
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns The working directory joined with the normalised file name.
+ * @throws If the name is absolute or escapes the working directory.
+ */
+export const parameterFilePath = (target: ParameterFileTarget): string => {
   const relative = normalizeRelativeParameterPath(target.fileName)
   return `${target.workingDirectory.replace(/\/+$/, '')}/${relative}`
 }
@@ -113,7 +120,7 @@ export const readParameterFile = async (
     return { resolvedPath: filePath, content }
   }
 
-  const filePath = remotePath(target)
+  const filePath = parameterFilePath(target)
   const quoted = shellEscape(filePath)
   // The SSH helper puts the command's output in its error, so the message
   // names the missing path.
@@ -141,7 +148,7 @@ export const writeParameterFile = async (
     return
   }
 
-  const filePath = remotePath(target)
+  const filePath = parameterFilePath(target)
   const directory = filePath.slice(0, filePath.lastIndexOf('/'))
   await remoteCommand(`mkdir -p ${shellEscape(directory)}`)
   await window.electron.invoke('upload-file-ssh', {

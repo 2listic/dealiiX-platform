@@ -49,25 +49,31 @@ import {
 } from '../utils/parameterPorts'
 import {
   normalizeRelativeParameterPath,
+  parameterFilePath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
 } from '../utils/parameterFileAccess'
-import { resolveParameterFileReferences } from '../utils/fileReferences'
+import {
+  findExistingFiles,
+  resolveParameterFileReferences,
+} from '../utils/fileReferences'
 
 /** Returns the registry definition of a standard node type. */
 export type NodeDefinitionLookup = (type: string) => StandardNodeDefinition
 
 /**
  * Writes each parameter-file node's file, with its bound inputs applied, into
- * the run directory, and returns the graph Coral runs. A graph without
- * parameter files is returned as is.
+ * the run directory, and returns the graph Coral runs. A missing file marked
+ * `create_if_missing`, with no exposures, is passed by its absolute path in
+ * the working directory instead, so the backend writes its defaults there. A
+ * graph without parameter files is returned as is.
  * @param graph - The submitted graph in the saved form, with or without qualified ids.
  * @param options.location - Execution location holding the source files and the run directory.
  * @param options.copyDirectory - Directory the copies are written to (the run folder); nodes get their absolute paths.
  * @param options.definitionOf - Registry lookup for the ports of standard nodes, which saved graphs keep lean.
  * @returns The graph for Coral, with qualified ids.
- * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing, a value does not fit its type, or two nodes bind the same file differently.
+ * @throws {Error} If a binding is invalid (see {@link validateParameterBindings}), a file or entry is missing (a file marked `create_if_missing` only when it has exposures), a value does not fit its type, or two nodes bind the same file differently.
  */
 export const materializeNetwork = async (
   graph: object,
@@ -140,12 +146,16 @@ export const materializeNetwork = async (
     return tree
   }
 
-  for (const port of bindings.parameterNodes()) await materialize(port)
+  const created = await filesToCreate(bindings.parameterNodes(), location)
+  for (const port of bindings.parameterNodes()) {
+    if (!created.has(nodeKey(port))) await materialize(port)
+  }
 
   const { network } = rewriteForCoral(bindings.root, {
     bindings,
     definitionOf,
     runCopyOf: (port) =>
+      created.get(nodeKey(port)) ??
       `${withoutTrailingSlash(copyDirectory)}/${normalizeRelativeParameterPath(String(standardNode(port).value))}`,
     valueOf: (source) =>
       outputValue(trees.get(nodeKey(source)) as ParameterTree, source.exposure),
@@ -600,6 +610,32 @@ const level = (
   edges: edgesFromProtocolToFlow(network.workflow.edges),
   parent,
 })
+
+/**
+ * The nodes whose file the first run creates: marked `create_if_missing`, with
+ * no exposures, and missing from the working directory. Maps each node's key
+ * to the file's absolute path there; checks all files in one round trip.
+ */
+const filesToCreate = async (
+  ports: NodePort[],
+  location: ExecutionLocation
+): Promise<Map<string, string>> => {
+  const candidates = new Map<string, string>()
+  for (const port of ports) {
+    const node = standardNode(port)
+    const marker = node.parameter_file
+    if (!marker?.create_if_missing || marker.exposures.length > 0) continue
+    const source = parameterFileTarget(location, String(node.value))
+    // Without a working directory, reading the file reports the missing setting.
+    if (!source.workingDirectory) continue
+    candidates.set(nodeKey(port), parameterFilePath(source))
+  }
+  if (candidates.size === 0) return candidates
+  const existing = new Set(
+    await findExistingFiles([...new Set(candidates.values())], location)
+  )
+  return new Map([...candidates].filter(([, path]) => !existing.has(path)))
+}
 
 const withoutTrailingSlash = (path: string): string =>
   path.replace(/[\\/]+$/, '')

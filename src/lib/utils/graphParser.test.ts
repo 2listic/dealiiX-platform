@@ -106,6 +106,37 @@ describe('validateGraphData', () => {
       })
     })
 
+    it('round-trips create_if_missing on the parameter-file marker', () => {
+      mockStore.nodeDataByType = {
+        'std::string': {
+          type: 'std::string',
+          node_type: NodeType.ELEMENTARY_CONSTRUCTOR,
+          arguments: [],
+          inputs: [],
+          outputs: [-1],
+        },
+      }
+
+      const [node] = nodesFromProtocolToFlow({
+        '1': {
+          type: 'std::string',
+          value: 'my-subfolder/poisson_2d.prm',
+          parameter_file: { exposures: [], create_if_missing: true },
+        },
+      })
+
+      expect(node.data.parameter_file).toEqual({
+        exposures: [],
+        create_if_missing: true,
+      })
+      expect(parseGraphToProtocol([node], []).workflow.nodes['1']).toEqual({
+        type: 'std::string',
+        value: 'my-subfolder/poisson_2d.prm',
+        position: { x: 0, y: 0 },
+        parameter_file: { exposures: [], create_if_missing: true },
+      })
+    })
+
     it('throws error when node type is not found', () => {
       // Modify type of second node to trigger node not in the registry
       const invalidType = 'type_not_registered'
@@ -467,6 +498,7 @@ describe('parameter-node graph persistence', () => {
                 output: true,
               },
             ],
+            create_if_missing: true,
           },
         },
       },
@@ -521,6 +553,7 @@ describe('parameter-node graph persistence', () => {
       input: true,
       output: true,
     })
+    expect(savedNode.parameter_file.create_if_missing).toBe(true)
     expect(graph.workflow.edges['0'].target_handle).toBe(inputHandle)
     expect(graph.workflow.edges['1'].source_handle).toBe(outputHandle)
 
