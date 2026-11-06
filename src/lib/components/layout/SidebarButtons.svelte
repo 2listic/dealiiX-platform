@@ -41,7 +41,6 @@
   import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
   import { updateProject } from '../../requests/projects'
-  import ConfirmationModal from './ConfirmationModal.svelte'
   import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
@@ -60,7 +59,6 @@
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
-  const subnetworkWarningModalId = 'subnetwork-warning-modal'
   const runNameModalId = 'pipeline-run-name-modal'
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
@@ -354,10 +352,20 @@
     getModal(projectsModalId)?.open()
   }
 
+  const warnSavingFromSubnetwork = () => {
+    void confirmAction({
+      title: 'Cannot save from a subnetwork',
+      message:
+        'Navigate back to the root graph before saving or downloading. Conflicts may need to be reviewed.',
+      confirmText: 'OK',
+      cancelText: 'Close',
+    })
+  }
+
   const handleSaveProject = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
-      getModal(subnetworkWarningModalId)?.open()
+      warnSavingFromSubnetwork()
       return
     }
     if (currentProjectState.id) {
@@ -426,7 +434,7 @@
   const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
-      getModal(subnetworkWarningModalId)?.open()
+      warnSavingFromSubnetwork()
       return
     }
     try {
@@ -483,15 +491,6 @@
       <LoginForm modalId={loginModalId} />
     </Modal>
   {/if}
-
-  <ConfirmationModal
-    modalId={subnetworkWarningModalId}
-    title="Cannot save from a subnetwork"
-    message="Navigate back to the root graph before saving or downloading. Conflicts may need to be reviewed."
-    confirmText="OK"
-    cancelText="Close"
-    onConfirm={() => {}}
-  />
 
   <!-- Project group -->
   {#if isCoralMode && isSingleMode}

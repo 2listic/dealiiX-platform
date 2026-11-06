@@ -12,7 +12,7 @@ describe('confirmAction', () => {
     expect(confirmationState.pending).toBe(true)
     expect(confirmationState.request?.message).toBe('Unmark?')
 
-    confirmationState.settle('confirm')
+    confirmationState.answer('confirm')
 
     await expect(answer).resolves.toBe(true)
     expect(confirmationState.pending).toBe(false)
@@ -22,8 +22,8 @@ describe('confirmAction', () => {
   it('answers only once, so closing after confirming is ignored', async () => {
     const answer = confirmAction({ message: 'Delete?' })
 
-    confirmationState.settle('confirm')
-    confirmationState.settle('cancel')
+    confirmationState.answer('confirm')
+    confirmationState.answer('cancel')
 
     await expect(answer).resolves.toBe(true)
   })
@@ -35,7 +35,7 @@ describe('confirmAction', () => {
     await expect(first).resolves.toBe(false)
     expect(confirmationState.request?.message).toBe('Second?')
 
-    confirmationState.settle('confirm')
+    confirmationState.answer('confirm')
     await expect(second).resolves.toBe(true)
   })
 })
@@ -49,7 +49,7 @@ describe('chooseAction', () => {
 
     expect(confirmationState.request?.alternativeText).toBe('Upload')
 
-    confirmationState.settle('alternative')
+    confirmationState.answer('alternative')
 
     await expect(answer).resolves.toBe('alternative')
   })
@@ -57,7 +57,7 @@ describe('chooseAction', () => {
   it('makes confirmAction false when the alternative is chosen', async () => {
     const answer = confirmAction({ message: 'Continue?' })
 
-    confirmationState.settle('alternative')
+    confirmationState.answer('alternative')
 
     await expect(answer).resolves.toBe(false)
   })

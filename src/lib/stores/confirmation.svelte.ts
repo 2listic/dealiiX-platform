@@ -1,7 +1,7 @@
 /**
  * App-wide confirmation dialog, used instead of `window.confirm`: after a
  * native dialog closes, Electron can leave the page's inputs unable to take
- * focus. `ConfirmationHost` (mounted once in App) shows the pending request.
+ * focus. `ConfirmationModal` (mounted once in App) shows the pending request.
  */
 
 /** What the confirmation dialog shows. */
@@ -10,6 +10,8 @@ export type ConfirmationRequest = {
   title?: string
   /** Label of the confirm button; defaults to "Confirm". */
   confirmText?: string
+  /** Label of the cancel button; defaults to "Cancel". */
+  cancelText?: string
   confirmVariant?: 'default' | 'action' | 'delete'
   /** Label of a second action button, shown only when set. */
   alternativeText?: string
@@ -19,29 +21,27 @@ export type ConfirmationRequest = {
 export type ConfirmationAnswer = 'confirm' | 'alternative' | 'cancel'
 
 let request = $state<ConfirmationRequest | null>(null)
-let pending = $state(false)
-let resolvePending: ((_answer: ConfirmationAnswer) => void) | null = null
+/** Resolves the waiting caller's promise; set while a request waits for an answer. */
+let resolveAnswer = $state<((_answer: ConfirmationAnswer) => void) | null>(null)
 
 export const confirmationState = {
   /** The last request; kept after it is answered so the dialog keeps its text while it fades out. */
   get request(): ConfirmationRequest | null {
     return request
   },
-  /** Whether a request is waiting for an answer. */
+  /** Whether a request waits for an answer. */
   get pending(): boolean {
-    return pending
+    return resolveAnswer !== null
   },
   /**
-   * Answers the pending request; does nothing when none is pending.
+   * Answers the waiting request; does nothing when none waits.
    *
    * @param answer - The button the user chose.
    * @returns {void}
    */
-  settle(answer: ConfirmationAnswer): void {
-    if (!pending) return
-    pending = false
-    const resolve = resolvePending
-    resolvePending = null
+  answer(answer: ConfirmationAnswer): void {
+    const resolve = resolveAnswer
+    resolveAnswer = null
     resolve?.(answer)
   },
 }
@@ -57,21 +57,23 @@ export const confirmationState = {
 export const chooseAction = (
   next: ConfirmationRequest
 ): Promise<ConfirmationAnswer> => {
-  confirmationState.settle('cancel')
+  // A newer request replaces one still waiting, so its caller is not left hanging.
+  confirmationState.answer('cancel')
   request = next
-  pending = true
   return new Promise((resolve) => {
-    resolvePending = resolve
+    resolveAnswer = resolve
   })
 }
 
 /**
- * Asks the user to confirm an action in the app's confirmation dialog.
- * A new request answers a still-pending one with `false`.
+ * Asks the user to confirm an action, through {@link chooseAction}.
  *
  * @param next - What the dialog shows.
- * @returns Resolves to `true` when confirmed, `false` when cancelled or dismissed.
+ * @returns Resolves to `true` when confirmed, `false` for any other answer or close.
  */
 export const confirmAction = async (
   next: ConfirmationRequest
-): Promise<boolean> => (await chooseAction(next)) === 'confirm'
+): Promise<boolean> => {
+  const answer = await chooseAction(next)
+  return answer === 'confirm'
+}
