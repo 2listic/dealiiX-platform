@@ -10,7 +10,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 - [#216](https://github.com/2listic/dealiiX-platform/pull/216) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Parameter-file nodes can now be edited from the graph, expose selected parameters as graph ports, and materialize connected values in the per-run copy while keeping frontend-only metadata out of the backend graph.
-- [#250](https://github.com/2listic/dealiiX-platform/pull/250) A parameter file that does not exist yet can now be marked with **Use as parameter file**: the app offers to create its defaults on the first run, which then writes the file into the working directory and runs with it, as ImmersX does; later runs copy it like any other parameter file.
+- [#250](https://github.com/2listic/dealiiX-platform/pull/250) A parameter file that does not exist yet can now be marked with **Use as parameter file**: the app offers to create its defaults on the first run, which then writes the file into the working directory and runs with it, as ImmersX does; later runs copy it like any other parameter file. It can instead upload a local file of the same format to that path.
 
 ### Project-Structure
 

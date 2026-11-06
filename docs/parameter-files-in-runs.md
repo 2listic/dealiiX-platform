@@ -17,7 +17,11 @@ An unmarked string naming an existing file in the working directory is passed by
 
 ## Creating a missing file on the first run
 
-When **Use as parameter file** cannot find the file, it asks: "Not found at <full path>. Create its defaults on the first run?" **Create on first run** marks the node without opening the editor:
+When **Use as parameter file** cannot find the file, it asks: "Not found at <full path>. Create its defaults on the first run, or upload a local file to save there?"
+
+**Upload a local file…** opens a file picker. The picked file is saved at that full path, then opens in the editor, and the node is marked like an existing file. A file in the other format (JSON content for a `.prm` node, or the reverse) is rejected with an error, and the node stays unmarked.
+
+**Create on first run** marks the node without opening the editor:
 
 ```json
 {

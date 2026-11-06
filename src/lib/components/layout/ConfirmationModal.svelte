@@ -10,7 +10,10 @@
     confirmText?: string
     cancelText?: string
     confirmVariant?: 'default' | 'action' | 'delete'
+    /** Label of a second action button, shown only when set. */
+    alternativeText?: string
     onConfirm: () => void
+    onAlternative?: () => void
     onCancel?: () => void
     /** Called on every close, after `onConfirm` or `onCancel` when a button closed it. */
     onClose?: () => void
@@ -24,7 +27,9 @@
     confirmText = 'Confirm',
     cancelText = 'Cancel',
     confirmVariant = 'default',
+    alternativeText,
     onConfirm,
+    onAlternative,
     onCancel,
     onClose,
     closeOnBackdrop = true,
@@ -32,6 +37,11 @@
 
   const handleConfirm = () => {
     onConfirm()
+    getModal(modalId)?.close()
+  }
+
+  const handleAlternative = () => {
+    onAlternative?.()
     getModal(modalId)?.close()
   }
 
@@ -64,6 +74,11 @@
     <p>{message}</p>
     <div class="confirmation-actions">
       <Button size="small" onclick={handleCancel}>{cancelText}</Button>
+      {#if alternativeText}
+        <Button variant="action" size="small" onclick={handleAlternative}>
+          {alternativeText}
+        </Button>
+      {/if}
       <Button variant={confirmVariant} size="small" onclick={handleConfirm}>
         {confirmText}
       </Button>

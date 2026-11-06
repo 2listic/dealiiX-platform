@@ -1,7 +1,7 @@
 <!--
   Shows the app-wide confirmation dialog for `confirmAction`. Mounted once,
   last in App, so it stacks above a modal that asks for confirmation. Any
-  close other than the confirm button answers "no".
+  close other than the two action buttons answers "cancel".
 -->
 <script lang="ts">
   import ConfirmationModal from './ConfirmationModal.svelte'
@@ -21,6 +21,8 @@
   message={confirmationState.request?.message ?? ''}
   confirmText={confirmationState.request?.confirmText}
   confirmVariant={confirmationState.request?.confirmVariant}
-  onConfirm={() => confirmationState.settle(true)}
-  onClose={() => confirmationState.settle(false)}
+  alternativeText={confirmationState.request?.alternativeText}
+  onConfirm={() => confirmationState.settle('confirm')}
+  onAlternative={() => confirmationState.settle('alternative')}
+  onClose={() => confirmationState.settle('cancel')}
 />
