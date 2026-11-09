@@ -88,6 +88,8 @@ Parameter files referenced by a graph go here, and each run gets its own folder 
 3. On the `poisson_2d.prm` string node, click **Use as parameter file**, expose an entry (e.g. `Domain / Initial refinement`) as an input, and connect a string literal to it.
 4. Run. The run folder in `docker/shared-data/` holds a copy of `poisson_2d.prm` with the connected value, and `poisson_2d_used.prm`, which ImmersX writes next to the file it read. The source `poisson_2d.prm` is unchanged.
 
+Instead of step 1, **Use as parameter file** can upload a local copy of `poisson_2d.prm` into the shared folder when it is not there yet. See [Parameter files in runs](parameter-files-in-runs.md#a-missing-file).
+
 ### Ready-made graphs
 
 Two graphs in this repository's [examples/graphs/](../examples/graphs/) are already marked and connected. Copy their parameter files into `<immersx>/docker/shared-data/` first, then import them with **Import Graph**:

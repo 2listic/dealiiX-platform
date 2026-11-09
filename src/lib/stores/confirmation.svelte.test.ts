@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { confirmAction, confirmationState } from './confirmation.svelte'
+import {
+  chooseAction,
+  confirmAction,
+  confirmationState,
+} from './confirmation.svelte'
 
 describe('confirmAction', () => {
   it('resolves with the answer and keeps the request text', async () => {
@@ -8,7 +12,7 @@ describe('confirmAction', () => {
     expect(confirmationState.pending).toBe(true)
     expect(confirmationState.request?.message).toBe('Unmark?')
 
-    confirmationState.settle(true)
+    confirmationState.answer('confirm')
 
     await expect(answer).resolves.toBe(true)
     expect(confirmationState.pending).toBe(false)
@@ -18,8 +22,8 @@ describe('confirmAction', () => {
   it('answers only once, so closing after confirming is ignored', async () => {
     const answer = confirmAction({ message: 'Delete?' })
 
-    confirmationState.settle(true)
-    confirmationState.settle(false)
+    confirmationState.answer('confirm')
+    confirmationState.answer('cancel')
 
     await expect(answer).resolves.toBe(true)
   })
@@ -31,7 +35,30 @@ describe('confirmAction', () => {
     await expect(first).resolves.toBe(false)
     expect(confirmationState.request?.message).toBe('Second?')
 
-    confirmationState.settle(true)
+    confirmationState.answer('confirm')
     await expect(second).resolves.toBe(true)
+  })
+})
+
+describe('chooseAction', () => {
+  it('resolves with the button chosen', async () => {
+    const answer = chooseAction({
+      message: 'Missing file',
+      alternativeText: 'Upload',
+    })
+
+    expect(confirmationState.request?.alternativeText).toBe('Upload')
+
+    confirmationState.answer('alternative')
+
+    await expect(answer).resolves.toBe('alternative')
+  })
+
+  it('makes confirmAction false when the alternative is chosen', async () => {
+    const answer = confirmAction({ message: 'Continue?' })
+
+    confirmationState.answer('alternative')
+
+    await expect(answer).resolves.toBe(false)
   })
 })

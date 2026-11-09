@@ -11,7 +11,7 @@
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
-  import ConfirmationHost from './lib/components/layout/ConfirmationHost.svelte'
+  import ConfirmationModal from './lib/components/layout/ConfirmationModal.svelte'
   import { executionSelectionState } from './lib/stores/executionSelection.svelte'
   import { graphHistoryState } from './lib/stores/graphStack.svelte'
   import { viewModeState } from './lib/stores/viewModeStore.svelte'
@@ -120,7 +120,7 @@
     </div>
   </SvelteFlowProvider>
   <!-- Last, so the dialog stacks above any modal that asks for confirmation -->
-  <ConfirmationHost />
+  <ConfirmationModal />
 </main>
 
 <style>

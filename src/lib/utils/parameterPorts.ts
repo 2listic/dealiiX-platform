@@ -4,6 +4,7 @@ import {
   Type,
   type Argument,
   type ParameterExposure,
+  type ParameterFileMetadata,
   type ParameterPortType,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -154,6 +155,17 @@ export const normalizeParameterExposures = (
     ]
   })
 }
+
+/**
+ * Normalises a parameter-file marker for the graph: valid exposures only.
+ * @param marker - The marker as found in node data or a graph file.
+ * @returns A fresh marker, sharing nothing with the input.
+ */
+export const normalizeParameterFile = (
+  marker: ParameterFileMetadata
+): ParameterFileMetadata => ({
+  exposures: normalizeParameterExposures(marker.exposures),
+})
 
 /** Converts a parameter exposure into a normal graph argument descriptor. */
 export const parameterExposureArgument = (

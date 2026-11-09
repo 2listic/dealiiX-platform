@@ -1,44 +1,28 @@
+<!--
+  Shows the app-wide confirmation dialog for `confirmAction` and
+  `chooseAction`. Mounted once, last in App, so it stacks above a modal that
+  asks for confirmation. Any close other than the two action buttons answers
+  "cancel".
+-->
 <script lang="ts">
   import Modal, { getModal } from './Modal.svelte'
   import Button from './Button.svelte'
   import { onMount } from 'svelte'
+  import {
+    confirmationState,
+    type ConfirmationAnswer,
+  } from '../../stores/confirmation.svelte'
 
-  interface Props {
-    modalId: string
-    title?: string
-    message: string
-    confirmText?: string
-    cancelText?: string
-    confirmVariant?: 'default' | 'action' | 'delete'
-    onConfirm: () => void
-    onCancel?: () => void
-    /** Called on every close, after `onConfirm` or `onCancel` when a button closed it. */
-    onClose?: () => void
-    closeOnBackdrop?: boolean
-  }
+  const modalId = 'confirm-action'
+  const request = $derived(confirmationState.request)
 
-  let {
-    modalId,
-    title,
-    message,
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
-    confirmVariant = 'default',
-    onConfirm,
-    onCancel,
-    onClose,
-    closeOnBackdrop = true,
-  }: Props = $props()
+  // A waiting request opens the dialog.
+  $effect(() => {
+    if (confirmationState.pending) getModal(modalId)?.open()
+  })
 
-  const handleConfirm = () => {
-    onConfirm()
-    getModal(modalId)?.close()
-  }
-
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel()
-    }
+  const respond = (answer: ConfirmationAnswer) => {
+    confirmationState.answer(answer)
     getModal(modalId)?.close()
   }
 
@@ -47,7 +31,7 @@
       const modal = getModal(modalId)
       if (event.key === 'Enter' && modal?.isVisible()) {
         event.preventDefault()
-        handleConfirm()
+        respond('confirm')
       }
     }
 
@@ -56,16 +40,36 @@
   })
 </script>
 
-<Modal id={modalId} {closeOnBackdrop} {onClose} size="sm">
+<!-- ×, Escape and the backdrop answer "cancel"; after a button it does nothing, as nothing waits any more. -->
+<Modal
+  id={modalId}
+  onClose={() => confirmationState.answer('cancel')}
+  size="sm"
+>
   <div class="confirmation-modal">
-    {#if title}
-      <h2>{title}</h2>
+    {#if request?.title}
+      <h2>{request.title}</h2>
     {/if}
-    <p>{message}</p>
+    <p>{request?.message}</p>
     <div class="confirmation-actions">
-      <Button size="small" onclick={handleCancel}>{cancelText}</Button>
-      <Button variant={confirmVariant} size="small" onclick={handleConfirm}>
-        {confirmText}
+      <Button size="small" onclick={() => respond('cancel')}>
+        {request?.cancelText ?? 'Cancel'}
+      </Button>
+      {#if request?.alternativeText}
+        <Button
+          variant="action"
+          size="small"
+          onclick={() => respond('alternative')}
+        >
+          {request.alternativeText}
+        </Button>
+      {/if}
+      <Button
+        variant={request?.confirmVariant ?? 'default'}
+        size="small"
+        onclick={() => respond('confirm')}
+      >
+        {request?.confirmText ?? 'Confirm'}
       </Button>
     </div>
   </div>

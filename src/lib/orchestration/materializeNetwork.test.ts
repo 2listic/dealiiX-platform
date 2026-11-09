@@ -26,6 +26,8 @@ const files = vi.hoisted(() => new Map<string, string>())
 
 vi.mock('../utils/parameterFileAccess', () => ({
   normalizeRelativeParameterPath: (fileName: string) => fileName,
+  parameterFilePath: (target: { workingDirectory: string; fileName: string }) =>
+    `${target.workingDirectory}/${target.fileName}`,
   parameterFileTarget: (location: string, fileName: string) => ({
     location,
     workingDirectory: '/work',
@@ -51,6 +53,8 @@ vi.mock('../utils/parameterFileAccess', () => ({
 vi.mock('../utils/fileReferences', () => ({
   resolveParameterFileReferences: async (tree: unknown) => tree,
   resolveGraphFileReferences: async (graph: unknown) => graph,
+  findExistingFiles: async (paths: string[]) =>
+    paths.filter((path) => files.has(path)),
 }))
 
 const {
@@ -630,5 +634,13 @@ describe('isSubnetworkParameterOutput', () => {
     expect(isSubnetworkParameterOutput(sub, 'output-0', getNodeData)).toBe(
       false
     )
+  })
+})
+
+describe('missing parameter file', () => {
+  it('stops the submission with its path', async () => {
+    await expect(
+      materialize(network({ '0': parameterFile('poisson_2d.prm', []) }))
+    ).rejects.toThrow('/work/poisson_2d.prm not found')
   })
 })
