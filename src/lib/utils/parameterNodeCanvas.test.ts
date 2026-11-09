@@ -105,17 +105,6 @@ describe('setNodeParameterExposures', () => {
     expect(edges).toEqual([ordinaryEdge])
   })
 
-  it('keeps create_if_missing on the marker', () => {
-    nodes[0].data.parameter_file = { exposures: [], create_if_missing: true }
-
-    setNodeParameterExposures('1', [exposure])
-
-    expect(nodes[0].data.parameter_file).toEqual({
-      exposures: [exposure],
-      create_if_missing: true,
-    })
-  })
-
   it('does nothing when the node is not in the current graph level', () => {
     const before = nodes
 
@@ -155,15 +144,6 @@ describe('markParameterFile / unmarkParameterFile', () => {
       parameter_file: { exposures: [] },
     })
     expect(edges).toEqual([inputEdge, outputEdge, ordinaryEdge])
-  })
-
-  it('marks a node whose file the first run creates', () => {
-    markParameterFile('2', true)
-
-    expect(nodes[1].data).toEqual({
-      value: 3,
-      parameter_file: { exposures: [], create_if_missing: true },
-    })
   })
 
   it('unmarks a node and removes the edges of its parameter handles', () => {

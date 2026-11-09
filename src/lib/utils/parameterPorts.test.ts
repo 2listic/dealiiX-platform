@@ -15,18 +15,18 @@ describe('normalizeParameterFile', () => {
     output: false,
   }
 
-  it('keeps the exposures and create_if_missing', () => {
-    const marker = { exposures: [exposure], create_if_missing: true }
+  it('copies the exposures', () => {
+    const marker = { exposures: [exposure] }
     const normalized = normalizeParameterFile(marker)
 
     expect(normalized).toEqual(marker)
     expect(normalized.exposures[0].path).not.toBe(exposure.path)
   })
 
-  it('omits create_if_missing when it is false', () => {
-    expect(
-      normalizeParameterFile({ exposures: [], create_if_missing: false })
-    ).toEqual({ exposures: [] })
+  it('drops unknown fields', () => {
+    const marker = { exposures: [], create_if_missing: true }
+
+    expect(normalizeParameterFile(marker)).toEqual({ exposures: [] })
   })
 })
 

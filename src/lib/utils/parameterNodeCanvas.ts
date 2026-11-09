@@ -29,10 +29,9 @@ export const staleParameterEdges = (
 ): Edge[] => getEdges().filter((edge) => isStale(edge, nodeId, exposures))
 
 /**
- * Replaces a node's parameter exposures in the nodes store, keeping the rest
- * of its marker, and removes the edges whose parameter handle disappears, as
- * one undoable graph edit. Does nothing when the node is not in the current
- * graph level.
+ * Replaces a node's parameter exposures in the nodes store and removes the
+ * edges whose parameter handle disappears, as one undoable graph edit. Does
+ * nothing when the node is not in the current graph level.
  *
  * @param nodeId    - Id of the parameter-file node.
  * @param exposures - New exposures; pass a plain snapshot, not a reactive proxy.
@@ -41,29 +40,18 @@ export const staleParameterEdges = (
 export const setNodeParameterExposures = (
   nodeId: string,
   exposures: ParameterExposure[]
-): void => {
-  const previous = getNodes().find((node) => node.id === nodeId)?.data
-    .parameter_file as ParameterFileMetadata | undefined
-  replaceParameterFile(nodeId, { ...previous, exposures })
-}
+): void => replaceParameterFile(nodeId, { exposures })
 
 /**
  * Marks a node as a parameter file with no exposed parameters, as one
  * undoable graph edit. Does nothing when the node is not in the current
  * graph level.
  *
- * @param nodeId          - Id of the string literal node naming the file.
- * @param createIfMissing - Whether a run creates the file when it is missing.
+ * @param nodeId - Id of the string literal node naming the file.
  * @returns {void}
  */
-export const markParameterFile = (
-  nodeId: string,
-  createIfMissing = false
-): void =>
-  replaceParameterFile(nodeId, {
-    exposures: [],
-    ...(createIfMissing && { create_if_missing: true }),
-  })
+export const markParameterFile = (nodeId: string): void =>
+  replaceParameterFile(nodeId, { exposures: [] })
 
 /**
  * Removes a node's parameter-file marker, and the edges attached to its

@@ -637,57 +637,8 @@ describe('isSubnetworkParameterOutput', () => {
   })
 })
 
-describe('create_if_missing', () => {
-  const createIfMissing = (
-    value: string,
-    exposures: ParameterExposure[] = []
-  ) => ({
-    type: 'std::string',
-    value,
-    parameter_file: { exposures, create_if_missing: true },
-  })
-
-  it('passes a missing file by its working-directory path, without a copy', async () => {
-    const result = await materialize(
-      network({ '0': createIfMissing('my-subfolder/poisson_2d.prm') })
-    )
-
-    expect(result.workflow.nodes['0']).toEqual({
-      type: 'std::string',
-      value: '/work/my-subfolder/poisson_2d.prm',
-      qualified_id: '0',
-    })
-    expect([...files.keys()]).toEqual([])
-  })
-
-  it('copies the file once it exists', async () => {
-    files.set('/work/my-subfolder/poisson_2d.prm', prm({ Refinement: '1' }))
-
-    const result = await materialize(
-      network({ '0': createIfMissing('my-subfolder/poisson_2d.prm') })
-    )
-
-    expect(result.workflow.nodes['0']).toMatchObject({
-      value: '/run/my-subfolder/poisson_2d.prm',
-    })
-    expect(files.get('/run/my-subfolder/poisson_2d.prm')).toMatch(
-      /set Refinement\s*=\s*1/
-    )
-  })
-
-  it('stops on a missing file that has exposures', async () => {
-    await expect(
-      materialize(
-        network({
-          '0': createIfMissing('poisson_2d.prm', [
-            exposure(['Refinement'], 'int', 'output'),
-          ]),
-        })
-      )
-    ).rejects.toThrow('/work/poisson_2d.prm not found')
-  })
-
-  it('stops on a missing file without the flag', async () => {
+describe('missing parameter file', () => {
+  it('stops the submission with its path', async () => {
     await expect(
       materialize(network({ '0': parameterFile('poisson_2d.prm', []) }))
     ).rejects.toThrow('/work/poisson_2d.prm not found')

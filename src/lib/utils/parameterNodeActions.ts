@@ -22,11 +22,7 @@ import {
   parseParametersFileWithFormat,
 } from './parameterFileFormat'
 import { findExistingFiles } from './fileReferences'
-import {
-  chooseAction,
-  confirmAction,
-  type ConfirmationAnswer,
-} from '../stores/confirmation.svelte'
+import { confirmAction } from '../stores/confirmation.svelte'
 import {
   markParameterFile,
   staleParameterEdges,
@@ -77,9 +73,7 @@ export const openParameterFile = async (
 /**
  * Opens a node's file and marks the node as a parameter file. Marks it only
  * once the file opened, so a mistyped path leaves no marker. When the file is
- * missing, asks whether the first run should create its defaults, marking the
- * node for that without opening the editor, or whether to upload a local file
- * to the node's path.
+ * missing, offers to upload a local file to the node's path.
  *
  * @param nodeId - Id of the string literal node naming the file.
  * @param data   - The node's data: its value is the file name.
@@ -101,15 +95,11 @@ export const useAsParameterFile = async (
     })
     markParameterFile(nodeId)
   } catch (error) {
-    // The read failed. If the file is missing, ask how to provide it;
+    // The read failed. If the file is missing, offer to upload one;
     // otherwise report the error.
-    const answer = await askAboutMissingFile(target)
-    if (answer === 'confirm') {
-      // Mark the node for creation on the first run.
-      markParameterFile(nodeId, true)
-    } else if (answer === 'alternative') {
+    if (await askToUploadMissingFile(target)) {
       await uploadParameterFile(nodeId, data, target)
-    } else if (answer === 'cancel') {
+    } else {
       reportOpenError(error)
     }
   }
@@ -151,32 +141,30 @@ const reportOpenError = (error: unknown): void => {
 }
 
 /**
- * Asks whether the first run should create a file's defaults (`confirm`) or a
- * local file should be uploaded to its path (`alternative`), only when the
- * file is confirmed missing: a failed read can also mean an SSH or permission
- * error, which keeps its toast (`cancel`).
+ * Asks whether to upload a local file to a file's path, only when the file is
+ * confirmed missing: a failed read can also mean an SSH or permission error,
+ * which keeps its toast.
  */
-const askAboutMissingFile = async (
+const askToUploadMissingFile = async (
   target: ParameterFileTarget
-): Promise<ConfirmationAnswer> => {
+): Promise<boolean> => {
   // No working directory: the read error already says to configure one.
-  if (!target.workingDirectory) return 'cancel'
+  if (!target.workingDirectory) return false
   let path: string
   try {
     path = parameterFilePath(target)
     // The file exists, so the read failed for another reason.
     const existing = await findExistingFiles([path], target.location)
-    if (existing.length > 0) return 'cancel'
+    if (existing.length > 0) return false
   } catch {
     // An invalid name or a failed check: keep the read error.
-    return 'cancel'
+    return false
   }
-  return chooseAction({
+  return confirmAction({
     title: 'Parameter file not found',
-    message: `Not found at ${path}. Create its defaults on the first run, or upload a local file to save there?`,
-    confirmText: 'Create on first run',
+    message: `Not found at ${path}. A parameter file must exist before it can be used: upload a local file to save there?`,
+    confirmText: 'Upload a local file…',
     confirmVariant: 'action',
-    alternativeText: 'Upload a local file…',
   })
 }
 
