@@ -1,0 +1,32 @@
+name: Heart circulation examples
+
+on:
+  pull_request:
+    paths:
+      - "examples/heart_circulation/**"
+      - ".github/workflows/heart-circulation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "examples/heart_circulation/**"
+      - ".github/workflows/heart-circulation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install input-check dependency
+        run: python -m pip install 'numpy>=2.0'
+      - name: Check shell and Python syntax
+        run: |
+          bash -n examples/heart_circulation/run_adavn_full.sh examples/heart_circulation/run_adan56.sh
+          python -m py_compile examples/heart_circulation/workflow.py examples/heart_circulation/rank_entry.py
+      - name: Check scientific input and parameter contracts without downloads or MPI
+        run: python -m unittest discover -s examples/heart_circulation -p test_workflow.py -v
