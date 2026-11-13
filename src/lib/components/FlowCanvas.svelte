@@ -57,11 +57,11 @@
     createCanvasNode,
     buildEdgeForNewNode,
     resolveConnectionAndCompatibleNodes,
-    formatSuggestedNodeName,
     type CompatibleNodeOption,
     type ConnectedNodeDraft,
     type ConnectStartParams,
   } from '../utils/canvasNodeUtils'
+  import { formatSuggestedNodeName } from '../utils/nodePalette'
   import { createOverloadFamilies } from '../utils/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
   import { graphViewportState } from '../stores/graphViewport.svelte'

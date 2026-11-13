@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NodeType, type StandardNodeDefinition } from '../types/nodeTypes'
 import {
+  formatSuggestedNodeName,
   groupNodesByClass,
   groupNodesByOperation,
   nodeOwnerDisplayName,
@@ -26,6 +27,15 @@ const node = (
 })
 
 describe('node palette metadata', () => {
+  it('formats suggested names for display', () => {
+    expect(formatSuggestedNodeName('my_connection_name')).toBe(
+      'My connection name'
+    )
+    expect(formatSuggestedNodeName('ImmersX::LinearExecution')).toBe(
+      'LinearExecution'
+    )
+  })
+
   it('uses an optional variant label for operation specializations', () => {
     const poisson = node('poisson<2>', {
       operation: 'finite_element_space',

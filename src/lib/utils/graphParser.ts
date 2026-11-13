@@ -19,7 +19,6 @@ import {
 } from '../stores/registryStore.svelte'
 import {
   handleIdToIndex,
-  canonicalNodeName,
   resolveInputArgument,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
@@ -241,13 +240,10 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = getNodeData(protocolNode.type)
     const regularNode = protocolNode as LeanStandardNode
-    const name = regularNode.name
-      ? canonicalNodeName({ ...storeNodeData, name: regularNode.name })
-      : undefined
     return {
       ...storeNodeData,
       position: protocolNode.position,
-      ...(name && { name }),
+      ...(regularNode.name && { name: regularNode.name }),
       ...(regularNode.base !== undefined && { base: regularNode.base }),
       ...(regularNode.bases !== undefined && {
         bases: [...regularNode.bases],

@@ -13,16 +13,13 @@ import {
 } from '../types/nodeTypes'
 import {
   createCanvasNode,
-  canonicalNodeName,
   findCompatibleSourceNodesAsOptions,
   findCompatibleTargetNodesAsOptions,
-  formatSuggestedNodeName,
   getInputTypeAndName,
   getOutputTypeAndName,
   resolveConnectionAndCompatibleNodes,
   resolveOutputTypeCandidates,
   returnNodeName,
-  returnNodeSignature,
 } from './canvasNodeUtils'
 import { groupNodesByOperation } from './nodePalette'
 import { createOverloadNodeDefinition } from './overloadResolution'
@@ -394,15 +391,6 @@ describe('canvasNodeUtils', () => {
     ).toHaveLength(1)
   })
 
-  it('formats suggested names for display', () => {
-    expect(formatSuggestedNodeName('my_connection_name')).toBe(
-      'My connection name'
-    )
-    expect(formatSuggestedNodeName('ImmersX::LinearExecution')).toBe(
-      'LinearExecution'
-    )
-  })
-
   it('builds default node names from the node definition type', () => {
     expect(
       returnNodeName({
@@ -448,7 +436,6 @@ describe('canvasNodeUtils', () => {
     } as NodeDefinitions
 
     expect(returnNodeName(definition)).toBe('Run Laplace problem')
-    expect(returnNodeSignature(definition)).toBe('LaplaceProblem::run<2>')
   })
 
   it('includes the registered owner in canvas names', () => {
@@ -465,9 +452,6 @@ describe('canvasNodeUtils', () => {
     } as NodeDefinitions
 
     expect(returnNodeName(definition)).toBe(
-      'Linear execution -> Add constraint'
-    )
-    expect(returnNodeName({ ...definition, name: 'Add constraint' })).toBe(
       'Linear execution -> Add constraint'
     )
   })
@@ -488,31 +472,6 @@ describe('canvasNodeUtils', () => {
     expect(returnNodeName(definition)).toBe('Boundary conditions')
   })
 
-  it('repairs old owner-prefixed constructor names', () => {
-    const definitions = [
-      ['Boundary conditions', 'BoundaryConditions'],
-      ['Linear execution', 'LinearExecution'],
-      ['Known term', 'KnownTerm'],
-    ] as const
-
-    for (const [displayName, className] of definitions) {
-      expect(
-        returnNodeName({
-          type: `${displayName}<2,2>`,
-          node_type: NodeType.FUNCTION,
-          arguments: [],
-          inputs: [],
-          outputs: [],
-          operation: displayName,
-          display_name: displayName,
-          class_name: className,
-          method_name: 'create',
-          name: `${displayName} -> ${displayName}`,
-        } as NodeDefinitions)
-      ).toBe(displayName)
-    }
-  })
-
   it('uses the logical display name instead of the palette variant', () => {
     const definition = {
       ...registry['LaplaceProblem::run<2>'],
@@ -522,19 +481,6 @@ describe('canvasNodeUtils', () => {
     } as NodeDefinitions
 
     expect(returnNodeName(definition)).toBe('Run Laplace problem')
-  })
-
-  it('repairs a persisted variant name when loading an older graph', () => {
-    const definition = {
-      ...registry['LaplaceProblem::run<2>'],
-      operation: 'LaplaceProblem::run',
-      display_name: 'Run Laplace problem',
-      variant_name: 'Run · 2D',
-      name: 'Run · 2D',
-    } as NodeDefinitions
-
-    expect(returnNodeName(definition)).toBe('Run Laplace problem')
-    expect(canonicalNodeName(definition)).toBe('Run Laplace problem')
   })
 
   it('connects directly when an operation has one compatible specialization', () => {

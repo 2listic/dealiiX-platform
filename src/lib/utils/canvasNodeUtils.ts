@@ -24,11 +24,8 @@ import {
   parameterPortCoralType,
 } from './parameterPorts'
 import {
-  displayTypeName,
-  nodeConcreteSignature,
-  nodeLegacyOwnerDisplayName,
+  formatSuggestedNodeName,
   nodeOwnerDisplayName,
-  nodePaletteDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
 } from './nodePalette'
@@ -361,79 +358,14 @@ export const getInputTypeAndName = (
 }
 
 /**
- * Converts a snake_case or raw identifier into a title-cased display name.
- * @param name - Raw name string (e.g. `"my_node_name"`).
- * @returns Display name (e.g. `"My node name"`), or `""` if input is blank.
- */
-export const formatSuggestedNodeName = (name: string): string => {
-  const normalized = displayTypeName(name).replaceAll('_', ' ').trim()
-  if (!normalized) {
-    return ''
-  }
-
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
-}
-
-/**
- * Returns the canonical persisted instance name for a node.
- *
- * The old UI stored `variant_name` as the default instance name. Migrate that
- * generated value to the logical `display_name`, while preserving genuinely
- * custom names and network-node identifiers.
- *
- * @param node - Node whose persisted instance name should be canonicalized.
- * @returns Canonical instance name, or `undefined` when no name is stored.
- */
-export const canonicalNodeName = (
-  node: NodeDefinitions
-): string | undefined => {
-  if (!node.name) return undefined
-
-  if (node.node_type !== NodeType.NETWORK) {
-    const registryNode = node as StandardNodeDefinition
-    if (
-      registryNode.display_name?.trim() &&
-      registryNode.variant_name?.trim() === node.name.trim()
-    ) {
-      return registryNode.class_name
-        ? nodeOwnerDisplayName(registryNode)
-        : registryNode.display_name.trim()
-    }
-
-    const oldGeneratedNames = [
-      registryNode.display_name,
-      registryNode.variant_name,
-      registryNode.operation,
-      registryNode.method_name,
-      nodePaletteDisplayName(registryNode),
-      nodeLegacyOwnerDisplayName(registryNode),
-    ]
-      .filter((value): value is string => Boolean(value?.trim()))
-      .map((value) => value.trim())
-    if (
-      registryNode.class_name &&
-      oldGeneratedNames.includes(node.name.trim())
-    ) {
-      return nodeOwnerDisplayName(registryNode)
-    }
-  }
-
-  return node.name
-}
-
-/**
- * Returns the display name for a node definition.
- *
- * A persisted `name` is an instance label, except when it is the old
- * automatically generated variant label. In that case use the logical
- * `display_name` so loading an older graph also repairs its canvas label.
+ * Returns the display name for a node definition: its stored instance name,
+ * else its family or owner label, else a label derived from its type.
  *
  * @param node - Registry node or stored subgraph node.
  * @returns Display name, or `""` if all available labels are blank.
  */
 export const returnNodeName = (node: NodeDefinitions): string => {
-  const canonicalName = canonicalNodeName(node)
-  if (canonicalName) return formatSuggestedNodeName(canonicalName)
+  if (node.name) return formatSuggestedNodeName(node.name)
 
   if (node.node_type !== NodeType.NETWORK) {
     if (isOverloadNodeDefinition(node)) {
@@ -445,12 +377,6 @@ export const returnNodeName = (node: NodeDefinitions): string => {
 
   return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))
 }
-
-/** Returns the concrete registry identifier for a picker/connection option. */
-export const returnNodeSignature = (node: NodeDefinitions): string =>
-  isOverloadNodeDefinition(node)
-    ? node.candidates.map(nodeConcreteSignature).join('\n')
-    : nodeConcreteSignature(node as StandardNodeDefinition)
 
 /**
  * Finds all available nodes that produce `expectedInputType` on any output handle.
