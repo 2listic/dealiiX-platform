@@ -18,7 +18,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  ConnectionType,
   NodeType,
+  Type,
   TypeField,
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
@@ -388,5 +390,89 @@ describe('graphNavigationState', () => {
     )
     // Stack is back to root.
     expect(graphStackState.canGoBack).toBe(false)
+  })
+
+  it('keeps an edge from the subnetwork into a family that has a matching variant', async () => {
+    const { createOverloadNodeDefinition } = await import(
+      '../utils/overloadResolution'
+    )
+    const fieldCandidate = (dim: number) => ({
+      type: `field<${dim}>`,
+      output_type: `Field<${dim}>`,
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'space',
+          type: `SpaceView<${dim}>` as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [-1],
+      node_type: NodeType.FUNCTION,
+      operation: 'field',
+    })
+    // Parent canvas: subnetwork '5' feeds family '6', whose input type is the
+    // union "SpaceView<1> | SpaceView<2>".
+    const parentNode = makeNetworkCanvasNode('5', 'Sub')
+    mockState.currentNodes = [
+      parentNode,
+      {
+        id: '6',
+        type: NodeType.OVERLOAD,
+        position: { x: 0, y: 0 },
+        data: createOverloadNodeDefinition([
+          fieldCandidate(1),
+          fieldCandidate(2),
+        ]),
+      },
+    ]
+    mockState.currentEdges = [
+      {
+        id: 'e1',
+        source: '5',
+        sourceHandle: 'output-0',
+        target: '6',
+        targetHandle: 'input-0',
+      },
+    ]
+    mockState.networkNodes = new Set(['Sub'])
+    mockState.networkNodeData.Sub = parentNode.data
+    mockState.protocolNodes = [
+      {
+        id: '7',
+        type: NodeType.EMPTY_CONSTRUCTOR,
+        position: { x: 0, y: 0 },
+        data: { type: 'Space' },
+      },
+    ]
+    mockState.protocolEdges = []
+    mockState.createNetworkNodeDefinition.mockReturnValue({
+      type: TypeField.CORAL_NETWORK,
+      node_type: NodeType.NETWORK,
+      name: 'Sub',
+      arguments: [
+        { connection_type: 'output', name: 'self', type: 'SpaceView<2>' },
+      ],
+      inputs: [],
+      outputs: [0],
+      value: {
+        author: 'test',
+        date_time_utc: '',
+        version: 1,
+        workflow: { nodes: {}, edges: {} },
+      },
+      is_valid: true,
+    })
+
+    const { enterSubnetwork, loadParentGraph } = await import(
+      './graphNavigation.svelte'
+    )
+    await enterSubnetwork('5')
+    await loadParentGraph()
+
+    expect(mockState.currentEdges.map((edge) => edge.id)).toEqual(['e1'])
+    expect(mockState.toastAdd).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    )
   })
 })

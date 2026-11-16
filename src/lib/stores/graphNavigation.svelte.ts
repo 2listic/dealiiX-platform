@@ -19,7 +19,6 @@ import {
 } from '../utils/graphParser'
 import {
   handleIdToIndex,
-  resolveInputArgument,
   resolveOutputTypeCandidates,
 } from '../utils/canvasNodeUtils'
 import type {
@@ -27,7 +26,10 @@ import type {
   SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { getBaseTypes, isTypeCompatible } from '../types/nodeTypes'
-import { withOverloadAction } from '../utils/overloadResolution'
+import {
+  overloadInputTypes,
+  withOverloadAction,
+} from '../utils/overloadResolution'
 import { toastState } from './toastsStore.svelte.js'
 import { graphStackState } from './graphStack.svelte'
 
@@ -410,18 +412,20 @@ const filterStaleParentEdges = (
       }
       const outputArgument = updatedNetworkNode.arguments[argIndex]
       const targetNode = parentNodes.find((n) => n.id === edge.target)
-      const targetType = targetNode
-        ? resolveInputArgument(
+      // A family target accepts the input type of any of its variants.
+      const targetTypes = targetNode
+        ? overloadInputTypes(
             targetNode.data as NodeDefinitions,
             handleIdToIndex(edge.targetHandle as string)
-          )?.type
-        : null
+          )
+        : []
       const outputTypes = outputArgument
         ? [outputArgument.type, ...getBaseTypes(outputArgument)]
         : []
       if (
-        !targetType ||
-        !outputTypes.some((type) => isTypeCompatible(type, targetType))
+        !outputTypes.some((type) =>
+          targetTypes.some((targetType) => isTypeCompatible(type, targetType))
+        )
       ) {
         removedCount++
         return false
