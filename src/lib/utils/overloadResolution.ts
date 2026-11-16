@@ -58,7 +58,9 @@ export class UnresolvedOverloadError extends Error {
 }
 
 /**
- * Describes a family that has not narrowed to one variant.
+ * Describes a family that has not narrowed to one variant. The variants are
+ * listed by their `variant_name` only when all have one: registry types are
+ * too long to read in a toast.
  *
  * @param name - The family node's name.
  * @param candidates - Its remaining candidates after graph resolution.
@@ -67,10 +69,18 @@ export class UnresolvedOverloadError extends Error {
 export const unresolvedOverloadDetail = (
   name: string,
   candidates: StandardNodeDefinition[]
-): string =>
-  candidates.length === 0
-    ? `"${name}" has no compatible variant; change its connections until one variant is left.`
-    : `"${name}" has ${candidates.length} variants left (${overloadCandidateSignatures(candidates).join(', ')}); connect it until one variant is left.`
+): string => {
+  if (candidates.length === 0) {
+    return `"${name}" has no compatible variant. Change its connections until one variant is left.`
+  }
+  const variantNames = candidates.map((candidate) =>
+    candidate.variant_name?.trim()
+  )
+  const listed = variantNames.every(Boolean)
+    ? ` (${variantNames.join(', ')})`
+    : ''
+  return `"${name}" has ${candidates.length} variants left${listed}. Connect it until one variant is left.`
+}
 
 /**
  * Rewords an {@link UnresolvedOverloadError} for the action that was refused;
@@ -621,6 +631,66 @@ export const resolveOverloadGraph = (
   return { candidatesByNodeId, edgeIssues }
 }
 
+/**
+ * Replaces every family on a canvas graph with its one remaining variant, so
+ * what follows (serialization, subnetwork boundaries) sees concrete nodes
+ * only. The family node keeps its id, position, `name`, `value` and
+ * `parameter_file`; its ports, type and output type become the variant's.
+ *
+ * @param nodes - Canvas nodes (snapshots, not reactive).
+ * @param edges - Canvas edges between them.
+ * @returns The same nodes, or the input array itself when it holds no family.
+ * @throws {UnresolvedOverloadError} If a family has more or fewer than one
+ *   variant left, or an edge on a family fits none of its variants.
+ */
+export const lowerOverloadFamilies = (nodes: Node[], edges: Edge[]): Node[] => {
+  if (
+    !nodes.some((node) =>
+      isOverloadNodeDefinition(node.data as NodeDefinitions)
+    )
+  )
+    return nodes
+
+  const resolution = resolveOverloadGraph(
+    nodes as Node<NodeDefinitions>[],
+    edges
+  )
+  const familyIds = new Set(
+    nodes
+      .filter((node) => isOverloadNodeDefinition(node.data as NodeDefinitions))
+      .map((node) => node.id)
+  )
+
+  for (const node of nodes) {
+    if (!familyIds.has(node.id)) continue
+    const family = node.data as OverloadNodeDefinition
+    const candidates = resolution.candidatesByNodeId[node.id] ?? []
+    if (candidates.length !== 1) {
+      throw new UnresolvedOverloadError(
+        unresolvedOverloadDetail(family.name ?? family.display_name, candidates)
+      )
+    }
+  }
+
+  const edgeIssue = resolution.edgeIssues.find(
+    (issue) =>
+      familyIds.has(issue.edge.source) || familyIds.has(issue.edge.target)
+  )
+  if (edgeIssue) throw new UnresolvedOverloadError(edgeIssue.message)
+
+  return nodes.map((node) =>
+    familyIds.has(node.id)
+      ? {
+          ...node,
+          data: concreteFamilyData(
+            node.data as OverloadNodeDefinition,
+            resolution.candidatesByNodeId[node.id][0]
+          ),
+        }
+      : node
+  )
+}
+
 /** Returns the current UI state for a family after graph propagation. */
 export const overloadStatus = (
   family: OverloadNodeDefinition,
@@ -633,6 +703,23 @@ export const overloadStatus = (
   return 'unresolved'
 }
 
-export const overloadCandidateSignatures = (
-  candidates: StandardNodeDefinition[]
-): string[] => candidates.map((candidate) => candidate.type)
+/**
+ * A family's resolved variant, carrying the per-node fields the family holds.
+ * @param family - The family node's data.
+ * @param candidate - Its one remaining variant.
+ * @returns Concrete node data.
+ */
+const concreteFamilyData = (
+  family: OverloadNodeDefinition,
+  candidate: StandardNodeDefinition
+): StandardNodeDefinition => {
+  // Literal and parameter-file fields are set on the canvas node, outside the family type.
+  const own = family as OverloadNodeDefinition &
+    Pick<StandardNodeDefinition, 'value' | 'parameter_file'>
+  return {
+    ...candidate,
+    ...(own.name !== undefined && { name: own.name }),
+    ...(own.value !== undefined && { value: own.value }),
+    ...(own.parameter_file && { parameter_file: own.parameter_file }),
+  }
+}

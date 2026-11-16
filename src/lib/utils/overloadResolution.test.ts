@@ -402,13 +402,13 @@ describe('overload families', () => {
     expect(JSON.stringify(protocol)).not.toContain('frontend::overload')
   })
 
-  it('rejects an unresolved family during export with remaining signatures', () => {
+  it('rejects an unresolved family during export with the number of variants left', () => {
     const family = createOverloadNodeDefinition([
       scalarGradient,
       vectorGradient,
     ])
     expect(() => parseGraphToProtocol([node('gradient', family)], [])).toThrow(
-      'gradient<scalar>, gradient<vector>'
+      `Cannot export graph: "${family.display_name}" has 2 variants left. Connect it until one variant is left.`
     )
   })
 })

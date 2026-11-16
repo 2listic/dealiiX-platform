@@ -10,11 +10,9 @@ import type { Node, Edge } from '@xyflow/svelte'
 import {
   ConnectionType,
   getBaseTypes,
-  isOverloadNodeDefinition,
   NodeType,
   type Type,
   type NodeDefinitions,
-  type OverloadNodeDefinition,
   type StandardNodeDefinition,
   TypeField,
   type SubGraphNodeDefinition,
@@ -26,11 +24,7 @@ import {
   parameterInputExposures,
   parameterOutputExposures,
 } from './parameterPorts'
-import {
-  overloadCandidatesForNode,
-  overloadInterfaceForCandidates,
-  resolveOverloadGraph,
-} from './overloadResolution'
+import { lowerOverloadFamilies } from './overloadResolution'
 
 /**
  * Bidirectional handle maps for routing edges between an internal subgraph and
@@ -103,6 +97,7 @@ export const createNetworkNodeDefinition = (
  * @param {Edge[]} currentEdges - Array of edges in the subgraph (must be snapshots, not reactive)
  * @returns {BoundaryAnalysis} The arguments/inputs/outputs arrays and bidirectional handle maps
  * @throws {Error} If the graph is empty (no nodes)
+ * @throws {UnresolvedOverloadError} If an overload family has more or fewer than one variant left
  */
 export const analyzeNetworkBoundary = (
   currentNodes: Node[],
@@ -164,23 +159,14 @@ export const analyzeNetworkBoundary = (
     }
   }
 
-  // Sort nodes by numeric ID for deterministic ordering
-  const sortedNodes = [...currentNodes].sort(
-    (a, b) => parseInt(a.id) - parseInt(b.id)
-  )
-
-  // The subnetwork's value holds each family's resolved variant, so its
-  // boundary ports must come from that variant too, not the union interface.
-  const overloadCandidatesById = resolveOverloadGraph(
-    currentNodes as Node<NodeDefinitions>[],
-    currentEdges
-  ).candidatesByNodeId
+  // Sort nodes by numeric ID for deterministic ordering. Families are lowered
+  // to their resolved variants, as in the subnetwork's value.
+  const sortedNodes = [
+    ...lowerOverloadFamilies(currentNodes, currentEdges),
+  ].sort((a, b) => parseInt(a.id) - parseInt(b.id))
 
   for (const node of sortedNodes) {
-    const rawNodeData = node.data as NodeDefinitions
-    const nodeData = isOverloadNodeDefinition(rawNodeData)
-      ? overloadBoundaryData(rawNodeData, overloadCandidatesById[node.id] ?? [])
-      : rawNodeData
+    const nodeData = node.data as NodeDefinitions
 
     // Check for free inputs
     if (nodeData.inputs && Array.isArray(nodeData.inputs)) {
@@ -392,37 +378,4 @@ export const analyzeNetworkBoundary = (
     networkInputToInternalHandle,
     networkOutputToInternalHandle,
   }
-}
-
-// ── Private helpers ──
-
-/**
- * The ports a family contributes to a subnetwork boundary: those of its one
- * resolved variant, with the node's own fields (name, value, parameter file)
- * kept. A family with several variants left keeps the interface of the ones
- * it may still become; building the value then refuses it.
- *
- * @param family - The family node's data.
- * @param resolved - Its candidates after graph resolution.
- * @returns Node data whose ports and output type are concrete when resolved.
- */
-const overloadBoundaryData = (
-  family: OverloadNodeDefinition,
-  resolved: StandardNodeDefinition[]
-): NodeDefinitions => {
-  if (resolved.length !== 1) {
-    return {
-      ...family,
-      ...overloadInterfaceForCandidates(overloadCandidatesForNode(family)),
-    }
-  }
-  const [candidate] = resolved
-  return {
-    ...family,
-    ...overloadInterfaceForCandidates([candidate]),
-    type: candidate.type,
-    output_type: candidate.output_type,
-    base: candidate.base,
-    bases: candidate.bases,
-  } as NodeDefinitions
 }

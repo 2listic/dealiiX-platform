@@ -349,7 +349,19 @@ describe('networkNode utilities', () => {
       expect(() =>
         createNetworkNodeDefinition('View', [makeCanvasNode('1', family)], [])
       ).toThrow(
-        `"${family.display_name}" has 2 variants left (view<2>, view<3>); connect it until one variant is left.`
+        `"${family.display_name}" has 2 variants left. Connect it until one variant is left.`
+      )
+    })
+
+    it('lists the variants by name when every variant has one', () => {
+      const named = createOverloadNodeDefinition([
+        { ...viewCandidate(2), variant_name: 'View. 2D' },
+        { ...viewCandidate(3), variant_name: 'View. 3D' },
+      ])
+      expect(() =>
+        createNetworkNodeDefinition('View', [makeCanvasNode('1', named)], [])
+      ).toThrow(
+        `"${named.display_name}" has 2 variants left (View. 2D, View. 3D). Connect it until one variant is left.`
       )
     })
   })

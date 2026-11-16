@@ -19,7 +19,7 @@
     {/if}
   </div>
 
-  <div>
+  <div class="message">
     {message}
   </div>
 
@@ -40,6 +40,11 @@
     align-items: center;
     margin: 0 auto 0.5rem auto;
     width: 20rem;
+  }
+  /* Paths and C++ types have no spaces to break at. */
+  .message {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .error {
     background: IndianRed;

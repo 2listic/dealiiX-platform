@@ -25,7 +25,6 @@ import {
 import {
   ConnectionType,
   getBaseTypes,
-  isOverloadNodeDefinition,
   isSubGraphNodeDefinition,
   isTypeCompatible,
   SELF,
@@ -49,11 +48,7 @@ import {
   parameterPortCoralType,
   normalizeParameterFile,
 } from './parameterPorts'
-import {
-  resolveOverloadGraph,
-  UnresolvedOverloadError,
-  unresolvedOverloadDetail,
-} from './overloadResolution'
+import { lowerOverloadFamilies } from './overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -439,44 +434,14 @@ export const removeQualifiedIds = (
  * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
  * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
  * @returns {Network} Complete network object in CORAL protocol format
+ * @throws {UnresolvedOverloadError} If an overload family has more or fewer than one variant left
  * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
-  // Families are editor state only: resolve their concrete candidates before
-  // constructing LeanNodes so the Coral protocol never sees a virtual type.
-  const overloadResolution = resolveOverloadGraph(
-    nodes as Node<NodeDefinitions>[],
-    edges
-  )
-  const overloadCandidatesById = overloadResolution.candidatesByNodeId
+  // Families are editor state only: Coral receives their resolved variants.
+  const concreteNodes = lowerOverloadFamilies(nodes, edges)
 
-  for (const canvasNode of nodes) {
-    const data = canvasNode.data as NodeDefinitions
-    if (!isOverloadNodeDefinition(data)) continue
-
-    const candidates = overloadCandidatesById[canvasNode.id] ?? []
-    if (candidates.length !== 1) {
-      throw new UnresolvedOverloadError(
-        unresolvedOverloadDetail(data.name ?? data.display_name, candidates)
-      )
-    }
-  }
-
-  const overloadEdgeIssue = overloadResolution.edgeIssues.find((issue) => {
-    const source = nodes.find((node) => node.id === issue.edge.source)
-    const target = nodes.find((node) => node.id === issue.edge.target)
-    const sourceData = source?.data as NodeDefinitions | undefined
-    const targetData = target?.data as NodeDefinitions | undefined
-    return (
-      (sourceData != null && isOverloadNodeDefinition(sourceData)) ||
-      (targetData != null && isOverloadNodeDefinition(targetData))
-    )
-  })
-  if (overloadEdgeIssue) {
-    throw new Error(`Cannot export graph: ${overloadEdgeIssue.message}`)
-  }
-
-  const nodesGraph = nodes.reduce<LeanNodes>((acc, obj) => {
+  const nodesGraph = concreteNodes.reduce<LeanNodes>((acc, obj) => {
     const data = obj.data as NodeDefinitions
 
     if (isSubGraphNodeDefinition(data)) {
@@ -493,21 +458,12 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         position: obj.position,
       }
     } else {
-      const concreteData = isOverloadNodeDefinition(data)
-        ? overloadCandidatesById[obj.id]?.[0]
-        : data
-      if (!concreteData) {
-        throw new Error(
-          `Cannot export graph: overload node "${data.name ?? data.display_name}" has no concrete candidate`
-        )
-      }
-
       // Regular nodes: only keep relevant fields not already present in the registry
       const node: LeanStandardNode = {
-        type: concreteData.type,
+        type: data.type,
         position: obj.position,
       }
-      const bases = getBaseTypes(concreteData)
+      const bases = getBaseTypes(data as StandardNodeDefinition)
       if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
       if ('value' in data && data.value !== undefined) node.value = data.value
