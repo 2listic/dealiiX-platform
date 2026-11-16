@@ -16,7 +16,7 @@ import {
   overloadStatus,
   resolveOverloadGraph,
 } from './overloadResolution'
-import { parseGraphToProtocol } from './graphParser'
+import { parseGraphToProtocol } from '../utils/graphParser'
 
 const definition = (
   type: string,

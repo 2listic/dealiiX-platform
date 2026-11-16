@@ -31,7 +31,7 @@ import {
   createNetworkNodeDefinition,
   analyzeNetworkBoundary,
 } from './networkNode'
-import { createOverloadNodeDefinition } from './overloadResolution'
+import { createOverloadNodeDefinition } from '../registry/overloadResolution'
 
 const makeCanvasNode = (
   id: string,

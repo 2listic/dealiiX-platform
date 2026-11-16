@@ -31,7 +31,7 @@ import {
   analyzeNetworkBoundary,
   createNetworkNodeDefinition,
 } from './networkNode'
-import { withOverloadAction } from './overloadResolution'
+import { withOverloadAction } from '../registry/overloadResolution'
 
 type ExplodedSubgraphSelection = {
   explodedNodes: Node[]

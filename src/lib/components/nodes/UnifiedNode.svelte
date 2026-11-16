@@ -114,18 +114,18 @@
     resolveOutputTypeCandidates,
     returnNodeName,
   } from '../../utils/canvasNodeUtils'
-  import { displayTypeName } from '../../utils/nodePalette'
-  import { isVtkFileName } from '../../utils/vtkFileFormat'
+  import { displayTypeName } from '../../registry/nodePalette'
+  import { isVtkFileName } from '../../vtk/vtkFileFormat'
   import {
     buildVtkVisualizerUrl,
     findVtkVisualizerTarget,
-  } from '../../utils/vtkVisualizer'
+  } from '../../vtk/vtkVisualizer'
   import { openNewWindow } from '../../utils/sshMessages'
   import {
     overloadInterfaceForCandidates,
     overloadStatus,
     resolveOverloadGraph,
-  } from '../../utils/overloadResolution'
+  } from '../../registry/overloadResolution'
 
   let {
     id,

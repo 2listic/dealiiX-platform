@@ -22,8 +22,8 @@ import {
   resolveOutputTypeCandidates,
   returnNodeName,
 } from './canvasNodeUtils'
-import { groupNodesByOperation } from './nodePalette'
-import { createOverloadNodeDefinition } from './overloadResolution'
+import { groupNodesByOperation } from '../registry/nodePalette'
+import { createOverloadNodeDefinition } from '../registry/overloadResolution'
 import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes

@@ -1,4 +1,4 @@
-import { normalizeRelativeParameterPath } from './workspacePath'
+import { normalizeRelativeParameterPath } from '../utils/workspacePath'
 
 type VtkVisualizerUrlTarget = {
   workingDirectory: string

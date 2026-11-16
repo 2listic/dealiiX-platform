@@ -27,7 +27,7 @@ import {
   isNodeInNetworkNodes,
 } from '../stores/registryStore.svelte'
 import { isSubnetworkParameterOutput } from '../orchestration/materializeNetwork'
-import { resolveOverloadGraph } from './overloadResolution'
+import { resolveOverloadGraph } from '../registry/overloadResolution'
 
 let connectionCache = new Map<string, boolean>()
 

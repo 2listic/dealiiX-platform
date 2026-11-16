@@ -29,7 +29,7 @@ import { getBaseTypes, isTypeCompatible } from '../types/nodeTypes'
 import {
   overloadInputTypes,
   withOverloadAction,
-} from '../utils/overloadResolution'
+} from '../registry/overloadResolution'
 import { toastState } from './toastsStore.svelte.js'
 import { graphStackState } from './graphStack.svelte'
 

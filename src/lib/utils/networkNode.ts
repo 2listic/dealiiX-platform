@@ -24,7 +24,7 @@ import {
   parameterInputExposures,
   parameterOutputExposures,
 } from './parameterPorts'
-import { lowerOverloadFamilies } from './overloadResolution'
+import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 /**
  * Bidirectional handle maps for routing edges between an internal subgraph and

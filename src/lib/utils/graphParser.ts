@@ -48,7 +48,7 @@ import {
   parameterPortCoralType,
   normalizeParameterFile,
 } from './parameterPorts'
-import { lowerOverloadFamilies } from './overloadResolution'
+import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**

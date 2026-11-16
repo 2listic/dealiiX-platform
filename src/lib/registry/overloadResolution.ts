@@ -17,7 +17,7 @@ import {
 import {
   parameterExposureForHandle,
   parameterPortCoralType,
-} from './parameterPorts'
+} from '../utils/parameterPorts'
 import { nodePaletteDisplayName, nodePaletteKey } from './nodePalette'
 
 type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition

@@ -17,8 +17,8 @@
     groupNodesByClass,
     nodeOwnerDisplayName,
     type NodePaletteGroup,
-  } from '../../utils/nodePalette'
-  import { createOverloadNodeDefinition } from '../../utils/overloadResolution'
+  } from '../../registry/nodePalette'
+  import { createOverloadNodeDefinition } from '../../registry/overloadResolution'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'

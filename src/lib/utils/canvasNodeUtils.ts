@@ -28,8 +28,11 @@ import {
   nodeOwnerDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
-} from './nodePalette'
-import { overloadInputTypes, overloadOutputTypes } from './overloadResolution'
+} from '../registry/nodePalette'
+import {
+  overloadInputTypes,
+  overloadOutputTypes,
+} from '../registry/overloadResolution'
 
 /** A candidate node definition that can be placed as a new connected node. */
 export type CompatibleNodeOption = {

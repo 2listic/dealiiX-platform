@@ -394,7 +394,7 @@ describe('graphNavigationState', () => {
 
   it('keeps an edge from the subnetwork into a family that has a matching variant', async () => {
     const { createOverloadNodeDefinition } = await import(
-      '../utils/overloadResolution'
+      '../registry/overloadResolution'
     )
     const fieldCandidate = (dim: number) => ({
       type: `field<${dim}>`,
