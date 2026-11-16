@@ -1,3 +1,24 @@
+# DealiiX Platform
+
+DealiiX Platform is a desktop workspace for authoring and running computational networks for scientific workflows with deal.II. It combines visual graph editing with local and remote execution, including CORAL workflows and standalone executables.
+
+## Current capabilities
+
+- Build and edit CORAL computational graphs using the configured node registry, validate connections, import and export graph JSON, and reuse subnetworks.
+- Run CORAL graphs and standalone executables locally or remotely, compose work into pipelines, and inspect run status and logs.
+- Connect to the remote project service for authentication and project management.
+
+## Product direction
+
+The roadmap targets a pipeline-first workspace with a shared node registry. Pipelines will combine CORAL and executable stages; nested editors will configure each stage, while execution and monitoring stay at pipeline level. This is planned work, not a description of the current workflow ([#242](https://github.com/2listic/dealiiX-platform/issues/242), [#247](https://github.com/2listic/dealiiX-platform/issues/247), [#249](https://github.com/2listic/dealiiX-platform/issues/249)).
+
+The planned data and run lifecycle is to:
+
+- Declare file inputs and outputs as explicit artifacts, preserving stable identities and distinguishing permanent dataset references from files materialized for a run ([#243](https://github.com/2listic/dealiiX-platform/issues/243)).
+- Create effective parameter documents and execution records per run, without changing editable templates ([#244](https://github.com/2listic/dealiiX-platform/issues/244)).
+- Validate and prepare inputs immediately before a node runs, then verify its outputs; remote consumers may be queued before an upstream stage creates their inputs ([#245](https://github.com/2listic/dealiiX-platform/issues/245)).
+- Schedule independent nodes concurrently where allowed and report why a node is waiting ([#246](https://github.com/2listic/dealiiX-platform/issues/246)).
+
 # Installation
 
 ### Cloning the repository
