@@ -121,14 +121,24 @@ export const loadParentGraph = async (): Promise<void> => {
         await removeNetworkNode(currentContext.originalName)
       }
 
-      // Strip the subnetwork node and all its connected edges from the parent.
+      // Remove every canvas instance that references the deleted definition.
+      const removedNodeIds = new Set(
+        parentContext.current.nodes
+          .filter(
+            (node) =>
+              isNetworkCanvasNode(node) &&
+              (node.id === currentContext.parentNodeId ||
+                (currentContext.originalName !== null &&
+                  node.data.name === currentContext.originalName))
+          )
+          .map((node) => node.id)
+      )
       const parentNodes = cloneNodes(parentContext.current.nodes).filter(
-        (node) => node.id !== currentContext.parentNodeId
+        (node) => !removedNodeIds.has(node.id)
       )
       const parentEdges = cloneEdges(parentContext.current.edges).filter(
         (edge) =>
-          edge.source !== currentContext.parentNodeId &&
-          edge.target !== currentContext.parentNodeId
+          !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)
       )
 
       graphStackState.collapseToParent({
@@ -162,42 +172,23 @@ export const loadParentGraph = async (): Promise<void> => {
     // Persist the updated definition to the network nodes store.
     await addNetworkNode(updatedNetworkNode.name, updatedNetworkNode)
 
-    // Update the subnetwork's canvas node in the parent context so its
-    // handle interface (arguments, inputs, outputs) stays in sync.
-    let parentNodeFound = false
-    const parentNodes = cloneNodes(parentContext.current.nodes).map((node) => {
-      if (
-        node.id !== currentContext.parentNodeId ||
-        !isNetworkCanvasNode(node)
-      ) {
-        return node
-      }
-
-      parentNodeFound = true
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          name: updatedNetworkNode.name,
-          arguments: updatedNetworkNode.arguments,
-          inputs: updatedNetworkNode.inputs,
-          outputs: updatedNetworkNode.outputs,
-        },
-      }
-    })
+    // Update every parent canvas node that shares this subnetwork definition.
+    const {
+      parentNodes,
+      parentEdges: validParentEdges,
+      parentNodeFound,
+      removedEdgesCount,
+    } = syncParentNetworkInstances(
+      cloneNodes(parentContext.current.nodes),
+      cloneEdges(parentContext.current.edges),
+      currentContext.parentNodeId,
+      currentContext.originalName,
+      updatedNetworkNode
+    )
 
     if (!parentNodeFound) {
       throw new Error('Parent subnetwork node was not found.')
     }
-
-    // Remove edges that became stale because the subnetwork interface changed
-    // (out-of-bounds handle indices or type mismatches after boundary rebuild).
-    const [validParentEdges, removedEdgesCount] = filterStaleParentEdges(
-      cloneEdges(parentContext.current.edges),
-      parentNodes,
-      currentContext.parentNodeId!,
-      updatedNetworkNode
-    )
 
     // Pop current context and update parent context with new subnetwork definition and validated edges
     graphStackState.collapseToParent({
@@ -288,37 +279,37 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   }
   await addNetworkNode(updatedNetworkNode.name, updatedNetworkNode)
 
-  // Patch the subnetwork's canvas node in the parent context.
-  // The parent stores name + the full handle interface (arguments, inputs, outputs),
-  // so all four fields must be updated together to keep handles in sync.
-  const parentNodes = cloneNodes(parentContext.current.nodes).map((node) => {
-    if (
-      node.id !== refreshedCurrentContext.parentNodeId ||
-      !isNetworkCanvasNode(node)
-    ) {
-      return node
-    }
+  const {
+    parentNodes,
+    parentEdges,
+    parentNodeFound,
+    removedEdgesCount,
+  } = syncParentNetworkInstances(
+    cloneNodes(parentContext.current.nodes),
+    cloneEdges(parentContext.current.edges),
+    refreshedCurrentContext.parentNodeId,
+    refreshedCurrentContext.originalName,
+    updatedNetworkNode
+  )
 
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        name: updatedNetworkNode.name,
-        arguments: updatedNetworkNode.arguments,
-        inputs: updatedNetworkNode.inputs,
-        outputs: updatedNetworkNode.outputs,
-      },
-    }
-  })
+  if (!parentNodeFound) {
+    throw new Error('Parent subnetwork node was not found.')
+  }
 
-  // Persist both sides of the rename: parent canvas node and current breadcrumb label.
+  // Persist both sides of the rename: parent canvas nodes and breadcrumb label.
   graphStackState.updateParentContext({
-    current: { nodes: parentNodes, edges: parentContext.current.edges },
+    current: { nodes: parentNodes, edges: parentEdges },
   })
   graphStackState.updateTopContext({
     label: updatedNetworkNode.name,
     originalName: updatedNetworkNode.name,
   })
+  if (removedEdgesCount > 0) {
+    toastState.add({
+      message: `Removed ${removedEdgesCount} edge${removedEdgesCount === 1 ? '' : 's'} — subnetwork interface changed`,
+      type: 'error',
+    })
+  }
 }
 
 // ── Private helpers ────────────────────────────────────────────────────────────
@@ -348,6 +339,78 @@ const applyCanvasState = (nodes: Node[], edges: Edge[]) => {
   setNodes(cloneNodes(nodes))
   setEdges(cloneEdges(edges))
   updateLastNodeId()
+}
+
+/**
+ * Synchronizes every parent-canvas instance of a subnetwork and removes edges
+ * that no longer match its rebuilt interface.
+ *
+ * @param parentNodes - Snapshot of the parent canvas nodes.
+ * @param parentEdges - Snapshot of the parent canvas edges.
+ * @param parentNodeId - ID of the instance used to enter the subnetwork.
+ * @param originalName - Previous registry name shared by sibling instances.
+ * @param updatedNetworkNode - Rebuilt definition and boundary interface.
+ * @returns The updated parent graph, whether the selected instance was found,
+ *   and the total number of removed edges.
+ */
+const syncParentNetworkInstances = (
+  parentNodes: Node[],
+  parentEdges: Edge[],
+  parentNodeId: string | null,
+  originalName: string | null,
+  updatedNetworkNode: SubGraphNodeDefinition
+): {
+  parentNodes: Node[]
+  parentEdges: Edge[]
+  parentNodeFound: boolean
+  removedEdgesCount: number
+} => {
+  let parentNodeFound = false
+  const matchingNodeIds = new Set<string>()
+  const updatedParentNodes = parentNodes.map((node) => {
+    if (
+      !isNetworkCanvasNode(node) ||
+      (node.id !== parentNodeId &&
+        (originalName === null || node.data.name !== originalName))
+    ) {
+      return node
+    }
+
+    if (node.id === parentNodeId) {
+      parentNodeFound = true
+    }
+    matchingNodeIds.add(node.id)
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        name: updatedNetworkNode.name,
+        arguments: updatedNetworkNode.arguments,
+        inputs: updatedNetworkNode.inputs,
+        outputs: updatedNetworkNode.outputs,
+      },
+    }
+  })
+
+  let validEdges = parentEdges
+  let removedEdgesCount = 0
+  for (const nodeId of matchingNodeIds) {
+    const [nextEdges, removedCount] = filterStaleParentEdges(
+      validEdges,
+      updatedParentNodes,
+      nodeId,
+      updatedNetworkNode
+    )
+    validEdges = nextEdges
+    removedEdgesCount += removedCount
+  }
+
+  return {
+    parentNodes: updatedParentNodes,
+    parentEdges: validEdges,
+    parentNodeFound,
+    removedEdgesCount,
+  }
 }
 
 /**

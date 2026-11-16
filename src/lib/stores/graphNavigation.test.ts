@@ -255,11 +255,49 @@ describe('graphNavigationState', () => {
     expect(graphStackState.canGoBack).toBe(false)
   })
 
-  it('renames the current subnetwork and updates the parent node metadata immediately', async () => {
-    // Parent canvas has only the subnetwork node to rename.
+  it('renames all instances and removes stale edges', async () => {
+    // Parent canvas has two instances that share the name being changed.
     const parentNode = makeNetworkCanvasNode('5', 'OldName')
-    mockState.currentNodes = [parentNode]
-    mockState.currentEdges = []
+    const siblingNode = makeNetworkCanvasNode('6', 'OldName')
+    const sourceNode = (id: string) => ({
+      id,
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'StringSource',
+        arguments: [
+          {
+            connection_type: 'output',
+            name: 'value',
+            type: 'std::string',
+          },
+        ],
+        inputs: [],
+        outputs: [0],
+      },
+    })
+    mockState.currentNodes = [
+      parentNode,
+      siblingNode,
+      sourceNode('1'),
+      sourceNode('2'),
+    ]
+    mockState.currentEdges = [
+      {
+        id: 'valid',
+        source: '1',
+        sourceHandle: 'output-0',
+        target: '5',
+        targetHandle: 'input-0',
+      },
+      {
+        id: 'stale',
+        source: '2',
+        sourceHandle: 'output-0',
+        target: '6',
+        targetHandle: 'input-1',
+      },
+    ]
     mockState.networkNodes = new Set(['OldName'])
     mockState.networkNodeData.OldName = parentNode.data
     // The inner graph has one node, so the subnetwork is non-empty after entering.
@@ -311,8 +349,135 @@ describe('graphNavigationState', () => {
       'Renamed',
       expect.objectContaining({ name: 'Renamed' })
     )
-    // Breadcrumb must reflect the new name immediately, without navigating back.
+    // Breadcrumb and every parent instance reflect the new name immediately.
     expect(graphStackState.currentLabel).toBe('Renamed')
+    const parentContext = graphStackState.getParentContext()
+    const instances = parentContext?.current.nodes.filter(
+      (node) => node.type === NodeType.NETWORK
+    )
+    expect(instances?.map((node) => (node.data as any).name)).toEqual([
+      'Renamed',
+      'Renamed',
+    ])
+    expect(instances?.map((node) => (node.data as any).arguments)).toEqual([
+      [
+        {
+          connection_type: 'input',
+          name: 'value',
+          type: 'std::string',
+        },
+      ],
+      [
+        {
+          connection_type: 'input',
+          name: 'value',
+          type: 'std::string',
+        },
+      ],
+    ])
+    expect(parentContext?.current.edges.map((edge) => edge.id)).toEqual([
+      'valid',
+    ])
+    expect(mockState.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Removed 1 edge — subnetwork interface changed',
+        type: 'error',
+      })
+    )
+  })
+
+  it('syncs all instances on return and removes stale edges', async () => {
+    const firstInstance = makeNetworkCanvasNode('5', 'Sub')
+    const secondInstance = makeNetworkCanvasNode('6', 'Sub')
+    const sourceNode = (id: string) => ({
+      id,
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'StringSource',
+        arguments: [{ connection_type: 'output', name: 'value', type: 'std::string' }],
+        inputs: [],
+        outputs: [0],
+      },
+    })
+    mockState.currentNodes = [
+      firstInstance,
+      secondInstance,
+      sourceNode('1'),
+      sourceNode('2'),
+    ]
+    mockState.currentEdges = [
+      {
+        id: 'valid',
+        source: '1',
+        sourceHandle: 'output-0',
+        target: '5',
+        targetHandle: 'input-0',
+      },
+      {
+        id: 'stale',
+        source: '2',
+        sourceHandle: 'output-0',
+        target: '6',
+        targetHandle: 'input-1',
+      },
+    ]
+    mockState.networkNodes = new Set(['Sub'])
+    mockState.networkNodeData.Sub = firstInstance.data
+    mockState.protocolNodes = [
+      {
+        id: '7',
+        type: NodeType.ELEMENTARY_CONSTRUCTOR,
+        position: { x: 10, y: 20 },
+        data: { type: 'std::string' },
+      },
+    ]
+    mockState.createNetworkNodeDefinition.mockReturnValue({
+      ...firstInstance.data,
+      arguments: [
+        { connection_type: 'input', name: 'value', type: 'std::string' },
+      ],
+      inputs: [0],
+      outputs: [],
+    })
+
+    const { enterSubnetwork, loadParentGraph } = await import(
+      './graphNavigation.svelte'
+    )
+    await enterSubnetwork('5')
+    await loadParentGraph()
+
+    expect(
+      mockState.currentNodes.filter((node) => ['5', '6'].includes(node.id))
+    ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: '5',
+            data: expect.objectContaining({
+              arguments: [
+                {
+                  connection_type: 'input',
+                  name: 'value',
+                  type: 'std::string',
+                },
+              ],
+            }),
+          }),
+          expect.objectContaining({
+            id: '6',
+            data: expect.objectContaining({
+              arguments: [{ connection_type: 'input', name: 'value', type: 'std::string' }],
+            }),
+          }),
+        ])
+      )
+    expect(mockState.currentEdges.map((edge) => edge.id)).toEqual(['valid'])
+    expect(mockState.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Removed 1 edge — subnetwork interface changed',
+        type: 'error',
+      })
+    )
   })
 
   it('saves a non-empty subnetwork back into the parent graph', async () => {
