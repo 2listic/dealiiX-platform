@@ -8,10 +8,10 @@
   import Button from '../layout/Button.svelte'
   import {
     type CompatibleNodeOption,
+    compatibleNodeOptionLabel,
     returnNodeName,
   } from '../../utils/canvasNodeUtils'
-  import { nodePaletteNodeName } from '../../utils/nodePalette'
-  import { isOverloadNodeDefinition, NodeType } from '../../types/nodeTypes'
+  import { NodeType } from '../../types/nodeTypes'
 
   interface Props {
     modalId: string
@@ -37,13 +37,6 @@
     option.nodeDefinition.node_type === NodeType.NETWORK
       ? `${option.nodeDefinition.name}-${option.handleId}`
       : `${option.nodeDefinition.type}-${option.handleId}`
-
-  const optionPaletteName = (option: CompatibleNodeOption): string =>
-    option.nodeDefinition.node_type === NodeType.NETWORK
-      ? returnNodeName(option.nodeDefinition)
-      : isOverloadNodeDefinition(option.nodeDefinition)
-        ? returnNodeName(option.nodeDefinition)
-        : nodePaletteNodeName(option.nodeDefinition)
 
   const optionDefaultNodeName = (option: CompatibleNodeOption): string =>
     returnNodeName(option.nodeDefinition)
@@ -74,15 +67,6 @@
     }
     onCreate(selectedOption, nodeName.trim())
   }
-
-  const optionLabel = (option: CompatibleNodeOption): string => {
-    const name = optionPaletteName(option)
-    const argument =
-      option.argumentName && option.argumentName.trim() !== name.trim()
-        ? ` (${option.argumentName})`
-        : ''
-    return `${name}${argument}`
-  }
 </script>
 
 <Modal id={modalId} size="sm" onClose={onCancel}>
@@ -100,7 +84,7 @@
     >
       {#each options as option (optionId(option))}
         <option value={optionId(option)}>
-          {optionLabel(option)}
+          {compatibleNodeOptionLabel(option)}
         </option>
       {/each}
     </select>

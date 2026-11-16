@@ -145,6 +145,7 @@
         {#if item.kind === 'class'}
           <section
             class="class-group"
+            class:collapsed={!showNodeNames}
             data-testid="sidebar-node-class"
             data-class-name={item.displayName}
           >
@@ -262,8 +263,12 @@
     justify-content: flex-start;
     gap: 0.75rem;
     padding: 0.35rem 0 0.75rem;
-    border-top: 1px solid
-      color-mix(in srgb, var(--ternary-color) 35%, transparent);
+  }
+
+  /* Collapsed tiles are wider than the narrow sidebar's content box: centre
+     them like the ungrouped tiles, which the container centres. */
+  .class-group.collapsed {
+    justify-content: center;
   }
 
   .class-label {

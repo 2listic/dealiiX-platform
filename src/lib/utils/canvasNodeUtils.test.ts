@@ -12,6 +12,7 @@ import {
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import {
+  compatibleNodeOptionLabel,
   createCanvasNode,
   findCompatibleSourceNodesAsOptions,
   findCompatibleTargetNodesAsOptions,
@@ -530,5 +531,79 @@ describe('canvasNodeUtils', () => {
 
     expect(node.data).not.toBe(nodeDefinition)
     expect(node.data.name).toBe('my_run')
+  })
+})
+
+describe('compatibleNodeOptionLabel', () => {
+  const scalarField = (dim: number): StandardNodeDefinition => ({
+    type: `scalar_field<${dim}>`,
+    display_name: 'Scalar field',
+    output_type: `Field<${dim}>`,
+    arguments: [
+      {
+        connection_type: ConnectionType.INPUT,
+        name: 'space',
+        type: `SpaceView<${dim}>` as Type,
+      },
+    ],
+    inputs: [0],
+    outputs: [-1],
+    node_type: NodeType.FUNCTION,
+  })
+
+  it('labels a concrete node with its palette name and the port', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'input-0',
+        argumentName: 'space',
+      })
+    ).toBe('Scalar field (space)')
+  })
+
+  it('labels a family with its display name and the port', () => {
+    const family = createOverloadNodeDefinition(
+      [scalarField(1), scalarField(2)],
+      'scalar_field',
+      'Field -> Scalar field'
+    )
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: family,
+        handleId: 'input-0',
+        argumentName: 'space',
+      })
+    ).toBe('Field -> Scalar field (space)')
+  })
+
+  it('labels a subnetwork with its name', () => {
+    const subnetwork = Object.values(networkNodes)[0]
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: subnetwork,
+        handleId: 'input-0',
+        argumentName: null,
+      })
+    ).toBe(returnNodeName(subnetwork))
+  })
+
+  it('leaves the port out when it repeats the name', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'input-0',
+        argumentName: 'Scalar field',
+      })
+    ).toBe('Scalar field')
+  })
+
+  it('leaves the port out when there is none', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'output-0',
+        argumentName: null,
+      })
+    ).toBe('Scalar field')
   })
 })

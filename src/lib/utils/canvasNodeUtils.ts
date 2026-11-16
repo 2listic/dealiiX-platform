@@ -379,6 +379,30 @@ export const returnNodeName = (node: NodeDefinitions): string => {
 }
 
 /**
+ * Label of one entry in the "Create Connected Node" list: the node's name,
+ * followed by the port it would connect through when that adds information.
+ *
+ * Subnetworks and families use {@link returnNodeName} (their stored `name`,
+ * else the family's `display_name`); concrete registry nodes use their
+ * palette label. The port is appended in brackets unless it is missing or
+ * equal to the name.
+ *
+ * @param option - A compatible node and the port that would be wired.
+ * @returns The label, e.g. `"Scalar field (space)"`.
+ */
+export const compatibleNodeOptionLabel = (
+  option: CompatibleNodeOption
+): string => {
+  const node = option.nodeDefinition
+  const name =
+    node.node_type === NodeType.NETWORK || isOverloadNodeDefinition(node)
+      ? returnNodeName(node)
+      : nodePaletteNodeName(node as StandardNodeDefinition)
+  const port = option.argumentName?.trim()
+  return port && port !== name.trim() ? `${name} (${port})` : name
+}
+
+/**
  * Finds all available nodes that produce `expectedInputType` on any output handle.
  * Mirror of {@link findCompatibleTargetNodesAsOptions} for the reverse drag direction (from a target handle).
  * @param availableNodes - All available node definitions to search.
