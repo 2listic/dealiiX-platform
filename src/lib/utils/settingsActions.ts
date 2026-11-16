@@ -115,7 +115,14 @@ const applySyncedMetadata = async (
   if (!metadata) return
 
   if (metadata.kind === 'nodeRegistry') {
-    await setRegistry(metadata.data, location)
+    const skippedKeys = await setRegistry(metadata.data, location)
+    if (skippedKeys.length > 0) {
+      const count = skippedKeys.length
+      toastState.add({
+        message: `Skipped ${count} invalid registry node${count === 1 ? '' : 's'} during Validate & Sync.`,
+        type: 'error',
+      })
+    }
     return
   }
 
