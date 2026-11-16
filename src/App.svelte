@@ -49,12 +49,14 @@
     )
       return
     const key = e.key.toLowerCase()
+    const canEditVisibleGraph =
+      isCoralMode && viewMode === 'single' && !isParameterEditorOpen
     if (key === 'z' && !e.shiftKey) {
       e.preventDefault()
-      graphHistoryState.undo()
+      if (canEditVisibleGraph) graphHistoryState.undo()
     } else if ((key === 'z' && e.shiftKey) || key === 'y') {
       e.preventDefault()
-      graphHistoryState.redo()
+      if (canEditVisibleGraph) graphHistoryState.redo()
     }
   }
 
