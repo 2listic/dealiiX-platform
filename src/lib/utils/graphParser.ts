@@ -50,9 +50,9 @@ import {
   normalizeParameterFile,
 } from './parameterPorts'
 import {
-  overloadCandidateSignatures,
-  overloadStatus,
   resolveOverloadGraph,
+  UnresolvedOverloadError,
+  unresolvedOverloadDetail,
 } from './overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
@@ -456,11 +456,8 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
 
     const candidates = overloadCandidatesById[canvasNode.id] ?? []
     if (candidates.length !== 1) {
-      const status = overloadStatus(data, candidates)
-      const signatures = overloadCandidateSignatures(candidates)
-      throw new Error(
-        `Cannot export graph: overload node "${data.name ?? data.display_name}" is ${status}. ` +
-          `Remaining candidates: ${signatures.length ? signatures.join(', ') : 'none'}`
+      throw new UnresolvedOverloadError(
+        unresolvedOverloadDetail(data.name ?? data.display_name, candidates)
       )
     }
   }

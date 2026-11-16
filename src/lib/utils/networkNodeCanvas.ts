@@ -31,6 +31,7 @@ import {
   analyzeNetworkBoundary,
   createNetworkNodeDefinition,
 } from './networkNode'
+import { withOverloadAction } from './overloadResolution'
 
 type ExplodedSubgraphSelection = {
   explodedNodes: Node[]
@@ -419,6 +420,7 @@ export const explodeNetworkNodeInGraph = (
  * @param mode - `'create'` to wrap the selection as-is; `'merge'` to flatten nested subgraphs first.
  * @returns `{ newNodes, newEdges }` — the full canvas node/edge lists after collapsing.
  * @throws {Error} If fewer than two nodes are selected.
+ * @throws {UnresolvedOverloadError} If a family in the selection has more or fewer than one variant left.
  */
 export const collapseSelectionToSubnetwork = async (
   name: string,
@@ -469,11 +471,16 @@ export const collapseSelectionToSubnetwork = async (
       }
 
   // Build the SubGraphNodeDefinition and its handle maps, then register it.
-  const networkNodeDefinition = createNetworkNodeDefinition(
-    name,
-    selectedNodesForSubgraph,
-    internalEdgesForSubgraph
-  )
+  let networkNodeDefinition: SubGraphNodeDefinition
+  try {
+    networkNodeDefinition = createNetworkNodeDefinition(
+      name,
+      selectedNodesForSubgraph,
+      internalEdgesForSubgraph
+    )
+  } catch (error) {
+    throw withOverloadAction(error, 'Cannot create the subnetwork')
+  }
   const { internalHandleToNetworkInput, internalHandleToNetworkOutput } =
     analyzeNetworkBoundary(selectedNodesForSubgraph, internalEdgesForSubgraph)
 

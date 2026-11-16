@@ -38,6 +38,53 @@ export type OverloadResolution = {
   edgeIssues: OverloadEdgeIssue[]
 }
 
+/**
+ * A family that does not narrow to exactly one variant, found while lowering
+ * the canvas to concrete nodes. `detail` names the family and what to do, so
+ * each caller can prefix it with the action that was refused.
+ */
+export class UnresolvedOverloadError extends Error {
+  /**
+   * @param detail - Family name, remaining variants and the fix.
+   * @param action - The refused action, e.g. "Cannot leave the subnetwork".
+   */
+  constructor(
+    readonly detail: string,
+    action = 'Cannot export graph'
+  ) {
+    super(`${action}: ${detail}`)
+    this.name = 'UnresolvedOverloadError'
+  }
+}
+
+/**
+ * Describes a family that has not narrowed to one variant.
+ *
+ * @param name - The family node's name.
+ * @param candidates - Its remaining candidates after graph resolution.
+ * @returns The `detail` text of an {@link UnresolvedOverloadError}.
+ */
+export const unresolvedOverloadDetail = (
+  name: string,
+  candidates: StandardNodeDefinition[]
+): string =>
+  candidates.length === 0
+    ? `"${name}" has no compatible variant; change its connections until one variant is left.`
+    : `"${name}" has ${candidates.length} variants left (${overloadCandidateSignatures(candidates).join(', ')}); connect it until one variant is left.`
+
+/**
+ * Rewords an {@link UnresolvedOverloadError} for the action that was refused;
+ * any other error is returned unchanged.
+ *
+ * @param error - The caught error.
+ * @param action - The refused action, e.g. "Cannot create the subnetwork".
+ * @returns The reworded error, or `error` itself.
+ */
+export const withOverloadAction = (error: unknown, action: string): unknown =>
+  error instanceof UnresolvedOverloadError
+    ? new UnresolvedOverloadError(error.detail, action)
+    : error
+
 /** Returns the explicit metadata key used to form an overload family. */
 export const overloadGroupKey = (
   node: Pick<

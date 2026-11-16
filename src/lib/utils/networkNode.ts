@@ -14,6 +14,7 @@ import {
   NodeType,
   type Type,
   type NodeDefinitions,
+  type OverloadNodeDefinition,
   type StandardNodeDefinition,
   TypeField,
   type SubGraphNodeDefinition,
@@ -28,6 +29,7 @@ import {
 import {
   overloadCandidatesForNode,
   overloadInterfaceForCandidates,
+  resolveOverloadGraph,
 } from './overloadResolution'
 
 /**
@@ -167,18 +169,17 @@ export const analyzeNetworkBoundary = (
     (a, b) => parseInt(a.id) - parseInt(b.id)
   )
 
+  // The subnetwork's value holds each family's resolved variant, so its
+  // boundary ports must come from that variant too, not the union interface.
+  const overloadCandidatesById = resolveOverloadGraph(
+    currentNodes as Node<NodeDefinitions>[],
+    currentEdges
+  ).candidatesByNodeId
+
   for (const node of sortedNodes) {
     const rawNodeData = node.data as NodeDefinitions
-    // Rebuild a finalized family's interface here as a safeguard for stored
-    // canvas snapshots: alternate candidate ports must not become subnetwork
-    // boundary ports even if the snapshot still carries the union interface.
     const nodeData = isOverloadNodeDefinition(rawNodeData)
-      ? {
-          ...rawNodeData,
-          ...overloadInterfaceForCandidates(
-            overloadCandidatesForNode(rawNodeData)
-          ),
-        }
+      ? overloadBoundaryData(rawNodeData, overloadCandidatesById[node.id] ?? [])
       : rawNodeData
 
     // Check for free inputs
@@ -391,4 +392,37 @@ export const analyzeNetworkBoundary = (
     networkInputToInternalHandle,
     networkOutputToInternalHandle,
   }
+}
+
+// ── Private helpers ──
+
+/**
+ * The ports a family contributes to a subnetwork boundary: those of its one
+ * resolved variant, with the node's own fields (name, value, parameter file)
+ * kept. A family with several variants left keeps the interface of the ones
+ * it may still become; building the value then refuses it.
+ *
+ * @param family - The family node's data.
+ * @param resolved - Its candidates after graph resolution.
+ * @returns Node data whose ports and output type are concrete when resolved.
+ */
+const overloadBoundaryData = (
+  family: OverloadNodeDefinition,
+  resolved: StandardNodeDefinition[]
+): NodeDefinitions => {
+  if (resolved.length !== 1) {
+    return {
+      ...family,
+      ...overloadInterfaceForCandidates(overloadCandidatesForNode(family)),
+    }
+  }
+  const [candidate] = resolved
+  return {
+    ...family,
+    ...overloadInterfaceForCandidates([candidate]),
+    type: candidate.type,
+    output_type: candidate.output_type,
+    base: candidate.base,
+    bases: candidate.bases,
+  } as NodeDefinitions
 }

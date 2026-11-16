@@ -273,6 +273,87 @@ describe('networkNode utilities', () => {
     expect(networkNode.outputs).toEqual([])
   })
 
+  describe('a family inside a subnetwork', () => {
+    const viewCandidate = (dim: number): StandardNodeDefinition => ({
+      type: `view<${dim}>`,
+      output_type: `SpaceView<${dim}>`,
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: `space${dim}`,
+          type: `Space<${dim}>` as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [-1],
+      node_type: NodeType.FUNCTION,
+      operation: 'view',
+    })
+    const space2: StandardNodeDefinition = {
+      type: 'Space<2>',
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    }
+    const family = createOverloadNodeDefinition([
+      viewCandidate(2),
+      viewCandidate(3),
+    ])
+
+    it('takes the ports and SELF output type of the variant an edge resolves', () => {
+      const networkNode = createNetworkNodeDefinition(
+        'View2',
+        [makeCanvasNode('1', space2), makeCanvasNode('2', family)],
+        [makeEdge('1', 'output-0', '2', 'input-0')]
+      )
+
+      expect(networkNode.arguments).toEqual([
+        {
+          connection_type: ConnectionType.OUTPUT,
+          name: 'self',
+          type: 'SpaceView<2>',
+        },
+      ])
+      expect(networkNode.value.workflow.nodes['2'].type).toBe('view<2>')
+    })
+
+    it('takes the SELF output type of the finalized variant', () => {
+      const networkNode = createNetworkNodeDefinition(
+        'View3',
+        [
+          makeCanvasNode('1', {
+            ...family,
+            finalized: true,
+            finalized_candidate_type: 'view<3>',
+          }),
+        ],
+        []
+      )
+
+      expect(networkNode.arguments).toEqual([
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'space3',
+          type: 'Space<3>',
+        },
+        {
+          connection_type: ConnectionType.OUTPUT,
+          name: 'self',
+          type: 'SpaceView<3>',
+        },
+      ])
+    })
+
+    it('refuses a family with several variants left, naming them', () => {
+      expect(() =>
+        createNetworkNodeDefinition('View', [makeCanvasNode('1', family)], [])
+      ).toThrow(
+        `"${family.display_name}" has 2 variants left (view<2>, view<3>); connect it until one variant is left.`
+      )
+    })
+  })
+
   it('createNetworkNodeDefinition and analyzeNetworkBoundary produce the Step1 definition from its constituent nodes', () => {
     // The Step1 subgraph is nodes {3,5,8,10,11} from the flat graph fixture:
     //   3 (GridGenerator::generate_from_name_and_arguments<2>)
