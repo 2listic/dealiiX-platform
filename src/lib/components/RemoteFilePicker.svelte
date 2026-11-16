@@ -1,34 +1,55 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
+  import { listRemoteGraphFiles } from '../utils/remoteFilePicker'
 
   type Props = {
     modalId: string
     workingDirectory: string
-    files: string[]
-    loading: boolean
-    importing: boolean
-    error: string
-    onRefresh: () => void | Promise<void>
+    /** Imports the picked file; the picker stays disabled until it settles. */
     onSelect: (_fileName: string) => void | Promise<void>
   }
 
-  let {
-    modalId,
-    workingDirectory,
-    files,
-    loading,
-    importing,
-    error,
-    onRefresh,
-    onSelect,
-  }: Props = $props()
+  let { modalId, workingDirectory, onSelect }: Props = $props()
+
+  let files = $state<string[]>([])
+  let loading = $state(false)
+  let importing = $state(false)
+  let error = $state('')
 
   const close = () => getModal(modalId)?.close()
+
+  const loadFiles = async () => {
+    loading = true
+    error = ''
+    try {
+      files = await listRemoteGraphFiles(workingDirectory)
+    } catch (err) {
+      files = []
+      error = err instanceof Error ? err.message : 'Failed to list remote files'
+    } finally {
+      loading = false
+    }
+  }
+
+  const select = async (fileName: string) => {
+    importing = true
+    try {
+      await onSelect(fileName)
+    } finally {
+      importing = false
+    }
+  }
+
+  // The modal mounts its content on each open, so every open lists afresh.
+  onMount(() => {
+    void loadFiles()
+  })
 </script>
 
 <div class="remote-file-picker">
-  <h2>Import graph from remote</h2>
+  <h2>Import Graph Remote</h2>
   <p class="description">
     Select a graph JSON file from the remote working directory.
   </p>
@@ -48,7 +69,7 @@
           class="file-row"
           type="button"
           disabled={importing}
-          onclick={() => onSelect(fileName)}
+          onclick={() => select(fileName)}
         >
           <span>{fileName}</span>
           <span class="file-kind">JSON</span>
@@ -58,7 +79,7 @@
   {/if}
 
   <div class="actions">
-    <Button onclick={onRefresh} disabled={loading || importing}>Refresh</Button>
+    <Button onclick={loadFiles} disabled={loading || importing}>Refresh</Button>
     <Button onclick={close} disabled={importing}>Cancel</Button>
   </div>
 </div>

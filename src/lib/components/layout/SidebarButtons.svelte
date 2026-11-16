@@ -52,10 +52,7 @@
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import RemoteFilePicker from '../RemoteFilePicker.svelte'
-  import {
-    listRemoteGraphFiles,
-    readRemoteGraphFile,
-  } from '../../utils/remoteFilePicker'
+  import { readRemoteGraphFile } from '../../utils/remoteFilePicker'
 
   const { fitView } = useSvelteFlow()
 
@@ -77,10 +74,6 @@
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
   let isRemote = $derived(executionSelectionState.location === 'remote')
-  let remoteGraphFiles = $state<string[]>([])
-  let remoteGraphFilesLoading = $state(false)
-  let remoteGraphFilesError = $state('')
-  let remoteGraphImporting = $state(false)
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -270,6 +263,14 @@
     })
   }
 
+  /**
+   * Replaces the canvas with an imported graph, toasting each dropped edge
+   * and each subnetwork it registers, and detaches the current project.
+   * @param importedGraph - Parsed graph JSON in Coral protocol format.
+   * @param successMessage - Toast shown once the graph is loaded.
+   * @returns Resolves once the graph is on the canvas.
+   * @throws If the graph fails validation.
+   */
   const importGraphData = async (
     importedGraph: Parameters<typeof importGraphFromProtocol>[0],
     successMessage = 'New graph was loaded'
@@ -311,31 +312,13 @@
     }
   }
 
-  const loadRemoteGraphFiles = async () => {
-    remoteGraphFilesLoading = true
-    remoteGraphFilesError = ''
-    try {
-      remoteGraphFiles = await listRemoteGraphFiles(
-        settingsState.remote.workingDirectory
-      )
-    } catch (error) {
-      remoteGraphFiles = []
-      remoteGraphFilesError =
-        error instanceof Error ? error.message : 'Failed to list remote files'
-    } finally {
-      remoteGraphFilesLoading = false
-    }
-  }
-
-  const openRemoteGraphPicker = () => {
-    remoteGraphFiles = []
-    remoteGraphFilesError = ''
-    getModal(remoteGraphPickerModalId)?.open()
-    void loadRemoteGraphFiles()
-  }
-
+  /**
+   * Imports a graph JSON file from the remote working directory and closes
+   * the picker; a read or import error is shown as a toast and keeps it open.
+   * @param fileName - File name inside the remote working directory.
+   * @returns Resolves once the graph is loaded or the error is shown.
+   */
   const loadGraphFromRemoteFile = async (fileName: string) => {
-    remoteGraphImporting = true
     try {
       const importedGraph = JSON.parse(
         await readRemoteGraphFile(
@@ -354,8 +337,6 @@
             : 'Failed to load remote graph',
         type: 'error',
       })
-    } finally {
-      remoteGraphImporting = false
     }
   }
 
@@ -680,7 +661,7 @@
         {#if isRemote}
           <SidebarGroupButtonItem
             label="Import graph from remote"
-            onclick={openRemoteGraphPicker}
+            onclick={() => getModal(remoteGraphPickerModalId)?.open()}
           />
         {/if}
         <SidebarGroupButtonItem
@@ -716,11 +697,6 @@
     <RemoteFilePicker
       modalId={remoteGraphPickerModalId}
       workingDirectory={settingsState.remote.workingDirectory}
-      files={remoteGraphFiles}
-      loading={remoteGraphFilesLoading}
-      importing={remoteGraphImporting}
-      error={remoteGraphFilesError}
-      onRefresh={loadRemoteGraphFiles}
       onSelect={loadGraphFromRemoteFile}
     />
   </Modal>
