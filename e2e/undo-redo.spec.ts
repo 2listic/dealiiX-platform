@@ -28,7 +28,6 @@ test('undo removes a node and redo restores it', async ({ page }) => {
   await expect(nodes).toHaveCount(countAfterAdd)
 })
 
-
 test('undo and redo shortcuts leave the CORAL graph unchanged in pipeline mode', async ({
   page,
 }) => {
