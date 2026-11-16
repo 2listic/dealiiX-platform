@@ -395,7 +395,13 @@ describe('graphNavigationState', () => {
       position: { x: 0, y: 0 },
       data: {
         type: 'StringSource',
-        arguments: [{ connection_type: 'output', name: 'value', type: 'std::string' }],
+        arguments: [
+          {
+            connection_type: 'output',
+            name: 'value',
+            type: 'std::string',
+          },
+        ],
         inputs: [],
         outputs: [0],
       },
@@ -450,27 +456,33 @@ describe('graphNavigationState', () => {
     expect(
       mockState.currentNodes.filter((node) => ['5', '6'].includes(node.id))
     ).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: '5',
-            data: expect.objectContaining({
-              arguments: [
-                {
-                  connection_type: 'input',
-                  name: 'value',
-                  type: 'std::string',
-                },
-              ],
-            }),
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '5',
+          data: expect.objectContaining({
+            arguments: [
+              {
+                connection_type: 'input',
+                name: 'value',
+                type: 'std::string',
+              },
+            ],
           }),
-          expect.objectContaining({
-            id: '6',
-            data: expect.objectContaining({
-              arguments: [{ connection_type: 'input', name: 'value', type: 'std::string' }],
-            }),
+        }),
+        expect.objectContaining({
+          id: '6',
+          data: expect.objectContaining({
+            arguments: [
+              {
+                connection_type: 'input',
+                name: 'value',
+                type: 'std::string',
+              },
+            ],
           }),
-        ])
-      )
+        }),
+      ])
+    )
     expect(mockState.currentEdges.map((edge) => edge.id)).toEqual(['valid'])
     expect(mockState.toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
