@@ -61,13 +61,14 @@ export const loadGraphFromProtocol = async (
   nodes: LeanNodes,
   edges: NetworkEdges
 ): Promise<string[]> => {
-  const networkNodes = await addNetworkNodesFromGraph(nodes)
+  const normalizedNodes = structuredClone(nodes)
+  const networkNodes = await addNetworkNodesFromGraph(normalizedNodes)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
   setEdges([])
 
-  const xyflowNodes = nodesFromProtocolToFlow(nodes)
+  const xyflowNodes = nodesFromProtocolToFlow(normalizedNodes)
   setNodes(xyflowNodes)
   const xyFlowEdges = edgesFromProtocolToFlow(edges)
   setEdges(xyFlowEdges)
@@ -97,7 +98,7 @@ export const importGraphFromProtocol = async (
   if (!graph?.workflow?.nodes || !graph?.workflow?.edges) {
     validateGraphData(graph as Network)
   }
-  const normalizedNodes = { ...graph.workflow.nodes }
+  const normalizedNodes = structuredClone(graph.workflow.nodes)
   await addNetworkNodesFromGraph(normalizedNodes)
   const normalizedGraph = {
     ...graph,
