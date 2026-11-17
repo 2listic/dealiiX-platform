@@ -41,6 +41,7 @@ import {
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
+import { analyzeNetworkBoundary } from './networkNode'
 import {
   parameterExposureForHandle,
   parameterHandlePath,
@@ -60,13 +61,14 @@ export const loadGraphFromProtocol = async (
   nodes: LeanNodes,
   edges: NetworkEdges
 ): Promise<string[]> => {
-  const networkNodes = await addNetworkNodesFromGraph(nodes)
+  const normalizedNodes = structuredClone(nodes)
+  const networkNodes = await addNetworkNodesFromGraph(normalizedNodes)
 
   // Reset then load (ensures UI updates correctly)
   setNodes([])
   setEdges([])
 
-  const xyflowNodes = nodesFromProtocolToFlow(nodes)
+  const xyflowNodes = nodesFromProtocolToFlow(normalizedNodes)
   setNodes(xyflowNodes)
   const xyFlowEdges = edgesFromProtocolToFlow(edges)
   setEdges(xyFlowEdges)
@@ -93,8 +95,19 @@ export const importGraphFromProtocol = async (
   invalidEdges: Array<{ edgeId: string; edge: NetworkEdge; error: string }>
   registeredNetworkNodes: string[]
 }> => {
-  const [validEdges, invalidEdges] = validateGraphData(graph as Network)
-  const cleanedGraph = removeQualifiedIds(graph)
+  if (!graph?.workflow?.nodes || !graph?.workflow?.edges) {
+    validateGraphData(graph as Network)
+  }
+  const normalizedNodes = structuredClone(graph.workflow.nodes)
+  await addNetworkNodesFromGraph(normalizedNodes)
+  const normalizedGraph = {
+    ...graph,
+    workflow: { ...graph.workflow, nodes: normalizedNodes },
+  }
+  const [validEdges, invalidEdges] = validateGraphData(
+    normalizedGraph as Network
+  )
+  const cleanedGraph = removeQualifiedIds(normalizedGraph)
   const registeredNetworkNodes = await loadGraphFromProtocol(
     cleanedGraph.workflow.nodes,
     validEdges
@@ -113,13 +126,33 @@ const addNetworkNodesFromGraph = async (
   nodes: LeanNodes
 ): Promise<string[]> => {
   const networkNodes: string[] = []
-  for (const node of Object.values(nodes)) {
-    if (isSubGraphNodeDefinition(node)) {
-      await addNetworkNode(node.name, node)
-      networkNodes.push(node.name)
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    if (!isSubGraphNodeDefinition(node)) continue
+
+    // Register nested definitions first so the boundary analyzer can resolve them.
+    await addNetworkNodesFromGraph(node.value.workflow.nodes)
+
+    let definition = node
+    if (
+      node.arguments.length === 0 &&
+      node.inputs.length === 0 &&
+      node.outputs.length === 0
+    ) {
+      const boundary = analyzeNetworkBoundary(
+        nodesFromProtocolToFlow(node.value.workflow.nodes),
+        edgesFromProtocolToFlow(node.value.workflow.edges)
+      )
+      definition = {
+        ...node,
+        arguments: boundary.argumentsArray,
+        inputs: boundary.inputsArray,
+        outputs: boundary.outputsArray,
+      }
+      nodes[nodeId] = definition
     }
-    // TODO: add support for network nodes of type "network" with no arguments.
-    // In that case, we need to generate arguments, inputs and outputs and then add to networkNodes
+
+    await addNetworkNode(definition.name, definition)
+    networkNodes.push(definition.name)
   }
   return networkNodes
 }

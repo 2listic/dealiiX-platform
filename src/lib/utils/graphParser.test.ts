@@ -3,6 +3,7 @@ import type {
   Network,
   StandardNodeDefinition,
   RegisteredNodes,
+  SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { ConnectionType, NodeType, Type } from '../types/nodeTypes'
 import validQualifiedGraph from '../../../test_files/network-mwe-simplified-qualified.json'
@@ -15,6 +16,7 @@ import collectionsMathRegistry from '../data/collectionsMathNodes.json'
 
 const mockStore = vi.hoisted(() => ({
   nodeDataByType: {} as Record<string, StandardNodeDefinition>,
+  networkNodeDataByName: {} as Record<string, SubGraphNodeDefinition>,
 }))
 
 vi.mock('../stores/registryStore.svelte', () => ({
@@ -27,8 +29,12 @@ vi.mock('../stores/registryStore.svelte', () => ({
     }
     return structuredClone(node)
   }),
-  getNetworkNodeDefinition: vi.fn(),
-  addNetworkNode: vi.fn(),
+  getNetworkNodeDefinition: vi.fn(
+    (name: string) => mockStore.networkNodeDataByName[name]
+  ),
+  addNetworkNode: vi.fn(async (name: string, node: SubGraphNodeDefinition) => {
+    mockStore.networkNodeDataByName[name] = structuredClone(node)
+  }),
 }))
 
 import {
@@ -38,6 +44,7 @@ import {
   parseGraphToProtocol,
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
+  importGraphFromProtocol,
 } from './graphParser'
 import { parameterHandle } from './parameterPorts'
 
@@ -68,6 +75,7 @@ describe('validateGraphData', () => {
   describe('standard graphs with no network nodes', () => {
     beforeEach(() => {
       mockStore.nodeDataByType = defaultRegistry as unknown as RegisteredNodes
+      mockStore.networkNodeDataByName = {}
       graph = structuredClone(validQualifiedGraph) as Network
       vi.spyOn(console, 'warn').mockImplementation(() => {})
     })
@@ -330,9 +338,33 @@ describe('validateGraphData', () => {
   describe('graphs with network nodes', () => {
     beforeEach(() => {
       mockStore.nodeDataByType = defaultRegistry as unknown as RegisteredNodes
+      mockStore.networkNodeDataByName = {}
       graphNetworkNode = structuredClone(
         validQualifiedGraphNetworkNode
       ) as Network
+    })
+
+    it('rebuilds an omitted network interface before validating its outer edges', async () => {
+      const graph = structuredClone(
+        validQualifiedGraphNetworkNode
+      ) as unknown as Network
+      const expected = structuredClone(
+        graph.workflow.nodes['12'] as SubGraphNodeDefinition
+      )
+      const networkNode = graph.workflow.nodes['12'] as SubGraphNodeDefinition
+      networkNode.arguments = []
+      networkNode.inputs = []
+      networkNode.outputs = []
+
+      const result = await importGraphFromProtocol(graph)
+
+      expect(result.invalidEdges).toHaveLength(0)
+      expect(networkNode.arguments).toEqual([])
+      expect(mockStore.networkNodeDataByName[networkNode.name]).toMatchObject({
+        arguments: expected.arguments,
+        inputs: expected.inputs,
+        outputs: expected.outputs,
+      })
     })
 
     it('accepts a well defined MWE graph which includes a network node', () => {
