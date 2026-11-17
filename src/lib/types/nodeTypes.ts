@@ -8,7 +8,7 @@
 // export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
-import { canonicalTypeKey } from '../utils/canonicalTypeKey'
+import { canonicalTypeKey } from '../registry/canonicalTypeKey'
 
 export enum ConnectionType {
   INPUT = 'input',
