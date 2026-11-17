@@ -6,6 +6,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#256](https://github.com/2listic/dealiiX-platform/pull/256) Importing a network node with an empty interface now rebuilds its arguments and ports from the embedded graph before validating its connections.
+
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Graph import, connections, and connection suggestions accept concrete derived values and their ancestors, preserving concrete types through pass-through nodes. Compiler-specific C++ type spellings are matched consistently with Coral.
 
 - [#216](https://github.com/2listic/dealiiX-platform/pull/216) Fixed the canvas rejecting edges the backend actually accepts: an `any`-typed output can now be wired into a typed input, not just the reverse, and a `bool` or `int` value can be wired into a `float` input. Applies to loading a graph, drawing connections by hand, and the drag-to-connect suggestions.
