@@ -142,7 +142,7 @@
       aria-label="Refresh state of submitted jobs"
       title="Refresh state of submitted jobs"
     >
-      <RefreshIcon width="20px" height="20px" {rotation} />
+      <RefreshIcon width="20px" height="20px" rotation={rotation.current} />
     </button>
   </div>
   <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
