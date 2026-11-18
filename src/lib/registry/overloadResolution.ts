@@ -18,9 +18,11 @@ import {
   parameterExposureForHandle,
   parameterPortCoralType,
 } from '../utils/parameterPorts'
-import { nodePaletteDisplayName, nodePaletteKey } from './nodePalette'
-
-type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition
+import {
+  nodeClassSection,
+  nodeOwnerDisplayName,
+  nodePaletteKey,
+} from './nodePalette'
 
 export type OverloadStatus =
   | 'unresolved'
@@ -94,103 +96,6 @@ export const withOverloadAction = (error: unknown, action: string): unknown =>
   error instanceof UnresolvedOverloadError
     ? new UnresolvedOverloadError(error.detail, action)
     : error
-
-/** Returns the explicit metadata key used to form an overload family. */
-export const overloadGroupKey = (
-  node: Pick<
-    StandardNodeDefinition,
-    'class_name' | 'method_name' | 'overload_group' | 'operation'
-  >
-): string | undefined => {
-  const className = node.class_name?.trim()
-  const methodName = node.method_name?.trim()
-  if (className && methodName) return `method:${className}::${methodName}`
-  return node.overload_group?.trim() || node.operation?.trim() || undefined
-}
-
-const unique = (values: string[]): string[] => [...new Set(values)]
-
-/** Removes Coral's callable implementation alias when its concrete entry exists. */
-const deduplicateImplementationAliases = (
-  nodes: StandardNodeDefinition[]
-): StandardNodeDefinition[] => {
-  const concreteTypes = new Set(nodes.map((node) => node.type))
-  return nodes.filter((node) => {
-    const marker = '::std::function<'
-    const markerIndex = node.type.indexOf(marker)
-    if (markerIndex < 0) return true
-    return !concreteTypes.has(node.type.slice(0, markerIndex))
-  })
-}
-
-const definitionInputArgument = (
-  definition: ConcreteNodeDefinition,
-  handleIndex: number
-): Argument | null => {
-  const argumentIndex = definition.inputs?.[handleIndex]
-  return argumentIndex == null
-    ? null
-    : (definition.arguments?.[argumentIndex] ?? null)
-}
-
-const definitionOutputIndex = (
-  definition: ConcreteNodeDefinition,
-  handleIndex: number
-): number | null => definition.outputs?.[handleIndex] ?? null
-
-const definitionOutputTypes = (
-  definition: ConcreteNodeDefinition,
-  handleIndex: number,
-  upstreamTypes: string[] = []
-): string[] => {
-  const outputIndex = definitionOutputIndex(definition, handleIndex)
-  if (outputIndex == null) return []
-
-  if (outputIndex === SELF) {
-    if (isSubGraphNodeDefinition(definition)) return [definition.type]
-    if (definition.output_type)
-      return unique([...getBaseTypes(definition), definition.output_type])
-    return unique([...getBaseTypes(definition), definition.type])
-  }
-
-  const argument = definition.arguments?.[outputIndex]
-  if (!argument) return []
-  return unique(
-    argument.connection_type === ConnectionType.PASSTHROUGH
-      ? [...getBaseTypes(argument), argument.type, ...upstreamTypes]
-      : [...getBaseTypes(argument), argument.type]
-  )
-}
-
-const definitionInputTypes = (
-  definition: ConcreteNodeDefinition,
-  handleId: string
-): string[] => {
-  if (!isSubGraphNodeDefinition(definition)) {
-    const parameter = parameterExposureForHandle(definition, handleId, 'input')
-    if (parameter) return [parameterPortCoralType(parameter.type)]
-  }
-
-  const match = handleId.match(/^input-(\d+)$/)
-  if (!match) return []
-  const argument = definitionInputArgument(definition, Number(match[1]))
-  return argument ? [argument.type] : []
-}
-
-const definitionOutputTypesForHandle = (
-  definition: ConcreteNodeDefinition,
-  handleId: string,
-  upstreamTypes: string[] = []
-): string[] => {
-  if (!isSubGraphNodeDefinition(definition)) {
-    const parameter = parameterExposureForHandle(definition, handleId, 'output')
-    if (parameter) return [parameterPortCoralType(parameter.type)]
-  }
-
-  const match = handleId.match(/^output-(\d+)$/)
-  if (!match) return []
-  return definitionOutputTypes(definition, Number(match[1]), upstreamTypes)
-}
 
 /**
  * Returns the concrete input types represented by a canvas node handle.
@@ -293,256 +198,118 @@ export const overloadInterfaceForCandidates = (
   }
 }
 
-const syntheticArgument = (
-  candidates: StandardNodeDefinition[],
-  index: number
-): Argument => {
-  const argumentsAtIndex = candidates
-    .map((candidate) => candidate.arguments[index])
-    .filter((argument): argument is Argument => Boolean(argument))
-  const first = argumentsAtIndex[0]
-  const types = unique(argumentsAtIndex.map((argument) => argument.type))
-  const names = unique(argumentsAtIndex.map((argument) => argument.name))
-  return {
-    connection_type: first?.connection_type ?? ConnectionType.OUTPUT,
-    name: names.join(' / ') || `port ${index}`,
-    type: (types.join(' | ') || 'unavailable') as Type,
-  }
-}
-
-const maxHandleCount = (
-  candidates: StandardNodeDefinition[],
-  direction: 'inputs' | 'outputs'
-): number =>
-  Math.max(0, ...candidates.map((candidate) => candidate[direction].length))
-
-const interfaceArgumentIndexes = (
-  candidates: StandardNodeDefinition[],
-  direction: 'inputs' | 'outputs'
-): number[] => {
-  const count = maxHandleCount(candidates, direction)
-  return Array.from({ length: count }, (_, handleIndex) => {
-    const argumentIndex = candidates
-      .map((candidate) => candidate[direction][handleIndex])
-      .find((index) => index != null)
-    return argumentIndex ?? 0
-  })
-}
-
 /**
- * Builds one frontend-only family from two or more concrete definitions.
+ * Builds one frontend-only family from two or more concrete definitions that
+ * share a {@link nodePaletteKey}. The family is labelled with its
+ * `overload_group` when the registry sets one, else with the first
+ * candidate's {@link nodeOwnerDisplayName}, which is also each candidate's
+ * own label.
  *
- * Palette groups may provide a synthetic family key and display name when
- * several concrete registrations share one logical operation.
+ * @param candidates - The concrete definitions of the family.
+ * @returns The family definition.
+ * @throws {Error} When fewer than two candidates are given.
  */
 export const createOverloadNodeDefinition = (
-  candidates: StandardNodeDefinition[],
-  groupOverride?: string,
-  displayNameOverride?: string
+  candidates: StandardNodeDefinition[]
 ): OverloadNodeDefinition => {
   if (candidates.length < 2) {
     throw new Error('An overload family requires at least two candidates')
   }
-  const group = groupOverride?.trim() || overloadGroupKey(candidates[0])
-  if (!group) throw new Error('An overload family requires explicit metadata')
-
-  const interfaceData = overloadInterfaceForCandidates(candidates)
-  const explicitGroup = candidates[0].overload_group?.trim()
+  const group = nodePaletteKey(candidates[0])
 
   return {
     type: `frontend::overload<${group}>`,
-    ...interfaceData,
+    ...overloadInterfaceForCandidates(candidates),
     node_type: NodeType.OVERLOAD,
     overload_group: group,
     display_name:
-      displayNameOverride?.trim() ||
-      explicitGroup ||
-      candidates[0].display_name?.trim() ||
-      candidates[0].operation?.trim() ||
-      group,
+      candidates[0].overload_group?.trim() ||
+      nodeOwnerDisplayName(candidates[0]),
     candidates,
     is_valid: true,
   }
 }
 
 /**
- * Replaces registry entries for one logical operation with one family tile.
+ * Replaces the registry entries that share a {@link nodePaletteKey} with one
+ * family, keeping the order of first appearance; an entry alone under its key
+ * stays concrete. Coral's `std::function` aliases are dropped when their
+ * concrete entry is present.
  *
- * Explicit overload metadata remains authoritative. When it is absent, use
- * the same palette key that already collapses numeric template
- * specializations, such as `Class<1,2>` and `Class<2,2>`. This keeps the
- * connected-node picker aligned with the palette and preserves all concrete
- * definitions as candidates for later overload resolution.
+ * @param nodes - Concrete registry definitions.
+ * @returns Families and single concrete entries.
  */
 export const createOverloadFamilies = (
   nodes: StandardNodeDefinition[]
-): NodeDefinitions[] => {
-  const concreteNodes = deduplicateImplementationAliases(nodes)
-  const grouped = new Map<
-    string,
-    { candidates: StandardNodeDefinition[]; displayName?: string }
-  >()
-  for (const node of concreteNodes) {
-    const explicitKey = overloadGroupKey(node)
-    const key = explicitKey ?? `palette:${nodePaletteKey(node)}`
-    const existing = grouped.get(key)
-    if (existing) {
-      existing.candidates.push(node)
+): (StandardNodeDefinition | OverloadNodeDefinition)[] => {
+  const families = new Map<string, StandardNodeDefinition[]>()
+  for (const node of deduplicateImplementationAliases(nodes)) {
+    const key = nodePaletteKey(node)
+    families.set(key, [...(families.get(key) ?? []), node])
+  }
+  return [...families.values()].map((candidates) =>
+    candidates.length > 1
+      ? createOverloadNodeDefinition(candidates)
+      : candidates[0]
+  )
+}
+
+/** One draggable sidebar tile: a concrete registry entry or a family. */
+export type NodePaletteTile = {
+  label: string
+  node: StandardNodeDefinition | OverloadNodeDefinition
+}
+
+/** A sidebar entry: a tile on its own, or a class section with its tiles. */
+export type NodePaletteItem =
+  | { kind: 'tile'; key: string; tile: NodePaletteTile }
+  | { kind: 'class'; key: string; label: string; tiles: NodePaletteTile[] }
+
+/**
+ * Builds the sidebar from registry entries: the families of
+ * {@link createOverloadFamilies}, each listed under the class section of
+ * {@link nodeClassSection}, or on its own when it has no class. Sections
+ * appear where their first member would.
+ *
+ * @param nodes - Concrete registry definitions, already filtered.
+ * @returns Sidebar entries in registry order.
+ */
+export const buildNodePalette = (
+  nodes: StandardNodeDefinition[]
+): NodePaletteItem[] => {
+  const items: NodePaletteItem[] = []
+  const sections = new Map<string, NodePaletteTile[]>()
+
+  for (const node of createOverloadFamilies(nodes)) {
+    const representative = isOverloadNodeDefinition(node)
+      ? node.candidates[0]
+      : node
+    const tile: NodePaletteTile = {
+      label: isOverloadNodeDefinition(node)
+        ? node.display_name
+        : nodeOwnerDisplayName(node),
+      node,
+    }
+    const section = nodeClassSection(representative)
+    if (!section) {
+      items.push({ kind: 'tile', key: node.type, tile })
       continue
     }
-    grouped.set(key, {
-      candidates: [node],
-      ...(explicitKey ? {} : { displayName: nodePaletteDisplayName(node) }),
+    const tiles = sections.get(section.key)
+    if (tiles) {
+      tiles.push(tile)
+      continue
+    }
+    sections.set(section.key, [tile])
+    items.push({
+      kind: 'class',
+      key: section.key,
+      label: section.label,
+      tiles: sections.get(section.key)!,
     })
   }
 
-  const emitted = new Set<string>()
-  const result: NodeDefinitions[] = []
-  for (const node of concreteNodes) {
-    const explicitKey = overloadGroupKey(node)
-    const key = explicitKey ?? `palette:${nodePaletteKey(node)}`
-    const family = grouped.get(key)
-    if (!family || family.candidates.length < 2) {
-      result.push(node)
-      continue
-    }
-    if (!emitted.has(key)) {
-      result.push(
-        createOverloadNodeDefinition(family.candidates, key, family.displayName)
-      )
-      emitted.add(key)
-    }
-  }
-  return result
-}
-
-const nodeCandidates = (
-  node: NodeDefinitions,
-  states: Map<string, ConcreteNodeDefinition[]>,
-  nodeId: string
-): ConcreteNodeDefinition[] =>
-  states.get(nodeId) ??
-  (isOverloadNodeDefinition(node) ? overloadCandidatesForNode(node) : [node])
-
-const nodeHandle = (edge: Edge, direction: 'source' | 'target'): string => {
-  const handle = direction === 'source' ? edge.sourceHandle : edge.targetHandle
-  if (handle) return handle
-  const index = direction === 'source' ? edge.sourceHandle : edge.targetHandle
-  return `${direction === 'source' ? 'output' : 'input'}-${index ?? 0}`
-}
-
-const outputTypesForNodeCandidate = (
-  nodeId: string,
-  candidate: ConcreteNodeDefinition,
-  handleId: string,
-  states: Map<string, ConcreteNodeDefinition[]>,
-  nodesById: Map<string, NodeDefinitions>,
-  edges: Edge[],
-  resolving: Set<string>
-): string[] => {
-  const key = `${nodeId}:${candidate.type}:${handleId}`
-  if (resolving.has(key)) {
-    return definitionOutputTypesForHandle(candidate, handleId)
-  }
-
-  const outputIndexMatch = handleId.match(/^output-(\d+)$/)
-  if (!outputIndexMatch)
-    return definitionOutputTypesForHandle(candidate, handleId)
-  const outputIndex = Number(outputIndexMatch[1])
-  const argumentIndex = candidate.outputs?.[outputIndex]
-  let upstreamTypes: string[] = []
-  if (argumentIndex != null && argumentIndex !== SELF) {
-    const argument = candidate.arguments?.[argumentIndex]
-    if (argument?.connection_type === ConnectionType.PASSTHROUGH) {
-      const inputIndex = candidate.inputs?.indexOf(argumentIndex) ?? -1
-      const incoming = edges.find(
-        (edge) =>
-          edge.target === nodeId &&
-          nodeHandle(edge, 'target') === `input-${inputIndex}`
-      )
-      if (incoming) {
-        const upstreamNode = nodesById.get(incoming.source)
-        if (upstreamNode) {
-          upstreamTypes = nodeCandidates(
-            upstreamNode,
-            states,
-            incoming.source
-          ).flatMap((upstreamCandidate) =>
-            outputTypesForNodeCandidate(
-              incoming.source,
-              upstreamCandidate,
-              nodeHandle(incoming, 'source'),
-              states,
-              nodesById,
-              edges,
-              new Set(resolving).add(key)
-            )
-          )
-        }
-      }
-    }
-  }
-  return definitionOutputTypes(candidate, outputIndex, upstreamTypes)
-}
-
-const compatibleCandidatePairs = (
-  edge: Edge,
-  states: Map<string, ConcreteNodeDefinition[]>,
-  nodesById: Map<string, NodeDefinitions>,
-  edges: Edge[]
-): { source: ConcreteNodeDefinition[]; target: ConcreteNodeDefinition[] } => {
-  const sourceNode = nodesById.get(edge.source)
-  const targetNode = nodesById.get(edge.target)
-  if (!sourceNode || !targetNode) return { source: [], target: [] }
-
-  const sourceCandidates = nodeCandidates(sourceNode, states, edge.source)
-  const targetCandidates = nodeCandidates(targetNode, states, edge.target)
-  const sourceHandle = nodeHandle(edge, 'source')
-  const targetHandle = nodeHandle(edge, 'target')
-  const source = new Set<ConcreteNodeDefinition>()
-  const target = new Set<ConcreteNodeDefinition>()
-
-  for (const sourceCandidate of sourceCandidates) {
-    const sourceTypes = outputTypesForNodeCandidate(
-      edge.source,
-      sourceCandidate,
-      sourceHandle,
-      states,
-      nodesById,
-      edges,
-      new Set()
-    )
-    for (const targetCandidate of targetCandidates) {
-      const targetTypes = definitionInputTypes(targetCandidate, targetHandle)
-      if (
-        sourceTypes.some((sourceType) =>
-          targetTypes.some((targetType) =>
-            isTypeCompatible(sourceType, targetType)
-          )
-        )
-      ) {
-        source.add(sourceCandidate)
-        target.add(targetCandidate)
-      }
-    }
-  }
-
-  return { source: [...source], target: [...target] }
-}
-
-const sameCandidates = (
-  left: ConcreteNodeDefinition[],
-  right: ConcreteNodeDefinition[]
-): boolean =>
-  left.length === right.length &&
-  left.every((candidate, index) => candidate.type === right[index]?.type)
-
-const intersectCandidates = (
-  current: ConcreteNodeDefinition[],
-  allowed: ConcreteNodeDefinition[]
-): ConcreteNodeDefinition[] => {
-  const allowedTypes = new Set(allowed.map((candidate) => candidate.type))
-  return current.filter((candidate) => allowedTypes.has(candidate.type))
+  return items
 }
 
 /**
@@ -701,6 +468,259 @@ export const overloadStatus = (
   if (candidates.length < family.candidates.length)
     return 'partially_constrained'
   return 'unresolved'
+}
+
+// ── Private helpers ──
+
+type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition
+
+const unique = (values: string[]): string[] => [...new Set(values)]
+
+/** Removes Coral's callable implementation alias when its concrete entry exists. */
+const deduplicateImplementationAliases = (
+  nodes: StandardNodeDefinition[]
+): StandardNodeDefinition[] => {
+  const concreteTypes = new Set(nodes.map((node) => node.type))
+  return nodes.filter((node) => {
+    const marker = '::std::function<'
+    const markerIndex = node.type.indexOf(marker)
+    if (markerIndex < 0) return true
+    return !concreteTypes.has(node.type.slice(0, markerIndex))
+  })
+}
+
+const definitionInputArgument = (
+  definition: ConcreteNodeDefinition,
+  handleIndex: number
+): Argument | null => {
+  const argumentIndex = definition.inputs?.[handleIndex]
+  return argumentIndex == null
+    ? null
+    : (definition.arguments?.[argumentIndex] ?? null)
+}
+
+const definitionOutputIndex = (
+  definition: ConcreteNodeDefinition,
+  handleIndex: number
+): number | null => definition.outputs?.[handleIndex] ?? null
+
+const definitionOutputTypes = (
+  definition: ConcreteNodeDefinition,
+  handleIndex: number,
+  upstreamTypes: string[] = []
+): string[] => {
+  const outputIndex = definitionOutputIndex(definition, handleIndex)
+  if (outputIndex == null) return []
+
+  if (outputIndex === SELF) {
+    if (isSubGraphNodeDefinition(definition)) return [definition.type]
+    if (definition.output_type)
+      return unique([...getBaseTypes(definition), definition.output_type])
+    return unique([...getBaseTypes(definition), definition.type])
+  }
+
+  const argument = definition.arguments?.[outputIndex]
+  if (!argument) return []
+  return unique(
+    argument.connection_type === ConnectionType.PASSTHROUGH
+      ? [...getBaseTypes(argument), argument.type, ...upstreamTypes]
+      : [...getBaseTypes(argument), argument.type]
+  )
+}
+
+const definitionInputTypes = (
+  definition: ConcreteNodeDefinition,
+  handleId: string
+): string[] => {
+  if (!isSubGraphNodeDefinition(definition)) {
+    const parameter = parameterExposureForHandle(definition, handleId, 'input')
+    if (parameter) return [parameterPortCoralType(parameter.type)]
+  }
+
+  const match = handleId.match(/^input-(\d+)$/)
+  if (!match) return []
+  const argument = definitionInputArgument(definition, Number(match[1]))
+  return argument ? [argument.type] : []
+}
+
+const definitionOutputTypesForHandle = (
+  definition: ConcreteNodeDefinition,
+  handleId: string,
+  upstreamTypes: string[] = []
+): string[] => {
+  if (!isSubGraphNodeDefinition(definition)) {
+    const parameter = parameterExposureForHandle(definition, handleId, 'output')
+    if (parameter) return [parameterPortCoralType(parameter.type)]
+  }
+
+  const match = handleId.match(/^output-(\d+)$/)
+  if (!match) return []
+  return definitionOutputTypes(definition, Number(match[1]), upstreamTypes)
+}
+
+const syntheticArgument = (
+  candidates: StandardNodeDefinition[],
+  index: number
+): Argument => {
+  const argumentsAtIndex = candidates
+    .map((candidate) => candidate.arguments[index])
+    .filter((argument): argument is Argument => Boolean(argument))
+  const first = argumentsAtIndex[0]
+  const types = unique(argumentsAtIndex.map((argument) => argument.type))
+  const names = unique(argumentsAtIndex.map((argument) => argument.name))
+  return {
+    connection_type: first?.connection_type ?? ConnectionType.OUTPUT,
+    name: names.join(' / ') || `port ${index}`,
+    type: (types.join(' | ') || 'unavailable') as Type,
+  }
+}
+
+const maxHandleCount = (
+  candidates: StandardNodeDefinition[],
+  direction: 'inputs' | 'outputs'
+): number =>
+  Math.max(0, ...candidates.map((candidate) => candidate[direction].length))
+
+const interfaceArgumentIndexes = (
+  candidates: StandardNodeDefinition[],
+  direction: 'inputs' | 'outputs'
+): number[] => {
+  const count = maxHandleCount(candidates, direction)
+  return Array.from({ length: count }, (_, handleIndex) => {
+    const argumentIndex = candidates
+      .map((candidate) => candidate[direction][handleIndex])
+      .find((index) => index != null)
+    return argumentIndex ?? 0
+  })
+}
+
+const nodeCandidates = (
+  node: NodeDefinitions,
+  states: Map<string, ConcreteNodeDefinition[]>,
+  nodeId: string
+): ConcreteNodeDefinition[] =>
+  states.get(nodeId) ??
+  (isOverloadNodeDefinition(node) ? overloadCandidatesForNode(node) : [node])
+
+const nodeHandle = (edge: Edge, direction: 'source' | 'target'): string => {
+  const handle = direction === 'source' ? edge.sourceHandle : edge.targetHandle
+  if (handle) return handle
+  const index = direction === 'source' ? edge.sourceHandle : edge.targetHandle
+  return `${direction === 'source' ? 'output' : 'input'}-${index ?? 0}`
+}
+
+const outputTypesForNodeCandidate = (
+  nodeId: string,
+  candidate: ConcreteNodeDefinition,
+  handleId: string,
+  states: Map<string, ConcreteNodeDefinition[]>,
+  nodesById: Map<string, NodeDefinitions>,
+  edges: Edge[],
+  resolving: Set<string>
+): string[] => {
+  const key = `${nodeId}:${candidate.type}:${handleId}`
+  if (resolving.has(key)) {
+    return definitionOutputTypesForHandle(candidate, handleId)
+  }
+
+  const outputIndexMatch = handleId.match(/^output-(\d+)$/)
+  if (!outputIndexMatch)
+    return definitionOutputTypesForHandle(candidate, handleId)
+  const outputIndex = Number(outputIndexMatch[1])
+  const argumentIndex = candidate.outputs?.[outputIndex]
+  let upstreamTypes: string[] = []
+  if (argumentIndex != null && argumentIndex !== SELF) {
+    const argument = candidate.arguments?.[argumentIndex]
+    if (argument?.connection_type === ConnectionType.PASSTHROUGH) {
+      const inputIndex = candidate.inputs?.indexOf(argumentIndex) ?? -1
+      const incoming = edges.find(
+        (edge) =>
+          edge.target === nodeId &&
+          nodeHandle(edge, 'target') === `input-${inputIndex}`
+      )
+      if (incoming) {
+        const upstreamNode = nodesById.get(incoming.source)
+        if (upstreamNode) {
+          upstreamTypes = nodeCandidates(
+            upstreamNode,
+            states,
+            incoming.source
+          ).flatMap((upstreamCandidate) =>
+            outputTypesForNodeCandidate(
+              incoming.source,
+              upstreamCandidate,
+              nodeHandle(incoming, 'source'),
+              states,
+              nodesById,
+              edges,
+              new Set(resolving).add(key)
+            )
+          )
+        }
+      }
+    }
+  }
+  return definitionOutputTypes(candidate, outputIndex, upstreamTypes)
+}
+
+const compatibleCandidatePairs = (
+  edge: Edge,
+  states: Map<string, ConcreteNodeDefinition[]>,
+  nodesById: Map<string, NodeDefinitions>,
+  edges: Edge[]
+): { source: ConcreteNodeDefinition[]; target: ConcreteNodeDefinition[] } => {
+  const sourceNode = nodesById.get(edge.source)
+  const targetNode = nodesById.get(edge.target)
+  if (!sourceNode || !targetNode) return { source: [], target: [] }
+
+  const sourceCandidates = nodeCandidates(sourceNode, states, edge.source)
+  const targetCandidates = nodeCandidates(targetNode, states, edge.target)
+  const sourceHandle = nodeHandle(edge, 'source')
+  const targetHandle = nodeHandle(edge, 'target')
+  const source = new Set<ConcreteNodeDefinition>()
+  const target = new Set<ConcreteNodeDefinition>()
+
+  for (const sourceCandidate of sourceCandidates) {
+    const sourceTypes = outputTypesForNodeCandidate(
+      edge.source,
+      sourceCandidate,
+      sourceHandle,
+      states,
+      nodesById,
+      edges,
+      new Set()
+    )
+    for (const targetCandidate of targetCandidates) {
+      const targetTypes = definitionInputTypes(targetCandidate, targetHandle)
+      if (
+        sourceTypes.some((sourceType) =>
+          targetTypes.some((targetType) =>
+            isTypeCompatible(sourceType, targetType)
+          )
+        )
+      ) {
+        source.add(sourceCandidate)
+        target.add(targetCandidate)
+      }
+    }
+  }
+
+  return { source: [...source], target: [...target] }
+}
+
+const sameCandidates = (
+  left: ConcreteNodeDefinition[],
+  right: ConcreteNodeDefinition[]
+): boolean =>
+  left.length === right.length &&
+  left.every((candidate, index) => candidate.type === right[index]?.type)
+
+const intersectCandidates = (
+  current: ConcreteNodeDefinition[],
+  allowed: ConcreteNodeDefinition[]
+): ConcreteNodeDefinition[] => {
+  const allowedTypes = new Set(allowed.map((candidate) => candidate.type))
+  return current.filter((candidate) => allowedTypes.has(candidate.type))
 }
 
 /**

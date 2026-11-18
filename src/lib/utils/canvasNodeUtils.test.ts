@@ -3,6 +3,7 @@ import defaultRegistry from '../data/defaultNodes.json'
 import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
 import {
   ConnectionType,
+  isOverloadNodeDefinition,
   NodeType,
   TypeField,
   Type,
@@ -24,11 +25,13 @@ import {
 } from './canvasNodeUtils'
 import {
   formatSuggestedNodeName,
-  groupNodesByOperation,
   nodeOwnerDisplayName,
   nodePaletteDisplayName,
 } from '../registry/nodePalette'
-import { createOverloadNodeDefinition } from '../registry/overloadResolution'
+import {
+  createOverloadFamilies,
+  createOverloadNodeDefinition,
+} from '../registry/overloadResolution'
 import { parameterHandle } from './parameterPorts'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
@@ -424,14 +427,18 @@ describe('canvasNodeUtils', () => {
       registry['LaplaceProblem::run<3>'],
     ] as NodeDefinitions[]
 
-    const groups = groupNodesByOperation(specialized as any)
-    expect(groups).toHaveLength(2)
-    expect(groups[0].displayName).toBe('Run Laplace problem')
-    expect(groups[0].nodes.map((node) => node.type)).toEqual([
+    const entries = createOverloadFamilies(
+      specialized as StandardNodeDefinition[]
+    )
+    expect(entries).toHaveLength(2)
+    const [family, legacy] = entries
+    if (!isOverloadNodeDefinition(family)) throw new Error('Expected a family')
+    expect(family.display_name).toBe('Run Laplace problem')
+    expect(family.candidates.map((node) => node.type)).toEqual([
       'LaplaceProblem::run<1>',
       'LaplaceProblem::run<2>',
     ])
-    expect(groups[1].nodes).toHaveLength(1)
+    expect(legacy.type).toBe('LaplaceProblem::run<3>')
   })
 
   it('prefers a logical display name without changing concrete identity', () => {
@@ -492,11 +499,7 @@ describe('canvasNodeUtils', () => {
       }) as StandardNodeDefinition
     const variants = [variant(1), variant(2)]
     const sidebarLabel = nodeOwnerDisplayName(variants[0])
-    const family = createOverloadNodeDefinition(
-      variants,
-      'operation:Poisson::space',
-      sidebarLabel
-    )
+    const family = createOverloadNodeDefinition(variants)
 
     expect(returnNodeName(family)).toBe(sidebarLabel)
     expect(returnNodeName(variants[1])).toBe(sidebarLabel)
@@ -607,18 +610,17 @@ describe('compatibleNodeOptionLabel', () => {
   })
 
   it('labels a family with its display name and the port', () => {
-    const family = createOverloadNodeDefinition(
-      [scalarField(1), scalarField(2)],
-      'scalar_field',
-      'Field -> Scalar field'
-    )
+    const family = createOverloadNodeDefinition([
+      { ...scalarField(1), display_name: 'Field of scalars' },
+      scalarField(2),
+    ])
     expect(
       compatibleNodeOptionLabel({
         nodeDefinition: family,
         handleId: 'input-0',
         argumentName: 'space',
       })
-    ).toBe('Field -> Scalar field (space)')
+    ).toBe('Field of scalars (space)')
   })
 
   it('labels a subnetwork with its name', () => {

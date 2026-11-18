@@ -9,6 +9,7 @@ import {
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import {
+  buildNodePalette,
   createOverloadFamilies,
   createOverloadNodeDefinition,
   overloadInputTypes,
@@ -54,6 +55,116 @@ const edge = (
   targetHandle = 'input-0',
   sourceHandle = 'output-0'
 ): Edge => ({ id, source, target, sourceHandle, targetHandle })
+
+describe('buildNodePalette', () => {
+  const entry = (
+    type: string,
+    overrides: Partial<StandardNodeDefinition> = {}
+  ): StandardNodeDefinition => ({
+    type,
+    arguments: [],
+    inputs: [],
+    outputs: [],
+    node_type: NodeType.FUNCTION,
+    ...overrides,
+  })
+
+  it('lists class members under their class and the rest on their own', () => {
+    const scalar = entry('Add scalar field<1,2>', {
+      node_type: NodeType.VOID_FUNCTION,
+      operation: 'Add scalar field',
+      display_name: 'Add scalar field',
+      class_name: 'ImmersX::OutputHandler',
+    })
+    const vector = entry('Add vector field<2,2>', {
+      node_type: NodeType.VOID_FUNCTION,
+      operation: 'Add vector field',
+      display_name: 'Add vector field',
+      class_name: 'ImmersX::OutputHandler',
+    })
+    const constructor = entry('ImmersX::OutputHandler<2,2>', {
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    })
+
+    const items = buildNodePalette([scalar, vector, constructor])
+
+    expect(items).toHaveLength(2)
+    const [section, single] = items
+    if (section.kind !== 'class') throw new Error('Expected a class section')
+    expect(section.label).toBe('Output handler')
+    expect(section.tiles.map((tile) => tile.label)).toEqual([
+      'Output handler -> Add scalar field',
+      'Output handler -> Add vector field',
+    ])
+    if (single.kind !== 'tile') throw new Error('Expected a tile')
+    expect(single.tile).toEqual({ label: 'OutputHandler', node: constructor })
+  })
+
+  it('makes one family tile for dimensional variants', () => {
+    const items = buildNodePalette([
+      entry('ImmersX::Poisson<1,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),
+      entry('ImmersX::Poisson<2,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),
+      entry('dealii::Triangulation<2, 2>', {
+        node_type: NodeType.EMPTY_CONSTRUCTOR,
+      }),
+    ])
+
+    const tiles = items.map((item) => {
+      if (item.kind !== 'tile') throw new Error('Expected a tile')
+      return item.tile
+    })
+    expect(tiles.map((tile) => tile.label)).toEqual([
+      'Poisson',
+      'Triangulation',
+    ])
+    if (!isOverloadNodeDefinition(tiles[0].node)) {
+      throw new Error('Expected a family')
+    }
+    expect(tiles[0].node.candidates).toHaveLength(2)
+  })
+
+  it('drops a callable alias that duplicates its plain registry entry', () => {
+    const method = entry('ImmersX::Poisson<2,2>::solve', {
+      node_type: NodeType.VOID_METHOD,
+      operation: 'Poisson::solve',
+      class_name: 'Poisson',
+    })
+    const alias = entry(
+      'ImmersX::Poisson<2,2>::solve::std::function<void (ImmersX::PoissonSolver<2, 2> &)>',
+      { node_type: NodeType.VOID_FUNCTION }
+    )
+
+    const items = buildNodePalette([method, alias])
+
+    expect(items).toHaveLength(1)
+    if (items[0].kind !== 'class') throw new Error('Expected a class section')
+    expect(items[0].tiles.map((tile) => tile.node)).toEqual([method])
+  })
+
+  it('keeps signature-keyed overloads of a free function as one family', () => {
+    const overload = (dim: number) =>
+      entry(
+        `Add problem to linear execution::std::function<void(const ImmersX::PoissonSolver<${dim}, 2>&)>`,
+        {
+          operation: 'Add problem to linear execution',
+          display_name: 'Add problem',
+          class_name: 'LinearExecution',
+          method_name: 'add_problem',
+        }
+      )
+
+    const items = buildNodePalette([overload(1), overload(2)])
+
+    expect(items).toHaveLength(1)
+    if (items[0].kind !== 'class') throw new Error('Expected a class section')
+    const [tile] = items[0].tiles
+    expect(tile.label).toBe('Linear execution -> Add problem')
+    if (!isOverloadNodeDefinition(tile.node)) {
+      throw new Error('Expected a family')
+    }
+    expect(tile.node.candidates).toEqual([overload(1), overload(2)])
+  })
+})
 
 describe('overload families', () => {
   const scalarGradient = definition(

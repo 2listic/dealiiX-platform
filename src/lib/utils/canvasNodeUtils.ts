@@ -26,8 +26,6 @@ import {
 import {
   formatSuggestedNodeName,
   nodeOwnerDisplayName,
-  nodePaletteNodeName,
-  nodeSimpleDisplayName,
 } from '../registry/nodePalette'
 import {
   overloadInputTypes,
@@ -362,10 +360,11 @@ export const getInputTypeAndName = (
 
 /**
  * Returns the display name for a node definition: its stored instance name,
- * else its family or owner label, else a label derived from its type.
+ * else its family or owner label (the label of its sidebar tile), else
+ * "Subnetwork" for a subnetwork without a name.
  *
  * @param node - Registry node or stored subgraph node.
- * @returns Display name, or `""` if all available labels are blank.
+ * @returns Display name.
  */
 export const returnNodeName = (node: NodeDefinitions): string => {
   if (node.name) return formatSuggestedNodeName(node.name)
@@ -378,16 +377,13 @@ export const returnNodeName = (node: NodeDefinitions): string => {
     return formatSuggestedNodeName(nodeOwnerDisplayName(registryNode))
   }
 
-  return formatSuggestedNodeName(nodeSimpleDisplayName(node.type))
+  return 'Subnetwork'
 }
 
 /**
- * Label of one entry in the "Create Connected Node" list: the node's name,
- * followed by the port it would connect through when that adds information.
- *
- * Subnetworks and families use {@link returnNodeName} (their stored `name`,
- * else the family's `display_name`); concrete registry nodes use their
- * palette label. The port is appended in brackets unless it is missing or
+ * Label of one entry in the "Create Connected Node" list: the node's
+ * {@link returnNodeName}, the label it gets on the canvas, followed by the
+ * port it would connect through in brackets, unless the port is missing or
  * equal to the name.
  *
  * @param option - A compatible node and the port that would be wired.
@@ -396,11 +392,7 @@ export const returnNodeName = (node: NodeDefinitions): string => {
 export const compatibleNodeOptionLabel = (
   option: CompatibleNodeOption
 ): string => {
-  const node = option.nodeDefinition
-  const name =
-    node.node_type === NodeType.NETWORK || isOverloadNodeDefinition(node)
-      ? returnNodeName(node)
-      : nodePaletteNodeName(node as StandardNodeDefinition)
+  const name = returnNodeName(option.nodeDefinition)
   const port = option.argumentName?.trim()
   return port && port !== name.trim() ? `${name} (${port})` : name
 }

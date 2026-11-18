@@ -14,11 +14,9 @@
   } from '../../types/nodeTypes'
   import { returnNodeName } from '../../utils/canvasNodeUtils'
   import {
-    groupNodesByClass,
-    nodeOwnerDisplayName,
-    type NodePaletteGroup,
-  } from '../../registry/nodePalette'
-  import { createOverloadNodeDefinition } from '../../registry/overloadResolution'
+    buildNodePalette,
+    type NodePaletteTile,
+  } from '../../registry/overloadResolution'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -48,17 +46,7 @@
         .some((value) => value!.toLowerCase().includes(query))
     }) ?? []
   )
-  const availableNodeItems = $derived(groupNodesByClass(filteredAvailableNodes))
-
-  const classMethodLabel = (
-    className: string,
-    group: NodePaletteGroup
-  ): string => {
-    const firstNode = group.nodes[0]
-    return firstNode
-      ? nodeOwnerDisplayName(firstNode)
-      : `${className} -> ${group.methodName ?? group.displayName}`
-  }
+  const paletteItems = $derived(buildNodePalette(filteredAvailableNodes))
 
   const onDragStart = (event: DragEvent, node: NodeDefinitions) => {
     if (!event.dataTransfer) {
@@ -135,84 +123,47 @@
           transition:fade|global={{ duration: 250 }}
         />
       {/if}
-      {#each availableNodeItems as item (item.key)}
+      {#snippet paletteTile(tile: NodePaletteTile)}
+        <div class="node-group">
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style="--borderColor: {returnNodeColor(tile.node.node_type)}"
+            class="node"
+            data-testid="sidebar-node"
+            data-node-type={tile.node.node_type}
+            ondragstart={(event) => onDragStart(event, tile.node)}
+            draggable={true}
+          >
+            {#if showNodeNames}
+              <span transition:fade|global={{ duration: 250 }}>
+                {tile.label}
+              </span>
+            {/if}
+          </div>
+        </div>
+      {/snippet}
+      {#each paletteItems as item (item.key)}
         {#if item.kind === 'class'}
           <section
             class="class-group"
             class:collapsed={!showNodeNames}
             data-testid="sidebar-node-class"
-            data-class-name={item.displayName}
+            data-class-name={item.label}
           >
             {#if showNodeNames}
               <div
                 class="class-label"
                 transition:fade|global={{ duration: 250 }}
               >
-                {item.displayName}
+                {item.label}
               </div>
             {/if}
-            {#each item.groups as group (group.key)}
-              {@const methodLabel = classMethodLabel(item.displayName, group)}
-              {@const paletteNode =
-                group.nodes.length > 1
-                  ? createOverloadNodeDefinition(
-                      group.nodes,
-                      group.key,
-                      methodLabel
-                    )
-                  : group.nodes[0]}
-              <div class="node-group">
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div
-                  style="--borderColor: {returnNodeColor(
-                    paletteNode.node_type
-                  )}"
-                  class="node"
-                  data-testid="sidebar-node"
-                  data-node-type={paletteNode.node_type}
-                  data-operation={group.operation ?? undefined}
-                  data-overload-group={group.overloadGroup ?? undefined}
-                  ondragstart={(event) => onDragStart(event, paletteNode)}
-                  draggable={true}
-                >
-                  {#if showNodeNames}
-                    <span transition:fade|global={{ duration: 250 }}>
-                      {methodLabel}
-                    </span>
-                  {/if}
-                </div>
-              </div>
+            {#each item.tiles as tile (tile.node.type)}
+              {@render paletteTile(tile)}
             {/each}
           </section>
-        {:else}
-          {@const group = item.group}
-          {@const paletteNode =
-            group.nodes.length > 1
-              ? createOverloadNodeDefinition(
-                  group.nodes,
-                  group.key,
-                  group.displayName
-                )
-              : group.nodes[0]}
-          <div class="node-group">
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              style="--borderColor: {returnNodeColor(paletteNode.node_type)}"
-              class="node"
-              data-testid="sidebar-node"
-              data-node-type={paletteNode.node_type}
-              data-operation={group.operation ?? undefined}
-              data-overload-group={group.overloadGroup ?? undefined}
-              ondragstart={(event) => onDragStart(event, paletteNode)}
-              draggable={true}
-            >
-              {#if showNodeNames}
-                <span transition:fade|global={{ duration: 250 }}>
-                  {group.displayName}
-                </span>
-              {/if}
-            </div>
-          </div>
+        {:else if item.kind === 'tile'}
+          {@render paletteTile(item.tile)}
         {/if}
       {/each}
     {/if}

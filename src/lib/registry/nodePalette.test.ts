@@ -2,16 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { NodeType, type StandardNodeDefinition } from '../types/nodeTypes'
 import {
   formatSuggestedNodeName,
-  groupNodesByClass,
-  groupNodesByOperation,
+  nodeClassSection,
   nodeOwnerDisplayName,
-  nodeClassName,
-  nodeDimensionTag,
-  nodeNamespace,
   nodePaletteChildName,
   nodePaletteDisplayName,
+  nodePaletteKey,
   nodePaletteNodeName,
-  nodeSimpleDisplayName,
   nodeVariantName,
 } from './nodePalette'
 
@@ -49,27 +45,25 @@ describe('node palette metadata', () => {
       variant_name: 'Elastic static · 2D',
     })
 
-    const groups = groupNodesByOperation([poisson, elastic])
-
-    expect(groups).toHaveLength(1)
-    expect(groups[0].displayName).toBe('Finite element space')
-    expect(nodeVariantName(groups[0].nodes[0])).toBe('Poisson · 2D')
-    expect(nodeVariantName(groups[0].nodes[1])).toBe('Elastic static · 2D')
-    expect(nodePaletteNodeName(groups[0].nodes[0])).toBe('Finite element space')
-    expect(nodePaletteNodeName(groups[0].nodes[0], true)).toBe('Poisson · 2D')
+    expect(nodePaletteKey(poisson)).toBe(nodePaletteKey(elastic))
+    expect(nodePaletteDisplayName(poisson)).toBe('Finite element space')
+    expect(nodeVariantName(poisson)).toBe('Poisson · 2D')
+    expect(nodeVariantName(elastic)).toBe('Elastic static · 2D')
+    expect(nodePaletteNodeName(poisson)).toBe('Finite element space')
+    expect(nodePaletteNodeName(poisson, true)).toBe('Poisson · 2D')
   })
 
-  it('groups all elementary constructors under one palette group', () => {
-    const groups = groupNodesByOperation([
-      node('double', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
-      node('int', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
-      node('unsigned int', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
-      node('std::string', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
-      node('bool', { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }),
-    ])
+  it('keys and labels every literal on its own', () => {
+    const literals = [
+      'double',
+      'int',
+      'unsigned int',
+      'std::string',
+      'bool',
+    ].map((type) => node(type, { node_type: NodeType.ELEMENTARY_CONSTRUCTOR }))
 
-    expect(groups).toHaveLength(5)
-    expect(groups.map((group) => group.displayName)).toEqual([
+    expect(new Set(literals.map(nodePaletteKey)).size).toBe(5)
+    expect(literals.map(nodePaletteDisplayName)).toEqual([
       'double',
       'int',
       'unsigned int',
@@ -84,30 +78,21 @@ describe('node palette metadata', () => {
     )
   })
 
-  it('derives family, class name, and dimension tag from simple node types', () => {
-    const type = 'ImmersX::ElasticStatic<1, 2>'
+  it('keys class specializations without their dimensions', () => {
+    const poisson12 = node('ImmersX::Poisson<1,2>', {
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    })
+    const poisson22 = node('ImmersX::Poisson<2,2>', {
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    })
+    const triangulation = node('dealii::Triangulation<2, 2>', {
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    })
 
-    expect(nodeNamespace(type)).toBe('ImmersX')
-    expect(nodeClassName(type)).toBe('ElasticStatic')
-    expect(nodeDimensionTag(type)).toBe('· 1D in 2D')
-    expect(nodeSimpleDisplayName(type)).toBe('ElasticStatic · 1D in 2D')
-    expect(nodeSimpleDisplayName('ImmersX::Poisson<2, 2>')).toBe('Poisson · 2D')
-  })
-
-  it('groups class specializations without their dimensions', () => {
-    const groups = groupNodesByOperation([
-      node('ImmersX::Poisson<1,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),
-      node('ImmersX::Poisson<2,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),
-      node('dealii::Triangulation<2, 2>', {
-        node_type: NodeType.EMPTY_CONSTRUCTOR,
-      }),
-    ])
-
-    expect(groups.map((group) => group.displayName)).toEqual([
-      'Poisson',
-      'Triangulation',
-    ])
-    expect(groups[0].nodes).toHaveLength(2)
+    expect(nodePaletteKey(poisson12)).toBe(nodePaletteKey(poisson22))
+    expect(nodePaletteKey(poisson12)).not.toBe(nodePaletteKey(triangulation))
+    expect(nodePaletteDisplayName(poisson12)).toBe('Poisson')
+    expect(nodePaletteDisplayName(triangulation)).toBe('Triangulation')
   })
 
   it('labels a constructor with its display name when it has one', () => {
@@ -122,7 +107,7 @@ describe('node palette metadata', () => {
     ).toBe('Poisson')
   })
 
-  it('keeps operations as flat palette entries', () => {
+  it('keys and labels distinct operations apart', () => {
     const addProblem = node('Add problem to linear execution', {
       operation: 'Add problem to linear execution',
       display_name: 'Add problem',
@@ -132,78 +117,46 @@ describe('node palette metadata', () => {
       display_name: 'Add constraint',
     })
 
-    const groups = groupNodesByOperation([addProblem, addConstraint])
-
-    expect(groups).toHaveLength(2)
-    expect(groups.map((group) => group.displayName)).toEqual([
-      'Add problem',
-      'Add constraint',
-    ])
+    expect(nodePaletteKey(addProblem)).not.toBe(nodePaletteKey(addConstraint))
+    expect(nodePaletteDisplayName(addProblem)).toBe('Add problem')
+    expect(nodePaletteDisplayName(addConstraint)).toBe('Add constraint')
   })
 
-  it('labels methods with their class and groups dimensional variants', () => {
-    const groups = groupNodesByOperation([
-      node('ImmersX::Poisson<2,2>::solve', {
-        node_type: NodeType.METHOD,
-        operation: 'Poisson::solve',
-        class_name: 'Poisson',
-      }),
-      node('ImmersX::Poisson<2,2>::make_grid', {
-        node_type: NodeType.METHOD,
-        operation: 'Poisson::make_grid',
-        class_name: 'Poisson',
-      }),
-      node('ImmersX::Poisson<1,2>::solve', {
-        node_type: NodeType.METHOD,
-        operation: 'Poisson::solve',
-        class_name: 'Poisson',
-      }),
-    ])
+  it('labels methods with their class and keys dimensional variants together', () => {
+    const solve22 = node('ImmersX::Poisson<2,2>::solve', {
+      node_type: NodeType.METHOD,
+      operation: 'Poisson::solve',
+      class_name: 'Poisson',
+    })
+    const solve12 = node('ImmersX::Poisson<1,2>::solve', {
+      node_type: NodeType.METHOD,
+      operation: 'Poisson::solve',
+      class_name: 'Poisson',
+    })
+    const makeGrid = node('ImmersX::Poisson<2,2>::make_grid', {
+      node_type: NodeType.METHOD,
+      operation: 'Poisson::make_grid',
+      class_name: 'Poisson',
+    })
 
-    expect(groups.map((group) => group.displayName)).toEqual([
-      'Poisson::solve',
-      'Poisson::make_grid',
-    ])
-    expect(groups[0].nodes).toHaveLength(2)
-    expect(nodePaletteChildName(groups[0].nodes[0])).toBe('Poisson::solve')
+    expect(nodePaletteKey(solve22)).toBe(nodePaletteKey(solve12))
+    expect(nodePaletteKey(solve22)).not.toBe(nodePaletteKey(makeGrid))
+    expect(nodePaletteDisplayName(solve22)).toBe('Poisson::solve')
+    expect(nodePaletteDisplayName(makeGrid)).toBe('Poisson::make_grid')
+    expect(nodePaletteChildName(solve22)).toBe('Poisson::solve')
   })
 
-  it('groups method-like operations under an owning class', () => {
-    const scalar = node('Add scalar field<1,2>', {
-      node_type: NodeType.VOID_FUNCTION,
-      operation: 'Add scalar field',
-      display_name: 'Add scalar field',
-      class_name: 'ImmersX::OutputHandler',
+  it('keys an explicit overload group together', () => {
+    const field = node('gradient<field>', {
+      operation: 'Field gradient',
+      overload_group: 'Gradient',
     })
-    const vector = node('Add vector field<2,2>', {
-      node_type: NodeType.VOID_FUNCTION,
-      operation: 'Add vector field',
-      display_name: 'Add vector field',
-      class_name: 'ImmersX::OutputHandler',
-    })
-    const constructor = node('ImmersX::OutputHandler<2,2>', {
-      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    const test = node('gradient<test>', {
+      operation: 'Test gradient',
+      overload_group: 'Gradient',
     })
 
-    const items = groupNodesByClass([scalar, vector, constructor])
-
-    expect(items).toHaveLength(2)
-    expect(items[0]).toMatchObject({
-      kind: 'class',
-      displayName: 'Output handler',
-    })
-    if (items[0].kind !== 'class') throw new Error('Expected a class group')
-    expect(items[0].groups.map((group) => group.methodName)).toEqual([
-      'Add scalar field',
-      'Add vector field',
-    ])
-    expect(nodeOwnerDisplayName(scalar)).toBe(
-      'Output handler -> Add scalar field'
-    )
-    expect(nodeOwnerDisplayName(vector)).toBe(
-      'Output handler -> Add vector field'
-    )
-    expect(items[1]).toMatchObject({ kind: 'node' })
+    expect(nodePaletteKey(field)).toBe(nodePaletteKey(test))
   })
 
   it('removes the ImmersX namespace from user-facing labels', () => {
@@ -227,6 +180,10 @@ describe('node palette metadata', () => {
     expect(nodeOwnerDisplayName(definition)).toBe(
       'Fiber embedded problem -> Prepare'
     )
+    expect(nodeClassSection(definition)).toEqual({
+      key: 'class:fiberembeddedproblem',
+      label: 'Fiber embedded problem',
+    })
   })
 
   it('does not prefix constructors with their owning class', () => {
@@ -239,7 +196,7 @@ describe('node palette metadata', () => {
     expect(nodeOwnerDisplayName(definition)).toBe('Boundary conditions')
   })
 
-  it('groups class methods by class and method instead of display operation', () => {
+  it('keys class methods by class and method instead of operation', () => {
     const scalar = node('Known term<Scalar>', {
       operation: 'Known term',
       display_name: 'Known term',
@@ -253,11 +210,8 @@ describe('node palette metadata', () => {
       method_name: 'create',
     })
 
-    const groups = groupNodesByOperation([scalar, vector])
-
-    expect(groups).toHaveLength(1)
-    expect(groups[0].displayName).toBe('Known term')
-    expect(groups[0].nodes).toEqual([scalar, vector])
+    expect(nodePaletteKey(scalar)).toBe(nodePaletteKey(vector))
+    expect(nodePaletteDisplayName(scalar)).toBe('Known term')
   })
 
   it('extracts the owner and operation from registry suffixes', () => {
@@ -266,10 +220,10 @@ describe('node palette metadata', () => {
       operation: 'CoupledPoisson::residual_norm',
       class_name: 'CoupledPoisson',
     })
-    const groups = groupNodesByOperation([definition])
 
-    expect(nodeNamespace(definition.type)).toBe('ImmersX')
-    expect(groups[0].displayName).toBe('CoupledPoisson::residual_norm')
+    expect(nodePaletteDisplayName(definition)).toBe(
+      'CoupledPoisson::residual_norm'
+    )
     expect(nodePaletteChildName(definition)).toBe(
       'CoupledPoisson::residual_norm'
     )
@@ -283,29 +237,16 @@ describe('node palette metadata', () => {
       'Finite element space::std::function<Space(const Problem &)>',
       { output_type: 'ImmersX::FiniteElementSpaceView<2, 2>' }
     )
-    const groups = groupNodesByOperation([definition])
 
-    expect(groups[0].displayName).toBe('Finite element space::std::function')
+    expect(nodePaletteDisplayName(definition)).toBe(
+      'Finite element space::std::function'
+    )
     expect(nodePaletteChildName(definition)).toBe(
       'Finite element space::std::function'
     )
   })
 
-  it('hides a generated function alias when its concrete registration exists', () => {
-    const method = node('ImmersX::Poisson<2,2>::solve', {
-      node_type: NodeType.VOID_METHOD,
-      operation: 'Poisson::solve',
-      class_name: 'Poisson',
-    })
-    const wrapper = node(
-      'ImmersX::Poisson<2,2>::solve::std::function<void (ImmersX::PoissonSolver<2, 2> &)>',
-      { node_type: NodeType.VOID_FUNCTION }
-    )
-
-    const groups = groupNodesByOperation([method, wrapper])
-
-    expect(groups).toHaveLength(1)
-    expect(groups[0].displayName).toBe('Poisson::solve')
-    expect(groups[0].nodes.map((item) => item.type)).toEqual([method.type])
+  it('lists an entry without class_name on its own', () => {
+    expect(nodeClassSection(node('make_grid'))).toBeUndefined()
   })
 })
