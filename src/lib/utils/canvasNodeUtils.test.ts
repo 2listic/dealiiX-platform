@@ -22,7 +22,12 @@ import {
   resolveOutputTypeCandidates,
   returnNodeName,
 } from './canvasNodeUtils'
-import { groupNodesByOperation } from '../registry/nodePalette'
+import {
+  formatSuggestedNodeName,
+  groupNodesByOperation,
+  nodeOwnerDisplayName,
+  nodePaletteDisplayName,
+} from '../registry/nodePalette'
 import { createOverloadNodeDefinition } from '../registry/overloadResolution'
 import { parameterHandle } from './parameterPorts'
 
@@ -471,6 +476,46 @@ describe('canvasNodeUtils', () => {
     } as NodeDefinitions
 
     expect(returnNodeName(definition)).toBe('Boundary conditions')
+  })
+
+  it('names a nameless family and its variants with their sidebar label', () => {
+    const variant = (dim: number) =>
+      ({
+        type: `Poisson<${dim},${dim}>::space`,
+        node_type: NodeType.CONST_METHOD,
+        arguments: [],
+        inputs: [],
+        outputs: [],
+        display_name: 'Finite element space',
+        class_name: 'Poisson',
+        method_name: 'space',
+      }) as StandardNodeDefinition
+    const variants = [variant(1), variant(2)]
+    const sidebarLabel = nodeOwnerDisplayName(variants[0])
+    const family = createOverloadNodeDefinition(
+      variants,
+      'operation:Poisson::space',
+      sidebarLabel
+    )
+
+    expect(returnNodeName(family)).toBe(sidebarLabel)
+    expect(returnNodeName(variants[1])).toBe(sidebarLabel)
+  })
+
+  it('names a nameless free-standing node with its sidebar label', () => {
+    const freeStanding = {
+      type: 'ImmersX::make_grid<2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'make_grid',
+    } as StandardNodeDefinition
+
+    expect(returnNodeName(freeStanding)).toBe(
+      formatSuggestedNodeName(nodePaletteDisplayName(freeStanding))
+    )
+    expect(returnNodeName(freeStanding)).toBe('Make grid')
   })
 
   it('uses the logical display name instead of the palette variant', () => {

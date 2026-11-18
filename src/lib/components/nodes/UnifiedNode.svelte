@@ -129,7 +129,6 @@
 
   // data.is_valid = true
   let isValid = $derived(data?.is_valid ?? true)
-  let hasCustomName = $derived(data.name && data.name.trim() !== '')
   let isNetworkNode = $derived(data.node_type === NodeType.NETWORK)
   // An overload family node has no `value`.
   const valueForNode = (): string | undefined =>
@@ -616,7 +615,7 @@
 <EditNodeNameModal
   modalId={editNodeModalId}
   nodeId={id}
-  currentName={hasCustomName ? (data.name ?? data.type) : data.type}
+  currentName={nodeDisplayName}
 />
 
 <Modal id={nodeInfoModalId} size="lg">

@@ -60,17 +60,11 @@
       : `${className} -> ${group.methodName ?? group.displayName}`
   }
 
-  const onDragStart = (
-    event: DragEvent,
-    node: NodeDefinitions,
-    defaultName?: string
-  ) => {
+  const onDragStart = (event: DragEvent, node: NodeDefinitions) => {
     if (!event.dataTransfer) {
       return
     }
-    dndNodeDataState.current = defaultName
-      ? ({ ...node, name: defaultName } as NodeDefinitions)
-      : node
+    dndNodeDataState.current = node
     event.dataTransfer.effectAllowed = 'move'
   }
 
@@ -178,8 +172,7 @@
                   data-node-type={paletteNode.node_type}
                   data-operation={group.operation ?? undefined}
                   data-overload-group={group.overloadGroup ?? undefined}
-                  ondragstart={(event) =>
-                    onDragStart(event, paletteNode, methodLabel)}
+                  ondragstart={(event) => onDragStart(event, paletteNode)}
                   draggable={true}
                 >
                   {#if showNodeNames}
@@ -210,8 +203,7 @@
               data-node-type={paletteNode.node_type}
               data-operation={group.operation ?? undefined}
               data-overload-group={group.overloadGroup ?? undefined}
-              ondragstart={(event) =>
-                onDragStart(event, paletteNode, group.displayName)}
+              ondragstart={(event) => onDragStart(event, paletteNode)}
               draggable={true}
             >
               {#if showNodeNames}
