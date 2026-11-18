@@ -7,6 +7,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Canvas-graph
 
 - [#237](https://github.com/2listic/dealiiX-platform/pull/237) Graphs can be selected and imported directly from JSON files in the configured remote working directory.
+- [#TBD](https://github.com/2listic/dealiiX-platform/pull/TBD) Every overload of a registry function is offered in the sidebar and in the connected-node suggestions; previously only one was shown when Coral also listed the function under its plain name. New nodes are saved under Coral's signature key, and graphs saved with the plain name still load.
 
 - [#226](https://github.com/2listic/dealiiX-platform/pull/226) Graph import, connections, and connection suggestions accept concrete derived values and their ancestors, preserving concrete types through pass-through nodes. Compiler-specific C++ type spellings are matched consistently with Coral.
 

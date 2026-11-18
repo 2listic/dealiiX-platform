@@ -113,32 +113,32 @@ describe('buildNodePalette', () => {
       if (item.kind !== 'tile') throw new Error('Expected a tile')
       return item.tile
     })
-    expect(tiles.map((tile) => tile.label)).toEqual([
-      'Poisson',
-      'Triangulation',
-    ])
+    expect(tiles.map((tile) => tile.label)).toEqual(['Poisson', 'Triangulation'])
     if (!isOverloadNodeDefinition(tiles[0].node)) {
       throw new Error('Expected a family')
     }
     expect(tiles[0].node.candidates).toHaveLength(2)
   })
 
-  it('drops a callable alias that duplicates its plain registry entry', () => {
-    const method = entry('ImmersX::Poisson<2,2>::solve', {
-      node_type: NodeType.VOID_METHOD,
-      operation: 'Poisson::solve',
-      class_name: 'Poisson',
-    })
-    const alias = entry(
-      'ImmersX::Poisson<2,2>::solve::std::function<void (ImmersX::PoissonSolver<2, 2> &)>',
-      { node_type: NodeType.VOID_FUNCTION }
+  it("drops Coral's plain-name copy of a signature-keyed free function", () => {
+    const metadata = {
+      operation: 'ImmersX::Poisson<2,2>::solution_l2_norm',
+      class_name: 'ImmersX::Poisson',
+      method_name: 'solution_l2_norm',
+    }
+    const plainName = entry('ImmersX::Poisson<2,2>::solution_l2_norm', metadata)
+    const signatureKey = entry(
+      'ImmersX::Poisson<2,2>::solution_l2_norm::std::function<double(const ImmersX::PoissonSolver<2, 2>&)>',
+      metadata
     )
 
-    const items = buildNodePalette([method, alias])
+    const items = buildNodePalette([plainName, signatureKey])
 
     expect(items).toHaveLength(1)
     if (items[0].kind !== 'class') throw new Error('Expected a class section')
-    expect(items[0].tiles.map((tile) => tile.node)).toEqual([method])
+    expect(items[0].tiles).toEqual([
+      { label: 'Poisson -> Solution l2 norm', node: signatureKey },
+    ])
   })
 
   it('keeps signature-keyed overloads of a free function as one family', () => {
@@ -265,51 +265,35 @@ describe('overload families', () => {
     ])
   })
 
-  it('does not add callable implementation aliases to overload families', () => {
-    const scalarKnownTerm = {
-      ...definition(
-        'known_term<scalar>',
-        ['KnownSourceScalar', 'TestScalar'],
-        'KnownTermScalar',
-        'Known term'
-      ),
+  it('builds families from signature keys, not plain-name copies', () => {
+    const knownTerm = (type: string, input: string, output: string) => ({
+      ...definition(type, [input, 'TestScalar'], output, 'Known term'),
       display_name: 'Known term',
       class_name: 'KnownTerm',
       method_name: 'create',
-    }
-    const scalarAlias = {
-      ...definition(
-        'known_term<scalar>::std::function<...>',
-        ['KnownSourceScalar', 'TestScalar'],
-        'KnownTermScalar',
-        'Known term'
-      ),
-      display_name: 'Known term',
-      class_name: 'KnownTerm',
-      method_name: 'create',
-    }
-    const vector = {
-      ...definition(
-        'known_term<vector>',
-        ['KnownSourceVector', 'TestVector'],
-        'KnownTermVector',
-        'Vector Known term'
-      ),
-      display_name: 'Known term',
-      class_name: 'KnownTerm',
-      method_name: 'create',
-    }
+    })
+    const scalarPlainName = knownTerm(
+      'Known term scalar',
+      'KnownSourceScalar',
+      'KnownTermScalar'
+    )
+    const scalar = knownTerm(
+      'Known term scalar::std::function<KnownTermScalar(const KnownSourceScalar&)>',
+      'KnownSourceScalar',
+      'KnownTermScalar'
+    )
+    const vector = knownTerm(
+      'Known term::std::function<KnownTermVector(const KnownSourceVector&)>',
+      'KnownSourceVector',
+      'KnownTermVector'
+    )
 
-    const entries = createOverloadFamilies([
-      scalarKnownTerm,
-      scalarAlias,
-      vector,
-    ])
+    const entries = createOverloadFamilies([scalarPlainName, scalar, vector])
 
     expect(entries).toHaveLength(1)
     if (!isOverloadNodeDefinition(entries[0])) return
     expect(entries[0].candidates.map((candidate) => candidate.type)).toEqual([
-      scalarKnownTerm.type,
+      scalar.type,
       vector.type,
     ])
   })

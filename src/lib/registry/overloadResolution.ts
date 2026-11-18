@@ -233,8 +233,8 @@ export const createOverloadNodeDefinition = (
 /**
  * Replaces the registry entries that share a {@link nodePaletteKey} with one
  * family, keeping the order of first appearance; an entry alone under its key
- * stays concrete. Coral's `std::function` aliases are dropped when their
- * concrete entry is present.
+ * stays concrete. Coral's plain-name copies of signature-keyed free functions
+ * are dropped, so new nodes use the signature key.
  *
  * @param nodes - Concrete registry definitions.
  * @returns Families and single concrete entries.
@@ -243,7 +243,7 @@ export const createOverloadFamilies = (
   nodes: StandardNodeDefinition[]
 ): (StandardNodeDefinition | OverloadNodeDefinition)[] => {
   const families = new Map<string, StandardNodeDefinition[]>()
-  for (const node of deduplicateImplementationAliases(nodes)) {
+  for (const node of dropLegacyFunctionNames(nodes)) {
     const key = nodePaletteKey(node)
     families.set(key, [...(families.get(key) ?? []), node])
   }
@@ -476,17 +476,22 @@ type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition
 
 const unique = (values: string[]): string[] => [...new Set(values)]
 
-/** Removes Coral's callable implementation alias when its concrete entry exists. */
-const deduplicateImplementationAliases = (
+/**
+ * Removes the plain-name copies Coral adds to its registry for free functions
+ * with one signature: the function's key is `<name>::std::function<…>`, and
+ * the plain `<name>` only keeps graphs saved before signature keys loading.
+ */
+const dropLegacyFunctionNames = (
   nodes: StandardNodeDefinition[]
 ): StandardNodeDefinition[] => {
-  const concreteTypes = new Set(nodes.map((node) => node.type))
-  return nodes.filter((node) => {
-    const marker = '::std::function<'
-    const markerIndex = node.type.indexOf(marker)
-    if (markerIndex < 0) return true
-    return !concreteTypes.has(node.type.slice(0, markerIndex))
-  })
+  const marker = '::std::function<'
+  const signatureKeyedNames = new Set(
+    nodes.flatMap((node) => {
+      const index = node.type.indexOf(marker)
+      return index > 0 ? [node.type.slice(0, index)] : []
+    })
+  )
+  return nodes.filter((node) => !signatureKeyedNames.has(node.type))
 }
 
 const definitionInputArgument = (

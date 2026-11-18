@@ -235,7 +235,7 @@ const classNodeTypes = new Set<NodeType>([
 const isConstructorNode = (node: StandardNodeDefinition): boolean =>
   classNodeTypes.has(node.node_type) || node.method_name?.trim() === 'create'
 
-/** Returns the method's type without Coral's generated `std::function` alias suffix. */
+/** Returns a signature-keyed free function's type without its `::std::function<…>` suffix. */
 const wrapperBaseType = (type: string): string | undefined => {
   const marker = '::std::function<'
   const index = type.indexOf(marker)
