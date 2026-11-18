@@ -180,8 +180,9 @@
     onclick={handleBackdropClick}
     transition:fade={{ duration: 150 }}
   >
+    <!-- A modal declared inside a canvas node stays in the node's DOM: nodrag/nopan/nowheel stop xyflow from dragging, panning or zooming through it. -->
     <div
-      class="modal {size ?? ''}"
+      class="modal nodrag nopan nowheel {size ?? ''}"
       transition:scale={{ duration: 200, start: 0.95 }}
       onclick={(e) => e.stopPropagation()}
       onwheel={(e) => e.stopPropagation()}
@@ -227,6 +228,8 @@
     padding: 1em;
     min-width: 300px;
     overscroll-behavior: contain;
+    /* Canvas nodes set user-select: none, which a modal inside a node inherits. */
+    user-select: text;
     /*min-height: 50vh; */
   }
 
