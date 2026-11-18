@@ -96,9 +96,6 @@
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import MarkIcon from '../icons/MarkIcon.svelte'
   import ParameterFilePorts from './ParameterFilePorts.svelte'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { jobIdMapState } from '../../stores/jobsStore.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
   import { isParameterFileName } from '../../utils/parameterFileFormat'
   import {
     openParameterFile,
@@ -116,11 +113,7 @@
   } from '../../utils/canvasNodeUtils'
   import { displayTypeName } from '../../registry/nodePalette'
   import { isVtkFileName } from '../../vtk/vtkFileFormat'
-  import {
-    buildVtkVisualizerUrl,
-    findVtkVisualizerTarget,
-  } from '../../vtk/vtkVisualizer'
-  import { openNewWindow } from '../../utils/sshMessages'
+  import { openVtkFile } from '../../vtk/vtkActions'
   import {
     overloadInterfaceForCandidates,
     overloadStatus,
@@ -177,12 +170,6 @@
   )
   let isOverloadFinalized = $derived(
     isOverloadNode && isOverloadNodeDefinition(data) && data.finalized === true
-  )
-  let activeLocation = $derived(executionSelectionState.location)
-  let workingDirectory = $derived(
-    activeLocation === 'local'
-      ? settingsState.local.workingDirectory
-      : settingsState.remote.workingDirectory
   )
   let isVtkFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
@@ -281,32 +268,6 @@
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
-
-  const handleOpenVtkFile = async () => {
-    try {
-      const target = await findVtkVisualizerTarget(
-        activeLocation,
-        valueForNode() ?? '',
-        jobIdMapState.getLatestRunWorkingDirectory()
-      )
-      if (!target) {
-        throw new Error(
-          'VTK file is not available in the working directory or the last run directory'
-        )
-      }
-      await openNewWindow(
-        buildVtkVisualizerUrl(settingsState.urlVisualizer, target)
-      )
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to open the VTK visualizer',
-        type: 'error',
-      })
-    }
-  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -469,10 +430,10 @@
         {#if isVtkFile}
           <button
             class="node-button vtk-button"
-            title="Open VTK file in visualizer"
+            title={parameterFileUnavailable ?? 'Open VTK file in visualizer'}
             aria-label="Open VTK file in visualizer"
-            disabled={!workingDirectory}
-            onclick={handleOpenVtkFile}
+            disabled={Boolean(parameterFileUnavailable)}
+            onclick={() => openVtkFile(valueForNode() ?? '')}
           >
             <CubeIcon width="20px" height="20px" />
           </button>
