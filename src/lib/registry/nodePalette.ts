@@ -315,31 +315,37 @@ export const nodeSimpleDisplayName = (type: string): string => {
 }
 
 /**
- * Returns the label used for a logical operation in the picker/sidebar.
+ * Returns the label of a registry entry in the sidebar and the connected-node
+ * picker, from the first source present:
+ * 1. a literal's value type (`int`, `std::string`);
+ * 2. `display_name`;
+ * 3. `method_name`, for an entry with `class_name` and `method_name`;
+ * 4. for a method: its qualified `operation`, else `Class::method` from the type;
+ * 5. `operation`;
+ * 6. for a constructor: the class name from the type;
+ * 7. the type without its numeric template arguments.
+ * Names in steps 2, 3 and 5 are sentence-cased; types keep their C++ spelling.
+ *
  * @param node - Registry definition to label.
- * @returns Human-readable logical operation label.
+ * @returns Human-readable label.
  */
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
   if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
     return displayTypeName(node.type)
-  if (node.class_name?.trim() && node.method_name?.trim()) {
-    return formatSuggestedNodeName(
-      node.display_name?.trim() || node.method_name
+  const displayName = node.display_name?.trim()
+  if (displayName) return formatSuggestedNodeName(displayName)
+  if (node.class_name?.trim() && node.method_name?.trim())
+    return formatSuggestedNodeName(node.method_name)
+  if (isMethodNode(node))
+    return displayTypeName(
+      node.operation?.includes('::')
+        ? paletteOperationName(node)
+        : methodPaletteName(node.type)
     )
-  }
-  if (isMethodNode(node)) {
-    if (node.display_name?.trim())
-      return formatSuggestedNodeName(node.display_name)
-    return node.operation?.includes('::')
-      ? displayTypeName(paletteOperationName(node))
-      : displayTypeName(methodPaletteName(node.type))
-  }
-  if (node.operation?.trim()) {
-    const operation = paletteOperationName(node)
-    return formatSuggestedNodeName(node.display_name?.trim() || operation)
-  }
+  const operation = paletteOperationName(node)
+  if (operation) return formatSuggestedNodeName(operation)
   if (classNodeTypes.has(node.node_type)) return classPaletteName(node.type)
   return displayTypeName(canonicalTypeName(node.type))
 }

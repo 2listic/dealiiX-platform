@@ -9,6 +9,7 @@ import {
   nodeDimensionTag,
   nodeNamespace,
   nodePaletteChildName,
+  nodePaletteDisplayName,
   nodePaletteNodeName,
   nodeSimpleDisplayName,
   nodeVariantName,
@@ -107,6 +108,18 @@ describe('node palette metadata', () => {
       'Triangulation',
     ])
     expect(groups[0].nodes).toHaveLength(2)
+  })
+
+  it('labels a constructor with its display name when it has one', () => {
+    const definition = node('ImmersX::Poisson<2,2>', {
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+      display_name: 'Poisson problem',
+    })
+
+    expect(nodePaletteDisplayName(definition)).toBe('Poisson problem')
+    expect(
+      nodePaletteDisplayName({ ...definition, display_name: undefined })
+    ).toBe('Poisson')
   })
 
   it('keeps operations as flat palette entries', () => {
