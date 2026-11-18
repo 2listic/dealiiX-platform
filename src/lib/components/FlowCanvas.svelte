@@ -64,7 +64,7 @@
   import { formatSuggestedNodeName } from '../registry/nodePalette'
   import { createOverloadFamilies } from '../registry/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
-  import { graphViewportState } from '../stores/graphViewport.svelte'
+  import { graphViewportState } from '../stores/graphViewport'
 
   const { screenToFlowPosition, getNode, getIntersectingNodes, getViewport } =
     useSvelteFlow()
