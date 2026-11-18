@@ -14,7 +14,10 @@ import path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { connectToSSHWithKey } from './sshConnections.js'
-import { shellEscape } from '../../src/lib/utils/shellEscape.js'
+import {
+  printOutputOnlyOnFailure,
+  shellEscape,
+} from '../../src/lib/utils/shellEscape.js'
 import {
   getParameterProbeFileNames,
   parseParametersFileWithFormat,
@@ -192,15 +195,11 @@ const getCoralRegistryMetadataRemote = async (
 
   // Keep successful registration output out of the SSH response, but replay the
   // captured output when Coral fails because Coral reports load errors on stdout.
-  const probeLog = `/tmp/dealiix-coral-probe-$$.log`
   await connectToSSHWithKey(
     `cd ${shellEscape(target.workingDirectory)} && ` +
-      `${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} ` +
-      `register > ${shellEscape(probeLog)} 2>&1; ` +
-      `status=$?; ` +
-      `if [ "$status" -ne 0 ]; then cat ${shellEscape(probeLog)}; fi; ` +
-      `rm -f ${shellEscape(probeLog)}; ` +
-      `exit "$status"`,
+      printOutputOnlyOnFailure(
+        `${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} register`
+      ),
     sshConfig,
     { rejectOnNonZeroCode: true }
   )
