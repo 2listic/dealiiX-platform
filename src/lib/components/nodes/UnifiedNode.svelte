@@ -170,6 +170,20 @@
   let isOverloadFinalized = $derived(
     isOverloadNode && isOverloadNodeDefinition(data) && data.finalized === true
   )
+  let overloadStatusKind = $derived(
+    isOverloadFinalized ? 'finalized' : currentOverloadStatus
+  )
+  let overloadStatusLabel = $derived(
+    overloadStatusKind === 'finalized'
+      ? 'finalized'
+      : overloadStatusKind === 'resolved'
+        ? 'resolved'
+        : overloadStatusKind === 'partially_constrained'
+          ? `${overloadCandidates.length} variants remain`
+          : overloadStatusKind === 'invalid'
+            ? 'no compatible variant'
+            : `${overloadCandidates.length} variants`
+  )
   let isVtkFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
       isVtkFileName(valueForNode())
@@ -383,17 +397,32 @@
       {#if isParameterFile}
         <div class="node-type">parameter_file</div>
       {/if}
-      {#if isOverloadNode && currentOverloadStatus}
-        <div class="overload-status" data-status={currentOverloadStatus}>
-          {currentOverloadStatus === 'resolved'
-            ? isOverloadFinalized
-              ? 'finalized'
-              : 'resolved'
-            : currentOverloadStatus === 'partially_constrained'
-              ? `${overloadCandidates.length} variants remain`
-              : currentOverloadStatus === 'invalid'
-                ? 'no compatible variant'
-                : `${overloadCandidates.length} variants`}
+      {#if isOverloadNode && overloadStatusKind}
+        <div class="overload-status-row">
+          <span class="overload-status" data-status={overloadStatusKind}>
+            {overloadStatusLabel}
+          </span>
+          {#if currentOverloadStatus === 'resolved'}
+            <button
+              class="overload-action"
+              title={isOverloadFinalized
+                ? 'Show the variants this node can still become'
+                : 'Narrow the ports to the resolved variant'}
+              onclick={(event) => {
+                event.stopPropagation()
+                handleToggleOverloadFinalization()
+              }}
+              onmousedown={(event) => event.stopPropagation()}
+            >
+              {#if isOverloadFinalized}
+                <RefreshIcon width="14px" height="14px" rotation={0} />
+                Show variants
+              {:else}
+                <SuccessIcon width="14px" />
+                Finalize
+              {/if}
+            </button>
+          {/if}
         </div>
       {/if}
     </div>
@@ -443,28 +472,6 @@
           onclick={() => getModal(editNodeModalId)?.open()}
         >
           <EditIcon width="20px" height="20px" />
-        </button>
-      {/if}
-      {#if isOverloadNode && currentOverloadStatus === 'resolved'}
-        <button
-          class="node-button overload-finalize-button"
-          title={isOverloadFinalized
-            ? 'Show alternative overload options'
-            : 'Finalize resolved overload'}
-          aria-label={isOverloadFinalized
-            ? 'Show alternative overload options'
-            : 'Finalize resolved overload'}
-          onclick={(event) => {
-            event.stopPropagation()
-            handleToggleOverloadFinalization()
-          }}
-          onmousedown={(event) => event.stopPropagation()}
-        >
-          {#if isOverloadFinalized}
-            <RefreshIcon width="20px" height="20px" rotation={0} />
-          {:else}
-            <SuccessIcon width="20px" />
-          {/if}
         </button>
       {/if}
       <button
@@ -659,17 +666,52 @@
     flex-direction: column;
   }
 
-  .overload-status {
-    font-size: 0.7rem;
-    opacity: 0.8;
+  .overload-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
   }
 
-  .overload-status[data-status='resolved'] {
-    color: #8fd694;
+  .overload-status {
+    --status-color: var(--ternary-color);
+    padding: 1px 8px;
+    border: 1px solid var(--status-color);
+    border-radius: 999px;
+    color: var(--status-color);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .overload-status[data-status='resolved'],
+  .overload-status[data-status='finalized'] {
+    --status-color: #8fd694;
+  }
+
+  .overload-status[data-status='finalized'] {
+    background: color-mix(in srgb, var(--status-color) 15%, transparent);
   }
 
   .overload-status[data-status='invalid'] {
-    color: #ff8a80;
+    --status-color: #ff8a80;
+  }
+
+  .overload-action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background-color: var(--secondary-color);
+    color: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .overload-action:hover {
+    border-color: var(--border-color-hover);
   }
 
   .node-name {
