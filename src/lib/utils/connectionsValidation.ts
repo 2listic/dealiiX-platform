@@ -77,6 +77,26 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
     return false
   }
 
+  const targetHandle = connection.targetHandle as string
+  const sourceHandle = connection.sourceHandle as string
+  const targetParameter = parameterHandlePath(targetHandle)
+  const sourceParameter = parameterHandlePath(sourceHandle)
+
+  // Exposed parameter inputs are evaluated before execution. A computed
+  // backend/subnetwork output cannot provide their value at that point; only
+  // a scalar literal or another parameter-file output, possibly through
+  // subnetwork boundaries, is frontend-resolvable.
+  if (
+    targetParameter?.direction === 'input' &&
+    !sourceParameter &&
+    sourceNode.data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
+    sourceNode.data.node_type !== NodeType.PRIMITIVE &&
+    !isCanvasSubnetworkParameterOutput(sourceNode, sourceHandle)
+  ) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
+
   if (
     isOverloadNodeDefinition(sourceNode.data) ||
     isOverloadNodeDefinition(targetNode.data)
@@ -98,26 +118,6 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
     const isValid = !hasEmptyCandidates && !hasInvalidProposedEdge
     connectionCache.set(cacheKey, isValid)
     return isValid
-  }
-
-  const targetHandle = connection.targetHandle as string
-  const sourceHandle = connection.sourceHandle as string
-  const targetParameter = parameterHandlePath(targetHandle)
-  const sourceParameter = parameterHandlePath(sourceHandle)
-
-  // Exposed parameter inputs are evaluated before execution. A computed
-  // backend/subnetwork output cannot provide their value at that point; only
-  // a scalar literal or another parameter-file output, possibly through
-  // subnetwork boundaries, is frontend-resolvable.
-  if (
-    targetParameter?.direction === 'input' &&
-    !sourceParameter &&
-    sourceNode.data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
-    sourceNode.data.node_type !== NodeType.PRIMITIVE &&
-    !isCanvasSubnetworkParameterOutput(sourceNode, sourceHandle)
-  ) {
-    connectionCache.set(cacheKey, false)
-    return false
   }
 
   const expectedInputType = getInputTypeAndName(
