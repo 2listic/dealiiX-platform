@@ -313,15 +313,28 @@ export const buildNodePalette = (
 }
 
 /**
- * Propagates all edge constraints until no overload candidate set changes.
- * Every edge is checked against concrete candidate pairs, so no wildcard type
- * is introduced to represent a family.
+ * Narrows every family on a canvas graph to the variants its edges allow.
+ *
+ * Each node starts with its possible definitions: a family's variants (only
+ * the chosen one once finalized), or the node itself. Each pass keeps, on
+ * every family, the variants that fit some definition on the other end of
+ * each of its edges, and repeats until nothing changes; a narrowed family can
+ * narrow its neighbours in turn.
+ *
+ * Every edge is checked against concrete variant pairs, so a family never
+ * stands for a wildcard type.
+ *
+ * @param nodes - Canvas nodes (snapshots, not reactive).
+ * @param edges - Canvas edges between them.
+ * @returns For each family, its remaining variants (none when its edges fit
+ *   no variant); and the edges whose ends have no fitting pair left.
  */
 export const resolveOverloadGraph = (
   nodes: Node<NodeDefinitions>[],
   edges: Edge[]
 ): OverloadResolution => {
   const nodesById = new Map(nodes.map((node) => [node.id, node.data]))
+  // Concrete nodes and subnetworks keep their one definition throughout.
   const states = new Map<string, ConcreteNodeDefinition[]>()
   for (const node of nodes) {
     states.set(
@@ -332,11 +345,14 @@ export const resolveOverloadGraph = (
     )
   }
 
+  // A safety cap: as sets only shrink, the loop stops long before it.
   const maxIterations = Math.max(
     1,
     nodes.length * Math.max(1, edges.length) + 1
   )
   for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    // Edges read `states` and write `next`, so every edge of a pass sees the
+    // same sets, whatever the edge order.
     const next = new Map(
       [...states.entries()].map(([nodeId, candidates]) => [
         nodeId,
@@ -344,6 +360,7 @@ export const resolveOverloadGraph = (
       ])
     )
 
+    // A family with several edges keeps the intersection of what each allows.
     for (const edge of edges) {
       const pairs = compatibleCandidatePairs(edge, states, nodesById, edges)
       const sourceNode = nodesById.get(edge.source)
@@ -375,6 +392,8 @@ export const resolveOverloadGraph = (
     if (!changed) break
   }
 
+  // With the sets settled, an edge with no fitting pair is reported, also when
+  // both of its ends are concrete.
   const edgeIssues: OverloadEdgeIssue[] = []
   for (const edge of edges) {
     const pairs = compatibleCandidatePairs(edge, states, nodesById, edges)
@@ -386,6 +405,7 @@ export const resolveOverloadGraph = (
     }
   }
 
+  // Only families are returned; their variants are never subnetworks.
   const candidatesByNodeId: Record<string, StandardNodeDefinition[]> = {}
   for (const node of nodes) {
     if (isOverloadNodeDefinition(node.data)) {
@@ -607,13 +627,26 @@ const nodeCandidates = (
   states.get(nodeId) ??
   (isOverloadNodeDefinition(node) ? overloadCandidatesForNode(node) : [node])
 
+/**
+ * Returns the handle id an edge uses at one of its ends: `output-<n>` or a
+ * parameter output at the source, `input-<n>` or a parameter input at the
+ * target.
+ *
+ * @param edge - Canvas edge.
+ * @param direction - The end to read: `'source'` or `'target'`.
+ * @returns The edge's handle id at that end, or the node's first handle
+ *   (`output-0` / `input-0`) when the edge has none.
+ */
 const nodeHandle = (edge: Edge, direction: 'source' | 'target'): string => {
   const handle = direction === 'source' ? edge.sourceHandle : edge.targetHandle
-  if (handle) return handle
-  const index = direction === 'source' ? edge.sourceHandle : edge.targetHandle
-  return `${direction === 'source' ? 'output' : 'input'}-${index ?? 0}`
+  return handle || `${direction === 'source' ? 'output' : 'input'}-0`
 }
 
+/**
+ * Output types of one variant's handle; for a passthrough output, also the
+ * types of what arrives at the matching input, followed upstream. `resolving`
+ * holds the handles already on the path, so a cycle stops there.
+ */
 const outputTypesForNodeCandidate = (
   nodeId: string,
   candidate: ConcreteNodeDefinition,
@@ -668,6 +701,10 @@ const outputTypesForNodeCandidate = (
   return definitionOutputTypes(candidate, outputIndex, upstreamTypes)
 }
 
+/**
+ * The definitions on each end of an edge that fit at least one definition on
+ * the other end, from the sets in `states`.
+ */
 const compatibleCandidatePairs = (
   edge: Edge,
   states: Map<string, ConcreteNodeDefinition[]>,
