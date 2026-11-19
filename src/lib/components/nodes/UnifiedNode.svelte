@@ -115,7 +115,9 @@
   import { isVtkFileName } from '../../vtk/vtkFileFormat'
   import { openVtkFile } from '../../vtk/vtkActions'
   import {
+    overloadInputTypes,
     overloadInterfaceForCandidates,
+    overloadOutputTypes,
     overloadStatus,
     resolveOverloadGraph,
   } from '../../registry/overloadResolution'
@@ -246,15 +248,25 @@
 
   let argumentPortRows = $derived.by(() => buildArgumentPortRows(data))
   let portRowCount = $derived(Math.max(1, argumentPortRows.count))
-  const portPosition = (row: number): string =>
-    `${(100 / (portRowCount + 1)) * (row + 1) + 5}%`
+
+  // A family lists one type per remaining variant, shown one per line.
+  const inputPortTypes = (
+    argumentIndex: number,
+    handleIndex: number
+  ): string[] => {
+    const argumentType = data.arguments[argumentIndex]?.type
+    const types = isOverloadNodeDefinition(data)
+      ? overloadInputTypes(data, handleIndex)
+      : []
+    return types.length > 0 ? types : argumentType ? [argumentType] : []
+  }
 
   const outputPortInfo = (argumentIndex: number, handleIndex: number) => {
     if (argumentIndex === SELF) {
       const outputTypes = resolveOutputTypeCandidates(data, handleIndex)
       return {
         name: 'output',
-        type: outputTypes.join(' | ') || 'unknown',
+        types: outputTypes.length > 0 ? outputTypes : ['unknown'],
       }
     }
 
@@ -268,7 +280,13 @@
       return null
     }
 
-    return { name: argument.name, type: argument.type }
+    const types = isOverloadNodeDefinition(data)
+      ? overloadOutputTypes(data, handleIndex)
+      : []
+    return {
+      name: argument.name,
+      types: types.length > 0 ? types : [argument.type],
+    }
   }
   const isPassthroughArgument = (argumentIndex: number): boolean =>
     data.arguments[argumentIndex]?.connection_type ===
@@ -502,74 +520,68 @@
   {#if isParameterFile}
     <!-- Draws its own handles, each next to the row it belongs to -->
     <ParameterFilePorts {id} data={data as StandardNodeDefinition} />
-  {:else}
-    {#each argumentPortRows.passthrough as row (row)}
-      <div
-        class="passthrough-guide"
-        style="top: {portPosition(row)};"
-        title="This input is forwarded to the matching output."
-        aria-hidden="true"
-      >
-        <span>↔ passthrough</span>
-      </div>
-    {/each}
+  {:else if data.inputs.length > 0 || data.outputs.length > 0}
+    <!-- Each handle sits in its port row, so it stays level with its label -->
+    <div
+      class="port-columns"
+      class:unlabelled={data.arguments.length === 0}
+      style="--port-row-count: {portRowCount};"
+    >
+      {#each argumentPortRows.passthrough as row (row)}
+        <div
+          class="passthrough-guide"
+          style="grid-row: {row + 1};"
+          title="This input is forwarded to the matching output."
+          aria-hidden="true"
+        >
+          <span>↔ passthrough</span>
+        </div>
+      {/each}
 
-    <!-- Input handlers -->
-    {#each data.inputs as i, index (i)}
-      <Handle
-        id={`input-${index}`}
-        type="target"
-        position={Position.Left}
-        class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
-        style="top: {portPosition(argumentPortRows.inputs[index] ?? index)};"
-      />
-    {/each}
-
-    <!-- Output handlers -->
-    {#each data.outputs as i, index (i)}
-      <Handle
-        id={`output-${index}`}
-        type="source"
-        position={Position.Right}
-        class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
-        style="top: {portPosition(argumentPortRows.outputs[index] ?? index)};"
-      />
-    {/each}
-  {/if}
-
-  <!-- Input / output labels -->
-  {#if data.arguments.length > 0}
-    <div class="port-columns" style="--port-row-count: {portRowCount};">
-      {#each data.inputs as i, index (i)}
-        {#if ['input', 'pass_through'].includes(data.arguments[i]?.connection_type)}
-          <div
-            class="port-label input-port"
-            style="grid-row: {(argumentPortRows.inputs[index] ?? index) + 1};"
-          >
+      {#each data.inputs as i, index (index)}
+        <div
+          class="port-label input-port"
+          style="grid-row: {(argumentPortRows.inputs[index] ?? index) + 1};"
+        >
+          <Handle
+            id={`input-${index}`}
+            type="target"
+            position={Position.Left}
+            class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
+          />
+          {#if ['input', 'pass_through'].includes(data.arguments[i]?.connection_type)}
             <div class="input-label">
               {data.arguments[i].name}
             </div>
-            <div class="input-type">
-              {displayTypeName(data.arguments[i].type)}
-            </div>
-          </div>
-        {/if}
+            {#each inputPortTypes(i, index) as portType (portType)}
+              <div class="input-type">{displayTypeName(portType)}</div>
+            {/each}
+          {/if}
+        </div>
       {/each}
+
       {#each data.outputs as i, index (index)}
-        {@const output = outputPortInfo(i, index)}
-        {#if output}
-          <div
-            class="port-label output-port"
-            style="grid-row: {(argumentPortRows.outputs[index] ?? index) + 1};"
-          >
+        {@const output =
+          data.arguments.length > 0 ? outputPortInfo(i, index) : null}
+        <div
+          class="port-label output-port"
+          style="grid-row: {(argumentPortRows.outputs[index] ?? index) + 1};"
+        >
+          <Handle
+            id={`output-${index}`}
+            type="source"
+            position={Position.Right}
+            class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
+          />
+          {#if output}
             <div class="output-label">
               {output.name}
             </div>
-            <div class="output-type">
-              {displayTypeName(output.type)}
-            </div>
-          </div>
-        {/if}
+            {#each output.types as portType (portType)}
+              <div class="output-type">{displayTypeName(portType)}</div>
+            {/each}
+          {/if}
+        </div>
       {/each}
     </div>
   {/if}
@@ -663,6 +675,7 @@
 
   .node-labels {
     display: flex;
+    min-width: 0;
     flex-direction: column;
   }
 
@@ -718,12 +731,14 @@
     font-weight: bold;
     text-align: center;
     cursor: help;
+    overflow-wrap: anywhere;
   }
 
   .node-type {
     font-family: monospace;
     font-size: smaller;
     text-align: center;
+    overflow-wrap: anywhere;
   }
 
   .node-buttons {
@@ -822,37 +837,53 @@
       color-mix(in srgb, var(--button-vtk-bg, #287f8f) 35%, transparent);
   }
 
+  /* Inputs, passthrough guides, outputs; the middle column is empty, so
+     0 wide, on a node without passthrough rows. */
   .port-columns {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns:
+      minmax(min-content, 1fr) auto
+      minmax(min-content, 1fr);
     grid-template-rows: repeat(var(--port-row-count), minmax(3.5rem, auto));
-    column-gap: 4vh;
+    column-gap: 2vh;
   }
 
+  /* Literals have handles but no port labels */
+  .port-columns.unlabelled {
+    grid-template-rows: repeat(var(--port-row-count), 1.25rem);
+  }
+
+  /* A row fills its grid row and reaches over the node's padding (15px) and
+     border (2px) on its handle's side, so the handle, centred at the row's
+     edge, sits on the node border level with its label. */
   .port-label {
-    align-self: center;
-    min-width: 0;
     position: relative;
-    z-index: 1;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 0.25rem;
   }
 
   .input-port {
     grid-column: 1;
+    margin-left: -17px;
+    padding-left: 17px;
   }
 
   .output-port {
-    grid-column: 2;
+    grid-column: 3;
+    margin-right: -17px;
+    padding-right: 17px;
   }
 
   .passthrough-guide {
-    position: absolute;
-    left: 24%;
-    right: 24%;
-    z-index: 0;
+    grid-column: 2;
+    align-self: center;
     display: flex;
+    min-width: 7rem;
     align-items: center;
     gap: 0.5rem;
-    transform: translateY(-50%);
     pointer-events: none;
     color: color-mix(in srgb, var(--border-color-hover) 72%, transparent);
     font-size: 0.7rem;
@@ -863,6 +894,7 @@
   .passthrough-guide::before,
   .passthrough-guide::after {
     flex: 1;
+    min-width: 1.5rem;
     border-top: 2px dashed currentColor;
     content: '';
   }
@@ -874,36 +906,18 @@
     background: var(--primary-color);
   }
 
-  .input-column {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    justify-content: space-evenly;
-    margin-bottom: 0.5vh;
-  }
-
-  .output-column {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    align-items: end;
-    justify-content: space-evenly;
-    margin-bottom: 2vh;
-  }
-
   .input-label {
     font-weight: bold;
-    margin-top: 1vh;
   }
 
   .input-type {
     font-family: monospace;
     font-size: smaller;
+    white-space: nowrap;
   }
 
   .output-label {
     font-weight: bold;
-    margin-top: 1vh;
     text-align: right;
   }
 
@@ -911,6 +925,7 @@
     font-family: monospace;
     font-size: smaller;
     text-align: right;
+    white-space: nowrap;
   }
 
   :global(.passthrough-handle) {
