@@ -101,7 +101,7 @@ vi.mock('./registryStore.svelte', () => ({
  * `createNetworkNodeDefinition` is a plain spy; each test sets its return
  * value via `.mockReturnValue(...)` to control what the rebuilt definition looks like.
  */
-vi.mock('../utils/networkNode', () => ({
+vi.mock('../graph/networkNode', () => ({
   createNetworkNodeDefinition: mockState.createNetworkNodeDefinition,
 }))
 
@@ -111,10 +111,10 @@ vi.mock('../utils/networkNode', () => ({
  * always return true/false would make navigation tests meaningless.
  * All other canvas utilities from this module are unused in these tests.
  */
-vi.mock('../utils/networkNodeCanvas', async () => {
+vi.mock('../graph/networkNodeCanvas', async () => {
   const actual = await vi.importActual<
-    typeof import('../utils/networkNodeCanvas')
-  >('../utils/networkNodeCanvas')
+    typeof import('../graph/networkNodeCanvas')
+  >('../graph/networkNodeCanvas')
   return {
     isNetworkCanvasNode: actual.isNetworkCanvasNode,
   }
@@ -125,7 +125,7 @@ vi.mock('../utils/networkNodeCanvas', async () => {
  * arrays in `mockState`, simulating what the real parser would produce when
  * loading a subnetwork's inner workflow.
  */
-vi.mock('../utils/graphParser', () => ({
+vi.mock('../graph/graphParser', () => ({
   nodesFromProtocolToFlow: vi.fn(() =>
     structuredClone(mockState.protocolNodes)
   ),

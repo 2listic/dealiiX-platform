@@ -1,8 +1,8 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { TypeField } from '../types/nodeTypes'
-import { isParameterLeaf } from './parameterFileFormat'
-import { shellEscape } from './shellEscape'
+import { isParameterLeaf } from '../parameters/parameterFileFormat'
+import { shellEscape } from '../utils/shellEscape'
 
 /**
  * Replaces each literal node value naming an existing file in the working

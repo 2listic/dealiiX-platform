@@ -5,7 +5,7 @@
   import { confirmAction } from '../stores/confirmation.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import type { ParameterExposure } from '../types/nodeTypes'
-  import { staleParameterEdges } from '../utils/parameterNodeCanvas'
+  import { staleParameterEdges } from '../parameters/parameterNodeCanvas'
 
   let document = $derived(parameterNodeEditorState.document)
 

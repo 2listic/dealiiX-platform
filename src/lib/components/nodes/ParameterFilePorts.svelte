@@ -9,14 +9,14 @@
   import { Handle, Position } from '@xyflow/svelte'
   import UnmarkIcon from '../icons/UnmarkIcon.svelte'
   import type { StandardNodeDefinition } from '../../types/nodeTypes'
-  import { confirmUnmarkParameterFile } from '../../utils/parameterNodeActions'
-  import { parameterHandle } from '../../utils/handleIds'
+  import { confirmUnmarkParameterFile } from '../../parameters/parameterNodeActions'
+  import { parameterHandle } from '../../graph/handleIds'
   import {
     groupExposuresBySection,
     normalizeParameterExposures,
     parameterPathLabel,
     parameterPortCoralType,
-  } from '../../utils/parameterPorts'
+  } from '../../parameters/parameterPorts'
 
   let {
     id,

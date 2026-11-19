@@ -7,7 +7,7 @@
   import {
     reloadParametersFromWorkingDirectory,
     saveParametersToWorkingDirectory,
-  } from '../utils/parametersFileActions'
+  } from '../parameters/parametersFileActions'
 
   let parameters = $derived(parametersState.value)
   let location = $derived(executionSelectionState.location)

@@ -17,7 +17,7 @@ import {
 } from '../types/nodeTypes'
 import { createCustomEdge } from './canvasNodeUtils'
 import { edgeHandle, handleIdToIndex, protocolEdgeHandles } from './handleIds'
-import { normalizeParameterFile } from './parameterPorts'
+import { normalizeParameterFile } from '../parameters/parameterPorts'
 import {
   getEdgesSnapshot,
   getNextNodeId,

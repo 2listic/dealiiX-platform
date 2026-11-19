@@ -3,7 +3,7 @@
   import Button from './Button.svelte'
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import ErrorIcon from '../icons/ErrorIcon.svelte'
-  import { getNodesExecutionStatus } from '../../utils/sshMessages'
+  import { getNodesExecutionStatus } from '../../execution/sshMessages'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { ExecNodeStatus } from '../../types/jobTypes'
 

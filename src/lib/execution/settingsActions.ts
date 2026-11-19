@@ -13,7 +13,7 @@ import { setValueFor as setParamsFor } from '../stores/parametersStore.svelte'
 import { setRegistry } from '../stores/registryStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { mergeWorkingDirectoryParameters } from './parametersFileActions'
+import { mergeWorkingDirectoryParameters } from '../parameters/parametersFileActions'
 
 /**
  * Probes the given target, routes any synced payload (node registry or parameters

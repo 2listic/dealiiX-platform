@@ -11,14 +11,14 @@ import {
   isNodeInNetworkNodes,
   removeNetworkNode,
 } from './registryStore.svelte'
-import { createNetworkNodeDefinition } from '../utils/networkNode'
-import { isNetworkCanvasNode } from '../utils/networkNodeCanvas'
+import { createNetworkNodeDefinition } from '../graph/networkNode'
+import { isNetworkCanvasNode } from '../graph/networkNodeCanvas'
 import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
-} from '../utils/graphParser'
-import { resolveOutputTypeCandidates } from '../utils/canvasNodeUtils'
-import { handleIdToIndex } from '../utils/handleIds'
+} from '../graph/graphParser'
+import { resolveOutputTypeCandidates } from '../graph/canvasNodeUtils'
+import { handleIdToIndex } from '../graph/handleIds'
 import type {
   NodeDefinitions,
   SubGraphNodeDefinition,

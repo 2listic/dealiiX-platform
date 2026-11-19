@@ -23,7 +23,7 @@ import {
   parameterExposureArgument,
   parameterInputExposures,
   parameterOutputExposures,
-} from './parameterPorts'
+} from '../parameters/parameterPorts'
 import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 /**

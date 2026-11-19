@@ -28,34 +28,34 @@ import {
   addQualifiedIds,
   edgesFromProtocolToFlow,
   removeQualifiedIds,
-} from '../utils/graphParser'
+} from '../graph/graphParser'
 import {
   analyzeNetworkBoundary,
   type BoundaryAnalysis,
-} from '../utils/networkNode'
+} from '../graph/networkNode'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
-} from '../utils/parameterFileFormat'
+} from '../parameters/parameterFileFormat'
 import {
   handleIdToIndex,
   parameterHandle,
   parameterHandlePath,
-} from '../utils/handleIds'
+} from '../graph/handleIds'
 import {
   findParameterExposure,
   parameterAtPath,
   parameterInputExposures,
   parameterOutputExposures,
   parameterPortCoralType,
-} from '../utils/parameterPorts'
+} from '../parameters/parameterPorts'
 import {
   normalizeWorkspacePath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
-} from '../utils/parameterFileAccess'
-import { resolveParameterFileReferences } from '../utils/fileReferences'
+} from '../parameters/parameterFileAccess'
+import { resolveParameterFileReferences } from './fileReferences'
 
 /** Returns the registry definition of a standard node type. */
 export type NodeDefinitionLookup = (type: string) => StandardNodeDefinition

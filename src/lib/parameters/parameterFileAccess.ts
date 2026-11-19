@@ -1,16 +1,16 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
-import { findExistingFiles } from './fileReferences'
+import { findExistingFiles } from '../orchestration/fileReferences'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
   type ParameterFileFormat,
 } from './parameterFileFormat'
-import { shellEscape } from './shellEscape'
-import { normalizeWorkspacePath } from './workspacePath'
+import { shellEscape } from '../utils/shellEscape'
+import { normalizeWorkspacePath } from '../utils/workspacePath'
 
-export { normalizeWorkspacePath } from './workspacePath'
+export { normalizeWorkspacePath } from '../utils/workspacePath'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation

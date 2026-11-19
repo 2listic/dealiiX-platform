@@ -79,7 +79,7 @@
     setEdges,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import { clearConnectionCache } from '../../utils/connectionsValidation'
+  import { clearConnectionCache } from '../../graph/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
@@ -88,19 +88,19 @@
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
   import { graphHistoryState } from '../../stores/graphStack.svelte'
-  import { explodeNetworkNodeInGraph } from '../../utils/networkNodeCanvas'
+  import { explodeNetworkNodeInGraph } from '../../graph/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import MarkIcon from '../icons/MarkIcon.svelte'
   import ParameterFilePorts from './ParameterFilePorts.svelte'
-  import { isParameterFileName } from '../../utils/parameterFileFormat'
+  import { isParameterFileName } from '../../parameters/parameterFileFormat'
   import {
     openParameterFile,
     parameterFileUnavailableReason,
     useAsParameterFile,
-  } from '../../utils/parameterNodeActions'
+  } from '../../parameters/parameterNodeActions'
   import {
     isOverloadNodeDefinition,
     type NodeDefinitions,
@@ -109,7 +109,7 @@
   import {
     resolveOutputTypeCandidates,
     returnNodeName,
-  } from '../../utils/canvasNodeUtils'
+  } from '../../graph/canvasNodeUtils'
   import { displayTypeName } from '../../registry/nodePalette'
   import { isVtkFileName } from '../../vtk/vtkFileFormat'
   import { openVtkFile } from '../../vtk/vtkActions'

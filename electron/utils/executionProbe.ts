@@ -22,7 +22,7 @@ import {
   getParameterProbeFileNames,
   parseParametersFileWithFormat,
   replaceExtension,
-} from '../../src/lib/utils/parameterFileFormat.js'
+} from '../../src/lib/parameters/parameterFileFormat.js'
 
 const execFileAsync = promisify(execFile)
 

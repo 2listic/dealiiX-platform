@@ -11,8 +11,8 @@
   import { Handle, Position, type NodeProps } from '@xyflow/svelte'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { isValidSlurmTime, SLURM_TIME_HINT } from '../../utils/slurmTime'
-  import { parseParametersFileWithFormat } from '../../utils/parameterFileFormat'
+  import { isValidSlurmTime, SLURM_TIME_HINT } from '../../execution/slurmTime'
+  import { parseParametersFileWithFormat } from '../../parameters/parameterFileFormat'
   import { toastState } from '../../stores/toastsStore.svelte'
 
   let { id, data }: NodeProps<ExecutableStageNodeType> = $props()

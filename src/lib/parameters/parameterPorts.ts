@@ -8,7 +8,7 @@ import {
   type ParameterPortType,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
-import { parameterHandlePath } from './handleIds'
+import { parameterHandlePath } from '../graph/handleIds'
 import { isParameterLeaf } from './parameterFileFormat'
 
 /** Returns the frontend port type implied by a parameter template description. */

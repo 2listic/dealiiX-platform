@@ -12,8 +12,8 @@ import type {
 } from '../types/nodeTypes'
 import { getEdges, getNodes, setEdges, setNodes } from '../stores/nodes.svelte'
 import { graphHistoryState } from '../stores/graphStack.svelte'
-import { clearConnectionCache } from './connectionsValidation'
-import { parameterHandlePath } from './handleIds'
+import { clearConnectionCache } from '../graph/connectionsValidation'
+import { parameterHandlePath } from '../graph/handleIds'
 import { findParameterExposure } from './parameterPorts'
 
 /**

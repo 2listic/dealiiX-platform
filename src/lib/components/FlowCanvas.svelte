@@ -43,16 +43,16 @@
     clearConnectionCache,
     isValidConnection,
     isTargetHandleConnected,
-  } from '../utils/connectionsValidation'
-  import { onDragOver, onDrop } from '../utils/dragAndDrop'
+  } from '../graph/connectionsValidation'
+  import { onDragOver, onDrop } from '../graph/dragAndDrop'
   import { NodeType } from '../types/nodeTypes'
-  import { returnNodeName } from '../utils/canvasNodeUtils'
+  import { returnNodeName } from '../graph/canvasNodeUtils'
   import EditIcon from './icons/EditIcon.svelte'
   import Button from './layout/Button.svelte'
   import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
-  import { collapseSelectionToSubnetwork } from '../utils/networkNodeCanvas'
+  import { collapseSelectionToSubnetwork } from '../graph/networkNodeCanvas'
   import {
     createCanvasNode,
     buildEdgeForNewNode,
@@ -60,7 +60,7 @@
     type CompatibleNodeOption,
     type ConnectedNodeDraft,
     type ConnectStartParams,
-  } from '../utils/canvasNodeUtils'
+  } from '../graph/canvasNodeUtils'
   import { formatSuggestedNodeName } from '../registry/nodePalette'
   import { createOverloadFamilies } from '../registry/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'

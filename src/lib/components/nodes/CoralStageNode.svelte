@@ -8,7 +8,7 @@
   import { Handle, Position, type NodeProps } from '@xyflow/svelte'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
-  import { isValidSlurmTime, SLURM_TIME_HINT } from '../../utils/slurmTime'
+  import { isValidSlurmTime, SLURM_TIME_HINT } from '../../execution/slurmTime'
 
   let { id, data }: NodeProps<CoralStageNodeType> = $props()
 

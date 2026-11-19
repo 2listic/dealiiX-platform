@@ -30,7 +30,7 @@ vi.mock('./localStages', () => ({
     startPreparedStage(prepared),
 }))
 
-vi.mock('../utils/sshMessages', () => ({
+vi.mock('../execution/sshMessages', () => ({
   // Resolves when the test settles the run started for this key.
   localJobPolling: async (key: string) => await runs.get(key)!.promise,
   ensureUniqueLocalDir: async (dir: string) => dir,

@@ -7,19 +7,19 @@
     setNodes,
   } from '../../stores/nodes.svelte'
   import { mergeRegistry } from '../../stores/registryStore.svelte'
-  import { importGraphFromProtocol } from '../../utils/graphParser'
+  import { importGraphFromProtocol } from '../../graph/graphParser'
   import {
     mergeParametersFromFile,
     downloadParameters,
-  } from '../../utils/parametersFileActions'
+  } from '../../parameters/parametersFileActions'
   import { parametersState } from '../../stores/parametersStore.svelte'
-  import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
+  import { buildGraphPayload, openNewWindow } from '../../execution/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import {
     runPipeline,
     type PipelineProgress,
   } from '../../orchestration/pipelineOrchestrator'
-  import { buildExportMeta } from '../../utils/exportMeta'
+  import { buildExportMeta } from '../../graph/exportMeta'
   import { jobsState } from '../../stores/jobsStore.svelte'
   import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
   import Modal, { getModal } from './Modal.svelte'
@@ -39,7 +39,7 @@
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
-  import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
+  import { parseGraphWithQualifiedIds } from '../../graph/graphParser'
   import { updateProject } from '../../requests/projects'
   import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
@@ -52,7 +52,7 @@
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import RemoteFilePicker from '../RemoteFilePicker.svelte'
-  import { readRemoteGraphFile } from '../../utils/remoteFilePicker'
+  import { readRemoteGraphFile } from '../../execution/remoteFilePicker'
 
   const { fitView } = useSvelteFlow()
 
@@ -443,7 +443,7 @@
   const handleAutoLayout = async (direction: 'LR' | 'TB') => {
     try {
       // lazy import keeps dagre out of the initial bundle; loaded only on first use
-      const { applyAutoLayout } = await import('../../utils/autoLayout')
+      const { applyAutoLayout } = await import('../../graph/autoLayout')
       const layoutedNodes = applyAutoLayout(
         getNodesSnapshot(),
         getEdgesSnapshot(),
