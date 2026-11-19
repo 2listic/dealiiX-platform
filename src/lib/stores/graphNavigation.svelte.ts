@@ -17,10 +17,8 @@ import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
 } from '../utils/graphParser'
-import {
-  handleIdToIndex,
-  resolveOutputTypeCandidates,
-} from '../utils/canvasNodeUtils'
+import { resolveOutputTypeCandidates } from '../utils/canvasNodeUtils'
+import { handleIdToIndex } from '../utils/handleIds'
 import type {
   NodeDefinitions,
   SubGraphNodeDefinition,

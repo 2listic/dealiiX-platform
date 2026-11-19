@@ -33,22 +33,24 @@ import {
   analyzeNetworkBoundary,
   type BoundaryAnalysis,
 } from '../utils/networkNode'
-import { handleIdToIndex } from '../utils/canvasNodeUtils'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
 } from '../utils/parameterFileFormat'
 import {
-  findParameterExposure,
-  parameterAtPath,
+  handleIdToIndex,
   parameterHandle,
   parameterHandlePath,
+} from '../utils/handleIds'
+import {
+  findParameterExposure,
+  parameterAtPath,
   parameterInputExposures,
   parameterOutputExposures,
   parameterPortCoralType,
 } from '../utils/parameterPorts'
 import {
-  normalizeRelativeParameterPath,
+  normalizeWorkspacePath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
@@ -117,7 +119,7 @@ export const materializeNetwork = async (
     )
 
     // One copy per file, so nodes sharing a file must agree on its content.
-    const fileName = normalizeRelativeParameterPath(source.fileName)
+    const fileName = normalizeWorkspacePath(source.fileName)
     const content = serializeParametersAs(tree, format)
     const copy = copies.get(fileName)
     if (copy && copy.content !== content) {
@@ -146,7 +148,7 @@ export const materializeNetwork = async (
     bindings,
     definitionOf,
     runCopyOf: (port) =>
-      `${withoutTrailingSlash(copyDirectory)}/${normalizeRelativeParameterPath(String(standardNode(port).value))}`,
+      `${withoutTrailingSlash(copyDirectory)}/${normalizeWorkspacePath(String(standardNode(port).value))}`,
     valueOf: (source) =>
       outputValue(trees.get(nodeKey(source)) as ParameterTree, source.exposure),
   })

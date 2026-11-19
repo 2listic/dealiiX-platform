@@ -39,7 +39,7 @@ import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
 } from './graphParser'
-import { parameterHandle } from './parameterPorts'
+import { parameterHandle } from './handleIds'
 
 describe('validateGraphData', () => {
   let graph: Network

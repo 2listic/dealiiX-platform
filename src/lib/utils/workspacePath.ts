@@ -4,16 +4,14 @@
  * @returns Normalized relative path.
  * @throws Error when the path is absolute, escapes its root, or is empty.
  */
-export const normalizeRelativeParameterPath = (fileName: string): string => {
+export const normalizeWorkspacePath = (fileName: string): string => {
   const normalized = fileName.trim().replaceAll('\\', '/')
   if (
     !normalized ||
     normalized.startsWith('/') ||
     /^[A-Za-z]:\//.test(normalized)
   ) {
-    throw new Error(
-      'Parameter file names must be relative to the working directory'
-    )
+    throw new Error('File names must be relative to the working directory')
   }
 
   const parts: string[] = []
@@ -21,15 +19,13 @@ export const normalizeRelativeParameterPath = (fileName: string): string => {
     if (!part || part === '.') continue
     if (part === '..') {
       if (parts.length === 0) {
-        throw new Error(
-          'Parameter file must remain inside the working directory'
-        )
+        throw new Error('Files must remain inside the working directory')
       }
       parts.pop()
     } else {
       parts.push(part)
     }
   }
-  if (parts.length === 0) throw new Error('Parameter file name is empty')
+  if (parts.length === 0) throw new Error('The file name is empty')
   return parts.join('/')
 }

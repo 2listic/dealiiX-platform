@@ -5,7 +5,7 @@ import {
   type ParameterFileTarget,
 } from '../utils/parameterFileAccess'
 import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
-import { normalizeRelativeParameterPath } from '../utils/workspacePath'
+import { normalizeWorkspacePath } from '../utils/workspacePath'
 
 export { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
 
@@ -51,7 +51,7 @@ const fileNameFromConfiguredDirectory = (
   const directory = normalizeDirectory(fileDirectory)
   if (!configured || !directory) return undefined
 
-  const relativeFileName = normalizeRelativeParameterPath(fileName)
+  const relativeFileName = normalizeWorkspacePath(fileName)
   if (configured === directory) return relativeFileName
 
   const configuredPrefix = configured === '/' ? '/' : `${configured}/`

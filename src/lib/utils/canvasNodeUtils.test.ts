@@ -32,7 +32,7 @@ import {
   createOverloadFamilies,
   createOverloadNodeDefinition,
 } from '../registry/overloadResolution'
-import { parameterHandle } from './parameterPorts'
+import { parameterHandle } from './handleIds'
 
 const registry = defaultRegistry as unknown as RegisteredNodes
 const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes

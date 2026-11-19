@@ -18,7 +18,6 @@ import {
   getNodeData,
 } from '../stores/registryStore.svelte'
 import {
-  handleIdToIndex,
   resolveInputArgument,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
@@ -43,8 +42,12 @@ import {
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
 import {
-  parameterExposureForHandle,
+  handleIdToIndex,
   parameterHandlePath,
+  protocolEdgeHandles,
+} from './handleIds'
+import {
+  parameterExposureForHandle,
   parameterPortCoralType,
   normalizeParameterFile,
 } from './parameterPorts'
@@ -261,9 +264,7 @@ export const edgesFromProtocolToFlow = (edges: {
   [id: string]: NetworkEdge
 }): Edge[] => {
   return Object.values(edges).map((edge) => {
-    const sourceHandle =
-      edge.source_handle ?? `output-${edge.source_output ?? 0}`
-    const targetHandle = edge.target_handle ?? `input-${edge.target_input ?? 0}`
+    const { sourceHandle, targetHandle } = protocolEdgeHandles(edge)
     return {
       id: `xy-edge__${edge.source}${sourceHandle}-${edge.target}${targetHandle}`,
       source: edge.source.toString(),

@@ -10,10 +10,10 @@
   import UnmarkIcon from '../icons/UnmarkIcon.svelte'
   import type { StandardNodeDefinition } from '../../types/nodeTypes'
   import { confirmUnmarkParameterFile } from '../../utils/parameterNodeActions'
+  import { parameterHandle } from '../../utils/handleIds'
   import {
     groupExposuresBySection,
     normalizeParameterExposures,
-    parameterHandle,
     parameterPathLabel,
     parameterPortCoralType,
   } from '../../utils/parameterPorts'

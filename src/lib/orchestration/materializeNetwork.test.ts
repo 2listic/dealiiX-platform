@@ -25,7 +25,7 @@ vi.stubGlobal('window', {
 const files = vi.hoisted(() => new Map<string, string>())
 
 vi.mock('../utils/parameterFileAccess', () => ({
-  normalizeRelativeParameterPath: (fileName: string) => fileName,
+  normalizeWorkspacePath: (fileName: string) => fileName,
   parameterFilePath: (target: { workingDirectory: string; fileName: string }) =>
     `${target.workingDirectory}/${target.fileName}`,
   parameterFileTarget: (location: string, fileName: string) => ({
@@ -65,7 +65,7 @@ const {
 const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
   await import('../utils/graphParser')
 const { createNetworkNodeDefinition } = await import('../utils/networkNode')
-const { parameterHandle } = await import('../utils/parameterPorts')
+const { parameterHandle } = await import('../utils/handleIds')
 const { addNetworkNode, getNodeData, mergeRegistry, removeNetworkNode } =
   await import('../stores/registryStore.svelte')
 

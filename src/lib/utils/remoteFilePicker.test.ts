@@ -20,7 +20,7 @@ describe('remote graph file picker', () => {
 
     expect(invoke).toHaveBeenCalledWith('execute-ssh-with-key', {
       command:
-        "find '/remote/work space' -maxdepth 1 -type f -name '*.json' -exec basename {} \\; | sort",
+        "cd '/remote/work space' && find . -maxdepth 1 -type f -name '*.json' -exec basename {} \\; | sort",
       rejectOnNonZeroCode: true,
     })
   })

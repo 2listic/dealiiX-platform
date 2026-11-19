@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Edge, Node } from '@xyflow/svelte'
 import type { ParameterExposure } from '../types/nodeTypes'
-import { parameterHandle } from './parameterPorts'
+import { parameterHandle } from './handleIds'
 
 let nodes: Node[] = []
 let edges: Edge[] = []

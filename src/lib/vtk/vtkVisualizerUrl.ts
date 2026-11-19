@@ -1,4 +1,4 @@
-import { normalizeRelativeParameterPath } from '../utils/workspacePath'
+import { normalizeWorkspacePath } from '../utils/workspacePath'
 
 type VtkVisualizerUrlTarget = {
   workingDirectory: string
@@ -23,7 +23,7 @@ export const buildVtkVisualizerUrl = (
     throw new Error('A working directory is required to open a VTK file')
   }
 
-  const relativeFileName = normalizeRelativeParameterPath(target.fileName)
+  const relativeFileName = normalizeWorkspacePath(target.fileName)
   const baseUrl = visualizerUrl.endsWith('/')
     ? visualizerUrl
     : `${visualizerUrl}/`

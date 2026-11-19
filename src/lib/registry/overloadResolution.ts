@@ -14,6 +14,7 @@ import {
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
+import { edgeHandle, handleIdToIndex } from '../utils/handleIds'
 import {
   parameterExposureForHandle,
   parameterPortCoralType,
@@ -562,9 +563,9 @@ const definitionInputTypes = (
     if (parameter) return [parameterPortCoralType(parameter.type)]
   }
 
-  const match = handleId.match(/^input-(\d+)$/)
-  if (!match) return []
-  const argument = definitionInputArgument(definition, Number(match[1]))
+  const inputIndex = handleIdToIndex(handleId)
+  if (Number.isNaN(inputIndex)) return []
+  const argument = definitionInputArgument(definition, inputIndex)
   return argument ? [argument.type] : []
 }
 
@@ -578,9 +579,9 @@ const definitionOutputTypesForHandle = (
     if (parameter) return [parameterPortCoralType(parameter.type)]
   }
 
-  const match = handleId.match(/^output-(\d+)$/)
-  if (!match) return []
-  return definitionOutputTypes(definition, Number(match[1]), upstreamTypes)
+  const outputIndex = handleIdToIndex(handleId)
+  if (Number.isNaN(outputIndex)) return []
+  return definitionOutputTypes(definition, outputIndex, upstreamTypes)
 }
 
 const syntheticArgument = (
@@ -628,21 +629,6 @@ const nodeCandidates = (
   (isOverloadNodeDefinition(node) ? overloadCandidatesForNode(node) : [node])
 
 /**
- * Returns the handle id an edge uses at one of its ends: `output-<n>` or a
- * parameter output at the source, `input-<n>` or a parameter input at the
- * target.
- *
- * @param edge - Canvas edge.
- * @param direction - The end to read: `'source'` or `'target'`.
- * @returns The edge's handle id at that end, or the node's first handle
- *   (`output-0` / `input-0`) when the edge has none.
- */
-const nodeHandle = (edge: Edge, direction: 'source' | 'target'): string => {
-  const handle = direction === 'source' ? edge.sourceHandle : edge.targetHandle
-  return handle || `${direction === 'source' ? 'output' : 'input'}-0`
-}
-
-/**
  * Output types of one variant's handle; for a passthrough output, also the
  * types of what arrives at the matching input, followed upstream. `resolving`
  * holds the handles already on the path, so a cycle stops there.
@@ -661,10 +647,9 @@ const outputTypesForNodeCandidate = (
     return definitionOutputTypesForHandle(candidate, handleId)
   }
 
-  const outputIndexMatch = handleId.match(/^output-(\d+)$/)
-  if (!outputIndexMatch)
+  const outputIndex = handleIdToIndex(handleId)
+  if (Number.isNaN(outputIndex))
     return definitionOutputTypesForHandle(candidate, handleId)
-  const outputIndex = Number(outputIndexMatch[1])
   const argumentIndex = candidate.outputs?.[outputIndex]
   let upstreamTypes: string[] = []
   if (argumentIndex != null && argumentIndex !== SELF) {
@@ -674,7 +659,7 @@ const outputTypesForNodeCandidate = (
       const incoming = edges.find(
         (edge) =>
           edge.target === nodeId &&
-          nodeHandle(edge, 'target') === `input-${inputIndex}`
+          edgeHandle(edge, 'target') === `input-${inputIndex}`
       )
       if (incoming) {
         const upstreamNode = nodesById.get(incoming.source)
@@ -687,7 +672,7 @@ const outputTypesForNodeCandidate = (
             outputTypesForNodeCandidate(
               incoming.source,
               upstreamCandidate,
-              nodeHandle(incoming, 'source'),
+              edgeHandle(incoming, 'source'),
               states,
               nodesById,
               edges,
@@ -717,8 +702,8 @@ const compatibleCandidatePairs = (
 
   const sourceCandidates = nodeCandidates(sourceNode, states, edge.source)
   const targetCandidates = nodeCandidates(targetNode, states, edge.target)
-  const sourceHandle = nodeHandle(edge, 'source')
-  const targetHandle = nodeHandle(edge, 'target')
+  const sourceHandle = edgeHandle(edge, 'source')
+  const targetHandle = edgeHandle(edge, 'target')
   const source = new Set<ConcreteNodeDefinition>()
   const target = new Set<ConcreteNodeDefinition>()
 

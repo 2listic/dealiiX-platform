@@ -8,9 +8,9 @@ import {
   type ParameterFileFormat,
 } from './parameterFileFormat'
 import { shellEscape } from './shellEscape'
-import { normalizeRelativeParameterPath } from './workspacePath'
+import { normalizeWorkspacePath } from './workspacePath'
 
-export { normalizeRelativeParameterPath } from './workspacePath'
+export { normalizeWorkspacePath } from './workspacePath'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -37,7 +37,7 @@ export type LoadedParameterFile = {
  * @throws If the name is absolute or escapes the working directory.
  */
 export const parameterFilePath = (target: ParameterFileTarget): string => {
-  const relative = normalizeRelativeParameterPath(target.fileName)
+  const relative = normalizeWorkspacePath(target.fileName)
   return `${target.workingDirectory.replace(/\/+$/, '')}/${relative}`
 }
 

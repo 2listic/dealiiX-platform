@@ -59,7 +59,6 @@
     Handle,
     Position,
     useSvelteFlow,
-    type Node,
     type NodeProps,
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
@@ -119,8 +118,8 @@
     overloadInterfaceForCandidates,
     overloadOutputTypes,
     overloadStatus,
-    resolveOverloadGraph,
   } from '../../registry/overloadResolution'
+  import { getOverloadCandidates } from '../../stores/overloadResolution.svelte'
 
   let {
     id,
@@ -156,15 +155,21 @@
   )
   let parameterFileUnavailable = $derived(parameterFileUnavailableReason())
   let isOverloadNode = $derived(data.node_type === NodeType.OVERLOAD)
-  // Resolves the whole canvas, so it re-runs in every family node on any node or edge change, drags included.
-  let overloadCandidates = $derived.by(() => {
-    if (!isOverloadNode || !isOverloadNodeDefinition(data)) return []
-    const resolution = resolveOverloadGraph(
-      getNodesSnapshot() as Node<NodeDefinitions>[],
-      getEdgesSnapshot()
-    )
-    return resolution.candidatesByNodeId[id] ?? data.candidates
-  })
+  // The variants this family can still be, given its edges; read from the one
+  // canvas-wide resolution that all family nodes share. Empty for other nodes.
+  let overloadCandidates = $derived(
+    isOverloadNode && isOverloadNodeDefinition(data)
+      ? (getOverloadCandidates(id) ?? data.candidates)
+      : []
+  )
+  // A family's own type is a placeholder, so the tooltip lists its variants' types.
+  let typeTooltip = $derived(
+    isOverloadNode
+      ? overloadCandidates
+          .map((candidate) => displayTypeName(candidate.type))
+          .join('\n')
+      : displayTypeName(data.type)
+  )
   let currentOverloadStatus = $derived(
     isOverloadNode && isOverloadNodeDefinition(data)
       ? overloadStatus(data, overloadCandidates)
@@ -410,7 +415,7 @@
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
     <div class="node-labels">
-      <div class="node-name" title={displayTypeName(data.type)}>
+      <div class="node-name" title={typeTooltip}>
         {nodeDisplayName}
       </div>
       {#if isParameterFile}

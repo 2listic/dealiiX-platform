@@ -17,9 +17,9 @@ import {
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
+import { handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
   parameterExposureForHandle,
-  parameterHandlePath,
   parameterPathLabel,
   parameterPortCoralType,
 } from './parameterPorts'
@@ -524,15 +524,6 @@ export const buildEdgeForNewNode = (
     })
   }
 }
-
-/**
- * Parses a handle ID string to its numeric index.
- * @param {string} handleId - XYFlow handle ID in the form `"input-<n>"` or `"output-<n>"`
- *   (as found in `sourceHandle` / `targetHandle` of XYFlow edges and connection events).
- * @returns The numeric index, or NaN if the string is malformed.
- */
-export const handleIdToIndex = (handleId: string): number =>
-  Number.parseInt(handleId.split('-')[1], 10)
 
 /**
  * Resolves the argument corresponding to an input handle index on a node.

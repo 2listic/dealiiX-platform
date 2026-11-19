@@ -15,7 +15,8 @@ import {
   type SubGraphNodeDefinition,
   isSubGraphNodeDefinition,
 } from '../types/nodeTypes'
-import { handleIdToIndex, createCustomEdge } from './canvasNodeUtils'
+import { createCustomEdge } from './canvasNodeUtils'
+import { edgeHandle, handleIdToIndex, protocolEdgeHandles } from './handleIds'
 import { normalizeParameterFile } from './parameterPorts'
 import {
   getEdgesSnapshot,
@@ -147,10 +148,9 @@ const explodeSubgraphNodeSelection = (
   )
   const explodedInternalEdges: Edge[] = protocolEdges.map((edge) => ({
     ...createCustomEdge({
+      ...protocolEdgeHandles(edge),
       source: oldToNewNodeId[String(edge.source)],
-      sourceHandle: edge.source_handle ?? `output-${edge.source_output ?? 0}`,
       target: oldToNewNodeId[String(edge.target)],
-      targetHandle: edge.target_handle ?? `input-${edge.target_input ?? 0}`,
     }),
     selected: false,
   }))
@@ -345,10 +345,7 @@ export const explodeNetworkNodeInGraph = (
   // Redirect each incoming edge from the network input handle to the internal target handle.
   const rewiredIncomingEdges = incomingEdges
     .map((edge) => {
-      const handleIndex = Number.parseInt(
-        (edge.targetHandle as string).split('-')[1],
-        10
-      )
+      const handleIndex = handleIdToIndex(edgeHandle(edge, 'target'))
       const binding = boundary.networkInputToInternalHandle[handleIndex]
       if (!binding) {
         return null
@@ -367,10 +364,7 @@ export const explodeNetworkNodeInGraph = (
   // Redirect each outgoing edge from the network output handle to the internal source handle.
   const rewiredOutgoingEdges = outgoingEdges
     .map((edge) => {
-      const handleIndex = Number.parseInt(
-        (edge.sourceHandle as string).split('-')[1],
-        10
-      )
+      const handleIndex = handleIdToIndex(edgeHandle(edge, 'source'))
       const binding = boundary.networkOutputToInternalHandle[handleIndex]
       if (!binding) {
         return null

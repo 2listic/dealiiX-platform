@@ -10,7 +10,6 @@ import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import {
   getInputTypeAndName,
   getOutputTypeAndName,
-  handleIdToIndex,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
 import {
@@ -20,7 +19,7 @@ import {
   NodeType,
 } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
-import { parameterHandlePath } from './parameterPorts'
+import { edgeHandle, handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
   getNetworkNodeDefinition,
   getNodeData,
@@ -192,13 +191,13 @@ const canvasOutputTypeCandidates = (
     const inputIndex = node.data.inputs?.indexOf(outputIndex) ?? -1
     const upstream = edges.find(
       (edge) =>
-        edge.target === nodeId && edge.targetHandle === `input-${inputIndex}`
+        edge.target === nodeId &&
+        edgeHandle(edge, 'target') === `input-${inputIndex}`
     )
     if (upstream) {
-      const upstreamHandle = upstream.sourceHandle ?? 'output-0'
       upstreamTypes = canvasOutputTypeCandidates(
         upstream.source,
-        upstreamHandle,
+        edgeHandle(upstream, 'source'),
         nodes,
         edges,
         new Set(resolving).add(key)

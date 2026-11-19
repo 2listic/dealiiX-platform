@@ -18,9 +18,9 @@ import {
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
+import { parameterHandle } from './handleIds'
 import {
   parameterExposureArgument,
-  parameterHandle,
   parameterInputExposures,
   parameterOutputExposures,
 } from './parameterPorts'

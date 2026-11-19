@@ -1,5 +1,5 @@
 import { shellEscape } from './shellEscape'
-import { normalizeRelativeParameterPath } from './workspacePath'
+import { normalizeWorkspacePath } from './workspacePath'
 
 /**
  * Lists graph JSON files directly inside the configured remote working directory.
@@ -11,8 +11,9 @@ export const listRemoteGraphFiles = async (
   workingDirectory: string
 ): Promise<string[]> => {
   const directory = requireWorkingDirectory(workingDirectory)
+  // `cd` first: a pipeline exits with `sort`'s code, which would hide a missing directory.
   const output = await executeRemoteCommand(
-    `find ${shellEscape(directory)} -maxdepth 1 -type f -name '*.json' -exec basename {} \\; | sort`
+    `cd ${shellEscape(directory)} && find . -maxdepth 1 -type f -name '*.json' -exec basename {} \\; | sort`
   )
 
   return output
@@ -33,7 +34,7 @@ export const readRemoteGraphFile = async (
   fileName: string
 ): Promise<string> => {
   const directory = requireWorkingDirectory(workingDirectory)
-  const relativeName = normalizeRelativeParameterPath(fileName)
+  const relativeName = normalizeWorkspacePath(fileName)
   const remotePath = joinRemotePath(directory, relativeName)
   return await executeRemoteCommand(
     `test -f ${shellEscape(remotePath)} && cat ${shellEscape(remotePath)}`

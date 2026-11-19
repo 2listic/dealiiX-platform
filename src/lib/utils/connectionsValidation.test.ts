@@ -7,7 +7,7 @@ import {
   type NodeDefinitions,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
-import { parameterHandle } from './parameterPorts'
+import { parameterHandle } from './handleIds'
 
 let nodes: Node<NodeDefinitions>[] = []
 let edges: Edge[] = []
