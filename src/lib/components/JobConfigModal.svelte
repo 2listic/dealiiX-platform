@@ -6,15 +6,15 @@
   import type { StageJob } from '../types/pipelineTypes'
   import type { PipelineProgress } from '../orchestration/pipelineOrchestrator'
   import { runSingle } from '../orchestration/singleRun'
-  import { buildGraphPayload } from '../utils/sshMessages'
+  import { buildGraphPayload } from '../execution/sshMessages'
   import { jobsState } from '../stores/jobsStore.svelte'
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
-  import { isProbeValidated } from '../utils/settingsActions'
+  import { isProbeValidated } from '../execution/settingsActions'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
-  import { isValidSlurmTime, SLURM_TIME_HINT } from '../utils/slurmTime'
+  import { isValidSlurmTime, SLURM_TIME_HINT } from '../execution/slurmTime'
 
   interface Props {
     modalId: string

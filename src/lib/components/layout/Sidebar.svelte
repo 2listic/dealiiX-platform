@@ -12,7 +12,7 @@
     type NodeDefinitions,
     type SubGraphNodeDefinition,
   } from '../../types/nodeTypes'
-  import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import { returnNodeName } from '../../graph/canvasNodeUtils'
   import {
     buildNodePalette,
     type NodePaletteTile,

@@ -17,7 +17,7 @@ import {
   overloadStatus,
   resolveOverloadGraph,
 } from './overloadResolution'
-import { parseGraphToProtocol } from '../utils/graphParser'
+import { parseGraphToProtocol } from '../graph/graphParser'
 
 const definition = (
   type: string,
@@ -113,7 +113,10 @@ describe('buildNodePalette', () => {
       if (item.kind !== 'tile') throw new Error('Expected a tile')
       return item.tile
     })
-    expect(tiles.map((tile) => tile.label)).toEqual(['Poisson', 'Triangulation'])
+    expect(tiles.map((tile) => tile.label)).toEqual([
+      'Poisson',
+      'Triangulation',
+    ])
     if (!isOverloadNodeDefinition(tiles[0].node)) {
       throw new Error('Expected a family')
     }

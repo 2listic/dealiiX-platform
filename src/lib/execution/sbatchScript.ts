@@ -6,7 +6,7 @@
 
 import type { MpiLauncherSettings } from '../types/settingsTypes'
 import { buildMpiLauncherCommand } from './mpiLauncher'
-import { shellEscape } from './shellEscape'
+import { shellEscape } from '../utils/shellEscape'
 
 /** The resources and launcher an MPI job needs; absent for a serial job. */
 export type SbatchMpiResources = {

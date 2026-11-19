@@ -22,7 +22,7 @@ import {
   parameterExposureForHandle,
   parameterPathLabel,
   parameterPortCoralType,
-} from './parameterPorts'
+} from '../parameters/parameterPorts'
 import {
   formatSuggestedNodeName,
   nodeOwnerDisplayName,

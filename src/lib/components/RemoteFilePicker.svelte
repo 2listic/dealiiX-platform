@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
-  import { listRemoteGraphFiles } from '../utils/remoteFilePicker'
+  import { listRemoteGraphFiles } from '../execution/remoteFilePicker'
 
   type Props = {
     modalId: string

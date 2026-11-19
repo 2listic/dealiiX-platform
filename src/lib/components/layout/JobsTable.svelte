@@ -8,7 +8,7 @@
     getNodesExecutionStatus,
     JOB_DATE_INDEX,
     JOB_LIST_DAYS,
-  } from '../../utils/sshMessages'
+  } from '../../execution/sshMessages'
   import { normalizeJobStatus, isTerminalStatus } from '../../types/jobTypes'
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'

@@ -9,7 +9,7 @@ const access = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('../utils/parameterFileAccess', () => access)
+vi.mock('../parameters/parameterFileAccess', () => access)
 
 import { findVtkVisualizerTarget } from './vtkVisualizer'
 import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'

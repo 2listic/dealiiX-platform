@@ -10,7 +10,7 @@
     type CompatibleNodeOption,
     compatibleNodeOptionLabel,
     returnNodeName,
-  } from '../../utils/canvasNodeUtils'
+  } from '../../graph/canvasNodeUtils'
   import { NodeType } from '../../types/nodeTypes'
 
   interface Props {

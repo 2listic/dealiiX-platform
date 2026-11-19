@@ -1,5 +1,5 @@
-import { shellEscape } from './shellEscape'
-import { normalizeWorkspacePath } from './workspacePath'
+import { shellEscape } from '../utils/shellEscape'
+import { normalizeWorkspacePath } from '../utils/workspacePath'
 
 /**
  * Lists graph JSON files directly inside the configured remote working directory.

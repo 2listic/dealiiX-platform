@@ -21,7 +21,7 @@ vi.mock('../stores/settingsStore.svelte', () => ({
 vi.mock('../stores/toastsStore.svelte', () => ({
   toastState: { add: mocks.addToast },
 }))
-vi.mock('../utils/sshMessages', () => ({
+vi.mock('../execution/sshMessages', () => ({
   openNewWindow: mocks.openNewWindow,
 }))
 vi.mock('./vtkVisualizer', async () => ({

@@ -1,4 +1,4 @@
-import { fetchRemoteJobs, JOB_LIST_DAYS } from '../utils/sshMessages'
+import { fetchRemoteJobs, JOB_LIST_DAYS } from '../execution/sshMessages'
 import { executionSelectionState } from './executionSelection.svelte'
 import { toastState } from './toastsStore.svelte'
 import type { JobIdEntry } from '../types/jobTypes'

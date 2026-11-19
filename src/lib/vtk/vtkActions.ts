@@ -7,7 +7,7 @@ import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { jobIdMapState } from '../stores/jobsStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { openNewWindow } from '../utils/sshMessages'
+import { openNewWindow } from '../execution/sshMessages'
 import { buildVtkVisualizerUrl, findVtkVisualizerTarget } from './vtkVisualizer'
 
 /**

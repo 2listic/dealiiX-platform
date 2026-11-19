@@ -1,12 +1,12 @@
-import type { ParameterFileFormat } from '../utils/parameterFileFormat'
+import type { ParameterFileFormat } from '../parameters/parameterFileFormat'
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ParameterExposure } from '../types/nodeTypes'
 import {
   loadParameterFile,
   saveParameterFile,
   type ParameterFileTarget,
-} from '../utils/parameterFileAccess'
-import { setNodeParameterExposures } from '../utils/parameterNodeCanvas'
+} from '../parameters/parameterFileAccess'
+import { setNodeParameterExposures } from '../parameters/parameterNodeCanvas'
 
 export type ParameterFileDocument = {
   nodeId: string

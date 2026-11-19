@@ -21,7 +21,7 @@ import type {
 } from '../types/jobConfigTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
-import { isValidSlurmTime } from '../utils/slurmTime'
+import { isValidSlurmTime } from '../execution/slurmTime'
 
 let nodes = $state.raw<Node[]>([])
 let edges = $state.raw<Edge[]>([])

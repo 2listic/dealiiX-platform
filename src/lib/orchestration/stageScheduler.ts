@@ -11,7 +11,7 @@ import {
   ensureUniqueRemoteDir,
   ensureUniqueLocalDir,
   localJobPolling,
-} from '../utils/sshMessages'
+} from '../execution/sshMessages'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { JobStatus } from '../types/jobTypes'
 import type { StageJob } from '../types/pipelineTypes'

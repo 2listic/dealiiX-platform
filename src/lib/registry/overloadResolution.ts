@@ -14,11 +14,11 @@ import {
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
-import { edgeHandle, handleIdToIndex } from '../utils/handleIds'
+import { edgeHandle, handleIdToIndex } from '../graph/handleIds'
 import {
   parameterExposureForHandle,
   parameterPortCoralType,
-} from '../utils/parameterPorts'
+} from '../parameters/parameterPorts'
 import {
   nodeClassSection,
   nodeOwnerDisplayName,

@@ -3,7 +3,7 @@ import {
   parameterFileExists,
   parameterFileTarget,
   type ParameterFileTarget,
-} from '../utils/parameterFileAccess'
+} from '../parameters/parameterFileAccess'
 import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
 import { normalizeWorkspacePath } from '../utils/workspacePath'
 
