@@ -156,6 +156,7 @@
   )
   let parameterFileUnavailable = $derived(parameterFileUnavailableReason())
   let isOverloadNode = $derived(data.node_type === NodeType.OVERLOAD)
+  // Resolves the whole canvas, so it re-runs in every family node on any node or edge change, drags included.
   let overloadCandidates = $derived.by(() => {
     if (!isOverloadNode || !isOverloadNodeDefinition(data)) return []
     const resolution = resolveOverloadGraph(
