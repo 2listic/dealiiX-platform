@@ -4,11 +4,10 @@ import {
   formatSuggestedNodeName,
   nodeClassSection,
   nodeOwnerDisplayName,
-  nodePaletteChildName,
   nodePaletteDisplayName,
   nodePaletteKey,
-  nodePaletteNodeName,
   nodeVariantName,
+  variantLabels,
 } from './nodePalette'
 
 const node = (
@@ -49,8 +48,41 @@ describe('node palette metadata', () => {
     expect(nodePaletteDisplayName(poisson)).toBe('Finite element space')
     expect(nodeVariantName(poisson)).toBe('Poisson · 2D')
     expect(nodeVariantName(elastic)).toBe('Elastic static · 2D')
-    expect(nodePaletteNodeName(poisson)).toBe('Finite element space')
-    expect(nodePaletteNodeName(poisson, true)).toBe('Poisson · 2D')
+  })
+
+  it('labels a method variant by its variant_name, else by its type', () => {
+    const space = (dim: number, variantName?: string) =>
+      node(`ImmersX::Poisson<${dim},${dim}>::space`, {
+        node_type: NodeType.CONST_METHOD,
+        class_name: 'Poisson',
+        method_name: 'space',
+        ...(variantName ? { variant_name: variantName } : {}),
+      })
+
+    expect(nodeVariantName(space(2, 'Poisson. 2D'))).toBe('Poisson. 2D')
+    expect(nodeVariantName(space(2))).toBe('Poisson<2,2>::space')
+  })
+
+  it('labels a signature-keyed variant by its type without the signature', () => {
+    expect(
+      nodeVariantName(
+        node(
+          'GridGenerator::generate_from_name_and_arguments<2>::std::function<void(dealii::Triangulation<2, 2>&)>'
+        )
+      )
+    ).toBe('GridGenerator::generate_from_name_and_arguments<2>')
+  })
+
+  it('labels variants that would share a label by their full type', () => {
+    const scalar = node('Known term::std::function<Scalar(const Source&)>')
+    const vector = node('Known term::std::function<Vector(const Source&)>')
+    const named = node('Known term<2>', { variant_name: 'Known term · 2D' })
+
+    expect(variantLabels([scalar, vector, named])).toEqual([
+      'Known term::std::function<Scalar(const Source&)>',
+      'Known term::std::function<Vector(const Source&)>',
+      'Known term · 2D',
+    ])
   })
 
   it('keys and labels every literal on its own', () => {
@@ -70,12 +102,6 @@ describe('node palette metadata', () => {
       'std::string',
       'bool',
     ])
-  })
-
-  it('derives a readable label for legacy registries', () => {
-    expect(nodeVariantName(node('legacy::operation<2>'))).toBe(
-      'legacy::operation'
-    )
   })
 
   it('keys class specializations without their dimensions', () => {
@@ -143,7 +169,6 @@ describe('node palette metadata', () => {
     expect(nodePaletteKey(solve22)).not.toBe(nodePaletteKey(makeGrid))
     expect(nodePaletteDisplayName(solve22)).toBe('Poisson::solve')
     expect(nodePaletteDisplayName(makeGrid)).toBe('Poisson::make_grid')
-    expect(nodePaletteChildName(solve22)).toBe('Poisson::solve')
   })
 
   it('keys an explicit overload group together', () => {
@@ -250,12 +275,6 @@ describe('node palette metadata', () => {
     expect(nodePaletteDisplayName(definition)).toBe(
       'CoupledPoisson::residual_norm'
     )
-    expect(nodePaletteChildName(definition)).toBe(
-      'CoupledPoisson::residual_norm'
-    )
-    expect(nodePaletteNodeName(definition)).toBe(
-      'CoupledPoisson::residual_norm'
-    )
   })
 
   it('keeps std::function wrappers readable', () => {
@@ -265,9 +284,6 @@ describe('node palette metadata', () => {
     )
 
     expect(nodePaletteDisplayName(definition)).toBe(
-      'Finite element space::std::function'
-    )
-    expect(nodePaletteChildName(definition)).toBe(
       'Finite element space::std::function'
     )
   })

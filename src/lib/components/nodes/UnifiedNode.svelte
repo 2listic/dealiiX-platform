@@ -110,14 +110,15 @@
     resolveOutputTypeCandidates,
     returnNodeName,
   } from '../../graph/canvasNodeUtils'
-  import { displayTypeName } from '../../registry/nodePalette'
+  import { displayTypeName, variantLabels } from '../../registry/nodePalette'
   import { isVtkFileName } from '../../vtk/vtkFileFormat'
   import { openVtkFile } from '../../vtk/vtkActions'
   import {
+    finalizeOverloadNode,
     overloadInputTypes,
-    overloadInterfaceForCandidates,
     overloadOutputTypes,
     overloadStatus,
+    unfinalizeOverloadNode,
   } from '../../registry/overloadResolution'
   import { getOverloadCandidates } from '../../stores/overloadResolution.svelte'
 
@@ -192,6 +193,14 @@
             ? 'no compatible variant'
             : `${overloadCandidates.length} variants`
   )
+  let variantOptions = $derived.by(() => {
+    if (overloadCandidates.length < 2) return []
+    const labels = variantLabels(overloadCandidates)
+    return overloadCandidates.map((candidate, index) => ({
+      type: candidate.type,
+      label: labels[index],
+    }))
+  })
   let isVtkFile = $derived(
     [Type.STRING, Type.STR].includes(data.type as Type) &&
       isVtkFileName(valueForNode())
@@ -386,22 +395,20 @@
     }
   }
 
-  /** Toggles a resolved family between its concrete and union interfaces. */
-  const handleToggleOverloadFinalization = () => {
+  /**
+   * Pins a family to one variant (Finalize, Choose variant), or releases it
+   * when no type is given (Show variants), as one undoable edit.
+   */
+  const setOverloadFinalization = (candidateType?: string) => {
     if (!isOverloadNodeDefinition(data)) return
 
-    const isFinalizing = data.finalized !== true
-    const candidate = overloadCandidates[0]
-    if (isFinalizing && !candidate) return
-
     graphHistoryState.checkpoint()
-    updateNodeData(id, {
-      ...overloadInterfaceForCandidates(
-        isFinalizing ? [candidate] : data.candidates
-      ),
-      finalized: isFinalizing,
-      finalized_candidate_type: isFinalizing ? candidate?.type : undefined,
-    })
+    updateNodeData(
+      id,
+      candidateType
+        ? finalizeOverloadNode(data, candidateType)
+        : unfinalizeOverloadNode(data)
+    )
     clearConnectionCache()
   }
 </script>
@@ -434,7 +441,9 @@
                 : 'Narrow the ports to the resolved variant'}
               onclick={(event) => {
                 event.stopPropagation()
-                handleToggleOverloadFinalization()
+                setOverloadFinalization(
+                  isOverloadFinalized ? undefined : overloadCandidates[0]?.type
+                )
               }}
               onmousedown={(event) => event.stopPropagation()}
             >
@@ -446,6 +455,20 @@
                 Finalize
               {/if}
             </button>
+          {:else if variantOptions.length > 0}
+            <select
+              class="overload-action nodrag"
+              aria-label="Choose variant"
+              title="Keep one variant; the connected nodes narrow to it"
+              onchange={(event) =>
+                setOverloadFinalization(event.currentTarget.value)}
+              onmousedown={(event) => event.stopPropagation()}
+            >
+              <option value="" selected disabled>Choose variant</option>
+              {#each variantOptions as option (option.type)}
+                <option value={option.type}>{option.label}</option>
+              {/each}
+            </select>
           {/if}
         </div>
       {/if}

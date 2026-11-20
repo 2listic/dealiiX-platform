@@ -199,6 +199,52 @@ export const overloadInterfaceForCandidates = (
   }
 }
 
+/** Node data that pins a family to one variant, or releases it. */
+export type OverloadFinalization = OverloadNodeInterface &
+  Pick<OverloadNodeDefinition, 'finalized' | 'finalized_candidate_type'>
+
+/**
+ * Returns the data that pins a family to one of its variants: that variant's
+ * ports, and `finalized_candidate_type`, so resolution and the connected nodes
+ * see that variant only.
+ *
+ * @param node - Frontend overload family.
+ * @param candidateType - Type of the variant to keep.
+ * @returns The data to merge into the family node.
+ * @throws {Error} When the family has no variant of that type.
+ */
+export const finalizeOverloadNode = (
+  node: OverloadNodeDefinition,
+  candidateType: string
+): OverloadFinalization => {
+  const candidate = node.candidates.find(
+    (variant) => variant.type === candidateType
+  )
+  if (!candidate) {
+    throw new Error(`"${node.display_name}" has no variant ${candidateType}`)
+  }
+  return {
+    ...overloadInterfaceForCandidates([candidate]),
+    finalized: true,
+    finalized_candidate_type: candidate.type,
+  }
+}
+
+/**
+ * Returns the data that releases a finalized family: the ports of all its
+ * variants, which the graph narrows again.
+ *
+ * @param node - Frontend overload family.
+ * @returns The data to merge into the family node.
+ */
+export const unfinalizeOverloadNode = (
+  node: OverloadNodeDefinition
+): OverloadFinalization => ({
+  ...overloadInterfaceForCandidates(node.candidates),
+  finalized: false,
+  finalized_candidate_type: undefined,
+})
+
 /**
  * Builds one frontend-only family from two or more concrete definitions that
  * share a {@link nodePaletteKey}. The family is labelled with its

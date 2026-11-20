@@ -116,43 +116,35 @@ export const nodeClassSection = (
 }
 
 /**
- * Returns the readable specialization label when a plugin provides one;
- * methods always retain their canonical `Class::method` spelling.
+ * Returns the label of one variant of a family: its `variant_name`, else its
+ * type without a signature key's `::std::function<…>` suffix.
  *
- * @param node - Registry definition to label.
- * @returns Human-readable specialization label.
+ * @param node - Registry definition of the variant.
+ * @returns Human-readable variant label.
  */
-export const nodeVariantName = (node: StandardNodeDefinition): string =>
-  isMethodNode(node)
-    ? nodePaletteDisplayName(node)
-    : node.variant_name?.trim()
-      ? displayTypeName(node.variant_name.trim())
-      : nodePaletteDisplayName(node)
-
-/**
- * Returns exactly the label used for a node in the palette.
- * @param node - Registry definition to label.
- * @param hasSpecializations - Whether the node is shown beneath a logical group.
- * @returns Human-readable palette label.
- */
-export const nodePaletteNodeName = (
-  node: StandardNodeDefinition,
-  hasSpecializations = false
-): string => {
-  if (hasSpecializations) return nodeVariantName(node)
-  if (isMethodNode(node)) return nodePaletteDisplayName(node)
-  const explicitName = node.display_name?.trim() || node.operation?.trim()
-  if (explicitName) return formatSuggestedNodeName(explicitName)
-  return nodePaletteDisplayName(node)
+export const nodeVariantName = (node: StandardNodeDefinition): string => {
+  const variantName = node.variant_name?.trim()
+  if (variantName) return displayTypeName(variantName)
+  return displayTypeName(wrapperBaseType(node.type) ?? node.type)
 }
 
 /**
- * Returns the canonical label for a palette node.
- * @param node - Registry definition to label.
- * @returns Human-readable leaf label.
+ * Returns the labels of a family's variants, in order: {@link nodeVariantName},
+ * or the full type for variants that would share a label, such as
+ * signature-keyed overloads of one function.
+ *
+ * @param candidates - The variants to label.
+ * @returns One label per variant.
  */
-export const nodePaletteChildName = (node: StandardNodeDefinition): string => {
-  return nodePaletteNodeName(node)
+export const variantLabels = (
+  candidates: StandardNodeDefinition[]
+): string[] => {
+  const names = candidates.map(nodeVariantName)
+  return names.map((name, index) =>
+    names.indexOf(name) === names.lastIndexOf(name)
+      ? name
+      : displayTypeName(candidates[index].type)
+  )
 }
 
 // ── Private helpers ──

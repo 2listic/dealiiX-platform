@@ -12,10 +12,11 @@ import {
   buildNodePalette,
   createOverloadFamilies,
   createOverloadNodeDefinition,
+  finalizeOverloadNode,
   overloadInputTypes,
-  overloadInterfaceForCandidates,
   overloadStatus,
   resolveOverloadGraph,
+  unfinalizeOverloadNode,
 } from './overloadResolution'
 import { parseGraphToProtocol } from '../graph/graphParser'
 import defaultRegistry from '../data/defaultNodes.json'
@@ -465,9 +466,7 @@ describe('overload families', () => {
     ])
     const finalized = {
       ...family,
-      ...overloadInterfaceForCandidates([scalarGradient]),
-      finalized: true,
-      finalized_candidate_type: scalarGradient.type,
+      ...finalizeOverloadNode(family, scalarGradient.type),
     }
     const result = resolveOverloadGraph([node('gradient', finalized)], [])
 
@@ -476,6 +475,60 @@ describe('overload families', () => {
     ).toEqual([scalarGradient.type])
     expect(finalized.inputs).toEqual(scalarGradient.inputs)
     expect(overloadInputTypes(finalized, 1)).toEqual([])
+
+    const released = { ...finalized, ...unfinalizeOverloadNode(finalized) }
+    expect(released.finalized).toBe(false)
+    expect(released.inputs).toEqual(family.inputs)
+    expect(overloadInputTypes(released, 1)).toEqual(['std::string'])
+  })
+
+  it('narrows a connected family to the variant chosen on its neighbour', () => {
+    const triangulations = createOverloadNodeDefinition([
+      definition('Triangulation<1>', [], 'Triangulation<1>', 'Triangulation'),
+      definition('Triangulation<2>', [], 'Triangulation<2>', 'Triangulation'),
+    ])
+    const generators = createOverloadNodeDefinition([
+      definition('generate<1>', ['Triangulation<1>'], 'Triangulation<1>', 'g'),
+      definition('generate<2>', ['Triangulation<2>'], 'Triangulation<2>', 'g'),
+    ])
+    const edges = [edge('e', 'triangulation', 'generator')]
+    const candidateTypes = (nodes: Node<NodeDefinitions>[]) => {
+      const { candidatesByNodeId } = resolveOverloadGraph(nodes, edges)
+      return [
+        candidatesByNodeId.triangulation.map((candidate) => candidate.type),
+        candidatesByNodeId.generator.map((candidate) => candidate.type),
+      ]
+    }
+
+    expect(
+      candidateTypes([
+        node('triangulation', triangulations),
+        node('generator', generators),
+      ])
+    ).toEqual([
+      ['Triangulation<1>', 'Triangulation<2>'],
+      ['generate<1>', 'generate<2>'],
+    ])
+    expect(
+      candidateTypes([
+        node('triangulation', {
+          ...triangulations,
+          ...finalizeOverloadNode(triangulations, 'Triangulation<2>'),
+        }),
+        node('generator', generators),
+      ])
+    ).toEqual([['Triangulation<2>'], ['generate<2>']])
+  })
+
+  it('refuses to finalize a family on a type that is not its variant', () => {
+    const family = createOverloadNodeDefinition([
+      scalarGradient,
+      vectorGradient,
+    ])
+
+    expect(() => finalizeOverloadNode(family, 'gradient<other>')).toThrow(
+      'has no variant gradient<other>'
+    )
   })
 
   it('lowers a resolved family to its concrete Coral type', () => {

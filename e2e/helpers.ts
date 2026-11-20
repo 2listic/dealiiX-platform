@@ -40,26 +40,28 @@ export async function waitForToasts(page: Page): Promise<void> {
  * Event sequence: dragstart (source) → dragenter → dragover → drop (.svelte-flow) → dragend (source)
  *
  * @param page - The Playwright Page object for the Electron window under test.
- * @param sourceSelector - CSS selector identifying the element to drag (e.g. `'[data-testid="sidebar-node"]'`).
+ * @param source - The element to drag: a CSS selector (its first match, e.g. `'[data-testid="sidebar-node"]'`) or a locator.
+ * @param position - Drop point as fractions of the canvas width and height; the centre by default.
  * @returns A promise that resolves once all drag events have been dispatched.
  * @throws If either the source element or `.svelte-flow` cannot be found in the DOM.
  */
 export async function simulateDragToCanvas(
   page: Page,
-  sourceSelector: string
+  source: string | Locator,
+  position: { x: number; y: number } = { x: 0.5, y: 0.5 }
 ): Promise<void> {
-  // page.evaluate runs inside the Electron renderer — the only place where
+  const sourceLocator =
+    typeof source === 'string' ? page.locator(source).first() : source
+  // evaluate runs inside the Electron renderer — the only place where
   // real DragEvent / DataTransfer objects exist.
-  await page.evaluate((src: string) => {
-    const source = document.querySelector(src)
+  await sourceLocator.evaluate((source, dropAt) => {
     const target = document.querySelector('.svelte-flow')
-    if (!source || !target)
-      throw new Error(`simulateDragToCanvas: element not found (${src})`)
+    if (!target) throw new Error('simulateDragToCanvas: .svelte-flow not found')
 
     const dt = new DataTransfer()
     const rect = target.getBoundingClientRect()
-    const x = rect.left + rect.width / 2
-    const y = rect.top + rect.height / 2
+    const x = rect.left + rect.width * dropAt.x
+    const y = rect.top + rect.height * dropAt.y
 
     source.dispatchEvent(
       new DragEvent('dragstart', { dataTransfer: dt, bubbles: true })
@@ -86,7 +88,7 @@ export async function simulateDragToCanvas(
     source.dispatchEvent(
       new DragEvent('dragend', { dataTransfer: dt, bubbles: true })
     )
-  }, sourceSelector)
+  }, position)
 }
 
 /**
