@@ -214,6 +214,32 @@ describe('node palette metadata', () => {
     expect(nodePaletteDisplayName(scalar)).toBe('Known term')
   })
 
+  it('keys and labels a method registered per dimension as one member', () => {
+    const writeVtk = (dimensions: string) =>
+      node(`GridOut::write_vtk<${dimensions}>`, {
+        node_type: NodeType.VOID_CONST_METHOD,
+        operation: `GridOut::write_vtk<${dimensions}>`,
+        class_name: 'GridOut',
+        method_name: `write_vtk<${dimensions}>`,
+      })
+
+    expect(nodePaletteKey(writeVtk('2'))).toBe(nodePaletteKey(writeVtk('1,2')))
+    expect(nodeOwnerDisplayName(writeVtk('1,2'))).toBe('Grid out -> Write vtk')
+  })
+
+  it('keys methods with non-numeric template arguments apart', () => {
+    const evaluate = (argument: string) =>
+      node(`Field::evaluate<${argument}>`, {
+        node_type: NodeType.CONST_METHOD,
+        class_name: 'Field',
+        method_name: `evaluate<${argument}>`,
+      })
+
+    expect(nodePaletteKey(evaluate('Scalar'))).not.toBe(
+      nodePaletteKey(evaluate('Vector'))
+    )
+  })
+
   it('extracts the owner and operation from registry suffixes', () => {
     const definition = node('ImmersX::CoupledPoisson<2>::residual_norm', {
       node_type: NodeType.METHOD,

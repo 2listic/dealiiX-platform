@@ -18,6 +18,7 @@ import {
   resolveOverloadGraph,
 } from './overloadResolution'
 import { parseGraphToProtocol } from '../graph/graphParser'
+import defaultRegistry from '../data/defaultNodes.json'
 
 const definition = (
   type: string,
@@ -145,6 +146,28 @@ describe('buildNodePalette', () => {
       throw new Error('Expected a family')
     }
     expect(tile.node.candidates).toEqual([overload(1), overload(2)])
+  })
+
+  it('makes one family tile per deal.II method of the bundled registry', () => {
+    const items = buildNodePalette(
+      Object.values(defaultRegistry) as StandardNodeDefinition[]
+    )
+    const gridGenerator = items.find(
+      (item) => item.kind === 'class' && item.label === 'Grid generator'
+    )
+    if (gridGenerator?.kind !== 'class') {
+      throw new Error('Expected a Grid generator section')
+    }
+
+    expect(gridGenerator.tiles).toHaveLength(1)
+    const [tile] = gridGenerator.tiles
+    expect(tile.label).toBe(
+      'Grid generator -> Generate from name and arguments'
+    )
+    if (!isOverloadNodeDefinition(tile.node)) {
+      throw new Error('Expected a family')
+    }
+    expect(tile.node.candidates).toHaveLength(6)
   })
 })
 

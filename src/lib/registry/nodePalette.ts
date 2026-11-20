@@ -21,7 +21,7 @@ export const formatSuggestedNodeName = (name: string): string => {
  * same key become one overload family in the sidebar and the connected-node
  * picker. From the first source present:
  * 1. a literal's own type, so literals never group;
- * 2. `class_name` + `method_name`;
+ * 2. `class_name` + `method_name`, without numeric template arguments;
  * 3. `overload_group`;
  * 4. `operation`, without numeric template arguments;
  * 5. for a method: `Class::method` from the type;
@@ -36,7 +36,7 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
     return `elementary:${node.type}`
   }
   if (node.class_name?.trim() && node.method_name?.trim()) {
-    return `method:${node.class_name.trim()}::${node.method_name.trim()}`
+    return `method:${node.class_name.trim()}::${paletteMethodName(node)}`
   }
   const overloadGroup = node.overload_group?.trim()
   if (overloadGroup) return `group:${overloadGroup}`
@@ -51,7 +51,8 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
  * picker, from the first source present:
  * 1. a literal's value type (`int`, `std::string`);
  * 2. `display_name`;
- * 3. `method_name`, for an entry with `class_name` and `method_name`;
+ * 3. `method_name` without numeric template arguments, for an entry with
+ *    `class_name` and `method_name`;
  * 4. for a method: its qualified `operation`, else `Class::method` from the type;
  * 5. `operation`;
  * 6. for a constructor: the class name from the type;
@@ -69,7 +70,7 @@ export const nodePaletteDisplayName = (
   const displayName = node.display_name?.trim()
   if (displayName) return formatSuggestedNodeName(displayName)
   if (node.class_name?.trim() && node.method_name?.trim())
-    return formatSuggestedNodeName(node.method_name)
+    return formatSuggestedNodeName(paletteMethodName(node))
   if (isMethodNode(node))
     return displayTypeName(
       node.operation?.includes('::')
@@ -268,6 +269,18 @@ const methodPaletteName = (type: string): string => {
 const paletteOperationName = (node: StandardNodeDefinition): string => {
   const operation = node.operation?.trim() ?? ''
   return operation.includes('::') ? canonicalTypeName(operation) : operation
+}
+
+/**
+ * Returns the trimmed `method_name` without trailing numeric template
+ * arguments: a plugin registering a method per dimension (`write_vtk<2>`)
+ * names one member.
+ */
+const paletteMethodName = (node: StandardNodeDefinition): string => {
+  const methodName = node.method_name?.trim() ?? ''
+  return hasNumericTemplateTag(methodName)
+    ? methodName.slice(0, methodName.lastIndexOf('<')).trim()
+    : methodName
 }
 
 const classPaletteName = (type: string): string => {
