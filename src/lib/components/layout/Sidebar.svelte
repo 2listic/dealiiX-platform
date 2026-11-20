@@ -8,10 +8,15 @@
   import {
     HIDDEN_SIDEBAR_NODE_TYPES,
     nodeColors,
+    type NodeType,
+    type NodeDefinitions,
     type SubGraphNodeDefinition,
-    type StandardNodeDefinition,
   } from '../../types/nodeTypes'
-  import { returnNodeName } from '../../utils/canvasNodeUtils'
+  import { returnNodeName } from '../../graph/canvasNodeUtils'
+  import {
+    buildNodePalette,
+    type NodePaletteTile,
+  } from '../../registry/overloadResolution'
   import { fade } from 'svelte/transition'
   import { sideBarState } from '../../stores/sidebar.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -24,17 +29,26 @@
 
   let searchQuery = $state('')
   const filteredAvailableNodes = $derived(
-    availableNodes?.filter(
-      (node) =>
-        !HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
-        node.type.toLowerCase().includes(searchQuery.toLowerCase())
-    ) ?? []
+    availableNodes?.filter((node) => {
+      if (HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)) return false
+      const query = searchQuery.toLowerCase()
+      return [
+        node.type,
+        node.operation,
+        node.display_name,
+        node.variant_name,
+        node.class_name,
+        node.method_name,
+        node.overload_group,
+        node.description,
+      ]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query))
+    }) ?? []
   )
+  const paletteItems = $derived(buildNodePalette(filteredAvailableNodes))
 
-  const onDragStart = (
-    event: DragEvent,
-    node: StandardNodeDefinition | SubGraphNodeDefinition
-  ) => {
+  const onDragStart = (event: DragEvent, node: NodeDefinitions) => {
     if (!event.dataTransfer) {
       return
     }
@@ -42,8 +56,8 @@
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const returnNodeColor = (nodeTypeName: keyof typeof nodeColors) => {
-    return nodeColors[nodeTypeName]
+  const returnNodeColor = (nodeTypeName: NodeType) => {
+    return nodeColors[nodeTypeName as keyof typeof nodeColors] ?? 'gray'
   }
 
   const handleDelete = async (networkNodeName: string) => {
@@ -70,11 +84,6 @@
     style:overflow-y={showNodeNames ? 'auto' : 'hidden'}
   >
     {#if storedNetworkNodes && storedNetworkNodes.length > 0}
-      {#if showNodeNames}
-        <span class="section-label" transition:fade|global={{ duration: 250 }}
-          >Network Nodes</span
-        >
-      {/if}
       {#each storedNetworkNodes as Array<SubGraphNodeDefinition> as node (node)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -102,13 +111,9 @@
           {/if}
         </div>
       {/each}
-      <div class="separator"></div>
     {/if}
     {#if availableNodes}
       {#if showNodeNames}
-        <span class="section-label" transition:fade|global={{ duration: 250 }}
-          >Registry Nodes</span
-        >
         <input
           class="search-input"
           data-testid="sidebar-search"
@@ -118,22 +123,48 @@
           transition:fade|global={{ duration: 250 }}
         />
       {/if}
-      {#each filteredAvailableNodes as Array<StandardNodeDefinition> as node (node)}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          style="--borderColor: {returnNodeColor(node.node_type)}"
-          class="node"
-          data-testid="sidebar-node"
-          data-node-type={node.node_type}
-          ondragstart={(event) => onDragStart(event, node)}
-          draggable={true}
-        >
-          {#if showNodeNames}
-            <span transition:fade|global={{ duration: 250 }}>
-              {returnNodeName(node)}
-            </span>
-          {/if}
+      {#snippet paletteTile(tile: NodePaletteTile)}
+        <div class="node-group">
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            style="--borderColor: {returnNodeColor(tile.node.node_type)}"
+            class="node"
+            data-testid="sidebar-node"
+            data-node-type={tile.node.node_type}
+            ondragstart={(event) => onDragStart(event, tile.node)}
+            draggable={true}
+          >
+            {#if showNodeNames}
+              <span transition:fade|global={{ duration: 250 }}>
+                {tile.label}
+              </span>
+            {/if}
+          </div>
         </div>
+      {/snippet}
+      {#each paletteItems as item (item.key)}
+        {#if item.kind === 'class'}
+          <section
+            class="class-group"
+            class:collapsed={!showNodeNames}
+            data-testid="sidebar-node-class"
+            data-class-name={item.label}
+          >
+            {#if showNodeNames}
+              <div
+                class="class-label"
+                transition:fade|global={{ duration: 250 }}
+              >
+                {item.label}
+              </div>
+            {/if}
+            {#each item.tiles as tile (tile.node.type)}
+              {@render paletteTile(tile)}
+            {/each}
+          </section>
+        {:else if item.kind === 'tile'}
+          {@render paletteTile(item.tile)}
+        {/if}
       {/each}
     {/if}
   </div>
@@ -163,10 +194,31 @@
     scrollbar-width: thin;
   }
 
-  .section-label {
+  .node-group {
+    display: contents;
+  }
+
+  .class-group {
+    display: flex;
     width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.35rem 0 0.75rem;
+  }
+
+  /* Collapsed tiles are wider than the narrow sidebar's content box: centre
+     them like the ungrouped tiles, which the container centres. */
+  .class-group.collapsed {
+    justify-content: center;
+  }
+
+  .class-label {
+    width: 100%;
+    padding-left: 0.25rem;
+    color: var(--ternary-color);
     font-weight: 600;
-    text-transform: uppercase;
     text-align: left;
   }
 
@@ -185,15 +237,13 @@
     border-color: var(--border-color-hover);
   }
 
-  .separator {
-    width: 100%;
-    height: 0.5rem;
-    transition: height 0.25s ease;
-  }
   .node {
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0.5rem 1rem;
-    margin: 0 1rem;
+    margin: 0;
     border-radius: 5px;
     cursor: grab;
     border: 2px solid var(--borderColor, gray);

@@ -12,8 +12,9 @@ import type {
 } from '../types/nodeTypes'
 import { getEdges, getNodes, setEdges, setNodes } from '../stores/nodes.svelte'
 import { graphHistoryState } from '../stores/graphStack.svelte'
-import { clearConnectionCache } from './connectionsValidation'
-import { findParameterExposure, parameterHandlePath } from './parameterPorts'
+import { clearConnectionCache } from '../graph/connectionsValidation'
+import { parameterHandlePath } from '../graph/handleIds'
+import { findParameterExposure } from './parameterPorts'
 
 /**
  * Returns the edges attached to parameter handles of a node that the given

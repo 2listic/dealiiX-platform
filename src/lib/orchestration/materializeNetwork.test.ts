@@ -24,8 +24,8 @@ vi.stubGlobal('window', {
 // sources under /work, run copies under /run.
 const files = vi.hoisted(() => new Map<string, string>())
 
-vi.mock('../utils/parameterFileAccess', () => ({
-  normalizeRelativeParameterPath: (fileName: string) => fileName,
+vi.mock('../parameters/parameterFileAccess', () => ({
+  normalizeWorkspacePath: (fileName: string) => fileName,
   parameterFilePath: (target: { workingDirectory: string; fileName: string }) =>
     `${target.workingDirectory}/${target.fileName}`,
   parameterFileTarget: (location: string, fileName: string) => ({
@@ -50,7 +50,7 @@ vi.mock('../utils/parameterFileAccess', () => ({
   },
 }))
 
-vi.mock('../utils/fileReferences', () => ({
+vi.mock('./fileReferences', () => ({
   resolveParameterFileReferences: async (tree: unknown) => tree,
   resolveGraphFileReferences: async (graph: unknown) => graph,
   findExistingFiles: async (paths: string[]) =>
@@ -63,9 +63,9 @@ const {
   validateParameterBindings,
 } = await import('./materializeNetwork')
 const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
-  await import('../utils/graphParser')
-const { createNetworkNodeDefinition } = await import('../utils/networkNode')
-const { parameterHandle } = await import('../utils/parameterPorts')
+  await import('../graph/graphParser')
+const { createNetworkNodeDefinition } = await import('../graph/networkNode')
+const { parameterHandle } = await import('../graph/handleIds')
 const { addNetworkNode, getNodeData, mergeRegistry, removeNetworkNode } =
   await import('../stores/registryStore.svelte')
 

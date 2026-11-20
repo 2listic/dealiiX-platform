@@ -9,7 +9,7 @@ import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
 import { getNodeData } from '../stores/registryStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
-import { parseGraphWithQualifiedIds } from './graphParser'
+import { parseGraphWithQualifiedIds } from '../graph/graphParser'
 import {
   materializeNetwork,
   validateParameterBindings,
@@ -28,13 +28,13 @@ import type {
 import type { SbatchMpiResources } from './sbatchScript'
 import { buildSbatchScript } from './sbatchScript'
 import { settingsState } from '../stores/settingsStore.svelte'
-import { serializeParametersFile } from './parameterFileFormat'
+import { serializeParametersFile } from '../parameters/parameterFileFormat'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import {
   resolveGraphFileReferences,
   resolveParameterFileReferences,
-} from './fileReferences'
-import { shellEscape } from './shellEscape'
+} from '../orchestration/fileReferences'
+import { shellEscape } from '../utils/shellEscape'
 
 /**
  * Executes a test SSH command using password authentication.

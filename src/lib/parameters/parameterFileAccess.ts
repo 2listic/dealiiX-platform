@@ -1,12 +1,16 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
+import { findExistingFiles } from '../orchestration/fileReferences'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
   type ParameterFileFormat,
 } from './parameterFileFormat'
-import { shellEscape } from './shellEscape'
+import { shellEscape } from '../utils/shellEscape'
+import { normalizeWorkspacePath } from '../utils/workspacePath'
+
+export { normalizeWorkspacePath } from '../utils/workspacePath'
 
 export type ParameterFileTarget = {
   location: ExecutionLocation
@@ -25,37 +29,6 @@ export type LoadedParameterFile = {
   resolvedPath: string
 }
 
-/** Normalises a relative POSIX path and rejects traversal outside its root. */
-export const normalizeRelativeParameterPath = (fileName: string): string => {
-  const normalized = fileName.trim().replaceAll('\\', '/')
-  if (
-    !normalized ||
-    normalized.startsWith('/') ||
-    /^[A-Za-z]:\//.test(normalized)
-  ) {
-    throw new Error(
-      'Parameter file names must be relative to the working directory'
-    )
-  }
-
-  const parts: string[] = []
-  for (const part of normalized.split('/')) {
-    if (!part || part === '.') continue
-    if (part === '..') {
-      if (parts.length === 0) {
-        throw new Error(
-          'Parameter file must remain inside the working directory'
-        )
-      }
-      parts.pop()
-    } else {
-      parts.push(part)
-    }
-  }
-  if (parts.length === 0) throw new Error('Parameter file name is empty')
-  return parts.join('/')
-}
-
 /**
  * Returns a parameter file's absolute path in its working directory.
  *
@@ -64,7 +37,7 @@ export const normalizeRelativeParameterPath = (fileName: string): string => {
  * @throws If the name is absolute or escapes the working directory.
  */
 export const parameterFilePath = (target: ParameterFileTarget): string => {
-  const relative = normalizeRelativeParameterPath(target.fileName)
+  const relative = normalizeWorkspacePath(target.fileName)
   return `${target.workingDirectory.replace(/\/+$/, '')}/${relative}`
 }
 
@@ -93,6 +66,25 @@ export const parameterFileTarget = (
       : settingsState.remote.workingDirectory,
   fileName,
 })
+
+/**
+ * Checks whether a file exists at its target.
+ *
+ * @param target - Location, working directory and relative file name.
+ * @returns Whether the file exists; false without a working directory, for an
+ *   invalid name, or when the check itself fails.
+ */
+export const parameterFileExists = async (
+  target: ParameterFileTarget
+): Promise<boolean> => {
+  if (!target.workingDirectory) return false
+  try {
+    const path = parameterFilePath(target)
+    return (await findExistingFiles([path], target.location)).length > 0
+  } catch {
+    return false
+  }
+}
 
 /**
  * Reads a parameter file from its target: through Electron IPC for `local`,
@@ -132,6 +124,13 @@ export const readParameterFile = async (
   }
 }
 
+/**
+ * Writes content to a parameter or data file target.
+ * @param target - File target to write.
+ * @param content - Content to write.
+ * @returns Promise resolved after the write completes.
+ * @throws Error when the target has no working directory or cannot be written.
+ */
 export const writeParameterFile = async (
   target: ParameterFileTarget,
   content: string

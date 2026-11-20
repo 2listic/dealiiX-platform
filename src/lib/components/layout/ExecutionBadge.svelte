@@ -8,7 +8,7 @@
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import { warnIfUnvalidated } from '../../utils/settingsActions'
+  import { warnIfUnvalidated } from '../../execution/settingsActions'
 
   // Two orthogonal-ish selectors: location, and mode (backend kind + pipeline view).
   let location = $derived(executionSelectionState.location)

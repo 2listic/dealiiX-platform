@@ -7,19 +7,19 @@
     setNodes,
   } from '../../stores/nodes.svelte'
   import { mergeRegistry } from '../../stores/registryStore.svelte'
-  import { importGraphFromProtocol } from '../../utils/graphParser'
+  import { importGraphFromProtocol } from '../../graph/graphParser'
   import {
     mergeParametersFromFile,
     downloadParameters,
-  } from '../../utils/parametersFileActions'
+  } from '../../parameters/parametersFileActions'
   import { parametersState } from '../../stores/parametersStore.svelte'
-  import { buildGraphPayload, openNewWindow } from '../../utils/sshMessages'
+  import { buildGraphPayload, openNewWindow } from '../../execution/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
   import {
     runPipeline,
     type PipelineProgress,
   } from '../../orchestration/pipelineOrchestrator'
-  import { buildExportMeta } from '../../utils/exportMeta'
+  import { buildExportMeta } from '../../graph/exportMeta'
   import { jobsState } from '../../stores/jobsStore.svelte'
   import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
   import Modal, { getModal } from './Modal.svelte'
@@ -39,7 +39,7 @@
   import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { viewModeState } from '../../stores/viewModeStore.svelte'
-  import { parseGraphWithQualifiedIds } from '../../utils/graphParser'
+  import { parseGraphWithQualifiedIds } from '../../graph/graphParser'
   import { updateProject } from '../../requests/projects'
   import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
@@ -51,6 +51,8 @@
   import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
+  import RemoteFilePicker from '../RemoteFilePicker.svelte'
+  import { readRemoteGraphFile } from '../../execution/remoteFilePicker'
 
   const { fitView } = useSvelteFlow()
 
@@ -60,6 +62,7 @@
   const saveProjectModalId = 'save-project-modal'
   const JobConfigModalId = 'job-config-modal'
   const runNameModalId = 'pipeline-run-name-modal'
+  const remoteGraphPickerModalId = 'remote-graph-picker-modal'
   let isCoralMode = $derived(executionSelectionState.isCoralMode)
   let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
   let hasParams = $derived(parametersState.value != null)
@@ -70,6 +73,7 @@
   let isSingleMode = $derived(viewModeState.value === 'single')
   let isPipelineMode = $derived(viewModeState.value === 'pipeline')
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
+  let isRemote = $derived(executionSelectionState.location === 'remote')
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -260,8 +264,36 @@
   }
 
   /**
-   * Loads a graph from a file removing the edges that have type mismatches
+   * Replaces the canvas with an imported graph, toasting each dropped edge
+   * and each subnetwork it registers, and detaches the current project.
+   * @param importedGraph - Parsed graph JSON in Coral protocol format.
+   * @param successMessage - Toast shown once the graph is loaded.
+   * @returns Resolves once the graph is on the canvas.
+   * @throws If the graph fails validation.
    */
+  const importGraphData = async (
+    importedGraph: Parameters<typeof importGraphFromProtocol>[0],
+    successMessage = 'New graph was loaded'
+  ) => {
+    const { invalidEdges, registeredNetworkNodes } =
+      await importGraphFromProtocol(importedGraph)
+    invalidEdges.forEach((invalidEdge) => {
+      toastState.add({ message: invalidEdge.error, type: 'error' })
+    })
+    registeredNetworkNodes.forEach((nodeName) => {
+      toastState.add({
+        message: `Sub-graph node ${nodeName} was registered`,
+        type: 'success',
+      })
+    })
+    currentProjectState.clear()
+    console.log('imported graph nodes', getNodes())
+    console.log('imported graph edges', getEdges())
+    toastState.add({ message: successMessage })
+    fitView({ maxZoom: 1, minZoom: 1 })
+  }
+
+  /** Loads a graph from a local file, removing edges with type mismatches. */
   const loadGraphFromFile = async () => {
     const files = importGraphInput?.files
     if (files == null || files.length == 0) {
@@ -269,29 +301,40 @@
     }
     try {
       const importedGraphAsText = await readFileAsText(files[0])
-      const importedGraph = JSON.parse(importedGraphAsText)
-      const { invalidEdges, registeredNetworkNodes } =
-        await importGraphFromProtocol(importedGraph)
-      invalidEdges.forEach((invalidEdge) => {
-        toastState.add({ message: invalidEdge.error, type: 'error' })
-      })
-      registeredNetworkNodes.forEach((nodeName) => {
-        toastState.add({
-          message: `Sub-graph node ${nodeName} was registered`,
-          type: 'success',
-        })
-      })
-      currentProjectState.clear()
-      console.log('imported graph nodes', getNodes())
-      console.log('imported graph edges', getEdges())
-      toastState.add({ message: 'New graph was loaded' })
-      // Force a fit view to ensure the graph is visible
-      fitView({ maxZoom: 1, minZoom: 1 })
+      await importGraphData(JSON.parse(importedGraphAsText))
     } catch (error) {
       console.error('Failed to load graph:', error)
       toastState.add({
         message:
           error instanceof Error ? error.message : 'Failed to load graph',
+        type: 'error',
+      })
+    }
+  }
+
+  /**
+   * Imports a graph JSON file from the remote working directory and closes
+   * the picker; a read or import error is shown as a toast and keeps it open.
+   * @param fileName - File name inside the remote working directory.
+   * @returns Resolves once the graph is loaded or the error is shown.
+   */
+  const loadGraphFromRemoteFile = async (fileName: string) => {
+    try {
+      const importedGraph = JSON.parse(
+        await readRemoteGraphFile(
+          settingsState.remote.workingDirectory,
+          fileName
+        )
+      )
+      await importGraphData(importedGraph, `Loaded remote graph ${fileName}`)
+      getModal(remoteGraphPickerModalId)?.close()
+    } catch (error) {
+      console.error('Failed to load remote graph:', error)
+      toastState.add({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load remote graph',
         type: 'error',
       })
     }
@@ -400,7 +443,7 @@
   const handleAutoLayout = async (direction: 'LR' | 'TB') => {
     try {
       // lazy import keeps dagre out of the initial bundle; loaded only on first use
-      const { applyAutoLayout } = await import('../../utils/autoLayout')
+      const { applyAutoLayout } = await import('../../graph/autoLayout')
       const layoutedNodes = applyAutoLayout(
         getNodesSnapshot(),
         getEdgesSnapshot(),
@@ -615,6 +658,12 @@
           label="Import Graph"
           onclick={() => importGraphInput?.click()}
         />
+        {#if isRemote}
+          <SidebarGroupButtonItem
+            label="Import graph from remote"
+            onclick={() => getModal(remoteGraphPickerModalId)?.open()}
+          />
+        {/if}
         <SidebarGroupButtonItem
           label="Import Nodes"
           onclick={() => importNodesInput?.click()}
@@ -643,6 +692,14 @@
     accept=".json"
     style="display: none"
   />
+
+  <Modal id={remoteGraphPickerModalId} size="md">
+    <RemoteFilePicker
+      modalId={remoteGraphPickerModalId}
+      workingDirectory={settingsState.remote.workingDirectory}
+      onSelect={loadGraphFromRemoteFile}
+    />
+  </Modal>
 
   <!-- Parameters actions (executable single mode only) -->
   {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}

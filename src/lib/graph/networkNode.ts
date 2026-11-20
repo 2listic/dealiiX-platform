@@ -12,17 +12,19 @@ import {
   getBaseTypes,
   NodeType,
   type Type,
+  type NodeDefinitions,
   type StandardNodeDefinition,
   TypeField,
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
+import { parameterHandle } from './handleIds'
 import {
   parameterExposureArgument,
-  parameterHandle,
   parameterInputExposures,
   parameterOutputExposures,
-} from './parameterPorts'
+} from '../parameters/parameterPorts'
+import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 /**
  * Bidirectional handle maps for routing edges between an internal subgraph and
@@ -95,6 +97,7 @@ export const createNetworkNodeDefinition = (
  * @param {Edge[]} currentEdges - Array of edges in the subgraph (must be snapshots, not reactive)
  * @returns {BoundaryAnalysis} The arguments/inputs/outputs arrays and bidirectional handle maps
  * @throws {Error} If the graph is empty (no nodes)
+ * @throws {UnresolvedOverloadError} If an overload family has more or fewer than one variant left
  */
 export const analyzeNetworkBoundary = (
   currentNodes: Node[],
@@ -156,15 +159,14 @@ export const analyzeNetworkBoundary = (
     }
   }
 
-  // Sort nodes by numeric ID for deterministic ordering
-  const sortedNodes = [...currentNodes].sort(
-    (a, b) => parseInt(a.id) - parseInt(b.id)
-  )
+  // Sort nodes by numeric ID for deterministic ordering. Families are lowered
+  // to their resolved variants, as in the subnetwork's value.
+  const sortedNodes = [
+    ...lowerOverloadFamilies(currentNodes, currentEdges),
+  ].sort((a, b) => parseInt(a.id) - parseInt(b.id))
 
   for (const node of sortedNodes) {
-    const nodeData = node.data as
-      | StandardNodeDefinition
-      | SubGraphNodeDefinition
+    const nodeData = node.data as NodeDefinitions
 
     // Check for free inputs
     if (nodeData.inputs && Array.isArray(nodeData.inputs)) {

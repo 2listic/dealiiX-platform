@@ -10,18 +10,23 @@ import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import {
   getInputTypeAndName,
   getOutputTypeAndName,
-  handleIdToIndex,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
-import { ConnectionType, isTypeCompatible, NodeType } from '../types/nodeTypes'
+import {
+  ConnectionType,
+  isOverloadNodeDefinition,
+  isTypeCompatible,
+  NodeType,
+} from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
-import { parameterHandlePath } from './parameterPorts'
+import { edgeHandle, handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
   getNetworkNodeDefinition,
   getNodeData,
   isNodeInNetworkNodes,
 } from '../stores/registryStore.svelte'
 import { isSubnetworkParameterOutput } from '../orchestration/materializeNetwork'
+import { resolveOverloadGraph } from '../registry/overloadResolution'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -89,6 +94,29 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   ) {
     connectionCache.set(cacheKey, false)
     return false
+  }
+
+  if (
+    isOverloadNodeDefinition(sourceNode.data) ||
+    isOverloadNodeDefinition(targetNode.data)
+  ) {
+    const proposedEdge: Edge = {
+      id: cacheKey,
+      source: connection.source,
+      sourceHandle: connection.sourceHandle as string,
+      target: connection.target,
+      targetHandle: connection.targetHandle as string,
+    }
+    const resolution = resolveOverloadGraph(nodes, [...edges, proposedEdge])
+    const hasEmptyCandidates = Object.values(
+      resolution.candidatesByNodeId
+    ).some((candidates) => candidates.length === 0)
+    const hasInvalidProposedEdge = resolution.edgeIssues.some(
+      (issue) => issue.edge.id === cacheKey
+    )
+    const isValid = !hasEmptyCandidates && !hasInvalidProposedEdge
+    connectionCache.set(cacheKey, isValid)
+    return isValid
   }
 
   const expectedInputType = getInputTypeAndName(
@@ -163,13 +191,13 @@ const canvasOutputTypeCandidates = (
     const inputIndex = node.data.inputs?.indexOf(outputIndex) ?? -1
     const upstream = edges.find(
       (edge) =>
-        edge.target === nodeId && edge.targetHandle === `input-${inputIndex}`
+        edge.target === nodeId &&
+        edgeHandle(edge, 'target') === `input-${inputIndex}`
     )
     if (upstream) {
-      const upstreamHandle = upstream.sourceHandle ?? 'output-0'
       upstreamTypes = canvasOutputTypeCandidates(
         upstream.source,
-        upstreamHandle,
+        edgeHandle(upstream, 'source'),
         nodes,
         edges,
         new Set(resolving).add(key)

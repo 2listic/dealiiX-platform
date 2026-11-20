@@ -8,8 +8,9 @@
   import Button from '../layout/Button.svelte'
   import {
     type CompatibleNodeOption,
+    compatibleNodeOptionLabel,
     returnNodeName,
-  } from '../../utils/canvasNodeUtils'
+  } from '../../graph/canvasNodeUtils'
   import { NodeType } from '../../types/nodeTypes'
 
   interface Props {
@@ -37,6 +38,9 @@
       ? `${option.nodeDefinition.name}-${option.handleId}`
       : `${option.nodeDefinition.type}-${option.handleId}`
 
+  const optionDefaultNodeName = (option: CompatibleNodeOption): string =>
+    returnNodeName(option.nodeDefinition)
+
   // Fires when `options` changes (i.e. modal opens with a new set of choices).
   // Resets selection to the first option.
   // The ternary guards against an empty array.
@@ -50,7 +54,7 @@
       (option) => optionId(option) === selectedOptionId
     )
     if (selectedOption) {
-      nodeName = returnNodeName(selectedOption.nodeDefinition)
+      nodeName = optionDefaultNodeName(selectedOption)
     }
   })
 
@@ -80,7 +84,7 @@
     >
       {#each options as option (optionId(option))}
         <option value={optionId(option)}>
-          {returnNodeName(option.nodeDefinition)} ({option.argumentName})
+          {compatibleNodeOptionLabel(option)}
         </option>
       {/each}
     </select>

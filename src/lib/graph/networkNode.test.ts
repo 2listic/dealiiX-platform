@@ -19,6 +19,7 @@ import {
   ConnectionType,
   NodeType,
   Type,
+  type NodeDefinitions,
   type SubGraphNodeDefinition,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -30,10 +31,11 @@ import {
   createNetworkNodeDefinition,
   analyzeNetworkBoundary,
 } from './networkNode'
+import { createOverloadNodeDefinition } from '../registry/overloadResolution'
 
 const makeCanvasNode = (
   id: string,
-  data: StandardNodeDefinition | SubGraphNodeDefinition,
+  data: NodeDefinitions,
   type = data.node_type,
   position = { x: 0, y: 0 }
 ): Node =>
@@ -214,6 +216,154 @@ describe('networkNode utilities', () => {
       },
     ])
     expect(networkNode.outputs).toEqual([0])
+  })
+
+  it('does not expose alternate overload handles after finalization', () => {
+    const scalarCandidate: StandardNodeDefinition = {
+      type: 'scalar-operation',
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'field',
+          type: 'ScalarField' as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+      node_type: NodeType.FUNCTION,
+      operation: 'operation',
+    }
+    const twoArgumentCandidate: StandardNodeDefinition = {
+      ...scalarCandidate,
+      type: 'scalar-operation-with-label',
+      arguments: [
+        ...scalarCandidate.arguments,
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'label',
+          type: Type.STRING,
+        },
+      ],
+      inputs: [0, 1],
+    }
+    const family = createOverloadNodeDefinition([
+      scalarCandidate,
+      twoArgumentCandidate,
+    ])
+    const finalizedFamily = {
+      ...family,
+      finalized: true,
+      finalized_candidate_type: scalarCandidate.type,
+    }
+
+    const networkNode = createNetworkNodeDefinition(
+      'FinalizedOperation',
+      [makeCanvasNode('1', finalizedFamily)],
+      []
+    )
+
+    expect(networkNode.arguments).toEqual([
+      {
+        connection_type: ConnectionType.INPUT,
+        name: 'field',
+        type: 'ScalarField',
+      },
+    ])
+    expect(networkNode.inputs).toEqual([0])
+    expect(networkNode.outputs).toEqual([])
+  })
+
+  describe('a family inside a subnetwork', () => {
+    const viewCandidate = (dim: number): StandardNodeDefinition => ({
+      type: `view<${dim}>`,
+      output_type: `SpaceView<${dim}>`,
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: `space${dim}`,
+          type: `Space<${dim}>` as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [-1],
+      node_type: NodeType.FUNCTION,
+      operation: 'view',
+    })
+    const space2: StandardNodeDefinition = {
+      type: 'Space<2>',
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      node_type: NodeType.EMPTY_CONSTRUCTOR,
+    }
+    const family = createOverloadNodeDefinition([
+      viewCandidate(2),
+      viewCandidate(3),
+    ])
+
+    it('takes the ports and SELF output type of the variant an edge resolves', () => {
+      const networkNode = createNetworkNodeDefinition(
+        'View2',
+        [makeCanvasNode('1', space2), makeCanvasNode('2', family)],
+        [makeEdge('1', 'output-0', '2', 'input-0')]
+      )
+
+      expect(networkNode.arguments).toEqual([
+        {
+          connection_type: ConnectionType.OUTPUT,
+          name: 'self',
+          type: 'SpaceView<2>',
+        },
+      ])
+      expect(networkNode.value.workflow.nodes['2'].type).toBe('view<2>')
+    })
+
+    it('takes the SELF output type of the finalized variant', () => {
+      const networkNode = createNetworkNodeDefinition(
+        'View3',
+        [
+          makeCanvasNode('1', {
+            ...family,
+            finalized: true,
+            finalized_candidate_type: 'view<3>',
+          }),
+        ],
+        []
+      )
+
+      expect(networkNode.arguments).toEqual([
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'space3',
+          type: 'Space<3>',
+        },
+        {
+          connection_type: ConnectionType.OUTPUT,
+          name: 'self',
+          type: 'SpaceView<3>',
+        },
+      ])
+    })
+
+    it('refuses a family with several variants left, naming them', () => {
+      expect(() =>
+        createNetworkNodeDefinition('View', [makeCanvasNode('1', family)], [])
+      ).toThrow(
+        `"${family.display_name}" has 2 variants left. Connect it until one variant is left.`
+      )
+    })
+
+    it('lists the variants by name when every variant has one', () => {
+      const named = createOverloadNodeDefinition([
+        { ...viewCandidate(2), variant_name: 'View. 2D' },
+        { ...viewCandidate(3), variant_name: 'View. 3D' },
+      ])
+      expect(() =>
+        createNetworkNodeDefinition('View', [makeCanvasNode('1', named)], [])
+      ).toThrow(
+        `"${named.display_name}" has 2 variants left (View. 2D, View. 3D). Connect it until one variant is left.`
+      )
+    })
   })
 
   it('createNetworkNodeDefinition and analyzeNetworkBoundary produce the Step1 definition from its constituent nodes', () => {

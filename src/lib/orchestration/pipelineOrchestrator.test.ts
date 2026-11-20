@@ -26,7 +26,7 @@ const jobPolling = vi.fn(async (..._args: never[]) => pollResult)
 // collision-suffix behavior override this per-test.
 const ensureUniqueRemoteDir = vi.fn(async (dir: string) => dir)
 
-vi.mock('../utils/sshMessages', () => ({
+vi.mock('../execution/sshMessages', () => ({
   submitCoralStageRemote: (args: never) => submitCoralStageRemote(args),
   submitExecutableStageRemote: (args: never) =>
     submitExecutableStageRemote(args),

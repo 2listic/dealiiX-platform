@@ -43,29 +43,36 @@
     clearConnectionCache,
     isValidConnection,
     isTargetHandleConnected,
-  } from '../utils/connectionsValidation'
-  import { onDragOver, onDrop } from '../utils/dragAndDrop'
+  } from '../graph/connectionsValidation'
+  import { onDragOver, onDrop } from '../graph/dragAndDrop'
   import { NodeType } from '../types/nodeTypes'
-  import { returnNodeName } from '../utils/canvasNodeUtils'
+  import { returnNodeName } from '../graph/canvasNodeUtils'
   import EditIcon from './icons/EditIcon.svelte'
   import Button from './layout/Button.svelte'
   import CreateNetworkNodeModal from './nodes/CreateNetworkNodeModal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { getModal } from './layout/Modal.svelte'
-  import { collapseSelectionToSubnetwork } from '../utils/networkNodeCanvas'
+  import { collapseSelectionToSubnetwork } from '../graph/networkNodeCanvas'
   import {
     createCanvasNode,
     buildEdgeForNewNode,
     resolveConnectionAndCompatibleNodes,
-    formatSuggestedNodeName,
     type CompatibleNodeOption,
     type ConnectedNodeDraft,
     type ConnectStartParams,
-  } from '../utils/canvasNodeUtils'
+  } from '../graph/canvasNodeUtils'
+  import { formatSuggestedNodeName } from '../registry/nodePalette'
+  import { createOverloadFamilies } from '../registry/overloadResolution'
   import CreateConnectedNodeModal from './nodes/CreateConnectedNodeModal.svelte'
+  import { graphViewportState } from '../stores/graphViewport'
 
-  const { screenToFlowPosition, getNode, getIntersectingNodes } =
+  const { screenToFlowPosition, getNode, getIntersectingNodes, getViewport } =
     useSvelteFlow()
+  const initialViewport = graphViewportState.value
+
+  const saveViewport = () => {
+    graphViewportState.save(getViewport())
+  }
 
   let isEditingBreadcrumb = $state(false)
   let breadcrumbNameDraft = $state('')
@@ -91,6 +98,7 @@
     [NodeType.FUNCTION]: UnifiedNode,
     [NodeType.NETWORK]: UnifiedNode,
     [NodeType.PRIMITIVE]: UnifiedNode,
+    [NodeType.OVERLOAD]: UnifiedNode,
   }
 
   let selectedNodes = $derived(getNodes().filter((node) => node.selected))
@@ -264,7 +272,10 @@
     }
 
     // Resolve connection type and name plus compatible nodes for the originating handle.
-    const availableNodes = [...getStoredNetworkNodes(), ...getAvailableNodes()]
+    const availableNodes = [
+      ...getStoredNetworkNodes(),
+      ...createOverloadFamilies(getAvailableNodes()),
+    ]
     const resolved = resolveConnectionAndCompatibleNodes(
       connectStartParams,
       node,
@@ -386,11 +397,15 @@
     bind:nodes={getNodes, setNodes}
     bind:edges={getEdges, setEdges}
     {nodeTypes}
-    fitView
+    fitView={!initialViewport}
+    initialViewport={initialViewport ?? undefined}
     {isValidConnection}
+    oninit={saveViewport}
+    onmove={saveViewport}
     onconnectstart={handleConnectStart}
     onconnect={() => {
       graphHistoryState.checkpoint()
+      clearConnectionCache()
       connectStartParams = null
     }}
     onconnectend={handleConnectEnd}

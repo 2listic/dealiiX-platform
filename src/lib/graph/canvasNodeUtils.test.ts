@@ -1,0 +1,693 @@
+import { describe, expect, it } from 'vitest'
+import defaultRegistry from '../data/defaultNodes.json'
+import defaultNetworkNodes from '../data/defaultNetworkNodes.json'
+import {
+  ConnectionType,
+  isOverloadNodeDefinition,
+  NodeType,
+  TypeField,
+  Type,
+  type NodeDefinitions,
+  type RegisteredNodes,
+  type RegisteredSubGraphNodes,
+  type StandardNodeDefinition,
+} from '../types/nodeTypes'
+import {
+  compatibleNodeOptionLabel,
+  createCanvasNode,
+  findCompatibleSourceNodesAsOptions,
+  findCompatibleTargetNodesAsOptions,
+  getInputTypeAndName,
+  getOutputTypeAndName,
+  resolveConnectionAndCompatibleNodes,
+  resolveOutputTypeCandidates,
+  returnNodeName,
+} from './canvasNodeUtils'
+import {
+  formatSuggestedNodeName,
+  nodeOwnerDisplayName,
+  nodePaletteDisplayName,
+} from '../registry/nodePalette'
+import {
+  createOverloadFamilies,
+  createOverloadNodeDefinition,
+} from '../registry/overloadResolution'
+import { parameterHandle } from './handleIds'
+
+const registry = defaultRegistry as unknown as RegisteredNodes
+const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes
+
+/** A bundled registry entry without its registry metadata, for tests that set their own labels. */
+const withoutMetadata = (type: string): StandardNodeDefinition => {
+  const definition = structuredClone(registry[type]) as StandardNodeDefinition
+  delete definition.operation
+  delete definition.display_name
+  delete definition.class_name
+  delete definition.method_name
+  return definition
+}
+
+describe('canvasNodeUtils', () => {
+  it('extracts source type and connection name from a regular output', () => {
+    // GridGenerator<2> has outputs: [0] → arguments[0] = pass_through triangulation
+    const sourceNode = {
+      id: '1',
+      type: NodeType.VOID_FUNCTION,
+      position: { x: 0, y: 0 },
+      data: structuredClone(
+        registry[
+          'GridGenerator::generate_from_name_and_arguments<2>::std::function<void(dealii::Triangulation<2, 2>&, const std::__cxx11::basic_string<char>&, const std::__cxx11::basic_string<char>&)>'
+        ]
+      ),
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'dealii::Triangulation<2, 2>',
+      connectionName: 'triangulation',
+    })
+  })
+
+  it('extracts source type from SELF outputs', () => {
+    // FE_Q<2, 2> has outputs: [-1] (SELF), base: 'dealii::FiniteElement<2, 2>'
+    const sourceNode = {
+      id: '1',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        ...structuredClone(registry['dealii::FE_Q<2, 2>']),
+        name: 'my_fe',
+      },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'dealii::FiniteElement<2, 2> | dealii::FE_Q<2, 2>',
+      connectionTypes: ['dealii::FiniteElement<2, 2>', 'dealii::FE_Q<2, 2>'],
+      connectionName: 'my_fe',
+    })
+  })
+
+  it('uses every bases entry for connection suggestions', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Derived',
+        node_type: NodeType.CONSTRUCTOR,
+        arguments: [],
+        inputs: [],
+        outputs: [-1],
+        bases: ['Base', 'Root'],
+      },
+    }
+    const targetNode = {
+      type: 'Consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: ConnectionType.INPUT, name: 'value', type: 'Root' },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const outputInfo = getOutputTypeAndName(sourceNode, 'output-0')
+
+    expect(outputInfo?.connectionTypes).toEqual(['Base', 'Root', 'Derived'])
+    expect(
+      findCompatibleTargetNodesAsOptions(
+        [targetNode] as unknown as NodeDefinitions[],
+        outputInfo?.connectionTypes ?? []
+      )
+    ).toHaveLength(1)
+    expect(
+      resolveOutputTypeCandidates(sourceNode.data as NodeDefinitions, 0)
+    ).toEqual(['Base', 'Root', 'Derived'])
+  })
+
+  it('uses output_type alone for function SELF outputs, without bases', () => {
+    const sourceNode = {
+      id: '1',
+      type: NodeType.FUNCTION,
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'Finite element space::std::function<Space(const Problem &)>',
+        node_type: NodeType.FUNCTION,
+        arguments: [
+          {
+            connection_type: 'input',
+            name: 'problem',
+            type: 'ImmersX::ElasticStaticProblem<2, 2>',
+          },
+        ],
+        inputs: [0],
+        outputs: [-1],
+        output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        bases: ['ImmersX::FiniteElementSpaceBase'],
+      },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'ImmersX::FiniteElementSpaceView<2,2>',
+      connectionName:
+        'Finite element space::std::function<Space(const Problem &)>',
+    })
+    expect(
+      resolveOutputTypeCandidates(sourceNode.data as NodeDefinitions, 0)
+    ).toEqual(['ImmersX::FiniteElementSpaceView<2,2>'])
+
+    const baseConsumerNode = {
+      type: 'Base consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceBase',
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+
+    const scalarFieldNode = {
+      type: 'Scalar field::std::function<Field(const Space &, const string &)>',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        },
+        { connection_type: 'input', name: 'name', type: 'std::string' },
+      ],
+      inputs: [0, 1],
+      outputs: [-1],
+      output_type: 'ImmersX::Field<2,2,Scalar>',
+    }
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: '1', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [scalarFieldNode, baseConsumerNode] as unknown as NodeDefinitions[]
+    )
+
+    expect(resolved?.connectionType).toBe(
+      'ImmersX::FiniteElementSpaceView<2,2>'
+    )
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      scalarFieldNode.type
+    )
+  })
+
+  it('falls back to the node type when an elementary constructor has no base', () => {
+    // int has outputs: [-1] (SELF), no base — connectionName comes from the node name
+    const sourceNode = {
+      id: '1',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: { ...structuredClone(registry['int']), name: 'my_integer' },
+    }
+
+    expect(getOutputTypeAndName(sourceNode, 'output-0')).toEqual({
+      connectionType: 'int',
+      connectionName: 'my_integer',
+    })
+  })
+
+  it('finds compatible nodes by matching source type, excluding the source node', () => {
+    // LaplaceProblem::run<2>: string arguments at inputs 2, 3, 4 → three matches
+    // LaplaceProblem::run<1,2>: same structure → EXCLUDED
+    // dealii::FE_Q<2, 2>: inputs=[0], arguments[0]='unsigned int' → no match
+    const availableNodes = [
+      registry['LaplaceProblem::run<2>'],
+      registry['LaplaceProblem::run<1,2>'],
+      registry['dealii::FE_Q<2, 2>'],
+    ] as NodeDefinitions[]
+
+    const options = findCompatibleTargetNodesAsOptions(
+      availableNodes,
+      Type.STRING,
+      'LaplaceProblem::run<1,2>'
+    )
+
+    expect(
+      options.map((option) => [
+        option.nodeDefinition.type,
+        option.handleId,
+        option.argumentName,
+      ])
+    ).toEqual([
+      ['LaplaceProblem::run<2>', 'input-2', 'rhs'],
+      ['LaplaceProblem::run<2>', 'input-3', 'preconditioner_name'],
+      ['LaplaceProblem::run<2>', 'input-4', 'output_dir'],
+    ])
+  })
+
+  it('offers one connected-node option for an overload family', () => {
+    const candidate = (
+      type: string,
+      inputTypes: string[]
+    ): StandardNodeDefinition => ({
+      type,
+      operation: 'Initialize parameters',
+      overload_group: 'Initialize parameters',
+      display_name: 'Initialize parameters',
+      arguments: inputTypes.map((inputType, index) => ({
+        connection_type: ConnectionType.INPUT,
+        name: `input ${index}`,
+        type: inputType as Type,
+      })),
+      inputs: inputTypes.map((_, index) => index),
+      outputs: [],
+      node_type: NodeType.FUNCTION,
+    })
+
+    const initializeParameters = createOverloadNodeDefinition([
+      candidate('initialize_parameters<one>', ['dealii::ParameterAcceptor']),
+      candidate('initialize_parameters<two>', [
+        'dealii::ParameterAcceptor',
+        'dealii::ParameterAcceptor',
+      ]),
+    ])
+
+    const options = findCompatibleTargetNodesAsOptions(
+      [initializeParameters],
+      'dealii::ParameterAcceptor'
+    )
+
+    expect(options).toHaveLength(1)
+    expect(options[0].nodeDefinition).toBe(initializeParameters)
+    expect(options[0].handleId).toBe('input-0')
+  })
+
+  it('includes network nodes in compatibility results', () => {
+    // step1 triangulation input free: string inputs at handles 1, 2, 4
+    // dealii::FE_Q<2, 2>: uint input → no match
+    const availableNodes = [
+      networkNodes['step1 triangulation input free'],
+      registry['dealii::FE_Q<2, 2>'],
+    ] as NodeDefinitions[]
+
+    const options = findCompatibleTargetNodesAsOptions(
+      availableNodes,
+      Type.STRING
+    )
+
+    expect(options).toHaveLength(3)
+    expect(options.map((o) => o.nodeDefinition.type)).toEqual([
+      TypeField.CORAL_NETWORK,
+      TypeField.CORAL_NETWORK,
+      TypeField.CORAL_NETWORK,
+    ])
+  })
+
+  it('extracts input metadata from a target handle', () => {
+    // dealii::FE_Q<2, 2>: inputs=[0], arguments[0]={ 'fe_degree', 'unsigned int' }
+    const targetNode = {
+      id: '2',
+      type: NodeType.CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: structuredClone(registry['dealii::FE_Q<2, 2>']),
+    }
+
+    expect(getInputTypeAndName(targetNode, 'input-0')).toEqual({
+      connectionType: Type.UNSIGNED_INT,
+      connectionName: 'fe_degree',
+    })
+  })
+
+  it('finds compatible producer nodes for a target input, excluding the target type', () => {
+    // Looking for nodes that output 'unsigned int'
+    // 'unsigned int' elementary constructor: SELF output type 'unsigned int' → EXCLUDED
+    // dealii::FE_Q<2, 2>: SELF with base 'dealii::FiniteElement<2, 2>' → wrong output type
+    const availableNodes = [
+      registry['unsigned int'],
+      registry['dealii::FE_Q<2, 2>'],
+    ] as NodeDefinitions[]
+
+    const options = findCompatibleSourceNodesAsOptions(
+      availableNodes,
+      Type.UNSIGNED_INT,
+      'unsigned int'
+    )
+
+    expect(options).toHaveLength(0)
+  })
+
+  it('uses compact metadata for a constructor SELF output name', () => {
+    const domainParameters = {
+      type: 'ImmersX::DomainParameters<2,2>',
+      display_name: 'DomainParameters',
+      node_type: NodeType.CONSTRUCTOR,
+      arguments: [],
+      inputs: [],
+      outputs: [-1],
+      output_type: 'dealii::ParameterAcceptor',
+    } as NodeDefinitions
+
+    const options = findCompatibleSourceNodesAsOptions(
+      [domainParameters],
+      'dealii::ParameterAcceptor'
+    )
+
+    expect(options).toHaveLength(1)
+    expect(options[0].argumentName).toBe('DomainParameters')
+  })
+
+  it('only offers scalar literal nodes for exposed parameter inputs', () => {
+    const targetHandle = parameterHandle('input', ['Solver', 'Tolerance'])
+    const targetNode = {
+      id: 'parameter',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: {
+        ...structuredClone(registry['std::string']),
+        parameter_file: {
+          exposures: [
+            {
+              path: ['Solver', 'Tolerance'],
+              type: 'string',
+              input: true,
+              output: false,
+            },
+          ],
+        },
+      },
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'parameter', handleId: targetHandle, handleType: 'target' },
+      targetNode,
+      [
+        networkNodes['step1 triangulation input free'],
+        registry['std::string'],
+      ] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(Type.STRING)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.node_type).toBe(
+      NodeType.ELEMENTARY_CONSTRUCTOR
+    )
+  })
+
+  it('matches a source typed "any" against a concrete target input', () => {
+    const anyOutputNode = {
+      type: 'list_get',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'output', type: Type.ANY, name: '' }],
+      inputs: [],
+      outputs: [0],
+    } as unknown as NodeDefinitions
+
+    const options = findCompatibleTargetNodesAsOptions(
+      [registry['dealii::FE_Q<2, 2>']] as NodeDefinitions[],
+      Type.ANY
+    )
+    expect(options).toHaveLength(1)
+
+    // And the mirror direction: a concrete target input accepts a producer with an "any" output.
+    const reverseOptions = findCompatibleSourceNodesAsOptions(
+      [anyOutputNode],
+      Type.UNSIGNED_INT
+    )
+    expect(reverseOptions).toHaveLength(1)
+  })
+
+  it('matches numeric widening (int -> float) in both compatibility directions', () => {
+    const intOutputNode = {
+      type: 'list_size',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'output', type: Type.INT, name: '' }],
+      inputs: [],
+      outputs: [0],
+    } as unknown as NodeDefinitions
+    const floatInputNode = {
+      type: 'accepts_float',
+      node_type: NodeType.FUNCTION,
+      arguments: [{ connection_type: 'input', type: Type.FLOAT, name: 'x' }],
+      inputs: [0],
+      outputs: [],
+    } as unknown as NodeDefinitions
+
+    expect(
+      findCompatibleTargetNodesAsOptions([floatInputNode], Type.INT)
+    ).toHaveLength(1)
+    expect(
+      findCompatibleSourceNodesAsOptions([intOutputNode], Type.FLOAT)
+    ).toHaveLength(1)
+  })
+
+  it('builds default node names from the node definition type', () => {
+    expect(
+      returnNodeName({
+        type: 'target_node_type',
+        node_type: NodeType.FUNCTION,
+        arguments: [],
+        inputs: [],
+        outputs: [],
+      })
+    ).toBe('Target node type')
+  })
+
+  it('groups operation specializations but keeps legacy entries singleton', () => {
+    const specialized = [
+      {
+        ...withoutMetadata('LaplaceProblem::run<1>'),
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      {
+        ...withoutMetadata('LaplaceProblem::run<2>'),
+        operation: 'LaplaceProblem::run',
+        display_name: 'Run Laplace problem',
+      },
+      withoutMetadata('LaplaceProblem::run<3>'),
+    ] as NodeDefinitions[]
+
+    const entries = createOverloadFamilies(
+      specialized as StandardNodeDefinition[]
+    )
+    expect(entries).toHaveLength(2)
+    const [family, legacy] = entries
+    if (!isOverloadNodeDefinition(family)) throw new Error('Expected a family')
+    expect(family.display_name).toBe('Run Laplace problem')
+    expect(family.candidates.map((node) => node.type)).toEqual([
+      'LaplaceProblem::run<1>',
+      'LaplaceProblem::run<2>',
+    ])
+    expect(legacy.type).toBe('LaplaceProblem::run<3>')
+  })
+
+  it('prefers a logical display name without changing concrete identity', () => {
+    const definition = {
+      ...withoutMetadata('LaplaceProblem::run<2>'),
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('includes the registered owner in canvas names', () => {
+    const definition = {
+      type: 'Add constraint to linear execution<2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'Add constraint to linear execution',
+      display_name: 'Add constraint',
+      class_name: 'LinearExecution',
+      method_name: 'add_constraint',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe(
+      'Linear execution -> Add constraint'
+    )
+  })
+
+  it('uses only the operation name for constructor canvas nodes', () => {
+    const definition = {
+      type: 'Boundary conditions<2,2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'Boundary conditions',
+      display_name: 'Boundary conditions',
+      class_name: 'BoundaryConditions',
+      method_name: 'create',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Boundary conditions')
+  })
+
+  it('names a nameless family and its variants with their sidebar label', () => {
+    const variant = (dim: number) =>
+      ({
+        type: `Poisson<${dim},${dim}>::space`,
+        node_type: NodeType.CONST_METHOD,
+        arguments: [],
+        inputs: [],
+        outputs: [],
+        display_name: 'Finite element space',
+        class_name: 'Poisson',
+        method_name: 'space',
+      }) as StandardNodeDefinition
+    const variants = [variant(1), variant(2)]
+    const sidebarLabel = nodeOwnerDisplayName(variants[0])
+    const family = createOverloadNodeDefinition(variants)
+
+    expect(returnNodeName(family)).toBe(sidebarLabel)
+    expect(returnNodeName(variants[1])).toBe(sidebarLabel)
+  })
+
+  it('names a nameless free-standing node with its sidebar label', () => {
+    const freeStanding = {
+      type: 'ImmersX::make_grid<2>',
+      node_type: NodeType.FUNCTION,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      operation: 'make_grid',
+    } as StandardNodeDefinition
+
+    expect(returnNodeName(freeStanding)).toBe(
+      formatSuggestedNodeName(nodePaletteDisplayName(freeStanding))
+    )
+    expect(returnNodeName(freeStanding)).toBe('Make grid')
+  })
+
+  it('uses the logical display name instead of the palette variant', () => {
+    const definition = {
+      ...withoutMetadata('LaplaceProblem::run<2>'),
+      operation: 'LaplaceProblem::run',
+      display_name: 'Run Laplace problem',
+      variant_name: 'Run · 2D',
+    } as NodeDefinitions
+
+    expect(returnNodeName(definition)).toBe('Run Laplace problem')
+  })
+
+  it('connects directly when an operation has one compatible specialization', () => {
+    const sourceNode = {
+      id: 'source',
+      type: NodeType.ELEMENTARY_CONSTRUCTOR,
+      position: { x: 0, y: 0 },
+      data: structuredClone(registry[Type.STRING]),
+    }
+    const stringSpecialization = {
+      type: 'consume_string',
+      operation: 'consume',
+      display_name: 'Consume',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        { connection_type: 'input', name: 'value', type: Type.STRING },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
+    const intSpecialization = {
+      ...stringSpecialization,
+      type: 'consume_int',
+      arguments: [{ connection_type: 'input', name: 'value', type: Type.INT }],
+    }
+
+    const resolved = resolveConnectionAndCompatibleNodes(
+      { nodeId: 'source', handleId: 'output-0', handleType: 'source' },
+      sourceNode,
+      [stringSpecialization, intSpecialization] as NodeDefinitions[]
+    )
+
+    expect(resolved?.compatibleOptions).toHaveLength(1)
+    expect(resolved?.compatibleOptions[0].nodeDefinition.type).toBe(
+      'consume_string'
+    )
+  })
+
+  it('clones created nodes and applies the requested name', () => {
+    const nodeDefinition = registry['LaplaceProblem::run<2>'] as NodeDefinitions
+
+    const node = createCanvasNode(
+      nodeDefinition,
+      { x: 10, y: 20 },
+      { name: 'my_run' }
+    )
+
+    expect(node.data).not.toBe(nodeDefinition)
+    expect(node.data.name).toBe('my_run')
+  })
+})
+
+describe('compatibleNodeOptionLabel', () => {
+  const scalarField = (dim: number): StandardNodeDefinition => ({
+    type: `scalar_field<${dim}>`,
+    display_name: 'Scalar field',
+    output_type: `Field<${dim}>`,
+    arguments: [
+      {
+        connection_type: ConnectionType.INPUT,
+        name: 'space',
+        type: `SpaceView<${dim}>` as Type,
+      },
+    ],
+    inputs: [0],
+    outputs: [-1],
+    node_type: NodeType.FUNCTION,
+  })
+
+  it('labels a concrete node with its palette name and the port', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'input-0',
+        argumentName: 'space',
+      })
+    ).toBe('Scalar field (space)')
+  })
+
+  it('labels a family with its display name and the port', () => {
+    const family = createOverloadNodeDefinition([
+      { ...scalarField(1), display_name: 'Field of scalars' },
+      scalarField(2),
+    ])
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: family,
+        handleId: 'input-0',
+        argumentName: 'space',
+      })
+    ).toBe('Field of scalars (space)')
+  })
+
+  it('labels a subnetwork with its name', () => {
+    const subnetwork = Object.values(networkNodes)[0]
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: subnetwork,
+        handleId: 'input-0',
+        argumentName: null,
+      })
+    ).toBe(returnNodeName(subnetwork))
+  })
+
+  it('leaves the port out when it repeats the name', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'input-0',
+        argumentName: 'Scalar field',
+      })
+    ).toBe('Scalar field')
+  })
+
+  it('leaves the port out when there is none', () => {
+    expect(
+      compatibleNodeOptionLabel({
+        nodeDefinition: scalarField(2),
+        handleId: 'output-0',
+        argumentName: null,
+      })
+    ).toBe('Scalar field')
+  })
+})

@@ -28,32 +28,34 @@ import {
   addQualifiedIds,
   edgesFromProtocolToFlow,
   removeQualifiedIds,
-} from '../utils/graphParser'
+} from '../graph/graphParser'
 import {
   analyzeNetworkBoundary,
   type BoundaryAnalysis,
-} from '../utils/networkNode'
-import { handleIdToIndex } from '../utils/canvasNodeUtils'
+} from '../graph/networkNode'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,
-} from '../utils/parameterFileFormat'
+} from '../parameters/parameterFileFormat'
+import {
+  handleIdToIndex,
+  parameterHandle,
+  parameterHandlePath,
+} from '../graph/handleIds'
 import {
   findParameterExposure,
   parameterAtPath,
-  parameterHandle,
-  parameterHandlePath,
   parameterInputExposures,
   parameterOutputExposures,
   parameterPortCoralType,
-} from '../utils/parameterPorts'
+} from '../parameters/parameterPorts'
 import {
-  normalizeRelativeParameterPath,
+  normalizeWorkspacePath,
   parameterFileTarget,
   readParameterFile,
   writeParameterFile,
-} from '../utils/parameterFileAccess'
-import { resolveParameterFileReferences } from '../utils/fileReferences'
+} from '../parameters/parameterFileAccess'
+import { resolveParameterFileReferences } from './fileReferences'
 
 /** Returns the registry definition of a standard node type. */
 export type NodeDefinitionLookup = (type: string) => StandardNodeDefinition
@@ -117,7 +119,7 @@ export const materializeNetwork = async (
     )
 
     // One copy per file, so nodes sharing a file must agree on its content.
-    const fileName = normalizeRelativeParameterPath(source.fileName)
+    const fileName = normalizeWorkspacePath(source.fileName)
     const content = serializeParametersAs(tree, format)
     const copy = copies.get(fileName)
     if (copy && copy.content !== content) {
@@ -146,7 +148,7 @@ export const materializeNetwork = async (
     bindings,
     definitionOf,
     runCopyOf: (port) =>
-      `${withoutTrailingSlash(copyDirectory)}/${normalizeRelativeParameterPath(String(standardNode(port).value))}`,
+      `${withoutTrailingSlash(copyDirectory)}/${normalizeWorkspacePath(String(standardNode(port).value))}`,
     valueOf: (source) =>
       outputValue(trees.get(nodeKey(source)) as ParameterTree, source.exposure),
   })

@@ -7,8 +7,8 @@ import {
 } from '../types/nodeTypes'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
-import { canonicalTypeKey } from '../utils/canonicalTypeKey'
-import { filterValidNodes } from '../utils/registryValidator'
+import { canonicalTypeKey } from '../registry/canonicalTypeKey'
+import { filterValidNodes } from '../registry/registryValidator'
 import type { ExecutionLocation } from '../types/settingsTypes'
 
 // ================= Registered nodes (sidebar) ========================

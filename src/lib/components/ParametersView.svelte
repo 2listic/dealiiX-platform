@@ -11,11 +11,11 @@
     isParameterLeaf,
     isParameterTree,
     markAsExtra,
-  } from '../utils/parameterFileFormat'
+  } from '../parameters/parameterFileFormat'
   import {
     findParameterExposure,
     parameterPortType,
-  } from '../utils/parameterPorts'
+  } from '../parameters/parameterPorts'
 
   interface Props {
     /** Tree to edit, owned by the host. */

@@ -8,11 +8,11 @@
     type ExecutionLocation,
     type BackendKind,
   } from '../types/settingsTypes'
-  import { buildMpiLauncherCommand } from '../utils/mpiLauncher'
+  import { buildMpiLauncherCommand } from '../execution/mpiLauncher'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
-  import { probeAndSaveExecution } from '../utils/settingsActions'
+  import { probeAndSaveExecution } from '../execution/settingsActions'
   import Button from './layout/Button.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
 

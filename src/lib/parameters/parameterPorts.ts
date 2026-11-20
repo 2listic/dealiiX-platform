@@ -8,10 +8,8 @@ import {
   type ParameterPortType,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
+import { parameterHandlePath } from '../graph/handleIds'
 import { isParameterLeaf } from './parameterFileFormat'
-
-const PARAMETER_INPUT_PREFIX = 'parameter-input-'
-const PARAMETER_OUTPUT_PREFIX = 'parameter-output-'
 
 /** Returns the frontend port type implied by a parameter template description. */
 export const parameterPortType = (
@@ -51,48 +49,6 @@ export const parameterPortCoralType = (type: ParameterPortType): Type => {
       return Type.STRING
   }
 }
-
-/** Creates a stable handle ID from a parameter path. */
-export const parameterHandle = (
-  direction: 'input' | 'output',
-  path: string[]
-): string => {
-  const prefix =
-    direction === 'input' ? PARAMETER_INPUT_PREFIX : PARAMETER_OUTPUT_PREFIX
-  return `${prefix}${encodeURIComponent(JSON.stringify(path))}`
-}
-
-/** Decodes a stable parameter handle, returning null for ordinary handles. */
-export const parameterHandlePath = (
-  handle: string | null | undefined
-): { direction: 'input' | 'output'; path: string[] } | null => {
-  if (!handle) return null
-  const prefix = handle.startsWith(PARAMETER_INPUT_PREFIX)
-    ? PARAMETER_INPUT_PREFIX
-    : handle.startsWith(PARAMETER_OUTPUT_PREFIX)
-      ? PARAMETER_OUTPUT_PREFIX
-      : null
-  if (!prefix) return null
-
-  try {
-    const path = JSON.parse(decodeURIComponent(handle.slice(prefix.length)))
-    if (
-      !Array.isArray(path) ||
-      !path.every((part) => typeof part === 'string')
-    ) {
-      return null
-    }
-    return {
-      direction: prefix === PARAMETER_INPUT_PREFIX ? 'input' : 'output',
-      path,
-    }
-  } catch {
-    return null
-  }
-}
-
-export const isParameterHandle = (handle: string | null | undefined): boolean =>
-  parameterHandlePath(handle) !== null
 
 /** Returns the parameter leaf at a path, or null when the path is stale. */
 export const parameterAtPath = (

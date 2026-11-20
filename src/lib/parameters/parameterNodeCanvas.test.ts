@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Edge, Node } from '@xyflow/svelte'
 import type { ParameterExposure } from '../types/nodeTypes'
-import { parameterHandle } from './parameterPorts'
+import { parameterHandle } from '../graph/handleIds'
 
 let nodes: Node[] = []
 let edges: Edge[] = []
@@ -21,7 +21,7 @@ vi.mock('../stores/nodes.svelte', () => ({
 vi.mock('../stores/graphStack.svelte', () => ({
   graphHistoryState: { checkpoint: () => checkpoint() },
 }))
-vi.mock('./connectionsValidation', () => ({
+vi.mock('../graph/connectionsValidation', () => ({
   clearConnectionCache: () => clearConnectionCache(),
 }))
 

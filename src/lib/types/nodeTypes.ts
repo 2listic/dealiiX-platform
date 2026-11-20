@@ -8,7 +8,7 @@
 // export type BoolNodeData = { value: boolean, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
-import { canonicalTypeKey } from '../utils/canonicalTypeKey'
+import { canonicalTypeKey } from '../registry/canonicalTypeKey'
 
 export enum ConnectionType {
   INPUT = 'input',
@@ -60,6 +60,7 @@ export enum NodeType {
   EMPTY_CONSTRUCTOR = 'empty_constructor',
   CONSTRUCTOR = 'constructor',
   ABSTRACT = 'abstract',
+  OUTPUT_ONLY = 'output_only',
   VOID_METHOD = 'void_method',
   VOID_CONST_METHOD = 'void_const_method',
   METHOD = 'method',
@@ -67,6 +68,8 @@ export enum NodeType {
   VOID_FUNCTION = 'void_function',
   FUNCTION = 'function',
   NETWORK = 'network',
+  /** Frontend-only node that is lowered to one concrete registry definition. */
+  OVERLOAD = 'overload',
 }
 
 export enum TypeField {
@@ -80,6 +83,7 @@ export enum TypeField {
  */
 export const HIDDEN_SIDEBAR_NODE_TYPES: NodeType[] = [
   NodeType.ABSTRACT,
+  NodeType.OUTPUT_ONLY,
   NodeType.NETWORK,
 ]
 
@@ -95,6 +99,7 @@ export const nodeColors = {
   [NodeType.VOID_FUNCTION]: 'skyblue',
   [NodeType.FUNCTION]: 'skyblue',
   [NodeType.NETWORK]: 'darkorchid',
+  [NodeType.OVERLOAD]: 'skyblue',
   [NodeType.PRIMITIVE]: 'yellowgreen',
 }
 
@@ -178,11 +183,24 @@ export type StandardNodeDefinition = {
   inputs: InputIndex[]
   outputs: OutputIndex[]
   node_type: NodeType
-  /** Concrete value produced by a function's SELF output. */
+  /** Concrete value type produced by a function's SELF output. */
   output_type?: string
+  /** Optional logical operation shared by concrete specializations. */
+  operation?: string
+  /** Stable explicit grouping key for frontend overload families. */
+  overload_group?: string
+  /** Optional user-facing label for the logical operation. */
+  display_name?: string
+  /** Optional user-facing label for one concrete operation specialization. */
+  variant_name?: string
+  /** Stable owner class for method-like operations exposed by a plugin. */
+  class_name?: string
+  /** Stable logical member name for a method-like operation. */
+  method_name?: string
+  /** Optional description shown as supplementary UI information. */
+  description?: string
   name?: string
   derived?: string[]
-  method_name?: string
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
@@ -202,6 +220,30 @@ export const getBaseTypes = (metadata: InheritanceMetadata): string[] => [
 
 export type RegisteredNodes = {
   [key: string]: StandardNodeDefinition
+}
+
+/**
+ * Frontend-only view of several concrete registry definitions.
+ *
+ * This type is intentionally not part of {@link LeanNodes}: it may exist while
+ * editing, but it must be lowered to one of `candidates` before a graph is
+ * serialized or executed.
+ */
+export type OverloadNodeDefinition = {
+  type: string
+  arguments: Argument[]
+  inputs: InputIndex[]
+  outputs: OutputIndex[]
+  node_type: NodeType.OVERLOAD
+  overload_group: string
+  display_name: string
+  candidates: StandardNodeDefinition[]
+  /** Whether the user explicitly locked the currently resolved candidate. */
+  finalized?: boolean
+  /** Concrete candidate type selected when the family was finalized. */
+  finalized_candidate_type?: string
+  name?: string
+  is_valid?: boolean
 }
 
 /**
@@ -264,7 +306,10 @@ export type SubGraphNodeDefinition = {
  * Union of all node definition types that can be placed on the canvas —
  * either a registry node or a stored subgraph node.
  */
-export type NodeDefinitions = StandardNodeDefinition | SubGraphNodeDefinition
+export type NodeDefinitions =
+  | StandardNodeDefinition
+  | OverloadNodeDefinition
+  | SubGraphNodeDefinition
 
 /**
  * Record of all lean protocol nodes in a serialized network.
@@ -327,6 +372,11 @@ export const isSubGraphNodeDefinition = (
     node.node_type === NodeType.NETWORK
   )
 }
+
+/** Type guard for the frontend-only overload family node. */
+export const isOverloadNodeDefinition = (
+  node: NodeDefinitions
+): node is OverloadNodeDefinition => node.node_type === NodeType.OVERLOAD
 
 // ── Private helpers ──
 

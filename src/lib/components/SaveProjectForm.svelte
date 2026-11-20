@@ -3,7 +3,7 @@
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
-  import { parseGraphWithQualifiedIds } from '../utils/graphParser'
+  import { parseGraphWithQualifiedIds } from '../graph/graphParser'
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
 

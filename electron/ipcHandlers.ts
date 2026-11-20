@@ -18,7 +18,7 @@ import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
   getParameterFileFilters,
   serializeParametersFile,
-} from '../src/lib/utils/parameterFileFormat.js'
+} from '../src/lib/parameters/parameterFileFormat.js'
 import {
   ensureUniqueLocalDir,
   findExistingLocalFiles,

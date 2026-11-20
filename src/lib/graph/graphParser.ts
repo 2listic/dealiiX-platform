@@ -18,7 +18,6 @@ import {
   getNodeData,
 } from '../stores/registryStore.svelte'
 import {
-  handleIdToIndex,
   resolveInputArgument,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
@@ -37,16 +36,22 @@ import {
   type LeanNodes,
   type QualifiedLeanNodes,
   type QualifiedNetwork,
+  type NodeDefinitions,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
 import { type Node, type Edge, Position } from '@xyflow/svelte'
 import { buildExportMeta } from './exportMeta'
 import {
-  parameterExposureForHandle,
+  handleIdToIndex,
   parameterHandlePath,
+  protocolEdgeHandles,
+} from './handleIds'
+import {
+  parameterExposureForHandle,
   parameterPortCoralType,
   normalizeParameterFile,
-} from './parameterPorts'
+} from '../parameters/parameterPorts'
+import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
 /**
@@ -259,9 +264,7 @@ export const edgesFromProtocolToFlow = (edges: {
   [id: string]: NetworkEdge
 }): Edge[] => {
   return Object.values(edges).map((edge) => {
-    const sourceHandle =
-      edge.source_handle ?? `output-${edge.source_output ?? 0}`
-    const targetHandle = edge.target_handle ?? `input-${edge.target_input ?? 0}`
+    const { sourceHandle, targetHandle } = protocolEdgeHandles(edge)
     return {
       id: `xy-edge__${edge.source}${sourceHandle}-${edge.target}${targetHandle}`,
       source: edge.source.toString(),
@@ -432,11 +435,15 @@ export const removeQualifiedIds = (
  * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
  * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
  * @returns {Network} Complete network object in CORAL protocol format
+ * @throws {UnresolvedOverloadError} If an overload family has more or fewer than one variant left
  * @remarks Callers should pass snapshots of reactive data using $state.snapshot() or snapshot()
  */
 export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
-  const nodesGraph = nodes.reduce<LeanNodes>((acc, obj) => {
-    const data = obj.data as LeanStandardNode | SubGraphNodeDefinition
+  // Families are editor state only: Coral receives their resolved variants.
+  const concreteNodes = lowerOverloadFamilies(nodes, edges)
+
+  const nodesGraph = concreteNodes.reduce<LeanNodes>((acc, obj) => {
+    const data = obj.data as NodeDefinitions
 
     if (isSubGraphNodeDefinition(data)) {
       // Network nodes: get position, data fields + 'value' from registred node
@@ -457,12 +464,12 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         type: data.type,
         position: obj.position,
       }
-      const bases = getBaseTypes(data)
+      const bases = getBaseTypes(data as StandardNodeDefinition)
       if (bases.length) node.bases = bases
       if (data.name) node.name = data.name
-      if (data.value !== undefined) node.value = data.value
+      if ('value' in data && data.value !== undefined) node.value = data.value
       // Kept with no exposures: the marker is what makes the node a parameter file.
-      if (data.parameter_file) {
+      if ('parameter_file' in data && data.parameter_file) {
         node.parameter_file = normalizeParameterFile(data.parameter_file)
       }
       acc[obj.id] = node

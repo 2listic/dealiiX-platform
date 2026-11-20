@@ -42,12 +42,12 @@ vi.mock('../stores/settingsStore.svelte', () => ({
   },
 }))
 
-vi.mock('../utils/fileReferences', () => ({
+vi.mock('./fileReferences', () => ({
   resolveGraphFileReferences: async (graph: object) => graph,
   resolveParameterFileReferences: async (tree: object) => tree,
 }))
 
-vi.mock('../utils/sshMessages', () => ({
+vi.mock('../execution/sshMessages', () => ({
   withMpiPlugin: (network: object, useMpi: boolean) =>
     useMpi ? { plugin: 'mpi', ...network } : network,
 }))

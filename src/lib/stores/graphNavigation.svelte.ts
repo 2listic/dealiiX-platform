@@ -11,22 +11,23 @@ import {
   isNodeInNetworkNodes,
   removeNetworkNode,
 } from './registryStore.svelte'
-import { createNetworkNodeDefinition } from '../utils/networkNode'
-import { isNetworkCanvasNode } from '../utils/networkNodeCanvas'
+import { createNetworkNodeDefinition } from '../graph/networkNode'
+import { isNetworkCanvasNode } from '../graph/networkNodeCanvas'
 import {
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
-} from '../utils/graphParser'
-import {
-  handleIdToIndex,
-  resolveInputArgument,
-  resolveOutputTypeCandidates,
-} from '../utils/canvasNodeUtils'
+} from '../graph/graphParser'
+import { resolveOutputTypeCandidates } from '../graph/canvasNodeUtils'
+import { handleIdToIndex } from '../graph/handleIds'
 import type {
   NodeDefinitions,
   SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { getBaseTypes, isTypeCompatible } from '../types/nodeTypes'
+import {
+  overloadInputTypes,
+  withOverloadAction,
+} from '../registry/overloadResolution'
 import { toastState } from './toastsStore.svelte.js'
 import { graphStackState } from './graphStack.svelte'
 
@@ -220,7 +221,7 @@ export const loadParentGraph = async (): Promise<void> => {
     console.error('Failed to leave subnetwork:', error)
     toastState.add({
       message: errorMessage(
-        error,
+        withOverloadAction(error, 'Cannot leave the subnetwork'),
         `Failed to save changes for subnetwork "${currentContext.label}"`
       ),
       type: 'error',
@@ -237,6 +238,7 @@ export const loadParentGraph = async (): Promise<void> => {
  *
  * @param name - The new name for the current subnetwork.
  * @throws If the name is empty.
+ * @throws {UnresolvedOverloadError} If a family inside has more or fewer than one variant left.
  */
 export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   // Only works when inside a subnetwork.
@@ -272,11 +274,16 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   // Rebuild the full network node definition under the new name.
   // createNetworkNodeDefinition recomputes arguments/inputs/outputs from the
   // boundary analysis, so this is not a simple key rename in the store.
-  const updatedNetworkNode = createNetworkNodeDefinition(
-    trimmedName,
-    refreshedCurrentContext.current.nodes,
-    refreshedCurrentContext.current.edges
-  )
+  let updatedNetworkNode: SubGraphNodeDefinition
+  try {
+    updatedNetworkNode = createNetworkNodeDefinition(
+      trimmedName,
+      refreshedCurrentContext.current.nodes,
+      refreshedCurrentContext.current.edges
+    )
+  } catch (error) {
+    throw withOverloadAction(error, 'Cannot rename the subnetwork')
+  }
 
   // Swap the store entry: remove the old key (if it exists) then write the new one.
   if (
@@ -403,18 +410,20 @@ const filterStaleParentEdges = (
       }
       const outputArgument = updatedNetworkNode.arguments[argIndex]
       const targetNode = parentNodes.find((n) => n.id === edge.target)
-      const targetType = targetNode
-        ? resolveInputArgument(
+      // A family target accepts the input type of any of its variants.
+      const targetTypes = targetNode
+        ? overloadInputTypes(
             targetNode.data as NodeDefinitions,
             handleIdToIndex(edge.targetHandle as string)
-          )?.type
-        : null
+          )
+        : []
       const outputTypes = outputArgument
         ? [outputArgument.type, ...getBaseTypes(outputArgument)]
         : []
       if (
-        !targetType ||
-        !outputTypes.some((type) => isTypeCompatible(type, targetType))
+        !outputTypes.some((type) =>
+          targetTypes.some((targetType) => isTypeCompatible(type, targetType))
+        )
       ) {
         removedCount++
         return false

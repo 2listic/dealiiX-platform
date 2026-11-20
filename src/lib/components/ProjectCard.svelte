@@ -1,7 +1,7 @@
 <script lang="ts">
   import { deleteProject, getProject } from '../requests/projects'
   import { toastState } from '../stores/toastsStore.svelte'
-  import { importGraphFromProtocol } from '../utils/graphParser'
+  import { importGraphFromProtocol } from '../graph/graphParser'
   import Button from './layout/Button.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'

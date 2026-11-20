@@ -1,6 +1,6 @@
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
-import { stripUiMetadata } from '../utils/parameterFileFormat'
+import { stripUiMetadata } from '../parameters/parameterFileFormat'
 
 type ParamsByLocation = Record<ExecutionLocation, ParameterTree | null>
 

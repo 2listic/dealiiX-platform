@@ -14,12 +14,15 @@ import path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { connectToSSHWithKey } from './sshConnections.js'
-import { shellEscape } from '../../src/lib/utils/shellEscape.js'
+import {
+  printOutputOnlyOnFailure,
+  shellEscape,
+} from '../../src/lib/utils/shellEscape.js'
 import {
   getParameterProbeFileNames,
   parseParametersFileWithFormat,
   replaceExtension,
-} from '../../src/lib/utils/parameterFileFormat.js'
+} from '../../src/lib/parameters/parameterFileFormat.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -190,10 +193,13 @@ const getCoralRegistryMetadataRemote = async (
     pathToSsh: target.sshKeyPath,
   }
 
-  // Run coral register — stdout suppressed so the registry file is the only output later;
-  // stderr flows through SSH so errors surface in the rejection message.
+  // Keep successful registration output out of the SSH response, but replay the
+  // captured output when Coral fails because Coral reports load errors on stdout.
   await connectToSSHWithKey(
-    `cd ${shellEscape(target.workingDirectory)} && ${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} register > /dev/null`,
+    `cd ${shellEscape(target.workingDirectory)} && ` +
+      printOutputOnlyOnFailure(
+        `${shellEscape(target.coralBinaryPath)} -p ${shellEscape(target.coralPluginPath)} register`
+      ),
     sshConfig,
     { rejectOnNonZeroCode: true }
   )

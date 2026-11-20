@@ -13,9 +13,9 @@ import type { MpiLauncherSettings } from '../types/settingsTypes'
 import {
   resolveGraphFileReferences,
   resolveParameterFileReferences,
-} from '../utils/fileReferences'
+} from './fileReferences'
 import { getNodeData } from '../stores/registryStore.svelte'
-import { withMpiPlugin } from '../utils/sshMessages'
+import { withMpiPlugin } from '../execution/sshMessages'
 import { materializeNetwork } from './materializeNetwork'
 
 /** A stage checked and recorded at submit, ready to be started. */
