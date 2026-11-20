@@ -111,7 +111,7 @@ describe('canvasNodeUtils', () => {
     ).toEqual(['Base', 'Root', 'Derived'])
   })
 
-  it('uses output_type for function SELF outputs', () => {
+  it('uses output_type alone for function SELF outputs, without bases', () => {
     const sourceNode = {
       id: '1',
       type: NodeType.FUNCTION,
@@ -129,6 +129,7 @@ describe('canvasNodeUtils', () => {
         inputs: [0],
         outputs: [-1],
         output_type: 'ImmersX::FiniteElementSpaceView<2,2>',
+        bases: ['ImmersX::FiniteElementSpaceBase'],
       },
     }
 
@@ -137,6 +138,23 @@ describe('canvasNodeUtils', () => {
       connectionName:
         'Finite element space::std::function<Space(const Problem &)>',
     })
+    expect(
+      resolveOutputTypeCandidates(sourceNode.data as NodeDefinitions, 0)
+    ).toEqual(['ImmersX::FiniteElementSpaceView<2,2>'])
+
+    const baseConsumerNode = {
+      type: 'Base consumer',
+      node_type: NodeType.FUNCTION,
+      arguments: [
+        {
+          connection_type: 'input',
+          name: 'space',
+          type: 'ImmersX::FiniteElementSpaceBase',
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+    }
 
     const scalarFieldNode = {
       type: 'Scalar field::std::function<Field(const Space &, const string &)>',
@@ -156,7 +174,7 @@ describe('canvasNodeUtils', () => {
     const resolved = resolveConnectionAndCompatibleNodes(
       { nodeId: '1', handleId: 'output-0', handleType: 'source' },
       sourceNode,
-      [scalarFieldNode] as unknown as NodeDefinitions[]
+      [scalarFieldNode, baseConsumerNode] as unknown as NodeDefinitions[]
     )
 
     expect(resolved?.connectionType).toBe(

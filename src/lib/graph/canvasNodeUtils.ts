@@ -79,6 +79,23 @@ const appendCompatibleNodeOption = (
 }
 
 /**
+ * The label of an output handle in the connected-node picker: the argument's
+ * name; for a SELF output the node's name, else its type; for a family its
+ * `display_name`.
+ */
+const outputConnectionName = (
+  data: NodeDefinitions,
+  handleIndex: number
+): string => {
+  const outputIndex = data.outputs?.[handleIndex]
+  if (isOverloadNodeDefinition(data)) {
+    return data.arguments[outputIndex ?? 0]?.name ?? data.display_name
+  }
+  if (outputIndex === SELF) return data.name?.trim() || data.type
+  return (outputIndex != null && data.arguments?.[outputIndex]?.name) || ''
+}
+
+/**
  * Shallow-clones a node definition so canvas node mutations don't affect the registry.
  * @param nodeDefinition - Node definition to clone.
  * @returns A shallow clone with `arguments`, `inputs`, and `outputs` copied; `value` stripped for network nodes.
@@ -170,8 +187,9 @@ export const createCustomEdge = (params: {
 })
 
 /**
- * Returns the output type and label for a given source handle.
- * For `SELF` outputs the type is the concrete type plus all registered bases.
+ * Returns the output type and label for a given source handle. The types are
+ * those of {@link resolveOutputTypeCandidates}, so the connected-node picker
+ * offers what connection validation accepts.
  * @param sourceNode - The node the connection was dragged from.
  * @param sourceHandle - Handle ID in the form `"output-<index>"`.
  * @returns The `connectionType` and `connectionName` for the handle, or `null` if the handle is invalid.
@@ -185,18 +203,6 @@ export const getOutputTypeAndName = (
   connectionTypes?: string[]
 } | null => {
   const data = sourceNode.data as NodeDefinitions
-  const handleIndex = handleIdToIndex(sourceHandle)
-  if (isOverloadNodeDefinition(data) && !Number.isNaN(handleIndex)) {
-    const types = overloadOutputTypes(data, handleIndex)
-    if (!types.length) return null
-    return {
-      connectionType: types.join(' | '),
-      connectionTypes: types,
-      connectionName:
-        data.arguments[data.outputs[handleIndex] ?? 0]?.name ??
-        data.display_name,
-    }
-  }
   const parameterExposure = parameterExposureForHandle(
     data as StandardNodeDefinition,
     sourceHandle,
@@ -208,13 +214,14 @@ export const getOutputTypeAndName = (
       connectionName: parameterPathLabel(parameterExposure.path),
     }
   }
+  const handleIndex = handleIdToIndex(sourceHandle)
   if (Number.isNaN(handleIndex)) {
     console.warn('getOutputTypeAndName: invalid handle id', sourceHandle)
     return null
   }
 
-  const outputIndex = data.outputs?.[handleIndex]
-  if (outputIndex == null) {
+  const connectionTypes = resolveOutputTypeCandidates(data, handleIndex)
+  if (!connectionTypes.length) {
     console.warn(
       'getOutputTypeAndName: no output at index',
       handleIndex,
@@ -224,36 +231,10 @@ export const getOutputTypeAndName = (
     return null
   }
 
-  const defaultNodeName = data.name?.trim() || data.type
-
-  if (outputIndex === SELF) {
-    const standardData = data as StandardNodeDefinition
-    const connectionTypes = standardData.output_type
-      ? [standardData.output_type]
-      : [...getBaseTypes(standardData), data.type]
-    return {
-      connectionType: connectionTypes.join(' | '),
-      ...(connectionTypes.length > 1 && { connectionTypes }),
-      connectionName: defaultNodeName,
-    }
-  }
-
-  const argument = data.arguments?.[outputIndex]
-  if (!argument) {
-    console.warn(
-      'getOutputTypeAndName: no argument at index',
-      outputIndex,
-      'for node',
-      sourceNode.id
-    )
-    return null
-  }
-
-  const connectionTypes = [...getBaseTypes(argument), argument.type]
   return {
     connectionType: connectionTypes.join(' | '),
     ...(connectionTypes.length > 1 && { connectionTypes }),
-    connectionName: argument.name,
+    connectionName: outputConnectionName(data, handleIndex),
   }
 }
 
@@ -545,9 +526,9 @@ export const resolveInputArgument = (
 /**
  * Resolves every type that may be observed at an output handle.
  *
- * A derived self-output is externally usable both as its registered base and
- * as the concrete derived type. A pass-through output additionally preserves
- * the concrete types resolved from its upstream input.
+ * A self-output is usable as its type and every registered base, except a
+ * function's `output_type`, which is its only type. A pass-through output
+ * additionally preserves the concrete types resolved from its upstream input.
  *
  * @param data - The node definition containing the output metadata.
  * @param handleIndex - Zero-based index into the node's `outputs` array.
@@ -569,7 +550,7 @@ export const resolveOutputTypeCandidates = (
   if (outputIndex === SELF) {
     const standardData = data as StandardNodeDefinition
     if (standardData.output_type) {
-      candidates.push(...getBaseTypes(standardData), standardData.output_type)
+      candidates.push(standardData.output_type)
     } else {
       candidates.push(...getBaseTypes(standardData), data.type)
     }

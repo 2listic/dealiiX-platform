@@ -540,8 +540,7 @@ const definitionOutputTypes = (
 
   if (outputIndex === SELF) {
     if (isSubGraphNodeDefinition(definition)) return [definition.type]
-    if (definition.output_type)
-      return unique([...getBaseTypes(definition), definition.output_type])
+    if (definition.output_type) return [definition.output_type]
     return unique([...getBaseTypes(definition), definition.type])
   }
 

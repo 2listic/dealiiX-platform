@@ -138,3 +138,56 @@ describe('isValidConnection', () => {
     expect(connect('family', 'consumer', 'input-0')).toBe(true)
   })
 })
+
+describe('isValidConnection with a function output_type and bases', () => {
+  /** A function whose SELF output is `Derived`, registered with base `Base`. */
+  const derivedFunction = (type: string): StandardNodeDefinition => ({
+    ...doubleFunction(type, Type.STRING),
+    output_type: 'Derived' as Type,
+    bases: ['Base'],
+  })
+
+  /** A function taking one input of `inputType`. */
+  const takes = (id: string, inputType: string) =>
+    canvasNode(id, {
+      type: `takes<${inputType}>`,
+      arguments: [
+        {
+          connection_type: ConnectionType.INPUT,
+          name: 'value',
+          type: inputType as Type,
+        },
+      ],
+      inputs: [0],
+      outputs: [],
+      node_type: NodeType.VOID_FUNCTION,
+      is_valid: true,
+    })
+
+  beforeEach(() => {
+    nodes = [
+      canvasNode('function', { ...derivedFunction('make'), is_valid: true }),
+      canvasNode('functionFamily', {
+        ...createOverloadNodeDefinition([
+          derivedFunction('make<a>'),
+          derivedFunction('make<b>'),
+        ]),
+        is_valid: true,
+      }),
+      takes('derived', 'Derived'),
+      takes('base', 'Base'),
+    ]
+    edges = []
+    clearConnectionCache()
+  })
+
+  it('accepts the output_type and refuses its base', () => {
+    expect(connect('function', 'derived', 'input-0')).toBe(true)
+    expect(connect('function', 'base', 'input-0')).toBe(false)
+  })
+
+  it('accepts the output_type and refuses its base from a family', () => {
+    expect(connect('functionFamily', 'derived', 'input-0')).toBe(true)
+    expect(connect('functionFamily', 'base', 'input-0')).toBe(false)
+  })
+})
