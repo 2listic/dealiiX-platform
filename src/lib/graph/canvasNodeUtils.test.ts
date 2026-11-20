@@ -37,6 +37,16 @@ import { parameterHandle } from './handleIds'
 const registry = defaultRegistry as unknown as RegisteredNodes
 const networkNodes = defaultNetworkNodes as unknown as RegisteredSubGraphNodes
 
+/** A bundled registry entry without its registry metadata, for tests that set their own labels. */
+const withoutMetadata = (type: string): StandardNodeDefinition => {
+  const definition = structuredClone(registry[type]) as StandardNodeDefinition
+  delete definition.operation
+  delete definition.display_name
+  delete definition.class_name
+  delete definition.method_name
+  return definition
+}
+
 describe('canvasNodeUtils', () => {
   it('extracts source type and connection name from a regular output', () => {
     // GridGenerator<2> has outputs: [0] → arguments[0] = pass_through triangulation
@@ -45,7 +55,9 @@ describe('canvasNodeUtils', () => {
       type: NodeType.VOID_FUNCTION,
       position: { x: 0, y: 0 },
       data: structuredClone(
-        registry['GridGenerator::generate_from_name_and_arguments<2>']
+        registry[
+          'GridGenerator::generate_from_name_and_arguments<2>::std::function<void(dealii::Triangulation<2, 2>&, const std::__cxx11::basic_string<char>&, const std::__cxx11::basic_string<char>&)>'
+        ]
       ),
     }
 
@@ -202,7 +214,7 @@ describe('canvasNodeUtils', () => {
   })
 
   it('finds compatible nodes by matching source type, excluding the source node', () => {
-    // LaplaceProblem::run<2>: inputs=[0,1], arguments[1]='std::string' → match at handle-1
+    // LaplaceProblem::run<2>: string arguments at inputs 2, 3, 4 → three matches
     // LaplaceProblem::run<1,2>: same structure → EXCLUDED
     // dealii::FE_Q<2, 2>: inputs=[0], arguments[0]='unsigned int' → no match
     const availableNodes = [
@@ -217,10 +229,17 @@ describe('canvasNodeUtils', () => {
       'LaplaceProblem::run<1,2>'
     )
 
-    expect(options).toHaveLength(1)
-    expect(options[0].nodeDefinition.type).toBe('LaplaceProblem::run<2>')
-    expect(options[0].handleId).toBe('input-1')
-    expect(options[0].argumentName).toBe('output_dir')
+    expect(
+      options.map((option) => [
+        option.nodeDefinition.type,
+        option.handleId,
+        option.argumentName,
+      ])
+    ).toEqual([
+      ['LaplaceProblem::run<2>', 'input-2', 'rhs'],
+      ['LaplaceProblem::run<2>', 'input-3', 'preconditioner_name'],
+      ['LaplaceProblem::run<2>', 'input-4', 'output_dir'],
+    ])
   })
 
   it('offers one connected-node option for an overload family', () => {
@@ -433,16 +452,16 @@ describe('canvasNodeUtils', () => {
   it('groups operation specializations but keeps legacy entries singleton', () => {
     const specialized = [
       {
-        ...registry['LaplaceProblem::run<1>'],
+        ...withoutMetadata('LaplaceProblem::run<1>'),
         operation: 'LaplaceProblem::run',
         display_name: 'Run Laplace problem',
       },
       {
-        ...registry['LaplaceProblem::run<2>'],
+        ...withoutMetadata('LaplaceProblem::run<2>'),
         operation: 'LaplaceProblem::run',
         display_name: 'Run Laplace problem',
       },
-      registry['LaplaceProblem::run<3>'],
+      withoutMetadata('LaplaceProblem::run<3>'),
     ] as NodeDefinitions[]
 
     const entries = createOverloadFamilies(
@@ -461,7 +480,7 @@ describe('canvasNodeUtils', () => {
 
   it('prefers a logical display name without changing concrete identity', () => {
     const definition = {
-      ...registry['LaplaceProblem::run<2>'],
+      ...withoutMetadata('LaplaceProblem::run<2>'),
       operation: 'LaplaceProblem::run',
       display_name: 'Run Laplace problem',
     } as NodeDefinitions
@@ -541,7 +560,7 @@ describe('canvasNodeUtils', () => {
 
   it('uses the logical display name instead of the palette variant', () => {
     const definition = {
-      ...registry['LaplaceProblem::run<2>'],
+      ...withoutMetadata('LaplaceProblem::run<2>'),
       operation: 'LaplaceProblem::run',
       display_name: 'Run Laplace problem',
       variant_name: 'Run · 2D',

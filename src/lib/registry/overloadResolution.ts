@@ -234,8 +234,7 @@ export const createOverloadNodeDefinition = (
 /**
  * Replaces the registry entries that share a {@link nodePaletteKey} with one
  * family, keeping the order of first appearance; an entry alone under its key
- * stays concrete. Coral's plain-name copies of signature-keyed free functions
- * are dropped, so new nodes use the signature key.
+ * stays concrete.
  *
  * @param nodes - Concrete registry definitions.
  * @returns Families and single concrete entries.
@@ -244,7 +243,7 @@ export const createOverloadFamilies = (
   nodes: StandardNodeDefinition[]
 ): (StandardNodeDefinition | OverloadNodeDefinition)[] => {
   const families = new Map<string, StandardNodeDefinition[]>()
-  for (const node of dropLegacyFunctionNames(nodes)) {
+  for (const node of nodes) {
     const key = nodePaletteKey(node)
     families.set(key, [...(families.get(key) ?? []), node])
   }
@@ -496,24 +495,6 @@ export const overloadStatus = (
 type ConcreteNodeDefinition = StandardNodeDefinition | SubGraphNodeDefinition
 
 const unique = (values: string[]): string[] => [...new Set(values)]
-
-/**
- * Removes the plain-name copies Coral adds to its registry for free functions
- * with one signature: the function's key is `<name>::std::function<…>`, and
- * the plain `<name>` only keeps graphs saved before signature keys loading.
- */
-const dropLegacyFunctionNames = (
-  nodes: StandardNodeDefinition[]
-): StandardNodeDefinition[] => {
-  const marker = '::std::function<'
-  const signatureKeyedNames = new Set(
-    nodes.flatMap((node) => {
-      const index = node.type.indexOf(marker)
-      return index > 0 ? [node.type.slice(0, index)] : []
-    })
-  )
-  return nodes.filter((node) => !signatureKeyedNames.has(node.type))
-}
 
 const definitionInputArgument = (
   definition: ConcreteNodeDefinition,

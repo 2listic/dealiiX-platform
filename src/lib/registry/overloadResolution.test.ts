@@ -123,27 +123,6 @@ describe('buildNodePalette', () => {
     expect(tiles[0].node.candidates).toHaveLength(2)
   })
 
-  it("drops Coral's plain-name copy of a signature-keyed free function", () => {
-    const metadata = {
-      operation: 'ImmersX::Poisson<2,2>::solution_l2_norm',
-      class_name: 'ImmersX::Poisson',
-      method_name: 'solution_l2_norm',
-    }
-    const plainName = entry('ImmersX::Poisson<2,2>::solution_l2_norm', metadata)
-    const signatureKey = entry(
-      'ImmersX::Poisson<2,2>::solution_l2_norm::std::function<double(const ImmersX::PoissonSolver<2, 2>&)>',
-      metadata
-    )
-
-    const items = buildNodePalette([plainName, signatureKey])
-
-    expect(items).toHaveLength(1)
-    if (items[0].kind !== 'class') throw new Error('Expected a class section')
-    expect(items[0].tiles).toEqual([
-      { label: 'Poisson -> Solution l2 norm', node: signatureKey },
-    ])
-  })
-
   it('keeps signature-keyed overloads of a free function as one family', () => {
     const overload = (dim: number) =>
       entry(
@@ -268,18 +247,13 @@ describe('overload families', () => {
     ])
   })
 
-  it('builds families from signature keys, not plain-name copies', () => {
+  it('builds one family from signature keys of differently named functions', () => {
     const knownTerm = (type: string, input: string, output: string) => ({
       ...definition(type, [input, 'TestScalar'], output, 'Known term'),
       display_name: 'Known term',
       class_name: 'KnownTerm',
       method_name: 'create',
     })
-    const scalarPlainName = knownTerm(
-      'Known term scalar',
-      'KnownSourceScalar',
-      'KnownTermScalar'
-    )
     const scalar = knownTerm(
       'Known term scalar::std::function<KnownTermScalar(const KnownSourceScalar&)>',
       'KnownSourceScalar',
@@ -291,7 +265,7 @@ describe('overload families', () => {
       'KnownTermVector'
     )
 
-    const entries = createOverloadFamilies([scalarPlainName, scalar, vector])
+    const entries = createOverloadFamilies([scalar, vector])
 
     expect(entries).toHaveLength(1)
     if (!isOverloadNodeDefinition(entries[0])) return

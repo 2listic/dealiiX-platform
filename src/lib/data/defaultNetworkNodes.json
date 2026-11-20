@@ -62,10 +62,13 @@
                 "type": "std::string"
               }
             ],
+            "class_name": "GridGenerator",
             "inputs": [0, 1, 2],
+            "method_name": "generate_from_name_and_arguments<2>",
             "node_type": "void_function",
+            "operation": "GridGenerator::generate_from_name_and_arguments<2>",
             "outputs": [0],
-            "type": "GridGenerator::generate_from_name_and_arguments<2>",
+            "type": "GridGenerator::generate_from_name_and_arguments<2>::std::function<void(dealii::Triangulation<2, 2>&, const std::__cxx11::basic_string<char>&, const std::__cxx11::basic_string<char>&)>",
             "is_valid": true,
             "position": { "x": 625.9912578937875, "y": 240.8466024945473 }
           },
@@ -82,8 +85,11 @@
                 "type": "unsigned int"
               }
             ],
+            "class_name": "Triangulation",
             "inputs": [0, 1],
+            "method_name": "refine_global",
             "node_type": "void_method",
+            "operation": "Triangulation<2>::refine_global",
             "outputs": [0],
             "type": "Triangulation<2>::refine_global",
             "is_valid": true,
@@ -106,7 +112,7 @@
                 "type": "std::string"
               }
             ],
-            "base": "std::ostream",
+            "bases": ["std::ostream"],
             "inputs": [0],
             "node_type": "constructor",
             "outputs": [-1],
@@ -132,8 +138,11 @@
                 "type": "std::ostream"
               }
             ],
+            "class_name": "GridOut",
             "inputs": [0, 1, 2],
+            "method_name": "write_vtk<2>",
             "node_type": "void_const_method",
+            "operation": "GridOut::write_vtk<2>",
             "outputs": [2],
             "type": "GridOut::write_vtk<2>",
             "is_valid": true,
@@ -238,10 +247,13 @@
                 "type": "std::string"
               }
             ],
+            "class_name": "GridGenerator",
             "inputs": [0, 1, 2],
+            "method_name": "generate_from_name_and_arguments<2>",
             "node_type": "void_function",
+            "operation": "GridGenerator::generate_from_name_and_arguments<2>",
             "outputs": [0],
-            "type": "GridGenerator::generate_from_name_and_arguments<2>",
+            "type": "GridGenerator::generate_from_name_and_arguments<2>::std::function<void(dealii::Triangulation<2, 2>&, const std::__cxx11::basic_string<char>&, const std::__cxx11::basic_string<char>&)>",
             "is_valid": true,
             "position": { "x": 625.9912578937875, "y": 240.8466024945473 }
           },
@@ -258,8 +270,11 @@
                 "type": "unsigned int"
               }
             ],
+            "class_name": "Triangulation",
             "inputs": [0, 1],
+            "method_name": "refine_global",
             "node_type": "void_method",
+            "operation": "Triangulation<2>::refine_global",
             "outputs": [0],
             "type": "Triangulation<2>::refine_global",
             "is_valid": true,
@@ -282,7 +297,7 @@
                 "type": "std::string"
               }
             ],
-            "base": "std::ostream",
+            "bases": ["std::ostream"],
             "inputs": [0],
             "node_type": "constructor",
             "outputs": [-1],
@@ -308,8 +323,11 @@
                 "type": "std::ostream"
               }
             ],
+            "class_name": "GridOut",
             "inputs": [0, 1, 2],
+            "method_name": "write_vtk<2>",
             "node_type": "void_const_method",
+            "operation": "GridOut::write_vtk<2>",
             "outputs": [2],
             "type": "GridOut::write_vtk<2>",
             "is_valid": true,
