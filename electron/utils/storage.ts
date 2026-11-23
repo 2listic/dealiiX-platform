@@ -6,6 +6,8 @@ interface StorageSchema {
   access_token?: string
   username?: string
   settings?: AppSettings
+  // The settings the app supplied at the last launch (defaults + preset).
+  settings_supplied?: AppSettings
   colorMode?: string
   registered_nodes?: Record<string, unknown>
   registered_network_nodes?: Record<string, unknown>
@@ -24,6 +26,7 @@ const store = new Store<StorageSchema>({
     access_token: { type: 'string' },
     username: { type: 'string' },
     settings: { type: 'object' },
+    settings_supplied: { type: 'object' },
     colorMode: { type: 'string', default: 'light' },
     registered_nodes: { type: 'object' },
     registered_network_nodes: { type: 'object' },
