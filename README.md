@@ -164,6 +164,29 @@ The app supports four execution modes. See the dedicated guide for each:
 
 Any of these can also run as a stage of a pipeline, locally or remotely: see [docs/run-pipelines.md](docs/run-pipelines.md).
 
+## Settings presets
+
+A preset is a JSON file of settings values for one setup, `{ "settings": {...}, "selection": {...} }`, in the shape of the app's settings. The app reads the file named by `DEALIIX_SETTINGS_PRESET` at startup, before the window opens:
+
+- A setting you have not changed takes the preset's value, or the default when the preset does not name it.
+- A setting you changed in Settings keeps your value, also when the preset or its values change.
+- The preset's `selection` (location and mode) applies only when none is saved yet.
+
+`npm run dev`, `npm start` and `npm run start:debug` use [docker/presets/dev-stack.json](docker/presets/dev-stack.json) by default; another preset is picked with `DEALIIX_SETTINGS_PRESET=docker/presets/<file> npm start`. The packaged app uses none, so a fresh install starts with an empty remote target. To start again from a preset's values alone, point `ELECTRON_USERDATA` at an empty folder, which starts with a fresh store:
+
+```bash
+ELECTRON_USERDATA=$(mktemp -d) DEALIIX_SETTINGS_PRESET=docker/presets/immersx-desktop.json npm start
+```
+
+| Preset                                                                        | Setup                                                                                                                               |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [dev-stack.json](docker/presets/dev-stack.json)                               | this repository's Docker stack ([docs/run-coral-docker.md](docs/run-coral-docker.md), [docs/remote-setup.md](docs/remote-setup.md)) |
+| [dev-stack-executable.json](docker/presets/dev-stack-executable.json)         | the same stack, running step-70 ([docs/run-executable-remote.md](docs/run-executable-remote.md))                                    |
+| [immersx-desktop.json](docker/presets/immersx-desktop.json)                   | the desktop app on the ImmersX containers ([docs/run-coral-immersx-docker.md](docs/run-coral-immersx-docker.md))                    |
+| [immersx-tutorial-release.json](docker/presets/immersx-tutorial-release.json) | the platform image in the dealii-X tutorial stack (its default)                                                                     |
+
+A test checks that every field of every file in `docker/presets/` is a valid setting.
+
 # Packaging
 
 Compile Electron Typescript + build the frontend with `npm run build` and then run the following commands to package the app.
