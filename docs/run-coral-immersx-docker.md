@@ -42,7 +42,7 @@ Wait until `sinfo` shows the node as `idle`.
 
 ## Configure the app
 
-Open **Settings** and set the following:
+Open **Settings** and set the following. `DEALIIX_SETTINGS_PRESET=docker/presets/immersx-desktop.json npm start` prefills all of it from the [ImmersX preset](../docker/presets/immersx-desktop.json) except the SSH key path; settings you already changed keep your values.
 
 **Execution Mode**
 

@@ -30,7 +30,7 @@ docker exec -it coral-ssh-slurm bash -c "
 
 ## Configure the app
 
-Open **Settings** and set the following under **Execution Mode**. `npm run dev` and `npm start` prefill the location, host, port, username and working directory from the [dev-stack preset](../docker/presets/dev-stack.json):
+Open **Settings** and set the following under **Execution Mode**. `DEALIIX_SETTINGS_PRESET=docker/presets/dev-stack-executable.json npm start` prefills all of it from the [executable preset](../docker/presets/dev-stack-executable.json) except the SSH key path; settings you already changed keep your values, and the backend kind applies only on a first launch, otherwise pick it from the mode badge:
 
 | Setting                 | Value                                     |
 | ----------------------- | ----------------------------------------- |
