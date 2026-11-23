@@ -1,0 +1,137 @@
+name: Platform container
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-container-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/2listic/dealiix-platform
+
+jobs:
+  build:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref_type == 'tag'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: run-${{ github.run_id }}-${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.ref_type == 'tag' && '0' || '1' }}
+      - name: Validate the stable Git tag
+        if: github.ref_type == 'tag'
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          git merge-base --is-ancestor HEAD origin/main
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the standalone Platform image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/platform.Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=platform-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=platform-${{ matrix.arch }}
+      - name: Test Electron and noVNC
+        run: |
+          platform=$(docker run -d -p 127.0.0.1::6080 "$IMAGE:$TAG")
+          trap 'docker logs "$platform"; docker rm -f "$platform" >/dev/null' EXIT
+          endpoint=$(docker port "$platform" 6080/tcp)
+          for attempt in {1..30}; do
+            if curl -fsS --max-time 2 "http://$endpoint/vnc.html" -o /dev/null &&
+               docker exec "$platform" node -e '
+                 const net = require("node:net")
+                 const vnc = net.connect(5900, "127.0.0.1")
+                 vnc.setTimeout(2000, () => process.exit(1))
+                 vnc.once("data", data => process.exit(data.toString().startsWith("RFB ") ? 0 : 1))
+               ' &&
+               docker exec "$platform" sh -c 'grep -aq electron /proc/1/cmdline'; then
+              exit 0
+            fi
+            if [[ "$(docker inspect --format '{{.State.Running}}' "$platform")" == false ]]; then
+              exit 1
+            fi
+            sleep 2
+          done
+          exit 1
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request' && github.repository == '2listic/dealiiX-platform'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the tested architecture
+        if: github.event_name != 'pull_request' && github.repository == '2listic/dealiiX-platform'
+        run: docker push "$IMAGE:$TAG"
+
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request' && github.repository == '2listic/dealiiX-platform'
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the tested multi-architecture image
+        run: |
+          tag=main
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag=$GITHUB_REF_NAME; fi
+          prefix="run-$GITHUB_RUN_ID"
+          docker buildx imagetools create --tag "$IMAGE:$tag" \
+            "$IMAGE:$prefix-amd64" "$IMAGE:$prefix-arm64"
+          anonymous=$(mktemp -d)
+          trap 'rm -rf -- "$anonymous"' EXIT
+          DOCKER_CONFIG="$anonymous" docker manifest inspect "$IMAGE:$tag" >/dev/null
+
+  latest:
+    needs: publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ghcr-release-latest
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Point latest at the highest published stable release
+        run: bash scripts/publish_latest_container.sh "$IMAGE"

@@ -44,7 +44,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Docker
 
-- [#261](https://github.com/2listic/dealiiX-platform/pull/261) The platform image used by the dealii-X tutorial stack, which runs the app in the browser through noVNC on port 6080, is now built from this repository. It starts with the tutorial stack's settings from a preset file, instead of editing the app's saved settings.
+- [#261](https://github.com/2listic/dealiiX-platform/pull/261) The platform image used by the dealii-X tutorial stack, which runs the app in the browser through noVNC on port 6080, is now built from this repository. It starts with the tutorial stack's settings from a preset file, instead of editing the app's saved settings. GHCR publishes the development image as `main` and stable releases as `vX.Y.Z`, with `latest` pointing to the highest published stable release.
 
 ### UI/UX
 
