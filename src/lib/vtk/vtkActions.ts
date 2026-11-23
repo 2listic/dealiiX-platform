@@ -22,6 +22,9 @@ import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
  */
 export const openVtkFile = async (fileName: string): Promise<void> => {
   try {
+    if (!settingsState.urlVisualizer) {
+      throw new Error('Set the visualizer URL in Settings')
+    }
     const target = parameterFileTarget(
       executionSelectionState.location,
       fileName

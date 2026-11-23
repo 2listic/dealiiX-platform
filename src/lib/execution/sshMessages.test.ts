@@ -23,6 +23,20 @@ const {
 } = await import('./sshMessages')
 const { settingsState } = await import('../stores/settingsStore.svelte')
 
+// The remote target of the dev Docker stack, which the paths below assume.
+await settingsState.saveExecutionPaths({
+  ...settingsState.execution,
+  remote: {
+    ...settingsState.remote,
+    host: 'localhost',
+    port: 2222,
+    username: 'root',
+    workingDirectory: '/app/shared-data',
+    coralBinaryPath: '/app/build/core/coral',
+    coralPluginPath: '/app/build/backends/dealii/libcoral_backend_dealii.so',
+  },
+})
+
 beforeEach(() => {
   invoke.mockReset()
 })

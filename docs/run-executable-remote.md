@@ -30,7 +30,7 @@ docker exec -it coral-ssh-slurm bash -c "
 
 ## Configure the app
 
-Open **Settings** and set the following under **Execution Mode**:
+Open **Settings** and set the following under **Execution Mode**. `npm run dev` and `npm start` prefill the location, host, port, username and working directory from the [dev-stack preset](../docker/presets/dev-stack.json):
 
 | Setting                 | Value                                     |
 | ----------------------- | ----------------------------------------- |

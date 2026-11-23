@@ -108,7 +108,7 @@ ssh -L 2222:localhost:2222 -L 8008:localhost:8008 -L 8080:localhost:8080 <remote
 
 ## Step 8 — configure the Electron app
 
-Open Settings → Execution Mode → Remote:
+Open Settings → Execution Mode → Remote. Through the tunnel the ports match the local stack, so `npm run dev` and `npm start` prefill all of it from the [dev-stack preset](../docker/presets/dev-stack.json) except the SSH key path:
 
 | Field             | Value                                                   |
 | ----------------- | ------------------------------------------------------- |

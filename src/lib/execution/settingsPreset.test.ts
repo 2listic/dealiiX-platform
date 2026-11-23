@@ -96,7 +96,7 @@ describe('buildSuppliedSettings', () => {
 
   it('overlays the preset on the defaults', () => {
     expect(release.execution.remote.host).toBe('coral-ssh-slurm')
-    expect(release.execution.remote.username).toBe('root')
+    expect(release.execution.remote.mpiLauncher).toEqual({ kind: 'srun' })
   })
 })
 

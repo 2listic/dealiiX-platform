@@ -272,7 +272,7 @@
                         class="input-field"
                         type="text"
                         required
-                        placeholder="localhost"
+                        placeholder="cluster.example.org"
                       />
                     </label>
                     <label class="field">
@@ -283,7 +283,7 @@
                         type="number"
                         min="1"
                         max="65535"
-                        placeholder="2222"
+                        placeholder="22"
                       />
                     </label>
                     <label class="field">
@@ -562,7 +562,7 @@
                     type="url"
                     class="input-field"
                     bind:value={urlVisualizer}
-                    placeholder="http://localhost:8008"
+                    placeholder="http://host:port"
                   />
                   <Button type="submit">Save</Button>
                 </form>
@@ -604,7 +604,7 @@
                     type="url"
                     class="input-field"
                     bind:value={urlRemoteServer}
-                    placeholder="http://localhost:8080"
+                    placeholder="http://host:port"
                   />
                   <Button type="submit">Save</Button>
                 </form>
