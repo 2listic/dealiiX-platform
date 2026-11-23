@@ -25,10 +25,12 @@ RUN HUSKY=0 npm ci && npm run build
 FROM node:22-bookworm
 
 # No interactive prompts from apt; Electron draws on display :99, the one Xvfb
-# opens in the entrypoint; the app's store lives in the mounted user-data folder.
+# opens in the entrypoint; the app's store lives in the mounted user-data folder;
+# GTK keeps its preferences in memory, as the container runs no dconf service.
 ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:99 \
-    ELECTRON_USERDATA=/var/lib/dealiix-platform
+    ELECTRON_USERDATA=/var/lib/dealiix-platform \
+    GSETTINGS_BACKEND=memory
 
 # xvfb: virtual X display; x11vnc: exports it over VNC; novnc: browser VNC client;
 # fluxbox: window manager, so the Electron window can be moved and resized.

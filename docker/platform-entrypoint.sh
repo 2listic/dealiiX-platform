@@ -11,8 +11,18 @@ export DEALIIX_SETTINGS_PRESET="${DEALIIX_SETTINGS_PRESET:-/opt/dealiix-platform
 # The app's store folder (ELECTRON_USERDATA, set in the image), created when not mounted.
 mkdir -p "$ELECTRON_USERDATA"
 
+# Display :99's lock and socket from a previous start of this container (docker
+# restart keeps its files); Xvfb refuses to start while they exist.
+rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
+
 # Virtual X display :99 (the image's DISPLAY), 1600x1000, with GLX for Electron's rendering.
 Xvfb :99 -screen 0 1600x1000x24 -ac +extension GLX +render -noreset >/tmp/Xvfb.log 2>&1 &
+
+# Wait up to 10 s for the display's socket, so nothing below starts before the display exists.
+for _ in $(seq 1 50); do
+  [ -S /tmp/.X11-unix/X99 ] && break
+  sleep 0.2
+done
 
 # Window manager on that display, so the app window can be moved and resized.
 fluxbox >/tmp/fluxbox.log 2>&1 &
