@@ -660,7 +660,7 @@
         />
         {#if isRemote}
           <SidebarGroupButtonItem
-            label="Import graph from remote"
+            label="Import Remote Graph"
             onclick={() => getModal(remoteGraphPickerModalId)?.open()}
           />
         {/if}
@@ -780,11 +780,11 @@
       {/snippet}
       {#snippet items()}
         <SidebarGroupButtonItem
-          label="Import pipeline"
+          label="Import Pipeline"
           onclick={() => pipelineImportInput?.click()}
         />
         <SidebarGroupButtonItem
-          label="Download pipeline"
+          label="Download Pipeline"
           onclick={handleExportPipeline}
         />
       {/snippet}

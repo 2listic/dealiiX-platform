@@ -27,7 +27,7 @@ Each stage card shows the stage id (`p0`, `p1`, …), an editable name and the r
 
 Coral stages always use the Coral binary and plugin configured in Settings for the location the pipeline runs on.
 
-Use **Import / Export** → **Download pipeline** to save the pipeline as a file, and **Import pipeline** to load one.
+Use **Import / Export** → **Download Pipeline** to save the pipeline as a file, and **Import Pipeline** to load one.
 
 ## Run it
 

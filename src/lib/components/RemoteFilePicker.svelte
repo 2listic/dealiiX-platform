@@ -49,7 +49,7 @@
 </script>
 
 <div class="remote-file-picker">
-  <h2>Import Graph Remote</h2>
+  <h2>Import Remote Graph</h2>
   <p class="description">
     Select a graph JSON file from the remote working directory.
   </p>
