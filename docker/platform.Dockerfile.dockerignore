@@ -13,5 +13,7 @@
 !electron
 !public
 !examples
+# Local build output of the example executables, git-ignored.
+examples/executables/*/build
 !docker/presets
 !docker/platform-entrypoint.sh

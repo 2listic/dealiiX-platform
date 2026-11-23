@@ -1,3 +1,7 @@
+# check=skip=CopyIgnoredFile
+# (The ignore file excludes everything, then lists what to keep; `COPY . .`
+# copies exactly that, which this BuildKit check reports as an ignored copy.)
+
 # dealiiX-platform served through noVNC: Electron runs under Xvfb and its display
 # is viewed in a browser on port 6080.
 # Build from the repository root: docker build -f docker/platform.Dockerfile .
