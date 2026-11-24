@@ -64,7 +64,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j4
 
 ## Configure the app
 
-Open **Settings** and set the following:
+Open **Settings** and set the following. `npm run dev` and `npm start` prefill all of it from the [dev-stack preset](../docker/presets/dev-stack.json) except the SSH key path.
 
 **Execution Mode**
 

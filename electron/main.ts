@@ -41,6 +41,8 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  const { applyStartupSettings } = await import('./utils/startupSettings.js')
+  applyStartupSettings()
   const { registerIpcHandlers } = await import('./ipcHandlers.js')
   registerIpcHandlers()
   createWindow()

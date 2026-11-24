@@ -1,0 +1,18 @@
+{
+  "settings": {
+    "urlVisualizer": "http://localhost:8008",
+    "urlRemoteServer": "http://localhost:8080",
+    "execution": {
+      "remote": {
+        "host": "localhost",
+        "port": 2222,
+        "username": "root",
+        "workingDirectory": "/app/shared-data",
+        "coralBinaryPath": "/app/build/core/coral",
+        "coralPluginPath": "/app/build/backends/dealii/libcoral_backend_dealii.so",
+        "executablePath": "/app/shared-data/step-70/build/step-70"
+      }
+    }
+  },
+  "selection": { "location": "remote", "backendKind": "executable" }
+}

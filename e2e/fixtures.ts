@@ -23,7 +23,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
    * Launches the Electron app with an isolated userData directory so the real
    * electron-store is never read or written. The app starts from a clean state:
    * - registered_nodes falls back to defaultNodes.json (built-in fallback)
-   * - settings falls back to createDefaultSettings() — backendKind: 'coral',
+   * - settings come from the dev-stack preset — backendKind: 'coral',
    *   so FlowCanvas renders and [data-testid="flow-canvas"] is always present
    *
    * The cold-start wait (up to 60 s) is paid once per worker; subsequent tests
@@ -36,7 +36,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
       const app = await electron.launch({
         args: ['.'], // same way as `npm run dev` does: `electron .`
-        env: { ...process.env, E2E_TEST: '1', ELECTRON_USERDATA: tempUserData },
+        env: {
+          ...process.env,
+          E2E_TEST: '1',
+          ELECTRON_USERDATA: tempUserData,
+          DEALIIX_SETTINGS_PRESET: 'docker/presets/dev-stack.json',
+        },
       })
 
       await app.firstWindow().then((page) =>

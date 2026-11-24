@@ -31,8 +31,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
    * Uses an isolated userData directory so the real electron-store is never
    * read or written:
    * - registered_nodes falls back to defaultNodes.json (built-in fallback)
-   * - settings falls back to createDefaultSettings(), which already sets
-   *   backendKind: 'coral' and urlRemoteServer: 'http://localhost:8080'
+   * - settings come from the dev-stack preset, which sets backendKind: 'coral'
+   *   and urlRemoteServer: 'http://localhost:8080'
    */
   electronApp: [
     async ({}, use) => {
@@ -40,7 +40,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
       const app = await electron.launch({
         args: ['.'],
-        env: { ...process.env, E2E_TEST: '1', ELECTRON_USERDATA: tempUserData },
+        env: {
+          ...process.env,
+          E2E_TEST: '1',
+          ELECTRON_USERDATA: tempUserData,
+          DEALIIX_SETTINGS_PRESET: 'docker/presets/dev-stack.json',
+        },
       })
 
       await app.firstWindow().then((page) =>

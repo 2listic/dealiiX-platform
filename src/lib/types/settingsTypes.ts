@@ -119,21 +119,20 @@ const defaultExecutionTargetSettings = (): ExecutionTargetSettings => ({
   probes: {},
 })
 
+// Values true of any installation; a deployment's own (the dev Docker stack,
+// the tutorial image) come from a preset file in docker/presets/.
 export const createDefaultSettings = (): AppSettings => ({
-  urlVisualizer: 'http://localhost:8008',
-  urlRemoteServer: 'http://localhost:8080',
+  urlVisualizer: '',
+  urlRemoteServer: '',
   execution: {
     local: defaultExecutionTargetSettings(),
     remote: {
       ...defaultExecutionTargetSettings(),
-      host: 'localhost',
-      port: 2222,
-      username: 'root',
+      host: '',
+      port: 22,
+      username: '',
       sshKeyPath: '',
       mpiLauncher: { kind: 'srun' },
-      workingDirectory: '/app/shared-data',
-      coralBinaryPath: '/app/build/core/coral',
-      coralPluginPath: '/app/build/backends/dealii/libcoral_backend_dealii.so',
     },
   },
 })
