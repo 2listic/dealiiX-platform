@@ -25,6 +25,8 @@ VISUALIZER_PORT=8009
 
 Then use those values for **Port** and the visualizer **URL** in [Configure the app](#configure-the-app), and for `ssh -p` below.
 
+If `docker compose up` fails with `Bind for …:2222 failed: port is already allocated` (or `…:8008`), another stack already uses that port. Set the ports in `.env` as above, then run `docker compose up -d` again: it recreates the containers on the new ports.
+
 Then:
 
 ```bash
