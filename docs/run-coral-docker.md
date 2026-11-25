@@ -16,6 +16,15 @@ cp .env.example .env
 
 Edit it if your key is at a different path than `~/.ssh/id_ed25519.pub`.
 
+The SSH server and the visualizer are published on host ports `2222` and `8008`. To run this stack next to another one that uses the same ports, such as the [dealii-X tutorial stack](run-coral-immersx-docker.md), set other ports in `.env`:
+
+```bash
+CORAL_SSH_PORT=2223
+VISUALIZER_PORT=8009
+```
+
+Then use those values for **Port** and the visualizer **URL** in [Configure the app](#configure-the-app), and for `ssh -p` below.
+
 Then:
 
 ```bash
