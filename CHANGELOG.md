@@ -22,6 +22,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#264](https://github.com/2listic/dealiiX-platform/pull/264) The ImmersX guide, now `docs/run-dealiix-tutorial-stack.md`, runs on the dealii-X tutorial stack instead of the ImmersX `dealiix-tutorial` branch: the platform in the browser, or the desktop app on the stack's backend, next to this repository's stack if needed. It lists the backend's other plugins, including Coral's deal.II backend, and how to run other versions of the stack's images, published or built locally from a branch. The ImmersX presets use the ImmersX image's own plugin path.
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) New developer note `docs/developer/unified-node.md` on the canvas node: its name and buttons, the status and actions of overload families, its port rows, and how families narrow to one variant.
 - [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-dealiix-tutorial-stack.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers. Two ready-made ImmersX graphs in `examples/graphs/`, one with a parameter file and one with two chained files, go with it.
 

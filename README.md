@@ -153,14 +153,14 @@ Available keys are defined in [electron/utils/storage.ts](electron/utils/storage
 
 The app supports four execution modes. See the dedicated guide for each:
 
-| Mode                              | Description                                                                         | Guide                                                                    |
-| --------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Remote + Coral**                | Docker containers with Slurm and SSH, simulating a remote HPC cluster               | [docs/run-coral-docker.md](docs/run-coral-docker.md)                     |
-| **Remote + Coral (ImmersX)**      | Prebuilt Coral + ImmersX images with Slurm and SSH, for graphs with parameter files | [docs/run-dealiix-tutorial-stack.md](docs/run-dealiix-tutorial-stack.md) |
-| **Remote + Coral (real machine)** | Connect to CORAL + Slurm containers running on a real remote machine over SSH       | [docs/remote-setup.md](docs/remote-setup.md)                             |
-| **Local + Coral**                 | Coral binary running directly on your machine, serial or single-host MPI            | [docs/run-coral-local.md](docs/run-coral-local.md)                       |
-| **Local + Executable**            | DealiiX executable running locally, serial or single-host MPI                       | [docs/run-executable-local.md](docs/run-executable-local.md)             |
-| **Remote + Executable**           | Any deal.II executable run on a remote machine over SSH                             | [docs/run-executable-remote.md](docs/run-executable-remote.md)           |
+| Mode                              | Description                                                                                                  | Guide                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| **Remote + Coral**                | Docker containers with Slurm and SSH, simulating a remote HPC cluster                                        | [docs/run-coral-docker.md](docs/run-coral-docker.md)                     |
+| **Remote + Coral (ImmersX)**      | Prebuilt images of the dealii-X tutorial stack (Slurm, SSH, Coral, ImmersX), for graphs with parameter files | [docs/run-dealiix-tutorial-stack.md](docs/run-dealiix-tutorial-stack.md) |
+| **Remote + Coral (real machine)** | Connect to CORAL + Slurm containers running on a real remote machine over SSH                                | [docs/remote-setup.md](docs/remote-setup.md)                             |
+| **Local + Coral**                 | Coral binary running directly on your machine, serial or single-host MPI                                     | [docs/run-coral-local.md](docs/run-coral-local.md)                       |
+| **Local + Executable**            | DealiiX executable running locally, serial or single-host MPI                                                | [docs/run-executable-local.md](docs/run-executable-local.md)             |
+| **Remote + Executable**           | Any deal.II executable run on a remote machine over SSH                                                      | [docs/run-executable-remote.md](docs/run-executable-remote.md)           |
 
 Any of these can also run as a stage of a pipeline, locally or remotely: see [docs/run-pipelines.md](docs/run-pipelines.md).
 
@@ -182,7 +182,7 @@ ELECTRON_USERDATA=$(mktemp -d) DEALIIX_SETTINGS_PRESET=docker/presets/immersx-de
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [dev-stack.json](docker/presets/dev-stack.json)                               | this repository's Docker stack ([docs/run-coral-docker.md](docs/run-coral-docker.md), [docs/remote-setup.md](docs/remote-setup.md)) |
 | [dev-stack-executable.json](docker/presets/dev-stack-executable.json)         | the same stack, running step-70 ([docs/run-executable-remote.md](docs/run-executable-remote.md))                                    |
-| [immersx-desktop.json](docker/presets/immersx-desktop.json)                   | the desktop app on the ImmersX containers ([docs/run-dealiix-tutorial-stack.md](docs/run-dealiix-tutorial-stack.md))                |
+| [immersx-desktop.json](docker/presets/immersx-desktop.json)                   | the desktop app on the dealii-X tutorial stack's backend ([docs/run-dealiix-tutorial-stack.md](docs/run-dealiix-tutorial-stack.md)) |
 | [immersx-tutorial-release.json](docker/presets/immersx-tutorial-release.json) | the platform image in the dealii-X tutorial stack (its default)                                                                     |
 
 A test checks that every field of every file in `docker/presets/` is a valid setting.
