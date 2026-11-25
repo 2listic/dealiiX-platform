@@ -7,6 +7,7 @@
 import type { Edge, Node } from '@xyflow/svelte'
 import { concatState } from '../stores/concatState.svelte'
 import { jobIdMapState, jobsState } from '../stores/jobsStore.svelte'
+import type { BackendIdentity } from '../types/nodeTypes'
 import { getNodeData } from '../stores/registryStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { parseGraphWithQualifiedIds } from '../graph/graphParser'
@@ -201,15 +202,17 @@ export const withMpiPlugin = (network: object, useMpi: boolean): object => {
  * @param nodes - Canvas nodes (snapshots).
  * @param edges - Canvas edges (snapshots).
  * @param useMpi - Whether to inject the MPI plugin block.
+ * @param backend - Optional identity of the selected registry.
  * @returns The CORAL network object ready to upload.
  * @throws {Error} If a parameter binding is invalid (see {@link validateParameterBindings}).
  */
 export const buildGraphPayload = (
   nodes: Node[],
   edges: Edge[],
-  useMpi: boolean
+  useMpi: boolean,
+  backend?: BackendIdentity
 ): object => {
-  const network = parseGraphWithQualifiedIds(nodes, edges)
+  const network = parseGraphWithQualifiedIds(nodes, edges, backend)
   validateParameterBindings(network, getNodeData)
   return withMpiPlugin(network, useMpi)
 }

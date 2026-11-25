@@ -1,4 +1,5 @@
 import {
+  type BackendIdentity,
   type RegisteredNodes,
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
@@ -8,7 +9,10 @@ import {
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
 import { canonicalTypeKey } from '../registry/canonicalTypeKey'
-import { filterValidNodes } from '../registry/registryValidator'
+import {
+  filterValidNodes,
+  registryBackend,
+} from '../registry/registryValidator'
 import type { ExecutionLocation } from '../types/settingsTypes'
 
 // ================= Registered nodes (sidebar) ========================
@@ -45,6 +49,11 @@ let registries = $state<LocationRegistries>({
   local: {},
   remote: {},
 })
+
+/** Backend header of each location's registry, as its last sync returned it. */
+let registryBackends = $state<
+  Partial<Record<ExecutionLocation, BackendIdentity>>
+>({})
 
 /**
  * Location whose registry the read APIs resolve against. Set by the
@@ -105,6 +114,8 @@ const loadRegistries = async () => {
     registries = { local: flat, remote: flat }
     await persistStoreValue('registered_nodes', $state.snapshot(registries))
   }
+  registryBackends =
+    (await window.electron.store.get('registry_backends', undefined)) ?? {}
 }
 loadRegistries()
 
@@ -119,7 +130,7 @@ export const setActiveLocation = (location: ExecutionLocation): void => {
 /**
  * Replace the given location's registry with the given nodes (does not change
  * the active location). Filters out entries that are not valid
- * StandardNodeDefinition objects.
+ * StandardNodeDefinition objects, and keeps the registry's `__backend` header.
  * @param data - Dictionary of node data to register.
  * @param location - The execution location whose registry to replace.
  * @returns List of keys that were skipped due to invalid structure.
@@ -130,8 +141,27 @@ export const setRegistry = async (
 ): Promise<string[]> => {
   const [filtered, skipped] = filterValidNodes(data)
   registries[location] = sortRegistry(filtered)
+  const backend = registryBackend(data)
+  if (backend) registryBackends[location] = backend
+  else delete registryBackends[location]
   await persistStoreValue('registered_nodes', $state.snapshot(registries))
+  await persistStoreValue(
+    'registry_backends',
+    $state.snapshot(registryBackends)
+  )
   return skipped
+}
+
+/**
+ * Get the backend identity of a specific execution location's registry.
+ * @param location - Execution location whose registry owns the identity.
+ * @returns A plain copy of the header, or undefined when that registry has none.
+ */
+export const getRegistryBackend = (
+  location: ExecutionLocation
+): BackendIdentity | undefined => {
+  const backend = registryBackends[location]
+  return backend && $state.snapshot(backend)
 }
 
 /**

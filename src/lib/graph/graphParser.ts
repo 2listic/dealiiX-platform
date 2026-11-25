@@ -28,6 +28,7 @@ import {
   isTypeCompatible,
   SELF,
   TypeField,
+  type BackendIdentity,
   type Network,
   type NetworkEdge,
   type NetworkEdges,
@@ -549,11 +550,15 @@ export const addQualifiedIds = (
  * Use this for all export paths (save, download, execute) where qualified IDs are needed.
  * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
  * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
+ * @param backend - Optional identity of the registry chosen by the caller.
  * @returns {QualifiedNetwork} Complete network object with qualified_id on all nodes
  */
 export const parseGraphWithQualifiedIds = (
   nodes: Node[],
-  edges: Edge[]
+  edges: Edge[],
+  backend?: BackendIdentity
 ): QualifiedNetwork => {
-  return addQualifiedIds(parseGraphToProtocol(nodes, edges))
+  const network = parseGraphToProtocol(nodes, edges)
+  if (backend) network.backend = backend
+  return addQualifiedIds(network)
 }

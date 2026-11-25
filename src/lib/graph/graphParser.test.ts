@@ -36,10 +36,12 @@ import {
   addQualifiedIds,
   removeQualifiedIds,
   parseGraphToProtocol,
+  parseGraphWithQualifiedIds,
   edgesFromProtocolToFlow,
   nodesFromProtocolToFlow,
 } from './graphParser'
 import { parameterHandle } from './handleIds'
+import { protocolErrors } from '../testing/protocolSchemas'
 
 describe('validateGraphData', () => {
   let graph: Network
@@ -581,5 +583,21 @@ describe('parameter-node graph persistence', () => {
       type: 'GridGenerator::generate<2,2>',
       position: { x: 0, y: 0 },
     })
+  })
+})
+
+describe('saved network contract', () => {
+  it('writes the identity explicitly supplied by the caller', () => {
+    const backend = { id: 'coral', plugin: 'dealii' }
+    const nodes = nodesFromProtocolToFlow({
+      '0': { type: 'std::string', value: 'mesh.msh' },
+    })
+    const graph = parseGraphWithQualifiedIds(nodes, [], backend)
+    expect(graph.backend).toEqual(backend)
+    expect(protocolErrors('network', graph)).toEqual([])
+  })
+
+  it('keeps the existing wire shape when no identity is supplied', () => {
+    expect(parseGraphWithQualifiedIds([], [])).not.toHaveProperty('backend')
   })
 })

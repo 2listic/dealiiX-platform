@@ -206,6 +206,9 @@ export type StandardNodeDefinition = {
   parameter_file?: ParameterFileMetadata
 } & InheritanceMetadata
 
+/** Logical backend identity carried by the registry and graph. */
+export type BackendIdentity = { id: string; plugin?: string }
+
 /**
  * Returns all ancestors, including the legacy single-base field.
  * @param metadata - Node or argument inheritance metadata.
@@ -329,6 +332,8 @@ export type Network = {
   author: string
   date_time_utc: string
   version: number
+  /** The registry header the network was built against. */
+  backend?: BackendIdentity
   workflow: {
     edges: NetworkEdges
     nodes: LeanNodes

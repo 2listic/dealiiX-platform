@@ -17,6 +17,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#263](https://github.com/2listic/dealiiX-platform/pull/263) The backend protocol reference now documents the registry, saved and submitted graphs, and parameter files. Saved, exported, and submitted graphs can carry the synced registry’s backend and plugin identity.
+
 - [#257](https://github.com/2listic/dealiiX-platform/pull/257) The frontend's shared modules are grouped by domain: graph editing, parameter files, execution and orchestration each have their own folder, next to the registry and VTK folders, and the general utilities folder keeps only helpers with no application dependencies.
 - [#213](https://github.com/2listic/dealiiX-platform/pull/213) Added a top-level `examples/` folder for sample graphs, parameter files, and executables meant to be loaded and explored rather than used by the test suite, organised into `graphs/`, `parameters/`, and `executables/` subfolders. It now holds the deal.II step-40 Laplace example with MPI enabled and the step-4 Poisson example (2D and 3D) under `graphs/`, a couple of sample parameter trees (including a step-70 one in both `.prm` and JSON form) under `parameters/`, and the step-70 executable source (previously under `local_runs/step-70`) under `executables/`.
 
