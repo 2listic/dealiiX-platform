@@ -151,6 +151,22 @@ Branches and pull requests are not published: build their images locally under a
 
 With a `local` tag, leave out `--pull` on `docker compose build` and do not `docker compose pull` the services you built: both look for the image on GHCR, where `local` does not exist. To pull the others, name them, e.g. `docker compose pull coral-visualizer`.
 
+## Troubleshooting
+
+### The platform cannot reach the backend or the visualizer
+
+**Save & Sync Execution** fails with `Timed out while waiting for handshake`, or the visualizer window stays empty. On some hosts Docker keeps a firewall rule for each container of a removed network, which blocks a new container that gets the same address. List these rules:
+
+```bash
+sudo iptables -t raw -S PREROUTING | grep -E '! -i br-[0-9a-f]+ -j DROP$'
+```
+
+A rule whose `br-…` is missing from `ip -br link show type bridge` is left over: remove it by running it with `-A` replaced by `-D` after `sudo iptables -t raw`.
+
+### The visualizer window is empty after a few minutes
+
+The visualizer stops after 5 minutes without a connected browser ([coral-visualizer#49](https://github.com/2listic/coral-visualizer/issues/49)). Start it again with `docker compose up -d --no-build coral-visualizer`.
+
 ## Stop the stack
 
 From the dealii-X folder:
