@@ -27,6 +27,12 @@ Or if you already cloned the repo, use
 - `npm start` to run the electron app (run `npm run build` first), or
 - `npm start:forge` then just use `rs` to [restart](https://www.electronforge.io/cli#start).
 
+## Backend JSON protocol
+
+The [protocol v1 reference](schemas/README.md) documents the registry, saved
+graphs, execution graphs and parameter files exchanged by Platform and CORAL.
+It includes JSON Schemas and examples for backend authors.
+
 ## Linting and Formatting
 
 ### Linting

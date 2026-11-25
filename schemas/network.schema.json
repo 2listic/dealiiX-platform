@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/network.schema.json",
+  "title": "network",
+  "description": "A workflow as the editor saves it. Parameter ports may be connected by handle; a backend runs the materialized form described by network-execution.schema.json.",
+  "$ref": "#/$defs/network",
+  "$defs": {
+    "network": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "$ref": "common.schema.json#/$defs/backendIdentity"
+        },
+        "workflow": {
+          "type": "object",
+          "properties": {
+            "nodes": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/id"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/node"
+              }
+            },
+            "edges": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/id"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/edge"
+              }
+            }
+          },
+          "required": ["nodes", "edges"],
+          "additionalProperties": false
+        },
+        "version": {
+          "const": 1
+        },
+        "author": {
+          "type": "string"
+        },
+        "date_time_utc": {
+          "description": "ISO 8601 date and time in UTC.",
+          "type": "string"
+        },
+        "plugin": {
+          "$ref": "common.schema.json#/$defs/plugin"
+        }
+      },
+      "required": ["workflow"],
+      "additionalProperties": false
+    },
+    "id": {
+      "description": "Decimal node or edge id that fits a signed 32-bit integer.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,8})$"
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "node_type": {
+          "$ref": "common.schema.json#/$defs/nodeType"
+        },
+        "qualified_id": {
+          "$ref": "common.schema.json#/$defs/qualifiedId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "description": "Literal text of an elementary node (`null` for a valueless literal), or the workflow of a network node."
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/position"
+        },
+        "parameter_file": {
+          "$ref": "common.schema.json#/$defs/parameterFile"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/argument"
+          }
+        },
+        "inputs": {
+          "$ref": "common.schema.json#/$defs/inputs"
+        },
+        "outputs": {
+          "$ref": "common.schema.json#/$defs/outputs"
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bases": {
+          "$ref": "common.schema.json#/$defs/typeList"
+        },
+        "derived": {
+          "$ref": "common.schema.json#/$defs/typeList"
+        },
+        "display_name": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "variant_name": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "overload_group": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "operation": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "class_name": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "method_name": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "output_type": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "description": {
+          "$ref": "#/$defs/registryCopy"
+        },
+        "is_valid": {
+          "description": "Validity flag written by older editor releases; backends ignore it.",
+          "type": "boolean"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "coral::Network"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "node_type": {
+                "const": "network"
+              }
+            },
+            "required": ["node_type"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "node_type": {
+                "const": "network"
+              }
+            },
+            "required": ["node_type"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/network"
+              }
+            },
+            "required": ["value"]
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "registryCopy": {
+      "description": "Registry metadata repeated on a node instance. CORAL accepts it only when it equals the registry entry's value.",
+      "type": "string"
+    },
+    "edge": {
+      "description": "Connects an output port of `source` to an input port of `target`. A port is a position in the node's `outputs` or `inputs`, or the handle of a parameter port.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_output": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target_input": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_handle": {
+          "description": "`parameter-output-` followed by the URI-encoded JSON array of the parameter's path.",
+          "type": "string",
+          "pattern": "^parameter-output-"
+        },
+        "target_handle": {
+          "description": "`parameter-input-` followed by the URI-encoded JSON array of the parameter's path.",
+          "type": "string",
+          "pattern": "^parameter-input-"
+        }
+      },
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": ["source_output"]
+            },
+            {
+              "required": ["source_handle"]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": ["target_input"]
+            },
+            {
+              "required": ["target_handle"]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

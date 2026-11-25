@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/registry.schema.json",
+  "title": "registry",
+  "description": "Flat registry of node definitions, keyed by type. A library of saved network nodes uses names as keys. __backend may identify the producer.",
+  "type": "object",
+  "properties": {
+    "__backend": {
+      "$ref": "common.schema.json#/$defs/backendIdentity"
+    }
+  },
+  "propertyNames": {
+    "anyOf": [
+      {
+        "const": "__backend"
+      },
+      {
+        "not": {
+          "pattern": "^__"
+        }
+      }
+    ]
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/definition"
+  },
+  "$defs": {
+    "definition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "node_type": {
+          "$ref": "common.schema.json#/$defs/nodeType"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/argument"
+          }
+        },
+        "inputs": {
+          "$ref": "common.schema.json#/$defs/inputs"
+        },
+        "outputs": {
+          "$ref": "common.schema.json#/$defs/outputs"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "description": "Default literal text or the workflow stored by a network node."
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "variant_name": {
+          "type": "string"
+        },
+        "overload_group": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "class_name": {
+          "type": "string"
+        },
+        "method_name": {
+          "type": "string"
+        },
+        "output_type": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "base": {
+          "description": "Single base type written by older CORAL releases.",
+          "type": "string",
+          "minLength": 1
+        },
+        "bases": {
+          "$ref": "common.schema.json#/$defs/typeList"
+        },
+        "derived": {
+          "$ref": "common.schema.json#/$defs/typeList"
+        }
+      },
+      "required": ["type", "node_type", "arguments", "inputs", "outputs"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "coral::Network"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "node_type": {
+                "const": "network"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "node_type": {
+                "const": "network"
+              }
+            },
+            "required": ["node_type"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "maxProperties": 0
+                  },
+                  {
+                    "$ref": "network.schema.json"
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
