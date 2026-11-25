@@ -2,17 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/registry.schema.json",
   "title": "registry",
-  "description": "Flat registry of node definitions, keyed by type. A library of saved network nodes uses names as keys. __backend may identify the producer.",
+  "description": "Flat registry of node definitions, keyed by type. A library of saved network nodes uses names as keys. __backend may identify the producer, and __backend_name carries CORAL's backend name.",
   "type": "object",
   "properties": {
     "__backend": {
       "$ref": "common.schema.json#/$defs/backendIdentity"
+    },
+    "__backend_name": {
+      "description": "Backend name CORAL writes when its registry header is switched on.",
+      "type": "string"
     }
   },
   "propertyNames": {
     "anyOf": [
       {
-        "const": "__backend"
+        "enum": ["__backend", "__backend_name"]
       },
       {
         "not": {

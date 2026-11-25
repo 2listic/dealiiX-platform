@@ -5,7 +5,7 @@
   "description": "Definitions shared by the registry and network schemas.",
   "$defs": {
     "nodeType": {
-      "description": "CORAL node category used for construction and rendering.",
+      "description": "Node category from the registry. The editor uses it for rendering. Backends identify a node by its `type`; CORAL only checks that a node's `node_type`, when given, equals its registry entry's.",
       "enum": [
         "elementary_constructor",
         "primitive",

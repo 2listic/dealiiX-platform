@@ -1,7 +1,8 @@
 # Protocol v1
 
 This snapshot specifies the document shapes used by CORAL and Platform at the
-time of the freeze. A new backend can use the schemas and fixtures as a
+time of the freeze. coral-python reads the same flat registry and graph shapes, without nested
+subnetworks. A new backend can use the schemas and fixtures as a
 reference. Any future format will replace this snapshot without requiring
 two active protocols.
 
@@ -45,11 +46,22 @@ used as `__backend` in the registry and `backend` at the top of a graph:
 
 `id` identifies the backend. `plugin` identifies its plugin when relevant.
 Both exclude installation paths. The header is optional because existing
-CORAL and Platform emitters produce documents without it. A backend that
-publishes identity can compare it with the identity accompanying a submission.
-The pinned CORAL executable selects the plugin library from its CLI settings
-and does not enforce this header. CORAL's top-level `plugin` object holds
-initialization options and has a separate purpose.
+CORAL and Platform emitters produce documents without it. The pinned CORAL
+executable selects the plugin library from its CLI settings and does not
+enforce this header. CORAL's top-level `plugin` object holds initialization
+options and has a separate purpose.
+
+Platform reads `id` and `plugin` from `__backend` and ignores any other key.
+**Validate & Sync** reports a header whose `id` or `plugin` is not a logical
+identifier, and does not use it. CORAL can also write its backend name as a
+string under `__backend_name`; Platform keeps both keys out of the node
+palette.
+
+On save, export and submission, Platform writes the identity of the selected
+location's synced registry and replaces the identity an imported graph carried.
+No component compares identities yet: a graph built against an older registry
+is not detected as stale, and a backend runs a submission whatever identity it
+carries.
 
 ## Saved and submitted graphs
 
@@ -64,7 +76,10 @@ them into effective run parameters and numeric edges before submitting. In the
 submitted form, each node has a qualified identifier for status markers and
 each edge has both numeric port positions. File exposure metadata is absent.
 An elementary literal uses text on the CORAL wire. Omit its `value` when there
-is no literal to pass.
+is no literal to pass. The saved form also accepts `value: null` for such a
+literal, as coral-python's own graphs write it; the submitted form does not,
+since CORAL rejects any non-text literal value, and coral-python accepts the
+omitted `value` as well.
 
 A CORAL subnetwork stores its workflow in `value`. A saved node can carry its
 explicit interface through `arguments`, `inputs` and `outputs`. CORAL derives the
