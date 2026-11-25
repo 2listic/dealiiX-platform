@@ -22,8 +22,9 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Documentation
 
+- [#264](https://github.com/2listic/dealiiX-platform/pull/264) The ImmersX guide, now `docs/run-dealiix-tutorial-stack.md`, runs on the dealii-X tutorial stack instead of the ImmersX `dealiix-tutorial` branch: the platform in the browser, or the desktop app on the stack's backend, next to this repository's stack if needed. It lists the backend's other plugins, including Coral's deal.II backend, and how to run other versions of the stack's images, published or built locally from a branch. The ImmersX presets use the ImmersX image's own plugin path.
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) New developer note `docs/developer/unified-node.md` on the canvas node: its name and buttons, the status and actions of overload families, its port rows, and how families narrow to one variant.
-- [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-coral-immersx-docker.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers. Two ready-made ImmersX graphs in `examples/graphs/`, one with a parameter file and one with two chained files, go with it.
+- [#239](https://github.com/2listic/dealiiX-platform/pull/239) New guide `docs/run-dealiix-tutorial-stack.md` for running graphs with parameter files end to end: the platform connects to the prebuilt Coral + ImmersX images from the ImmersX `dealiix-tutorial` branch, with Slurm and SSH, in place of this repository's Slurm and visualizer containers. Two ready-made ImmersX graphs in `examples/graphs/`, one with a parameter file and one with two chained files, go with it.
 
 ### Pipelines
 
@@ -45,6 +46,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Docker
 
 - [#261](https://github.com/2listic/dealiiX-platform/pull/261) The platform image used by the dealii-X tutorial stack, which runs the app in the browser through noVNC on port 6080, is now built from this repository. It starts with the tutorial stack's settings from a preset file, instead of editing the app's saved settings. GHCR publishes the development image as `main` and stable releases as `vX.Y.Z`, with `latest` pointing to the highest published stable release.
+- [#264](https://github.com/2listic/dealiiX-platform/pull/264) The host ports of the development stack's SSH server and visualizer can be set in `.env` (`CORAL_SSH_PORT`, `VISUALIZER_PORT`; defaults `2222` and `8008`), so the stack can run next to the dealii-X tutorial stack, which uses the same defaults.
 
 ### UI/UX
 

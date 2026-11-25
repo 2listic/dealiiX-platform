@@ -9,7 +9,7 @@
         "sshKeyPath": "/run/tutorial-ssh/id_ed25519",
         "workingDirectory": "/app/shared-data",
         "coralBinaryPath": "/usr/local/bin/coral-release",
-        "coralPluginPath": "/opt/dealiix/immersx/Release/lib/immersx/coral/libcoral_backend_immersx_2.so"
+        "coralPluginPath": "/opt/immersx/lib/immersx/coral/libcoral_backend_immersx_2.so"
       }
     }
   },
