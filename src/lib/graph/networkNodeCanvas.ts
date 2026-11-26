@@ -109,6 +109,14 @@ const toCanvasNodeFromProtocol = (
       ...(protocolNode.parameter_file && {
         parameter_file: normalizeParameterFile(protocolNode.parameter_file),
       }),
+      ...(protocolNode.configuration && {
+        configuration: protocolNode.configuration,
+      }),
+      ...(protocolNode.configuration_exposures && {
+        configuration_exposures: normalizeParameterFile(
+          protocolNode.configuration_exposures
+        ),
+      }),
     },
   }
 }

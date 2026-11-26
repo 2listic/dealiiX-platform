@@ -41,7 +41,12 @@
     isExecutableMode ? 'Binary is MPI-enabled' : 'Use MPI'
   )
   let isRemoteExecution = $derived(location === 'remote')
-  let mpiEnabled = $derived(useMpi)
+  let isOrchestrator = $derived(
+    !isRemoteExecution &&
+      !isExecutableMode &&
+      getRegistryBackend(location)?.id === 'orchestrator'
+  )
+  let mpiEnabled = $derived(!isOrchestrator && useMpi)
   let totalProcesses = $derived(
     isRemoteExecution ? nodes * tasksPerNode : tasksPerNode
   )
@@ -251,19 +256,21 @@
         </div>
       </div>
     {/if}
-    <div class="toggle-container">
-      <div class="mpi-row">
-        <span class="toggle-label">
-          {mpiLabel}
-        </span>
-        <ToggleSwitch
-          ariaLabel={mpiLabel}
-          checked={useMpi}
-          onchange={(event) =>
-            (useMpi = (event.target as HTMLInputElement).checked)}
-        />
+    {#if !isOrchestrator}
+      <div class="toggle-container">
+        <div class="mpi-row">
+          <span class="toggle-label">
+            {mpiLabel}
+          </span>
+          <ToggleSwitch
+            ariaLabel={mpiLabel}
+            checked={useMpi}
+            onchange={(event) =>
+              (useMpi = (event.target as HTMLInputElement).checked)}
+          />
+        </div>
       </div>
-    </div>
+    {/if}
     <div class="button-container">
       <Button type="button" size="small" onclick={handleCancel}>Cancel</Button>
       <Button

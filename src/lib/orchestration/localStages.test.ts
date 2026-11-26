@@ -67,7 +67,10 @@ const mpiOff = {
   useMpi: false,
 }
 
-const coralStage = (id: string, useMpi = false): PipelineStage => ({
+const coralStage = (
+  id: string,
+  useMpi = false
+): Extract<PipelineStage, { type: 'coralStage' }> => ({
   id,
   type: 'coralStage',
   position: { x: 0, y: 0 },
@@ -93,6 +96,23 @@ beforeEach(() => {
 })
 
 describe('prepareStageLocal', () => {
+  it('passes the orchestrator its saved graph and leaves MPI and materialization to it', async () => {
+    const graph = {
+      backend: { id: 'orchestrator' },
+      workflow: { nodes: {}, edges: {} },
+    }
+    vi.mocked(materializeNetwork).mockClear()
+    const prepared = await prepareStageLocal(
+      { ...coralStage('workflow', true), graph },
+      '/run'
+    )
+    expect(prepared.payload).toMatchObject({
+      graphPayload: graph,
+      mpi: undefined,
+    })
+    expect(materializeNetwork).not.toHaveBeenCalled()
+  })
+
   it('gives stages submitted one after another distinct, recorded keys', async () => {
     const a = await prepareStageLocal(coralStage('a'), '/p/stage-a')
     const b = await prepareStageLocal(coralStage('b'), '/p/stage-b')

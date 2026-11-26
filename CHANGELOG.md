@@ -6,6 +6,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#262](https://github.com/2listic/dealiiX-platform/pull/262) The Local + CORAL frontend can edit and run workflows from the Python orchestrator, including node configuration and plugin-specific child workflows.
+- [#262](https://github.com/2listic/dealiiX-platform/pull/262) Saved, exported and submitted graphs name the backend of the synced registry, so a backend can reject a graph built against another registry. A node's own parameter document (`configuration`) is kept when a graph is loaded and saved, and the literals added at submit for used parameter outputs carry a qualified id like every other node.
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) Graphs can be selected and imported directly from JSON files in the configured remote working directory.
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) Every overload of a registry function is offered in the sidebar and in the connected-node suggestions, saved under Coral's signature key; graphs saved with a free function's plain name no longer load. The bundled default registry, used when no registry has been loaded from Coral, is regenerated from Coral's deal.II plugin, with its labels and signature keys.
 
@@ -18,6 +20,7 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 ### Project-Structure
 
 - [#262](https://github.com/2listic/dealiiX-platform/pull/262) The Python orchestrator validates declared file inputs and outputs, passes files between stages, and can reuse permanent outputs on later runs. A Transfer node copies local or remote files between configured targets.
+- [#262](https://github.com/2listic/dealiiX-platform/pull/262) JSON Schemas in `schemas/` specify the node registry, the network as saved and as a backend runs it, and parameter trees, with a draft of node execution and file metadata. `tools/mock-backend` is a reference backend that runs behind the Local + CORAL settings; the unit tests check the repository's graphs, registries and parameter files against the schemas.
 - [#262](https://github.com/2listic/dealiiX-platform/pull/262) Added a standalone Python workflow runner for real CORAL plugins and executables, with serial and MPI runs locally, over SSH and through Slurm. Standalone executables can configure their argument list and reference the generated parameter file and run directory.
 - [#263](https://github.com/2listic/dealiiX-platform/pull/263) The backend protocol reference now documents the registry, saved and submitted graphs, and parameter files. Saved, exported, and submitted graphs can carry the synced registry’s backend and plugin identity. **Validate & Sync** no longer lists CORAL's backend name as a malformed node, and reports an identity it cannot use.
 

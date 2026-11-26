@@ -11,6 +11,7 @@ import type { Edge, Node } from '@xyflow/svelte'
 import {
   isSubGraphNodeDefinition,
   NodeType,
+  TypeField,
   SELF,
   type LeanNodes,
   type LeanStandardNode,
@@ -18,6 +19,7 @@ import {
   type NetworkEdge,
   type ParameterExposure,
   type ParameterPortType,
+  type QualifiedLeanStandardNode,
   type QualifiedNetwork,
   type StandardNodeDefinition,
   type SubGraphNodeDefinition,
@@ -55,6 +57,11 @@ import {
   readParameterFile,
   writeParameterFile,
 } from '../parameters/parameterFileAccess'
+import {
+  embeddedRegistry,
+  filterValidNodes,
+  definitionInRegistry,
+} from '../registry/registryValidator'
 import { resolveParameterFileReferences } from './fileReferences'
 
 /** Returns the registry definition of a standard node type. */
@@ -79,7 +86,7 @@ export const materializeNetwork = async (
     definitionOf: NodeDefinitionLookup
   }
 ): Promise<object> => {
-  if (!hasParameterFile(graph)) return graph
+  if (!hasParameterBindings(graph)) return graph
   const { location, copyDirectory, definitionOf } = options
   const bindings = parameterBindings(asNetwork(graph), definitionOf)
   bindings.validate()
@@ -94,23 +101,33 @@ export const materializeNetwork = async (
     if (cached) return cached
 
     const node = standardNode(port)
-    const source = parameterFileTarget(location, String(node.value))
-    const file = await readParameterFile(source)
-    const { data, format } = parseParametersFileWithFormat(
-      file.content,
-      source.fileName
-    )
+    const source = node.configuration_exposures
+      ? undefined
+      : parameterFileTarget(location, String(node.value))
+    const parsed = source
+      ? parseParametersFileWithFormat(
+          (await readParameterFile(source)).content,
+          source.fileName
+        )
+      : undefined
+    const data = parsed?.data ?? structuredClone(node.configuration)
+    if (!data)
+      throw new Error(`Node ${key} is missing its parameter configuration`)
     for (const exposure of parameterInputExposures(node)) {
       const binding = bindings.inputBinding(port, exposure)
       const raw =
         binding.kind === 'literal'
           ? binding.value
           : outputValue(await materialize(binding), binding.exposure)
-      entryAt(data, exposure.path, source.fileName).value = convertValue(
-        raw,
-        exposure.type,
-        exposure.path
-      )
+      entryAt(
+        data,
+        exposure.path,
+        source?.fileName ?? `node ${key} configuration`
+      ).value = convertValue(raw, exposure.type, exposure.path)
+    }
+    if (!source || !parsed) {
+      trees.set(key, data)
+      return data
     }
     const tree = await resolveParameterFileReferences(
       data,
@@ -120,7 +137,7 @@ export const materializeNetwork = async (
 
     // One copy per file, so nodes sharing a file must agree on its content.
     const fileName = normalizeWorkspacePath(source.fileName)
-    const content = serializeParametersAs(tree, format)
+    const content = serializeParametersAs(tree, parsed.format)
     const copy = copies.get(fileName)
     if (copy && copy.content !== content) {
       throw new Error(
@@ -146,7 +163,7 @@ export const materializeNetwork = async (
 
   const { network } = rewriteForCoral(bindings.root, {
     bindings,
-    definitionOf,
+    configurationOf: (port) => trees.get(nodeKey(port))!,
     runCopyOf: (port) =>
       `${withoutTrailingSlash(copyDirectory)}/${normalizeWorkspacePath(String(standardNode(port).value))}`,
     valueOf: (source) =>
@@ -168,7 +185,7 @@ export const validateParameterBindings = (
   graph: object,
   definitionOf: NodeDefinitionLookup
 ): void => {
-  if (!hasParameterFile(graph)) return
+  if (!hasParameterBindings(graph)) return
   parameterBindings(asNetwork(graph), definitionOf).validate()
 }
 
@@ -186,7 +203,7 @@ export const isSubnetworkParameterOutput = (
   handle: string,
   definitionOf: NodeDefinitionLookup
 ): boolean => {
-  if (!hasParameterFile(subnetwork.value)) return false
+  if (!hasParameterBindings(subnetwork.value)) return false
   const bindings = parameterBindings(
     asNetwork({ workflow: { nodes: { '0': subnetwork }, edges: {} } }),
     definitionOf
@@ -212,6 +229,7 @@ type Level = {
   /** Qualified-id prefix of the level's nodes: `''` at the top, `'12_'` inside node 12. */
   prefix: string
   edges: Edge[]
+  definitionOf: NodeDefinitionLookup
   parent?: { level: Level; nodeId: string }
 }
 
@@ -241,7 +259,7 @@ const parameterBindings = (
   network: Network,
   definitionOf: NodeDefinitionLookup
 ) => {
-  const root = level(network, '')
+  const root = level(network, '', definitionOf)
   const children = new Map<string, Level>()
   const boundaries = new Map<Level, BoundaryAnalysis>()
 
@@ -253,7 +271,17 @@ const parameterBindings = (
       const node = parent.network.workflow.nodes[
         nodeId
       ] as SubGraphNodeDefinition
-      found = level(node.value, prefix, { level: parent, nodeId })
+      let lookup = parent.definitionOf
+      if (node.type === TypeField.CORAL_BACKEND_NETWORK) {
+        const document = embeddedRegistry(lookup(node.type))
+        if (!document)
+          throw new Error(
+            'Sync the parent registry to materialize the CORAL workflow'
+          )
+        const [nodes] = filterValidNodes(document)
+        lookup = (type) => definitionInRegistry(nodes, type)
+      }
+      found = level(node.value, prefix, lookup, { level: parent, nodeId })
       children.set(prefix, found)
     }
     return found
@@ -264,7 +292,7 @@ const parameterBindings = (
     let found = boundaries.get(current)
     if (!found) {
       found = analyzeNetworkBoundary(
-        boundaryNodes(current.network, definitionOf),
+        boundaryNodes(current.network, current.definitionOf),
         current.edges
       )
       boundaries.set(current, found)
@@ -301,7 +329,7 @@ const parameterBindings = (
   /** Follows an output of a subnetwork with parameter files down to the internal port producing it. */
   const outputPort = (port: NodePort): NodePort => {
     const node = port.level.network.workflow.nodes[port.nodeId]
-    if (!isSubGraphNodeDefinition(node) || !hasParameterFile(node.value)) {
+    if (!isSubGraphNodeDefinition(node) || !hasParameterBindings(node.value)) {
       return port
     }
     const content = child(port.level, port.nodeId)
@@ -341,7 +369,7 @@ const parameterBindings = (
     if (isSubGraphNodeDefinition(node) || port.handle !== 'output-0') {
       return null
     }
-    const definition = definitionOf(node.type)
+    const definition = port.level.definitionOf(node.type)
     if (
       (definition.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
         definition.node_type !== NodeType.PRIMITIVE) ||
@@ -386,8 +414,8 @@ const parameterBindings = (
       const { nodes } = current.network.workflow
       for (const [nodeId, node] of Object.entries(nodes)) {
         if (isSubGraphNodeDefinition(node)) {
-          if (hasParameterFile(node.value)) visit(child(current, nodeId))
-        } else if (node.parameter_file) {
+          if (hasParameterBindings(node.value)) visit(child(current, nodeId))
+        } else if (node.parameter_file || node.configuration_exposures) {
           found.push({ level: current, nodeId, handle: '' })
         }
       }
@@ -437,7 +465,7 @@ const rewriteForCoral = (
   current: Level,
   context: {
     bindings: ParameterBindings
-    definitionOf: NodeDefinitionLookup
+    configurationOf: (port: NodePort) => ParameterTree
     runCopyOf: (port: NodePort) => string
     valueOf: (source: ParameterSource) => string
   }
@@ -451,7 +479,7 @@ const rewriteForCoral = (
   const subnetworks = new Map<string, SubnetworkRewrite>()
   for (const [nodeId, node] of Object.entries(current.network.workflow.nodes)) {
     if (isSubGraphNodeDefinition(node)) {
-      if (hasParameterFile(node.value)) {
+      if (hasParameterBindings(node.value)) {
         const rewritten = rewriteSubnetwork(
           node,
           bindings.child(current, nodeId),
@@ -461,6 +489,16 @@ const rewriteForCoral = (
         nodes[nodeId] = rewritten.node
       } else {
         nodes[nodeId] = node
+      }
+    } else if (node.configuration_exposures) {
+      const { configuration_exposures: _metadata, ...rest } = node
+      nodes[nodeId] = {
+        ...rest,
+        configuration: context.configurationOf({
+          level: current,
+          nodeId,
+          handle: '',
+        }),
       }
     } else if (node.parameter_file) {
       const { parameter_file: _metadata, ...rest } = node
@@ -482,10 +520,12 @@ const rewriteForCoral = (
     if (!id) {
       id = String(nextId++)
       literals.set(key, id)
-      nodes[id] = {
+      const literal: QualifiedLeanStandardNode = {
         type: parameterPortCoralType(source.exposure.type),
         value: context.valueOf(source),
+        qualified_id: `${current.prefix}${id}`,
       }
+      nodes[id] = literal
     }
     return id
   }
@@ -497,7 +537,7 @@ const rewriteForCoral = (
       sourceHandle: string
     }
     let targetHandle: string | null = edge.targetHandle as string
-    // A bound input is written into its file; the edge means nothing to Coral.
+    // A bound input has already been written into its file or configuration.
     if (parameterHandlePath(targetHandle)) continue
     const targetSubnetwork = subnetworks.get(edge.target)
     if (targetSubnetwork)
@@ -550,7 +590,7 @@ const rewriteSubnetwork = (
   const before = context.bindings.boundary(content)
   const { network, literals, subnetworks } = rewriteForCoral(content, context)
   const after = analyzeNetworkBoundary(
-    boundaryNodes(network, context.definitionOf, literals),
+    boundaryNodes(network, content.definitionOf, literals),
     edgesFromProtocolToFlow(network.workflow.edges)
   )
   const newIndex = (map: Record<string, number>, key: string): number => {
@@ -595,10 +635,12 @@ const rewriteSubnetwork = (
 const level = (
   network: Network,
   prefix: string,
+  definitionOf: NodeDefinitionLookup,
   parent?: Level['parent']
 ): Level => ({
   network,
   prefix,
+  definitionOf,
   edges: edgesFromProtocolToFlow(network.workflow.edges),
   parent,
 })
@@ -616,12 +658,12 @@ const standardNode = (port: { level: Level; nodeId: string }) =>
   port.level.network.workflow.nodes[port.nodeId] as LeanStandardNode &
     StandardNodeDefinition
 
-/** Whether any node, at any depth, carries `parameter_file`. */
-const hasParameterFile = (graph: object): boolean =>
+/** Whether any node has file or inline parameter bindings, at any depth. */
+const hasParameterBindings = (graph: object): boolean =>
   Object.values((graph as Network).workflow.nodes).some((node) =>
     isSubGraphNodeDefinition(node)
-      ? hasParameterFile(node.value)
-      : Boolean(node.parameter_file)
+      ? hasParameterBindings(node.value)
+      : Boolean(node.parameter_file || node.configuration_exposures)
   )
 
 /**

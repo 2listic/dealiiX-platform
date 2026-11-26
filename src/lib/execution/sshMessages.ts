@@ -213,6 +213,7 @@ export const buildGraphPayload = (
   backend?: BackendIdentity
 ): object => {
   const network = parseGraphWithQualifiedIds(nodes, edges, backend)
+  if (network.backend?.id === 'orchestrator') return network
   validateParameterBindings(network, getNodeData)
   return withMpiPlugin(network, useMpi)
 }

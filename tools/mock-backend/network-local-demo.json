@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "backend": {
+    "id": "dealiix.mock",
+    "version": "1"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "mock::hello",
+        "qualified_id": "0"
+      },
+      "1": {
+        "type": "network::coral",
+        "node_type": "network",
+        "name": "Real CORAL example",
+        "qualified_id": "1",
+        "arguments": [],
+        "inputs": [],
+        "outputs": [],
+        "value": {
+          "backend": {
+            "id": "coral"
+          },
+          "workflow": {
+            "nodes": {
+              "0": {
+                "type": "std::string",
+                "value": "Hello from CORAL",
+                "qualified_id": "1_0"
+              }
+            },
+            "edges": {}
+          }
+        }
+      },
+      "2": {
+        "type": "mock::exec::local-example",
+        "qualified_id": "2"
+      },
+      "3": {
+        "type": "std::string",
+        "value": "Hello from a local executable",
+        "qualified_id": "3"
+      },
+      "4": {
+        "type": "int",
+        "value": "7",
+        "qualified_id": "4"
+      },
+      "5": {
+        "type": "double",
+        "value": "1.25",
+        "qualified_id": "5"
+      },
+      "6": {
+        "type": "bool",
+        "value": "true",
+        "qualified_id": "6"
+      }
+    },
+    "edges": {
+      "0": {
+        "source": 3,
+        "target": 2,
+        "source_output": 0,
+        "target_input": 0
+      },
+      "1": {
+        "source": 4,
+        "target": 2,
+        "source_output": 0,
+        "target_input": 1
+      },
+      "2": {
+        "source": 5,
+        "target": 2,
+        "source_output": 0,
+        "target_input": 2
+      },
+      "3": {
+        "source": 6,
+        "target": 2,
+        "source_output": 0,
+        "target_input": 3
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "backend": {
+    "id": "dealiix.mock",
+    "version": "1"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "mock::hello",
+        "qualified_id": "0"
+      },
+      "1": {
+        "type": "coral::Network",
+        "node_type": "network",
+        "name": "Example subnetwork",
+        "qualified_id": "1",
+        "arguments": [],
+        "inputs": [],
+        "outputs": [],
+        "value": {
+          "workflow": {
+            "nodes": {
+              "0": {
+                "type": "mock::add",
+                "qualified_id": "1_0"
+              }
+            },
+            "edges": {}
+          }
+        }
+      }
+    },
+    "edges": {}
+  }
+}

@@ -7,6 +7,7 @@
 
 import { jobIdMapState } from '../stores/jobsStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
+import type { Network } from '../types/nodeTypes'
 import type { StageJob } from '../types/pipelineTypes'
 import type { MpiResourceConfig } from '../types/jobConfigTypes'
 import type { MpiLauncherSettings } from '../types/settingsTypes'
@@ -50,17 +51,22 @@ export const prepareStageLocal = async (
     await assertLocalFilesExist(stage.name, [coralBinaryPath, coralPluginPath])
     backendKind = 'coral'
     channel = 'start-local-coral-run'
+    // The Python backend resolves child inputs and chooses MPI per stage.
+    const orchestrator =
+      (stage.graph as Partial<Network>).backend?.id === 'orchestrator'
     payload = {
       coralBinaryPath,
       coralPluginPath,
       runDirectory: stageDir,
-      graphPayload: await prepareLocalStageGraph(
-        stage.graph as object,
-        stage.config.useMpi,
-        workingDirectory,
-        stageDir
-      ),
-      mpi,
+      graphPayload: orchestrator
+        ? stage.graph
+        : await prepareLocalStageGraph(
+            stage.graph as object,
+            stage.config.useMpi,
+            workingDirectory,
+            stageDir
+          ),
+      mpi: orchestrator ? undefined : mpi,
     }
   } else if (stage.type === 'executableStage') {
     if (!stage.parameters)

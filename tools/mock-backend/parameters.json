@@ -1,0 +1,25 @@
+{
+  "Mock": {
+    "Greeting": {
+      "value": "Hello World",
+      "default_value": "Hello World",
+      "documentation": "Message printed by the greeting node.",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]"
+    },
+    "Left": {
+      "value": "2",
+      "default_value": "2",
+      "documentation": "First integer.",
+      "pattern": "[Integer]",
+      "pattern_description": "[Integer]"
+    },
+    "Right": {
+      "value": "2",
+      "default_value": "2",
+      "documentation": "Second integer.",
+      "pattern": "[Integer]",
+      "pattern_description": "[Integer]"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "backend": {
+    "id": "dealiix.mock",
+    "version": "1"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "executable",
+        "qualified_id": "0",
+        "configuration": {
+          "executable": {
+            "value": "local-example",
+            "default_value": "local-example",
+            "documentation": "Executable id registered by the desktop preset.",
+            "pattern": "[Anything]",
+            "pattern_description": "[Anything]"
+          },
+          "command": {
+            "value": "config.executable --arg1 config.arg1 arg2 ACTION arg3",
+            "default_value": "config.executable --arg1 config.arg1 arg2 ACTION arg3",
+            "documentation": "Command template.",
+            "pattern": "[Anything]",
+            "pattern_description": "[Anything]"
+          },
+          "arg1": {
+            "value": "two words",
+            "default_value": "two words",
+            "documentation": "One argument, including the space.",
+            "pattern": "[Anything]",
+            "pattern_description": "[Anything]"
+          }
+        }
+      }
+    },
+    "edges": {}
+  }
+}

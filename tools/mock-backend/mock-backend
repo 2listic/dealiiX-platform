@@ -1,0 +1,544 @@
+#!/usr/bin/env python3
+"""Small local implementation of the CORAL-shaped backend contract."""
+import argparse
+from dataclasses import dataclass
+from graphlib import CycleError, TopologicalSorter
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = Path(__file__).resolve().parent
+SCHEMAS = HERE.parents[1] / "schemas"
+
+try:
+    from jsonschema import Draft202012Validator
+    from jsonschema.exceptions import best_match
+    from referencing import Registry, Resource
+except ModuleNotFoundError:
+    # Electron can inherit a different PATH from the terminal used for setup.
+    venv = HERE.parents[1] / ".venv-mock"
+    python = venv / "bin" / "python"
+    if python.is_file() and Path(sys.prefix).resolve() != venv.resolve():
+        try:
+            os.execv(python, [str(python), str(HERE / "mock-backend"), *sys.argv[1:]])
+        except OSError as error:
+            sys.exit(f"Cannot start the mock backend Python at {python}: {error}")
+    sys.exit(
+        "Mock backend dependencies are missing. From the repository root, run:\n"
+        "  python3 -m venv .venv-mock\n"
+        "  .venv-mock/bin/python -m pip install -r tools/mock-backend/requirements.txt"
+    )
+
+BACKEND = {"id": "dealiix.mock", "version": "1"}
+CORAL_NODE = "network::coral"
+LITERAL_TYPES = {"std::string", "int", "double", "bool"}
+NUMERIC_RANK = {"bool": 0, "int": 1, "double": 2}
+OPERATIONS = ["register", "validate", "run"]
+STATUS_FILE = re.compile(r"[^./\\]+\.(running|failed|succeeded)")
+
+
+class ContractError(Exception):
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+SCHEMA_REGISTRY = Registry().with_resources(
+    (document["$id"], Resource.from_contents(document))
+    for document in map(read_json, SCHEMAS.glob("*.schema.json"))
+)
+
+
+def check_schema(name, data, code):
+    validator = Draft202012Validator(read_json(SCHEMAS / f"{name}.schema.json"),
+                                     registry=SCHEMA_REGISTRY)
+    error = best_match(validator.iter_errors(data))
+    if error:
+        raise ContractError(code, f"{error.json_path}: {error.message}")
+
+
+@dataclass
+class LocalExecutable:
+    label: str
+    command: list[str]
+    input_types: list[str]
+
+
+@dataclass
+class Configuration:
+    greeting: str
+    total: int
+    coral: list[str] | None
+    coral_mpi: bool
+    executables: dict[str, LocalExecutable]
+
+
+def configuration(path):
+    data = read_json(path)
+    check_schema("parameters", data, "invalid_parameters")
+    try:
+        mock = data["Mock"]
+        greeting = mock["Greeting"]["value"]
+        total = int(mock["Left"]["value"]) + int(mock["Right"]["value"])
+        coral = None
+        coral_mpi = False
+        if "CORAL" in data:
+            settings = data["CORAL"]
+            binary = Path(settings["Binary"]["value"])
+            plugin = Path(settings["Plugin"]["value"])
+            if not all(item.is_absolute() and item.is_file() for item in (binary, plugin)):
+                raise ValueError("CORAL Binary and Plugin must be absolute paths to existing files")
+            coral = [str(binary), "-p", str(plugin)]
+            mpi = settings.get("MPIEnabled", {"value": "false"})["value"]
+            if mpi not in {"true", "false"}:
+                raise ValueError("CORAL.MPIEnabled must be true or false")
+            coral_mpi = mpi == "true"
+
+        executables = {}
+        for name, settings in data.get("Executables", {}).items():
+            if name == "__extra":
+                continue
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", name):
+                raise ValueError(f"Invalid executable id: {name!r}")
+            binary = Path(settings["Binary"]["value"])
+            if not binary.is_absolute() or not binary.is_file() or not os.access(binary, os.X_OK):
+                raise ValueError(f"Executables.{name}.Binary must be an absolute executable file")
+            arguments = json.loads(settings.get("Arguments", {"value": "[]"})["value"])
+            if not isinstance(arguments, list) or any(
+                    not isinstance(argument, str) or "\0" in argument for argument in arguments):
+                raise ValueError(f"Executables.{name}.Arguments must be a JSON array of strings")
+            input_types = json.loads(settings.get("InputTypes", {"value": "[]"})["value"])
+            if not isinstance(input_types, list) or any(
+                    not isinstance(kind, str) or kind not in LITERAL_TYPES for kind in input_types):
+                raise ValueError(f"Executables.{name}.InputTypes must list std::string, int, double or bool")
+            label = settings.get("Label", {"value": name})["value"]
+            executables[f"mock::exec::{name}"] = LocalExecutable(
+                label, [str(binary), *arguments], input_types
+            )
+        return Configuration(greeting, total, coral, coral_mpi, executables)
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise ContractError("invalid_configuration", str(error)) from error
+
+
+def invoke_coral(command, options):
+    result = subprocess.run([*command, *options], check=False, capture_output=True, text=True)
+    if result.returncode:
+        raise ContractError("coral_failed", (result.stderr + result.stdout).strip() or
+                            f"CORAL exited with status {result.returncode}")
+    if result.stdout:
+        print(result.stdout, end="", file=sys.stderr, flush=True)
+
+
+def is_child_workflow(definition):
+    return (definition or {}).get("x-dealiix", {}).get("execution", {}).get("kind") == "child_workflow"
+
+
+def definitions_digest(definitions):
+    text = json.dumps(definitions, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def registry(config, initialization=None):
+    definitions = read_json(HERE / "registry.json")
+    for name, executable in config.executables.items():
+        definitions[name] = {
+            "type": name,
+            "node_type": "void_function",
+            "display_name": executable.label,
+            "arguments": [
+                {"name": f"arg_{index + 1}", "type": kind, "connection_type": "input"}
+                for index, kind in enumerate(executable.input_types)
+            ],
+            "inputs": list(range(len(executable.input_types))),
+            "outputs": [],
+            "x-dealiix": {
+                "execution": {
+                    "kind": "executable",
+                    "target": "local",
+                    "parallelism": {"mode": "serial"},
+                }
+            },
+        }
+    header = dict(BACKEND)
+    if config.coral:
+        with tempfile.TemporaryDirectory(prefix="mock-coral-registry-") as directory:
+            output = Path(directory) / "registry.json"
+            options = ["register", "--registry-path", str(output)]
+            if initialization is not None:
+                options.append(str(initialization))
+            invoke_coral(config.coral, options)
+            installed = read_json(output)
+        check_schema("registry", installed, "invalid_registry")
+        check_definitions({key: value for key, value in installed.items() if not key.startswith("__")})
+        definitions[CORAL_NODE] = {
+            **definitions["coral::Network"],
+            "type": CORAL_NODE,
+            "display_name": "CORAL",
+            "value": {"registry": installed},
+        }
+        header["plugins"] = [{"id": "coral"}]
+    header["registry_digest"] = definitions_digest(definitions)
+    header["operations"] = OPERATIONS
+    document = {"__backend": header, **definitions}
+    check_schema("registry", document, "invalid_registry")
+    check_definitions(definitions)
+    return document
+
+
+def check_definitions(definitions):
+    for key, definition in definitions.items():
+        arguments = definition["arguments"]
+        if definition["node_type"] != "network" and key != definition["type"]:
+            raise ContractError("invalid_registry", f"{key}: the key differs from type {definition['type']}")
+        if any(index >= len(arguments) for index in definition["inputs"] + definition["outputs"]):
+            raise ContractError("invalid_registry", f"{key}: port references a missing argument")
+        extension = definition.get("x-dealiix", {})
+        files = extension.get("files", {})
+        named = [item["argument"] for item in files.get("inputs", []) + files.get("outputs", [])
+                 if "argument" in item]
+        processes = extension.get("execution", {}).get("parallelism", {}).get("processes_from")
+        missing = sorted(set(named + ([processes] if processes else []))
+                         - {argument["name"] for argument in arguments})
+        if missing:
+            raise ContractError("invalid_registry", f"{key}: x-dealiix names missing arguments {missing}")
+
+
+def check_backend(declared, current):
+    if declared is None:
+        return
+    if declared["id"] != current["id"]:
+        raise ContractError("incompatible_backend", f"The network targets {declared['id']}, not {current['id']}")
+    if "registry_digest" in declared:
+        if declared["registry_digest"] != current["registry_digest"]:
+            raise ContractError("stale_registry",
+                                "The network was built against another registry; register again and revalidate it")
+    elif declared.get("version", current["version"]) != current["version"]:
+        raise ContractError("incompatible_backend",
+                            f"The network targets version {declared['version']}, not {current['version']}")
+
+
+def native_child(network, definitions):
+    if "backend" in network:
+        return network["backend"]["id"] == "coral"
+    # Canvas exports carry no header on a child workflow: one using types the mock does not own is CORAL's.
+    return any(node["type"] not in definitions for node in network["workflow"]["nodes"].values())
+
+
+def literal_value(node, definition):
+    kind = node["type"]
+    value = node.get("value")
+    if value is None:
+        value = definition["value"]
+    try:
+        if kind == "std::string" and "\0" not in value:
+            return value
+        if kind == "bool" and value in {"true", "false"}:
+            return value == "true"
+        if kind == "int" and re.fullmatch(r"[+-]?[0-9]+", value):
+            return int(value)
+        if kind == "double":
+            number = float(value)
+            if math.isfinite(number):
+                return number
+    except ValueError:
+        pass
+    raise ContractError("invalid_literal", f"{node['qualified_id']}: invalid {kind} value")
+
+
+def executable_arguments(workflow, node_id, definitions):
+    inputs = definitions[workflow["nodes"][node_id]["type"]]["arguments"]
+    feeds = {}
+    for edge in workflow["edges"].values():
+        if str(edge["target"]) != node_id:
+            continue
+        index = edge["target_input"]
+        if index in feeds:
+            raise ContractError("invalid_edge", f"Node {node_id}: more than one edge feeds argument {index + 1}")
+        feeds[index] = workflow["nodes"][str(edge["source"])]
+
+    arguments = []
+    for index, argument in enumerate(inputs):
+        source = feeds.get(index)
+        target = argument["type"]
+        if source is None:
+            raise ContractError("missing_argument", f"Node {node_id}: connect argument {index + 1} ({target})")
+        kind = source["type"]
+        compatible = kind == target or (
+            kind in NUMERIC_RANK and target in NUMERIC_RANK and NUMERIC_RANK[kind] < NUMERIC_RANK[target]
+        )
+        if kind not in LITERAL_TYPES or not compatible:
+            raise ContractError("invalid_edge", f"Node {node_id}: argument {index + 1} requires a {target} literal")
+        value = literal_value(source, definitions[kind])
+        if target == "bool":
+            value = "true" if value else "false"
+        elif target == "int":
+            value = int(value)
+        elif target == "double":
+            value = float(value)
+        arguments.append(str(value))
+    return arguments
+
+
+def configured_command(node, definition, config):
+    fields = {**definition["configuration"], **node.get("configuration", {})}
+    node_id = node["qualified_id"]
+
+    def value(field):
+        entry = fields.get(field)
+        if not isinstance(entry, dict) or not isinstance(entry.get("value"), str):
+            raise ContractError("invalid_configuration", f"Node {node_id}: missing config.{field}")
+        text = entry["value"]
+        if "\0" in text:
+            raise ContractError("invalid_configuration", f"Node {node_id}: config.{field} contains a NUL")
+        return text
+
+    selector = value("executable").strip()
+    registered = config.executables.get(f"mock::exec::{selector}")
+    binary = registered.command[0] if registered else shutil.which(selector)
+    if not binary:
+        raise ContractError("invalid_configuration", f"Node {node_id}: executable {selector!r} was not found")
+    try:
+        tokens = shlex.split(value("command"))
+    except ValueError as error:
+        raise ContractError("invalid_configuration", f"Node {node_id}: {error}") from error
+    if not tokens or tokens[0] not in {"config.executable", selector, binary}:
+        raise ContractError(
+            "invalid_configuration", f"Node {node_id}: command must start with config.executable or the selected executable"
+        )
+    return [
+        str(Path(binary).absolute()),
+        *(value(token.removeprefix("config.")) if token.startswith("config.") else token
+          for token in tokens[1:]),
+    ]
+
+
+def check_workflow(network, definitions, header, config, qualified_ids, native=False):
+    nodes = network["workflow"]["nodes"]
+    for key, node in nodes.items():
+        if node["qualified_id"] in qualified_ids:
+            raise ContractError("invalid_network", f"Node {key}: duplicate qualified_id {node['qualified_id']}")
+        qualified_ids.add(node["qualified_id"])
+        definition = definitions.get(node["type"])
+        if (is_child_workflow(definition)
+                or (native and node["type"] == "coral::Network")
+                or (not native and node["type"] == CORAL_NODE)):
+            child = node["value"]
+            child_native = native or node["type"] == CORAL_NODE or native_child(child, definitions)
+            child_definitions = definitions
+            if child_native:
+                if config.coral is None:
+                    raise ContractError("unconfigured_backend", "Native CORAL requires a CORAL configuration")
+                if child.get("backend", {"id": "coral"})["id"] != "coral":
+                    raise ContractError("incompatible_backend", f"Node {key}: a CORAL workflow cannot contain another backend")
+                if not native:
+                    child_definitions = definitions[CORAL_NODE]["value"]["registry"]
+            else:
+                check_backend(child.get("backend"), header)
+            check_workflow(child, child_definitions, header, config, qualified_ids, child_native)
+        elif definition is None:
+            raise ContractError("unknown_node", f"Node {key}: unsupported type {node['type']}")
+    for key, edge in network["workflow"]["edges"].items():
+        source, target = str(edge["source"]), str(edge["target"])
+        if source not in nodes or target not in nodes:
+            raise ContractError("invalid_edge", f"Edge {key}: endpoint does not exist")
+        for endpoint, port, field in ((source, "source_output", "outputs"),
+                                      (target, "target_input", "inputs")):
+            node = nodes[endpoint]
+            # A child workflow's ports are its own interface, not the generic registry entry's.
+            ports = node.get(field, []) if node.get("node_type") == "network" else definitions[node["type"]][field]
+            if edge[port] >= len(ports):
+                raise ContractError("invalid_edge", f"Edge {key}: {port} is out of range")
+    execution_order(network)
+    if not native:
+        for key, node in nodes.items():
+            if node["type"] in LITERAL_TYPES:
+                literal_value(node, definitions[node["type"]])
+            elif node["type"] == "executable":
+                configured_command(node, definitions[node["type"]], config)
+            elif node["type"] in config.executables:
+                executable_arguments(network["workflow"], key, definitions)
+
+
+def execution_order(network):
+    dependencies = {key: set() for key in network["workflow"]["nodes"]}
+    for edge in network["workflow"]["edges"].values():
+        dependencies[str(edge["target"])].add(str(edge["source"]))
+    try:
+        return list(TopologicalSorter(dependencies).static_order())
+    except CycleError as error:
+        raise ContractError("cyclic_network", "The graph contains a cycle") from error
+
+
+def marker(directory, node_id, state):
+    (directory / f"{node_id}.{state}").touch()
+
+
+def mirror_status(source, target):
+    for status in source.iterdir():
+        if STATUS_FILE.fullmatch(status.name) and not (target / status.name).exists():
+            shutil.copyfile(status, target / status.name)
+
+
+def run_native(network, coral, touch_dir, mpi_enabled):
+    with tempfile.TemporaryDirectory(prefix="mock-coral-network-") as directory:
+        if mpi_enabled:
+            plugin = network.get("plugin", {})
+            mpi = {"enabled": True, **plugin.get("MPI", {})}
+            network = {**network, "plugin": {**plugin, "MPI": mpi}}
+        path = Path(directory) / "network.json"
+        write_json(path, network)
+        # CORAL clears all status files in its touch directory at startup.
+        status = Path(directory) / "status"
+        status.mkdir()
+        with tempfile.TemporaryFile("w+", encoding="utf-8") as output:
+            process = subprocess.Popen([*coral, "run", str(path), "--touch-dir", str(status)],
+                                       stdout=output, stderr=subprocess.STDOUT)
+            while process.poll() is None:
+                mirror_status(status, touch_dir)
+                time.sleep(0.1)
+            mirror_status(status, touch_dir)
+            output.seek(0)
+            text = output.read()
+    if process.returncode:
+        raise ContractError("coral_failed", text.strip() or f"CORAL exited with status {process.returncode}")
+    if text:
+        print(text, end="", file=sys.stderr, flush=True)
+
+
+def output_dot(network, path):
+    workflow = network["workflow"]
+    lines = ["digraph network {"]
+    for key, node in workflow["nodes"].items():
+        lines.append(f'  "{key}" [label={json.dumps(node["type"])}];')
+    for edge in workflow["edges"].values():
+        lines.append(f'  "{edge["source"]}" -> "{edge["target"]}";')
+    lines.append("}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def run_local_executable(command, label):
+    try:
+        result = subprocess.run(command, check=False, stdin=subprocess.DEVNULL)
+    except OSError as error:
+        raise ContractError("executable_failed", f"{label}: {error}") from error
+    if result.returncode:
+        raise ContractError("executable_failed",
+                            f"{label} exited with status {result.returncode}")
+
+
+def run(network, definitions, config, touch_dir):
+    nodes = network["workflow"]["nodes"]
+    for key in execution_order(network):
+        node = nodes[key]
+        node_id = node["qualified_id"]
+        marker(touch_dir, node_id, "running")
+        try:
+            if is_child_workflow(definitions.get(node["type"])):
+                child = node["value"]
+                if node["type"] == CORAL_NODE or native_child(child, definitions):
+                    run_native(child, config.coral, touch_dir, config.coral_mpi)
+                else:
+                    run(child, definitions, config, touch_dir)
+            elif node["type"] == "mock::hello":
+                own = node.get("configuration", {}).get("Greeting", {}).get("value")
+                print(f"[{node_id}] {own or config.greeting}", flush=True)
+            elif node["type"] == "mock::add":
+                print(f"[{node_id}] {config.total}", flush=True)
+            elif node["type"] == "executable":
+                command = configured_command(node, definitions[node["type"]], config)
+                run_local_executable(command, node.get("name", "executable"))
+            elif node["type"] in config.executables:
+                executable = config.executables[node["type"]]
+                arguments = executable_arguments(network["workflow"], key, definitions)
+                run_local_executable([*executable.command, *arguments], executable.label)
+        except (ContractError, OSError):
+            marker(touch_dir, node_id, "failed")
+            raise
+        else:
+            marker(touch_dir, node_id, "succeeded")
+
+
+class ContractParser(argparse.ArgumentParser):
+    def error(self, message):
+        print(json.dumps({"error": {"code": "invalid_arguments", "message": message}}),
+              file=sys.stderr)
+        self.exit(2)
+
+
+def main():
+    parser = ContractParser(description=__doc__)
+    parser.add_argument("-p", "--plugin", "--configuration", type=Path,
+                        default=HERE / "parameters.json", help="Mock backend parameters JSON")
+    commands = parser.add_subparsers(dest="action", required=True)
+    probe = commands.add_parser("register", aliases=["probe"])
+    probe.add_argument("initialization", type=Path, nargs="?")
+    probe.add_argument("--registry-path", type=Path, default=Path("node_types.json"))
+    commands.add_parser("validate").add_argument("network", type=Path)
+    execute = commands.add_parser("run")
+    execute.add_argument("network", type=Path)
+    execute.add_argument("--register", nargs="?", type=Path, const=Path("node_types.json"))
+    execute.add_argument("--graph", nargs="?", const=Path("network.dot"), type=Path)
+    execute.add_argument("--touch-dir", nargs="?", const=Path("."), type=Path)
+    commands.add_parser("migrate").add_argument("network", type=Path)
+    args = parser.parse_args()
+    try:
+        if args.action == "migrate":
+            raise ContractError("unsupported_operation", "Migration is not implemented")
+        config = configuration(args.plugin)
+        initialization = getattr(args, "initialization", None)
+        if initialization is not None:
+            data = read_json(initialization)
+            if not isinstance(data, dict):
+                raise ContractError("invalid_input", "The initialization document must be an object")
+            if config.coral is None and data.get("plugin"):
+                raise ContractError("unsupported_option", "Plugin initialization requires a CORAL configuration")
+        document = registry(config, initialization)
+        if args.action in {"register", "probe"}:
+            write_json(args.registry_path, document)
+            return 0
+        header = document["__backend"]
+        definitions = {key: value for key, value in document.items() if not key.startswith("__")}
+        network = read_json(args.network)
+        check_schema("network-execution", network, "invalid_network")
+        check_backend(network.get("backend"), header)
+        check_workflow(network, definitions, header, config, set())
+        if network.get("plugin", {}).get("MPI", {}).get("enabled"):
+            raise ContractError("unsupported_option", "MPI is not supported by the mock")
+        if args.action == "validate":
+            print(json.dumps({"valid": True}))
+            return 0
+        if args.register is not None:
+            write_json(args.register, document)
+        if args.graph is not None:
+            output_dot(network, args.graph)
+        touch_dir = args.touch_dir or Path(".")
+        touch_dir.mkdir(parents=True, exist_ok=True)
+        run(network, definitions, config, touch_dir)
+        return 0
+    except ContractError as error:
+        code, message = error.code, str(error)
+    except (OSError, ValueError) as error:
+        code, message = "invalid_input", str(error)
+    print(json.dumps({"error": {"code": code, "message": message}}), file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

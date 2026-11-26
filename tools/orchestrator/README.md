@@ -181,3 +181,17 @@ Run the local CLI integration tests from the checkout.
 ```bash
 python -m unittest discover -s tools/orchestrator -v
 ```
+
+## Use the desktop frontend
+
+From a checkout with the Node dependencies installed, launch a separate Electron
+profile with the orchestrator selected in **Local + CORAL**.
+
+```bash
+npm run dev:mock -- --orchestrator-config /absolute/path/to/backend.config.json
+```
+
+Open Settings and select **Validate & Sync** to populate the palette. Configure
+each stage from its node and open each CORAL workflow using that node's plugin
+registry. Run the outer workflow from **Local + CORAL**. The Python backend
+chooses where each stage runs and owns its MPI settings and input preparation.

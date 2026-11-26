@@ -57,3 +57,6 @@ playwright-report/
 
 # step-70 executable example — track source files, ignore build output
 /examples/executables/step-70/build/
+
+# Python virtual environment for the mock backend (tools/mock-backend/README.md)
+/.venv-mock/

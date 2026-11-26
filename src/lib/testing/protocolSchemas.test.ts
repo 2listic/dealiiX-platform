@@ -24,8 +24,18 @@ const documents: [ProtocolSchema, string][] = [
   ...jsonFiles('test_files', 'network-').map(checkedBy('network')),
   ...jsonFiles('test_files', 'poisson-').map(checkedBy('network')),
   ...jsonFiles('e2e/fixtures').map(checkedBy('network')),
+  ...jsonFiles('schemas/examples', 'registry-').map(checkedBy('registry')),
+  ...jsonFiles('schemas/examples', 'network-')
+    .filter((path) => !path.endsWith('/network-execution.json'))
+    .map(checkedBy('network')),
   ['registry', 'schemas/examples/registry.json'],
   ['network-execution', 'schemas/examples/network-execution.json'],
+  ['parameters', 'tools/orchestrator/examples/backend.config.json'],
+  ['network', 'tools/orchestrator/examples/network.json'],
+  ['registry', 'tools/mock-backend/registry.json'],
+  ['parameters', 'tools/mock-backend/parameters.json'],
+  ['network-execution', 'tools/mock-backend/network.json'],
+  ['network-execution', 'tools/mock-backend/network-coral.json'],
 ]
 
 describe('protocol schemas', () => {

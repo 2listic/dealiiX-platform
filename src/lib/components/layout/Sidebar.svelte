@@ -12,6 +12,7 @@
     type NodeDefinitions,
     type SubGraphNodeDefinition,
   } from '../../types/nodeTypes'
+  import { embeddedRegistry } from '../../registry/registryValidator'
   import { returnNodeName } from '../../graph/canvasNodeUtils'
   import {
     buildNodePalette,
@@ -30,7 +31,11 @@
   let searchQuery = $state('')
   const filteredAvailableNodes = $derived(
     availableNodes?.filter((node) => {
-      if (HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)) return false
+      if (
+        HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
+        !embeddedRegistry(node)
+      )
+        return false
       const query = searchQuery.toLowerCase()
       return [
         node.type,

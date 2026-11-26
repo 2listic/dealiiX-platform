@@ -17,6 +17,9 @@ import {
   isOverloadNodeDefinition,
   isTypeCompatible,
   NodeType,
+  ORCHESTRATOR_FILE_NODES,
+  Type,
+  TypeField,
 } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { edgeHandle, handleIdToIndex, parameterHandlePath } from './handleIds'
@@ -46,13 +49,27 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   console.log('nodes', nodes)
   console.log('edges', edges)
 
-  // Check if the target handle is already connected
+  const targetNode = nodes.find((node) => node.id === connection.target)
+  if (!targetNode) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
+
+  // A stage's file input accepts multiple declarations. Each file has one producer.
   if (
     isTargetHandleConnected(
       edges,
       connection.target,
       connection.targetHandle as string
-    )
+    ) &&
+    (!acceptsMultipleFiles(targetNode, connection.targetHandle as string) ||
+      edges.some(
+        (edge) =>
+          edge.target === connection.target &&
+          edge.targetHandle === connection.targetHandle &&
+          edge.source === connection.source &&
+          edge.sourceHandle === connection.sourceHandle
+      ))
   ) {
     console.warn(
       `Handle ${connection.targetHandle} on node ${connection.target} already connected`
@@ -70,12 +87,6 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   }
 
   // Resolve the expected input type and the source's output type
-  const targetNode = nodes.find((node) => node.id === connection.target)
-  if (!targetNode) {
-    connectionCache.set(cacheKey, false)
-    return false
-  }
-
   const targetHandle = connection.targetHandle as string
   const sourceHandle = connection.sourceHandle as string
   const targetParameter = parameterHandlePath(targetHandle)
@@ -229,5 +240,17 @@ const isTargetHandleConnected = (
   handleId: string
 ): boolean =>
   edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
+
+/**
+ * Checks whether the port accepts multiple file declarations.
+ * @param node - Canvas node declaring the port.
+ * @param handle - Input handle id.
+ * @returns True for an orchestrator stage's file input.
+ */
+export const acceptsMultipleFiles = (node: Node, handle: string): boolean =>
+  typeof node.data.type === 'string' &&
+  !ORCHESTRATOR_FILE_NODES.has(node.data.type) &&
+  node.data.type !== TypeField.ORCHESTRATOR_TRANSFER &&
+  getInputTypeAndName(node, handle)?.connectionType === Type.ORCHESTRATOR_FILE
 
 export { isValidConnection, clearConnectionCache, isTargetHandleConnected }

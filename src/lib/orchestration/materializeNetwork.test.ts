@@ -62,8 +62,13 @@ const {
   materializeNetwork,
   validateParameterBindings,
 } = await import('./materializeNetwork')
-const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
-  await import('../graph/graphParser')
+const {
+  addQualifiedIds,
+  edgesFromProtocolToFlow,
+  nodesFromProtocolToFlow,
+  parseGraphWithQualifiedIds,
+  validateGraphData,
+} = await import('../graph/graphParser')
 const { createNetworkNodeDefinition } = await import('../graph/networkNode')
 const { parameterHandle } = await import('../graph/handleIds')
 const { protocolErrors } = await import('../testing/protocolSchemas')
@@ -168,6 +173,13 @@ beforeAll(async () => {
         inputs: [0],
         outputs: [],
       },
+      executable: {
+        type: 'executable',
+        node_type: 'void_function',
+        arguments: [],
+        inputs: [],
+        outputs: [],
+      },
     },
     'remote'
   )
@@ -228,6 +240,53 @@ describe('parameter materialization at submit', () => {
     expect(JSON.stringify(result)).not.toMatch(
       /parameter_file|source_handle|target_handle/
     )
+  })
+
+  it('round-trips and materializes an inline parameter that is both input and output', async () => {
+    const path = ['arg1']
+    const configuration = {
+      arg1: {
+        value: '0.0',
+        default_value: '0.0',
+        documentation: '',
+        pattern: '[Double]',
+        pattern_description: '[Double]',
+      },
+    }
+    const graph = network(
+      {
+        '0': {
+          type: 'executable',
+          configuration,
+          configuration_exposures: {
+            exposures: [exposure(path, 'double', 'both')],
+          },
+        },
+        '1': literal('double', '2.5'),
+        '2': { type: 'consume_double' },
+      },
+      [connect(1, 0, 0, path), connect(0, path, 2, 0)]
+    )
+    expect(validateGraphData(graph)[1]).toEqual([])
+    const saved = parseGraphWithQualifiedIds(
+      nodesFromProtocolToFlow(graph.workflow.nodes),
+      edgesFromProtocolToFlow(graph.workflow.edges)
+    )
+    expect(saved.workflow.nodes['0']).toMatchObject(graph.workflow.nodes['0'])
+    const result = await materialize(saved)
+    expect(result.workflow.nodes['0']).toMatchObject({
+      configuration: { arg1: { value: '2.5' } },
+    })
+    expect(result.workflow.nodes['0']).not.toHaveProperty(
+      'configuration_exposures'
+    )
+    expect(result.workflow.nodes['3']).toMatchObject({
+      type: 'double',
+      value: '2.5',
+    })
+    expect(edgesOf(result)).toEqual([connect(3, 0, 2, 0)])
+    expect(configuration.arg1.value).toBe('0.0')
+    expect(files.size).toBe(0)
   })
 
   it('runs a marked node with no exposures on a copy of its file', async () => {

@@ -42,6 +42,7 @@
   import {
     clearConnectionCache,
     isValidConnection,
+    acceptsMultipleFiles,
     isTargetHandleConnected,
   } from '../graph/connectionsValidation'
   import { onDragOver, onDrop } from '../graph/dragAndDrop'
@@ -255,9 +256,10 @@
       return
     }
 
-    // Guard: target handles only accept one incoming edge.
+    // Guard: ordinary target handles only accept one incoming edge.
     if (
       connectStartParams.handleType === 'target' &&
+      !acceptsMultipleFiles(node, connectStartParams.handleId as string) &&
       isTargetHandleConnected(
         getEdgesSnapshot(),
         node.id,

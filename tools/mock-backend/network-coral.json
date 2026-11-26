@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "backend": {
+    "id": "dealiix.mock",
+    "version": "1"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "mock::hello",
+        "qualified_id": "0"
+      },
+      "1": {
+        "type": "network::coral",
+        "node_type": "network",
+        "name": "Real CORAL example",
+        "qualified_id": "1",
+        "arguments": [],
+        "inputs": [],
+        "outputs": [],
+        "value": {
+          "backend": {
+            "id": "coral"
+          },
+          "workflow": {
+            "nodes": {
+              "0": {
+                "type": "std::string",
+                "value": "Hello from CORAL",
+                "qualified_id": "1_0"
+              }
+            },
+            "edges": {}
+          }
+        }
+      }
+    },
+    "edges": {}
+  }
+}

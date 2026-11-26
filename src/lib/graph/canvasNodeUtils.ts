@@ -1,3 +1,8 @@
+import {
+  embeddedRegistry,
+  registryBackend,
+} from '../registry/registryValidator'
+import { buildExportMeta } from './exportMeta'
 /**
  * Utilities for creating and connecting nodes on the canvas.
  * Handles the drag-to-connect flow: resolving compatible node types,
@@ -11,6 +16,7 @@ import {
   isOverloadNodeDefinition,
   isTypeCompatible,
   NodeType,
+  ORCHESTRATOR_FILE_NODES,
   SELF,
   type Argument,
   type NodeDefinitions,
@@ -19,6 +25,7 @@ import {
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 import { handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
+  parameterAtPath,
   parameterExposureForHandle,
   parameterPathLabel,
   parameterPortCoralType,
@@ -129,6 +136,27 @@ const cloneNodeDefinition = (
       })),
     }),
   } as NodeDefinitions
+
+  const childRegistry =
+    cloned.node_type === 'network'
+      ? embeddedRegistry(cloned as StandardNodeDefinition)
+      : undefined
+  if (
+    childRegistry ||
+    (cloned.type === 'network::coral' && cloned.node_type === 'network')
+  ) {
+    return {
+      ...cloned,
+      name: cloned.name ?? (childRegistry ? cloned.type : 'CORAL'),
+      value: {
+        backend: (childRegistry && registryBackend(childRegistry)) || {
+          id: 'coral',
+        },
+        workflow: { nodes: {}, edges: {} },
+        ...buildExportMeta(),
+      },
+    }
+  }
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
     // Stored network nodes keep an embedded graph that is not needed on-canvas.
@@ -349,6 +377,12 @@ export const getInputTypeAndName = (
  */
 export const returnNodeName = (node: NodeDefinitions): string => {
   if (node.name) return formatSuggestedNodeName(node.name)
+
+  if (ORCHESTRATOR_FILE_NODES.has(node.type) && 'configuration' in node) {
+    const path =
+      node.configuration && parameterAtPath(node.configuration, ['path'])?.value
+    if (path) return path
+  }
 
   if (node.node_type !== NodeType.NETWORK) {
     if (isOverloadNodeDefinition(node)) {

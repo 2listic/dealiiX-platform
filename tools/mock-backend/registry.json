@@ -1,0 +1,148 @@
+{
+  "mock::hello": {
+    "type": "mock::hello",
+    "node_type": "void_function",
+    "display_name": "Say hello",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [],
+    "configuration": {
+      "Greeting": {
+        "value": "",
+        "default_value": "",
+        "documentation": "Message printed by this node. Empty prints Mock.Greeting.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "x-dealiix": {
+      "actions": ["configure"],
+      "execution": {
+        "kind": "in_process",
+        "target": "local",
+        "parallelism": {
+          "mode": "serial"
+        }
+      }
+    }
+  },
+  "mock::add": {
+    "type": "mock::add",
+    "node_type": "void_function",
+    "display_name": "Add integers",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [],
+    "x-dealiix": {
+      "execution": {
+        "kind": "in_process",
+        "target": "local",
+        "parallelism": {
+          "mode": "serial"
+        }
+      }
+    }
+  },
+  "coral::Network": {
+    "type": "coral::Network",
+    "node_type": "network",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [],
+    "value": {},
+    "x-dealiix": {
+      "actions": ["open_child_workflow"],
+      "execution": {
+        "kind": "child_workflow",
+        "target": "local"
+      }
+    }
+  },
+  "std::string": {
+    "type": "std::string",
+    "node_type": "elementary_constructor",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [-1],
+    "value": ""
+  },
+  "int": {
+    "type": "int",
+    "node_type": "elementary_constructor",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [-1],
+    "value": "0"
+  },
+  "double": {
+    "type": "double",
+    "node_type": "elementary_constructor",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [-1],
+    "value": "0.0"
+  },
+  "bool": {
+    "type": "bool",
+    "node_type": "elementary_constructor",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [-1],
+    "value": "false"
+  },
+  "executable": {
+    "type": "executable",
+    "display_name": "executable",
+    "node_type": "void_function",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [],
+    "configuration": {
+      "executable": {
+        "value": "/usr/bin/printf",
+        "default_value": "/usr/bin/printf",
+        "documentation": "Absolute path, name on PATH, or id from the backend Executables configuration.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      },
+      "command": {
+        "value": "config.executable '%s\\n' --arg1 config.arg1 arg2 ACTION arg3",
+        "default_value": "config.executable '%s\\n' --arg1 config.arg1 arg2 ACTION arg3",
+        "documentation": "Command template. A config.NAME token inserts that field as one argument.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      },
+      "arg1": {
+        "value": "two words",
+        "default_value": "two words",
+        "documentation": "Example argument referred to by config.arg1.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      },
+      "arg2": {
+        "value": "second value",
+        "default_value": "second value",
+        "documentation": "Optional template argument referred to by config.arg2.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      },
+      "arg3": {
+        "value": "third value",
+        "default_value": "third value",
+        "documentation": "Optional template argument referred to by config.arg3.",
+        "pattern": "[Anything]",
+        "pattern_description": "[Anything]"
+      }
+    },
+    "x-dealiix": {
+      "actions": ["configure"],
+      "execution": {
+        "kind": "executable",
+        "target": "local",
+        "parallelism": {
+          "mode": "serial"
+        }
+      }
+    }
+  }
+}

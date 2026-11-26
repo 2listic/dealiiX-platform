@@ -1,109 +1,68 @@
-# Protocol v1
+# Protocol schemas
 
-This snapshot specifies the document shapes used by CORAL and Platform at the
-time of the freeze. coral-python reads the same flat registry and graph shapes, without nested
-subnetworks. A new backend can use the schemas and fixtures as a
-reference. Any future format will replace this snapshot without requiring
-two active protocols.
+JSON Schemas (draft 2020-12) for the documents the editor and a backend exchange. Each schema's `$id` lies under `https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/`, and references between the schemas resolve against it.
 
-| Schema                                                         | Document                                                  |
-| -------------------------------------------------------------- | --------------------------------------------------------- |
-| [registry.schema.json](registry.schema.json)                   | Flat node registry, keyed by type                         |
-| [network.schema.json](network.schema.json)                     | Graph saved by the editor                                 |
-| [network-execution.schema.json](network-execution.schema.json) | Graph Platform submits after resolving parameter bindings |
-| [parameters.schema.json](parameters.schema.json)               | Full deal.II-style JSON parameter tree                    |
-| [common.schema.json](common.schema.json)                       | Shared schema definitions                                 |
+| Schema                                                         | Document                                                                 |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [common.schema.json](common.schema.json)                       | Definitions the other schemas share                                      |
+| [parameters.schema.json](parameters.schema.json)               | A parameter tree: a backend's configuration, or a node's `configuration` |
+| [registry.schema.json](registry.schema.json)                   | The node definitions a backend offers                                    |
+| [network.schema.json](network.schema.json)                     | A workflow as the editor saves it                                        |
+| [network-execution.schema.json](network-execution.schema.json) | A workflow as a backend validates and runs it                            |
 
-## Register a backend
+[examples/](examples) holds a registry of executables with file inputs and outputs, a network built against it, and a stored CORAL network node. [tools/mock-backend](../tools/mock-backend) implements the backend side, and its tests check every example.
 
-Platform uses its configured backend command for **Validate & Sync** in
-CORAL mode. The command runs in the target's working directory, locally or
-over SSH.
+## Responsibilities
 
-```sh
-cd "$working_directory"
-"$backend_binary" -p "$plugin_setting" register
-```
+- **Backend:** owns its configuration, discovery, invocation, MPI, scheduling and file placement. It publishes a registry, validates a workflow against its current registry and configuration, runs it, and writes a status file per node.
+- **Registry:** describes each node's ports, and in `x-dealiix` how the node runs, which files it reads and writes, and which editor actions it supports.
+- **Network:** holds node instances with their values and configuration, and edges between ports.
+- **Editor:** builds a network from the registry, checks graph structure and port compatibility, materializes parameter files, and submits the execution form.
 
-On success, the command exits with status zero and writes `node_types.json`
-in that directory. Platform reads that file to build the node palette.
-`plugin_setting` is the configured CLI argument. Its interpretation belongs
-to the backend.
+## Parameters
 
-## Registry and backend identity
+A tree of sections whose leaves are deal.II entries in full JSON form: `value`, `default_value`, `documentation`, `pattern` and `pattern_description` (all strings), and optionally `actions`. `__extra` marks an entry the user added in the editor; it is removed when the file is written. deal.II alias entries and its compressed `Short` JSON form are outside this tree.
 
-CORAL's `register` command emits a flat registry. A node definition contains
-`type`, `node_type`, `arguments`, `inputs` and `outputs`. The latter two map
-port positions to argument indices, with `-1` in `outputs` denoting SELF. Metadata
-such as `bases` and `overload_group` comes from the registry producer.
+## Registry
 
-The sole new protocol field is a logical backend identity. The same shape is
-used as `__backend` in the registry and `backend` at the top of a graph:
+A flat object keyed by `type`; a library of stored network nodes is keyed by `name`. `inputs` and `outputs` hold indices into `arguments`, one per port, and an output of `-1` is the node itself. `node_type` is a rendering hint only. Literal defaults in `value` are strings. A stored subnetwork definition has a workflow in `value`, or `{}` for the generic `coral::Network` entry. A backend node such as `network::coral` publishes its child registry in `value.registry`. The parent backend discovers it with the configured CORAL plugin. The child definitions stay scoped to that node and the editor uses them when opening its workflow. A placed node's `value` contains its editable workflow, so saved and submitted networks do not duplicate registry definitions.
 
-```json
-{ "id": "coral", "plugin": "dealii" }
-```
+Keys starting with `__` carry metadata:
 
-`id` identifies the backend. `plugin` identifies its plugin when relevant.
-Both exclude installation paths. The header is optional because existing
-CORAL and Platform emitters produce documents without it. The pinned CORAL
-executable selects the plugin library from its CLI settings and does not
-enforce this header. CORAL's top-level `plugin` object holds initialization
-options and has a separate purpose.
+- `__backend`: the backend's `id`, `version` and `plugins`, the `operations` it supports (`register`, `validate`, `run`, and `migrate` when it can upgrade an older network), and `registry_digest`. The digest is the SHA-256 of every definition, the `__` keys excluded, serialized as JSON with sorted keys, no whitespace and UTF-8 text, written `sha256:<hex>`.
+- `__backend_name`: the name CORAL writes when its registry header is switched on.
 
-Platform reads `id` and `plugin` from `__backend` and ignores any other key.
-**Validate & Sync** reports a header whose `id` or `plugin` is not a logical
-identifier, and does not use it. CORAL can also write its backend name as a
-string under `__backend_name`; Platform keeps both keys out of the node
-palette.
+A definition may also carry:
 
-On save, export and submission, Platform writes the identity of the selected
-location's synced registry and replaces the identity an imported graph carried.
-No component compares identities yet: a graph built against an older registry
-is not detected as stale, and a backend runs a submission whatever identity it
-carries.
+- `configuration`: a parameter tree that is the template of each instance's own `configuration`.
+- `x-dealiix` (draft):
+  - `actions`: `open_child_workflow` (the editor can enter the node's workflow) and `configure` (the editor can edit its `configuration`).
+  - `execution`: `kind` (`in_process`, `executable` or `child_workflow`), `target` (`local`, `remote` or `any`), `parallelism` (`mode` `serial` or `mpi`, with a fixed `processes` count or the input argument `processes_from` that holds it) and `run_policy` (`always` or `if_outputs_missing_or_inputs_changed`).
+  - `files`: `inputs` and `outputs`, each naming an argument whose value is a file path (an output may name a `path` in the run directory instead), with its `media_type`, an optional `role`, and `required` or `must_exist_after_success`.
 
-## Saved and submitted graphs
+## Network
 
-Use the saved-graph schema to validate files produced by **Download Graph**.
-Use the execution-graph schema to validate the JSON that Platform supplies
-as the graph argument to `run`.
+A workflow is `workflow.nodes` and `workflow.edges`, both keyed by decimal ids, with optional `version` (always 1), `author`, `date_time_utc`, `plugin` and `backend`.
 
-A graph contains `workflow.nodes` and `workflow.edges` keyed by decimal IDs.
-The wire uses numeric node IDs and port positions. A saved graph can also use
-named editor handles for parameters exposed from a file. The editor resolves
-them into effective run parameters and numeric edges before submitting. In the
-submitted form, each node has a qualified identifier for status markers and
-each edge has both numeric port positions. File exposure metadata is absent.
-An elementary literal uses text on the CORAL wire. Omit its `value` when there
-is no literal to pass. The saved form also accepts `value: null` for such a
-literal, as coral-python's own graphs write it; the submitted form does not,
-since CORAL rejects any non-text literal value, and coral-python accepts the
-omitted `value` as well.
+- **Nodes.** `type` names a registry definition. A literal's `value` is its text, or `null` for a valueless literal. A node whose `node_type` is `network` carries a nested workflow in `value` and its own `arguments`, `inputs` and `outputs`; a `coral::Network` node always has `node_type` `network`. `configuration` is the instance's parameter tree. `qualified_id` is `<parent>_<child>` for nested nodes, and never contains `.`, `/` or `\`, since it names the node's status files. A node may repeat registry metadata such as `class_name`; CORAL then requires it to equal the registry's value.
+- **Edges.** `source_output` is a position in the source's `outputs` and `target_input` a position in the target's `inputs`. In a saved network, a parameter port is connected by handle instead: `source_handle` is `parameter-output-` and `target_handle` is `parameter-input-`, each followed by the URI-encoded JSON array of the parameter's path. Each end uses exactly one of the two forms.
+- **Execution form.** At every level, each node has a `qualified_id` and each edge uses both port positions. The saved form keeps typed parameter ports under `parameter_file` for file nodes and `configuration_exposures` for inline configurations. Materialization applies bound inputs to the run copy of the file or to the submitted `configuration`, turns used parameter outputs into literals, and drops both kinds of editor metadata.
+- **`plugin`** is passed to the backend plugin unchanged. CORAL reads `MPI.enabled`; the deal.II plugin also reads `MPI.args` and `MPI.max_num_threads`.
+- **`backend`** names the backend the network targets: `id`, and `version`, `plugins` or `registry_digest`. On save, export and submission, the editor writes the `__backend` header of the active location's registry, without `operations`. A nested workflow may carry its own header to name the backend that runs it, e.g. `{"id": "coral"}`.
 
-A CORAL subnetwork stores its workflow in `value`. A saved node can carry its
-explicit interface through `arguments`, `inputs` and `outputs`. CORAL derives the
-interface when no override is supplied. Registry membership, port index
-bounds and type compatibility, uniqueness of qualified identifiers, and
-acyclicity require semantic checks in addition to JSON Schema validation.
+## Validation
 
-## Parameter files
+The schemas check structure and value types. The backend also checks, before running anything:
 
-The parameter schema describes sections and leaves of deal.II's full JSON
-format. A leaf contains string values, defaults, documentation and pattern
-metadata. Platform strips its editor-only `__extra` marks before writing a
-parameter file.
+- every node type is in its registry, and every edge endpoint and port exists;
+- every `qualified_id` is unique across all levels;
+- the workflow has no cycle;
+- the `backend` header matches it: the same `id`, and the current `registry_digest` when one is given, else the same `version`;
+- its own configuration, e.g. the mock's `Mock` section.
 
-## Examples and validation
+It reports a failure as `{"error": {"code": "...", "message": "..."}}` on stderr with a nonzero exit status. A network whose `registry_digest` differs from the backend's current one fails with `stale_registry`; syncing the registry again in the editor writes the new header on the next save or submission.
 
-Load the schema files together in a Draft 2020-12 validator. Use their
-declared `$id` values so that references to sibling schemas resolve within
-the same snapshot.
+The two current backends read the execution form as follows:
 
-A small producer/consumer pair is shown in [registry.json](examples/registry.json)
-and [network-execution.json](examples/network-execution.json). The actual
-Platform fixtures under [examples/graphs](../examples/graphs) and
-[examples/parameters](../examples/parameters) illustrate the saved form. The
-v1 snapshot covers these existing formats and the identity header. Child
-registries, execution capabilities, configurable executable nodes, and
-changes to port representation remain design work.
+- **CORAL** ignores top-level keys other than `workflow` and `plugin`, requires both port positions on every edge, and generates a `qualified_id` for a node without one.
+- **coral-python** requires a `qualified_id` on every node, accepts `null` for a valueless literal, and rejects nested workflows.

@@ -137,21 +137,28 @@ export const parameterExposureArgument = (
   type: parameterPortCoralType(exposure.type),
 })
 
+/** Reads the same port definitions for an inline configuration or a file. */
+export const nodeParameterExposures = (
+  data: Pick<
+    StandardNodeDefinition,
+    'parameter_file' | 'configuration_exposures'
+  >
+): ParameterExposure[] =>
+  normalizeParameterExposures(
+    (data.configuration_exposures ?? data.parameter_file)?.exposures
+  )
+
 /** Returns the virtual inputs of a parameter-file node in persisted order. */
 export const parameterInputExposures = (
   data: StandardNodeDefinition
 ): ParameterExposure[] =>
-  normalizeParameterExposures(data.parameter_file?.exposures).filter(
-    (exposure) => exposure.input
-  )
+  nodeParameterExposures(data).filter((exposure) => exposure.input)
 
 /** Returns the virtual outputs of a parameter-file node in persisted order. */
 export const parameterOutputExposures = (
   data: StandardNodeDefinition
 ): ParameterExposure[] =>
-  normalizeParameterExposures(data.parameter_file?.exposures).filter(
-    (exposure) => exposure.output
-  )
+  nodeParameterExposures(data).filter((exposure) => exposure.output)
 
 /**
  * Groups exposures by their section (every path segment but the last), in

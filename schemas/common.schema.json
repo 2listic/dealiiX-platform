@@ -5,7 +5,7 @@
   "description": "Definitions shared by the registry and network schemas.",
   "$defs": {
     "nodeType": {
-      "description": "Node category from the registry. The editor uses it for rendering. Backends identify a node by its `type`; CORAL only checks that a node's `node_type`, when given, equals its registry entry's.",
+      "description": "Rendering hint for a node. Backends identify a node by its `type`, never by `node_type`.",
       "enum": [
         "elementary_constructor",
         "primitive",
@@ -151,20 +151,86 @@
       }
     },
     "backendIdentity": {
-      "description": "Logical identity of the backend and, where needed, its plugin. These are identifiers, not installation paths.",
+      "description": "Names a backend and its plugins independently of installation paths.",
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          "minLength": 1
         },
         "plugin": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["id"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["id"]
+    },
+    "registryDigest": {
+      "description": "SHA-256 of the registry's node definitions: every key not starting with `__`, serialized as JSON with sorted keys, no whitespace and UTF-8 text.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registryBackend": {
+      "description": "Header a backend writes under the registry's `__backend` key.",
+      "$ref": "#/$defs/backendIdentity",
+      "properties": {
+        "configuration": { "$ref": "parameters.schema.json" },
+        "capabilities": { "$ref": "registry.schema.json#/$defs/capabilities" },
+        "registry_digest": {
+          "$ref": "#/$defs/registryDigest"
+        },
+        "operations": {
+          "description": "Operations the backend supports. A backend that lists `migrate` can upgrade a network built against an older registry.",
+          "type": "array",
+          "items": {
+            "enum": ["register", "validate", "run", "migrate"]
+          },
+          "uniqueItems": true
         }
       },
       "required": ["id"],
-      "additionalProperties": false
+      "if": {
+        "anyOf": [
+          { "required": ["version"] },
+          { "required": ["operations"] },
+          { "required": ["plugins"] },
+          { "required": ["registry_digest"] }
+        ]
+      },
+      "then": { "required": ["version", "registry_digest", "operations"] },
+      "unevaluatedProperties": false
+    },
+    "networkBackend": {
+      "description": "Header naming the backend a network targets. With `registry_digest`, the backend rejects the network as stale when its current registry differs; without it, `version` must match when given.",
+      "$ref": "#/$defs/backendIdentity",
+      "properties": {
+        "registry_digest": {
+          "$ref": "#/$defs/registryDigest"
+        }
+      },
+      "unevaluatedProperties": false
     }
   }
 }

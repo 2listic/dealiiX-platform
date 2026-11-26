@@ -27,7 +27,10 @@
     "node": {
       "required": ["qualified_id"],
       "not": {
-        "required": ["parameter_file"]
+        "anyOf": [
+          { "required": ["parameter_file"] },
+          { "required": ["configuration_exposures"] }
+        ]
       },
       "if": {
         "properties": {
@@ -41,13 +44,6 @@
         "properties": {
           "value": {
             "$ref": "#/$defs/network"
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "value": {
-            "type": "string"
           }
         }
       }

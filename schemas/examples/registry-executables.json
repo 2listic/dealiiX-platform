@@ -1,0 +1,193 @@
+{
+  "__backend": {
+    "id": "dealiix.orchestrator",
+    "version": "0.1",
+    "registry_digest": "sha256:a96ac18e843c512b43bc5ed0e23c7674f8b0dce9f085331b3645368565197cbf",
+    "operations": ["register", "validate", "run"]
+  },
+  "std::string": {
+    "arguments": [],
+    "inputs": [],
+    "node_type": "elementary_constructor",
+    "outputs": [-1],
+    "type": "std::string",
+    "value": ""
+  },
+  "unsigned int": {
+    "arguments": [],
+    "inputs": [],
+    "node_type": "elementary_constructor",
+    "outputs": [-1],
+    "type": "unsigned int",
+    "value": "0"
+  },
+  "double": {
+    "arguments": [],
+    "inputs": [],
+    "node_type": "elementary_constructor",
+    "outputs": [-1],
+    "type": "double",
+    "value": "0.0"
+  },
+  "demo::generate_parameters": {
+    "arguments": [
+      {
+        "connection_type": "pass_through",
+        "name": "output_file",
+        "type": "std::string"
+      },
+      { "connection_type": "input", "name": "degree", "type": "unsigned int" },
+      { "connection_type": "input", "name": "tolerance", "type": "double" }
+    ],
+    "inputs": [0, 1, 2],
+    "node_type": "void_function",
+    "outputs": [0],
+    "type": "demo::generate_parameters",
+    "x-dealiix": {
+      "execution": {
+        "kind": "executable",
+        "target": "local",
+        "parallelism": { "mode": "serial" },
+        "run_policy": "if_outputs_missing_or_inputs_changed"
+      },
+      "files": {
+        "outputs": [
+          {
+            "argument": "output_file",
+            "media_type": "application/vnd.dealii.prm",
+            "role": "parameter_file"
+          }
+        ]
+      }
+    }
+  },
+  "demo::serial_solver": {
+    "arguments": [
+      {
+        "connection_type": "input",
+        "name": "mesh_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "materials_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "parameter_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "pass_through",
+        "name": "solution_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "pass_through",
+        "name": "residuals_file",
+        "type": "std::string"
+      }
+    ],
+    "inputs": [0, 1, 2, 3, 4],
+    "node_type": "void_function",
+    "outputs": [3, 4],
+    "type": "demo::serial_solver",
+    "x-dealiix": {
+      "execution": {
+        "kind": "executable",
+        "target": "local",
+        "parallelism": { "mode": "serial", "processes": 1 },
+        "run_policy": "if_outputs_missing_or_inputs_changed"
+      },
+      "files": {
+        "inputs": [
+          {
+            "argument": "mesh_file",
+            "media_type": "application/vnd.demo.mesh"
+          },
+          { "argument": "materials_file", "media_type": "text/csv" },
+          {
+            "argument": "parameter_file",
+            "media_type": "application/vnd.dealii.prm",
+            "role": "parameter_file"
+          }
+        ],
+        "outputs": [
+          {
+            "argument": "solution_file",
+            "media_type": "application/vnd.demo.vtu"
+          },
+          { "argument": "residuals_file", "media_type": "text/csv" }
+        ]
+      }
+    }
+  },
+  "demo::parallel_solver": {
+    "arguments": [
+      {
+        "connection_type": "input",
+        "name": "mesh_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "loads_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "parameter_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "input",
+        "name": "processes",
+        "type": "unsigned int"
+      },
+      {
+        "connection_type": "pass_through",
+        "name": "solution_file",
+        "type": "std::string"
+      },
+      {
+        "connection_type": "pass_through",
+        "name": "timings_file",
+        "type": "std::string"
+      }
+    ],
+    "inputs": [0, 1, 2, 3, 4, 5],
+    "node_type": "void_function",
+    "outputs": [4, 5],
+    "type": "demo::parallel_solver",
+    "x-dealiix": {
+      "execution": {
+        "kind": "executable",
+        "target": "remote",
+        "parallelism": { "mode": "mpi", "processes_from": "processes" },
+        "run_policy": "if_outputs_missing_or_inputs_changed"
+      },
+      "files": {
+        "inputs": [
+          {
+            "argument": "mesh_file",
+            "media_type": "application/vnd.demo.mesh"
+          },
+          { "argument": "loads_file", "media_type": "text/csv" },
+          {
+            "argument": "parameter_file",
+            "media_type": "application/vnd.dealii.prm",
+            "role": "parameter_file"
+          }
+        ],
+        "outputs": [
+          {
+            "argument": "solution_file",
+            "media_type": "application/vnd.demo.pvtu"
+          },
+          { "argument": "timings_file", "media_type": "text/csv" }
+        ]
+      }
+    }
+  }
+}
