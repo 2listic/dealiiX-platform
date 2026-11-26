@@ -1,0 +1,12 @@
+{
+  "backend": { "id": "protocol-test-mock" },
+  "workflow": {
+    "nodes": {
+      "0": { "type": "std::string", "value": "hello", "qualified_id": "0" },
+      "1": { "type": "mock::sink", "qualified_id": "1" }
+    },
+    "edges": {
+      "0": { "source": 0, "source_output": 0, "target": 1, "target_input": 0 }
+    }
+  }
+}

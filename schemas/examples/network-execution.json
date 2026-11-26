@@ -1,0 +1,16 @@
+{
+  "backend": {
+    "id": "coral",
+    "plugin": "dealii"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "std::string",
+        "value": "hello",
+        "qualified_id": "0"
+      }
+    },
+    "edges": {}
+  }
+}

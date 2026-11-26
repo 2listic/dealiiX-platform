@@ -66,6 +66,7 @@ const { addQualifiedIds, edgesFromProtocolToFlow, nodesFromProtocolToFlow } =
   await import('../graph/graphParser')
 const { createNetworkNodeDefinition } = await import('../graph/networkNode')
 const { parameterHandle } = await import('../graph/handleIds')
+const { protocolErrors } = await import('../testing/protocolSchemas')
 const { addNetworkNode, getNodeData, mergeRegistry, removeNetworkNode } =
   await import('../stores/registryStore.svelte')
 
@@ -73,13 +74,21 @@ type Nodes = Network['workflow']['nodes']
 
 const RUN = '/run'
 
-/** Materializes a submitted graph (saved form, qualified ids) into `/run`. */
-const materialize = async (network: Network): Promise<QualifiedNetwork> =>
-  (await materializeNetwork(addQualifiedIds(network), {
+/**
+ * Materializes a submitted graph (saved form, qualified ids) into `/run`, and
+ * checks both forms against the protocol schemas.
+ */
+const materialize = async (network: Network): Promise<QualifiedNetwork> => {
+  const submitted = addQualifiedIds(network)
+  expect(protocolErrors('network', submitted)).toEqual([])
+  const result = (await materializeNetwork(submitted, {
     location: 'remote',
     copyDirectory: RUN,
     definitionOf: getNodeData,
   })) as QualifiedNetwork
+  expect(protocolErrors('network-execution', result)).toEqual([])
+  return result
+}
 
 const network = (nodes: Nodes, edges: NetworkEdge[] = []): Network =>
   ({

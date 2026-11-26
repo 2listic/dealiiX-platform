@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/parameters.schema.json",
+  "title": "parameters",
+  "description": "The parameter tree the editor reads and writes: sections of entries in deal.II's full JSON form, every value a string. deal.II alias entries and its compressed `Short` JSON form are outside this tree.",
+  "$ref": "#/$defs/tree",
+  "$defs": {
+    "tree": {
+      "type": "object",
+      "properties": {
+        "__extra": {
+          "$ref": "#/$defs/extra"
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/leaf"
+          },
+          {
+            "$ref": "#/$defs/tree"
+          }
+        ]
+      }
+    },
+    "leaf": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "default_value": {
+          "type": "string"
+        },
+        "documentation": {
+          "type": "string"
+        },
+        "pattern": {
+          "description": "deal.II pattern description, e.g. `[Integer range 0...10 (inclusive)]`.",
+          "type": "string"
+        },
+        "pattern_description": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "string"
+        },
+        "__extra": {
+          "$ref": "#/$defs/extra"
+        }
+      },
+      "required": [
+        "value",
+        "default_value",
+        "documentation",
+        "pattern",
+        "pattern_description"
+      ],
+      "additionalProperties": false
+    },
+    "extra": {
+      "description": "Editor flag for a user-added entry or section; removed when the file is written.",
+      "type": "boolean"
+    }
+  }
+}

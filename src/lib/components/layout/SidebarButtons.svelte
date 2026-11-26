@@ -6,7 +6,10 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import { mergeRegistry } from '../../stores/registryStore.svelte'
+  import {
+    getRegistryBackend,
+    mergeRegistry,
+  } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../graph/graphParser'
   import {
     mergeParametersFromFile,
@@ -158,7 +161,8 @@
       const graph = buildGraphPayload(
         getNodesSnapshot(),
         getEdgesSnapshot(),
-        false
+        false,
+        getRegistryBackend(executionSelectionState.location)
       )
       pipelineState.addCoralStage({
         name: currentProjectState.name || 'canvas graph',
@@ -416,7 +420,8 @@
       try {
         const parsedGraph = parseGraphWithQualifiedIds(
           getNodesSnapshot(),
-          getEdgesSnapshot()
+          getEdgesSnapshot(),
+          getRegistryBackend(executionSelectionState.location)
         )
         const updatedProject = await updateProject(currentProjectState.id, {
           graph: parsedGraph,
@@ -487,7 +492,8 @@
       if (!picked) return
       const graphData = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
-        getEdgesSnapshot()
+        getEdgesSnapshot(),
+        getRegistryBackend(executionSelectionState.location)
       )
       await window.electron.invoke('write-local-parameter-file', {
         workingDirectory: picked.directory,

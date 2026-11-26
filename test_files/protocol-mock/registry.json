@@ -1,0 +1,20 @@
+{
+  "__backend": { "id": "protocol-test-mock" },
+  "std::string": {
+    "type": "std::string",
+    "node_type": "elementary_constructor",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [-1],
+    "value": ""
+  },
+  "mock::sink": {
+    "type": "mock::sink",
+    "node_type": "void_function",
+    "arguments": [
+      { "name": "message", "type": "std::string", "connection_type": "input" }
+    ],
+    "inputs": [0],
+    "outputs": []
+  }
+}

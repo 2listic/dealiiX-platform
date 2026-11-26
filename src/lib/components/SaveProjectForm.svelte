@@ -3,6 +3,8 @@
   import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { currentProjectState } from '../stores/currentProjectStore.svelte'
+  import { executionSelectionState } from '../stores/executionSelection.svelte'
+  import { getRegistryBackend } from '../stores/registryStore.svelte'
   import { parseGraphWithQualifiedIds } from '../graph/graphParser'
   import Button from './layout/Button.svelte'
   import { getModal } from './layout/Modal.svelte'
@@ -28,7 +30,8 @@
     try {
       const parsedGraph = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
-        getEdgesSnapshot()
+        getEdgesSnapshot(),
+        getRegistryBackend(executionSelectionState.location)
       )
       const savedProject = await saveProject({
         name,

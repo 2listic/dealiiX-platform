@@ -10,6 +10,8 @@ interface StorageSchema {
   settings_supplied?: AppSettings
   colorMode?: string
   registered_nodes?: Record<string, unknown>
+  // Per-location `__backend` header of the synced registry.
+  registry_backends?: Record<string, unknown>
   registered_network_nodes?: Record<string, unknown>
   jobs?: unknown[]
   jobIdMap?: Record<string, unknown>
@@ -29,6 +31,7 @@ const store = new Store<StorageSchema>({
     settings_supplied: { type: 'object' },
     colorMode: { type: 'string', default: 'light' },
     registered_nodes: { type: 'object' },
+    registry_backends: { type: 'object' },
     registered_network_nodes: { type: 'object' },
     jobs: { type: 'array', default: [] },
     jobIdMap: { type: 'object', default: {} },

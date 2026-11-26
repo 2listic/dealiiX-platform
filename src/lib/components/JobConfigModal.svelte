@@ -12,6 +12,7 @@
   import { parametersState } from '../stores/parametersStore.svelte'
   import { settingsState } from '../stores/settingsStore.svelte'
   import { isProbeValidated } from '../execution/settingsActions'
+  import { getRegistryBackend } from '../stores/registryStore.svelte'
   import { executionSelectionState } from '../stores/executionSelection.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { isValidSlurmTime, SLURM_TIME_HINT } from '../execution/slurmTime'
@@ -110,7 +111,8 @@
             graph: buildGraphPayload(
               getNodesSnapshot(),
               getEdgesSnapshot(),
-              false
+              false,
+              getRegistryBackend(location)
             ),
             config: resources,
           }
