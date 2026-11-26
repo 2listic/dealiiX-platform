@@ -17,6 +17,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Project-Structure
 
+- [#262](https://github.com/2listic/dealiiX-platform/pull/262) The Python orchestrator validates declared file inputs and outputs, passes files between stages, and can reuse permanent outputs on later runs. A Transfer node copies local or remote files between configured targets.
+- [#262](https://github.com/2listic/dealiiX-platform/pull/262) Added a standalone Python workflow runner for real CORAL plugins and executables, with serial and MPI runs locally, over SSH and through Slurm. Standalone executables can configure their argument list and reference the generated parameter file and run directory.
 - [#263](https://github.com/2listic/dealiiX-platform/pull/263) The backend protocol reference now documents the registry, saved and submitted graphs, and parameter files. Saved, exported, and submitted graphs can carry the synced registry’s backend and plugin identity. **Validate & Sync** no longer lists CORAL's backend name as a malformed node, and reports an identity it cannot use.
 
 - [#257](https://github.com/2listic/dealiiX-platform/pull/257) The frontend's shared modules are grouped by domain: graph editing, parameter files, execution and orchestration each have their own folder, next to the registry and VTK folders, and the general utilities folder keeps only helpers with no application dependencies.

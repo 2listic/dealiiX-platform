@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""Run dealiiX workflows against configured CORAL plugins and executables."""
+
+import argparse
+import json
+import re
+import signal
+import subprocess
+import sys
+import uuid
+from dataclasses import asdict
+from pathlib import Path
+
+try:
+    from execution import Machine, discover, execute, materialize, stage_argv, stopped
+    from file_artifacts import (
+        check_inputs,
+        check_output_names,
+        resolve_references,
+        stage_directory,
+    )
+    from protocol import (
+        Error,
+        FileBinding,
+        Stage,
+        Target,
+        configuration,
+        describe,
+        encode,
+        plan,
+        read,
+        write,
+    )
+except ModuleNotFoundError as error:
+    sys.exit(
+        json.dumps(
+            {
+                "error": {
+                    "code": "missing_dependency",
+                    "message": f"{error}. Install tools/orchestrator/requirements.txt in the Python environment.",
+                }
+            }
+        )
+    )
+
+
+RUN_ID = re.compile(r"run-[a-f0-9]{32}")
+TERMINAL = {"succeeded", "failed", "cancelled"}
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Error("invalid_arguments", message)
+
+
+def parser():
+    result = Parser(description=__doc__)
+    result.add_argument("--configuration", "-p", "--plugin", metavar="FILE", type=Path)
+    commands = result.add_subparsers(dest="operation", required=True)
+    register = commands.add_parser("register")
+    register.add_argument("--registry-path", type=Path, default=Path("node_types.json"))
+    commands.add_parser("validate").add_argument("network", type=Path)
+    for operation in ("run", "submit"):
+        command = commands.add_parser(operation)
+        command.add_argument("network", type=Path)
+        command.add_argument("--touch-dir", type=Path)
+    for operation in ("status", "cancel", "outputs", "logs"):
+        command = commands.add_parser(operation)
+        command.add_argument("run_id")
+        if operation == "logs":
+            command.add_argument("qualified_id", nargs="?")
+    worker = commands.add_parser("_worker", help=argparse.SUPPRESS)
+    worker.add_argument("directory", type=Path)
+    return result
+
+
+def registry_for(config):
+    return describe(
+        config, {key: discover(target) for key, target in config.targets.items()}
+    )
+
+
+def preparation(path, config, registry):
+    network, stages, parents, native_registries, occupied = plan(
+        read(path), config, registry, discover
+    )
+    artifacts = {}
+    for key, stage in stages.items():
+        check_inputs(stage, Machine(stage.target))
+        files = materialize(stage, native_registries.get(key), occupied)
+        check_output_names(stage, files)
+        preview_id = "run-preview"
+        resolve_references(
+            stage,
+            files,
+            stage_argv(stage, stage_directory(stage, preview_id)),
+            preview_id,
+        )
+        artifacts[key] = files
+    return network, stages, parents, artifacts
+
+
+def new_run(config, network, stages, parents, artifacts, touch):
+    run = config.runs_directory / f"run-{uuid.uuid4().hex}"
+    run.mkdir(parents=True, mode=0o700)
+    internal_touch = run / "status"
+    internal_touch.mkdir()
+    if touch is not None:
+        touch = touch.resolve()
+        touch.mkdir(parents=True, exist_ok=True)
+    write(run / "network.json", network)
+    write(run / "backend.config.json", config.tree)
+    write(
+        run / "plan.json",
+        {
+            "stages": {key: asdict(stage) for key, stage in stages.items()},
+            "parents": {key: sorted(items) for key, items in parents.items()},
+            "touch": str(touch) if touch is not None else None,
+        },
+    )
+    effective = run / "effective"
+    effective.mkdir()
+    for key, files in artifacts.items():
+        directory = effective / key
+        directory.mkdir()
+        for filename, contents in files.items():
+            (directory / filename).write_text(contents, encoding="utf-8")
+    write(run / "state.json", {"run_id": run.name, "state": "queued"})
+    return run
+
+
+def worker(run):
+    state = {"run_id": run.name, "state": "running"}
+    write(run / "state.json", state)
+
+    def cancel(_signal, _frame):
+        (run / "cancel").touch()
+
+    signal.signal(signal.SIGINT, cancel)
+    signal.signal(signal.SIGTERM, cancel)
+    try:
+        snapshot = read(run / "plan.json")
+        stages = {}
+        artifacts = {}
+        for key, data in snapshot["stages"].items():
+            data["target"] = Target(**data["target"])
+            for direction in ("inputs", "outputs"):
+                data[direction] = {
+                    name: FileBinding(
+                        **{
+                            **binding,
+                            "target": Target(**binding["target"])
+                            if binding.get("target")
+                            else None,
+                        }
+                    )
+                    for name, binding in data.get(direction, {}).items()
+                }
+            stages[key] = Stage(**data)
+            artifacts[key] = {
+                path.name: path.read_text(encoding="utf-8")
+                for path in (run / "effective" / key).iterdir()
+            }
+        touches = [run / "status"]
+        if snapshot["touch"] is not None:
+            touches.append(Path(snapshot["touch"]))
+        results = execute(stages, snapshot["parents"], artifacts, run, touches)
+        if stopped(run):
+            state["state"] = "cancelled"
+        elif all(result == "succeeded" for result in results.values()):
+            state["state"] = "succeeded"
+        else:
+            incomplete = [
+                stages[key].qid
+                for key, result in results.items()
+                if result != "succeeded"
+            ]
+            details = []
+            for qid in incomplete:
+                error = read(run / qid / "state.json").get("error")
+                if error:
+                    details.append(error["message"])
+            message = "Nodes that did not complete: " + ", ".join(incomplete)
+            state.update(
+                state="failed",
+                error={"code": "run_failed", "message": "\n".join([message, *details])},
+            )
+    except Exception as error:  # noqa: BLE001 - a detached worker must leave a terminal record.
+        state.update(
+            state="failed",
+            error={
+                "code": getattr(error, "code", "execution_error"),
+                "message": str(error),
+            },
+        )
+    write(run / "state.json", state)
+    return status(run)
+
+
+def find_run(config, run_id):
+    if not RUN_ID.fullmatch(run_id):
+        raise Error("unknown_run", f"Invalid run id {run_id!r}")
+    run = config.runs_directory / run_id
+    if not (run / "state.json").is_file():
+        raise Error("unknown_run", f"Run {run_id} does not exist")
+    return run
+
+
+def status(run):
+    state = read(run / "state.json")
+    state["nodes"] = {}
+    # Touch markers coexist. The terminal marker takes precedence over running.
+    for marker in sorted((run / "status").iterdir()):
+        qid, phase = marker.name.rsplit(".", 1)
+        if qid not in state["nodes"] or phase != "running":
+            state["nodes"][qid] = {"qualified_id": qid, "state": phase}
+    for data in read(run / "plan.json")["stages"].values():
+        qid = data["qid"]
+        path = run / qid / "state.json"
+        state["nodes"][qid] = (
+            read(path)
+            if path.is_file()
+            else {
+                "qualified_id": qid,
+                "state": "queued",
+            }
+        )
+    return state
+
+
+def inspect_run(run, operation, qid=None):
+    result = status(run)
+    if operation == "status":
+        return result
+    if operation == "cancel":
+        if result["state"] not in TERMINAL:
+            (run / "cancel").touch()
+            result["cancellation_requested"] = True
+        return result
+    entries = read(run / "plan.json")["stages"].values()
+    stages = {data["qid"]: Target(**data["target"]) for data in entries}
+    if qid is not None and qid not in stages:
+        raise Error("unknown_node", f"No execution node with qualified_id {qid!r}")
+    response = {}
+    for key, target in stages.items():
+        if qid is not None and qid != key:
+            continue
+        node = result["nodes"][key]
+        directory = node.get("directory")
+        if not directory:
+            continue
+        machine = Machine(target)
+        if operation == "outputs":
+            internal = {
+                "run.log",
+                "job.sh",
+                ".exit-code",
+                ".exit-code.tmp",
+                "network.json",
+                target.parameter_file,
+            }
+            internal.update(
+                path.name for path in (run / key).iterdir() if path.name != "state.json"
+            )
+            files = (name.removeprefix("./") for name in machine.files(directory))
+            permanent = {
+                name: path
+                for name, path in node.get("declared_outputs", {}).items()
+                if not path.startswith(directory + "/")
+            }
+            response[key] = sorted(
+                {
+                    name
+                    for name in files
+                    if name not in internal
+                    and name not in permanent
+                    and not name.startswith("status/")
+                }
+                | set(permanent.values())
+            )
+        else:
+            local_log = run / key / "run.log"
+            data = (
+                local_log.read_bytes()
+                if local_log.is_file()
+                else machine.get(directory, "run.log", required=False)
+            )
+            transport = run / key / "transport.log"
+            if data is None and transport.is_file():
+                data = transport.read_bytes()
+            response[key] = (data or b"").decode(errors="replace")
+    return {"run_id": run.name, operation: response}
+
+
+def main():
+    try:
+        args = parser().parse_args()
+        if args.operation == "_worker":
+            result = worker(args.directory)
+            return 0 if result["state"] == "succeeded" else 1
+        if args.configuration is None:
+            raise Error("invalid_arguments", "--configuration is required")
+        config = configuration(read(args.configuration))
+        if args.operation in {"status", "cancel", "logs", "outputs"}:
+            result = inspect_run(
+                find_run(config, args.run_id),
+                args.operation,
+                getattr(args, "qualified_id", None),
+            )
+        else:
+            registry = registry_for(config)
+            if args.operation == "register":
+                write(args.registry_path, registry)
+                return 0
+            network, stages, parents, artifacts = preparation(
+                args.network, config, registry
+            )
+            if args.operation == "validate":
+                result = {"valid": True}
+            else:
+                run = new_run(
+                    config, network, stages, parents, artifacts, args.touch_dir
+                )
+                if args.operation == "submit":
+                    with (run / "worker.log").open("wb") as log:
+                        subprocess.Popen(
+                            [
+                                sys.executable,
+                                str(Path(__file__).resolve()),
+                                "_worker",
+                                str(run),
+                            ],
+                            stdin=subprocess.DEVNULL,
+                            stdout=log,
+                            stderr=subprocess.STDOUT,
+                            start_new_session=True,
+                        )
+                    result = read(run / "state.json")
+                else:
+                    result = worker(run)
+                    if result["state"] != "succeeded":
+                        error = result.get(
+                            "error",
+                            {"code": "run_cancelled", "message": "Run cancelled"},
+                        )
+                        emit_error(error["code"], error["message"], run.name)
+                        return 1
+        sys.stdout.write(encode(result))
+        return 0
+    except Error as error:
+        emit_error(error.code, str(error))
+    except (OSError, ValueError) as error:
+        emit_error("invalid_input", str(error))
+    return 1
+
+
+def emit_error(code, message, run_id=None):
+    error = {"code": code, "message": message}
+    if run_id is not None:
+        error["run_id"] = run_id
+    print(json.dumps({"error": error}), file=sys.stderr)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

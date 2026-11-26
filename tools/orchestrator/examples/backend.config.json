@@ -1,0 +1,55 @@
+{
+  "runs_directory": {
+    "value": "/tmp/dealiix-orchestrator/runs",
+    "default_value": "/tmp/dealiix-orchestrator/runs",
+    "pattern": "[DirectoryName]",
+    "pattern_description": "[DirectoryName]",
+    "documentation": "Directory for run records."
+  },
+  "local": {
+    "binary": {
+      "value": "/opt/coral/bin/coral",
+      "default_value": "/opt/coral/bin/coral",
+      "pattern": "[FileName (Type: input)]",
+      "pattern_description": "[FileName (Type: input)]",
+      "documentation": "CORAL CLI executable."
+    },
+    "plugin": {
+      "value": "/opt/coral/lib/libcoral_backend_dealii.so",
+      "default_value": "/opt/coral/lib/libcoral_backend_dealii.so",
+      "pattern": "[FileName (Type: input)]",
+      "pattern_description": "[FileName (Type: input)]",
+      "documentation": "CORAL plugin library."
+    },
+    "plugin_id": {
+      "value": "dealii",
+      "default_value": "dealii",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": "Logical CORAL plugin name."
+    },
+    "working_directory": {
+      "value": "/tmp/dealiix-orchestrator/local",
+      "default_value": "/tmp/dealiix-orchestrator/local",
+      "pattern": "[DirectoryName]",
+      "pattern_description": "[DirectoryName]",
+      "documentation": "Directory for target run files."
+    }
+  },
+  "CountLines": {
+    "binary": {
+      "value": "/usr/bin/wc",
+      "default_value": "/usr/bin/wc",
+      "pattern": "[FileName (Type: input)]",
+      "pattern_description": "[FileName (Type: input)]",
+      "documentation": "Standalone executable."
+    },
+    "working_directory": {
+      "value": "/tmp/dealiix-orchestrator/local",
+      "default_value": "/tmp/dealiix-orchestrator/local",
+      "pattern": "[DirectoryName]",
+      "pattern_description": "[DirectoryName]",
+      "documentation": "Directory for target run files."
+    }
+  }
+}

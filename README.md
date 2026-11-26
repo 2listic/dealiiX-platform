@@ -193,6 +193,8 @@ ELECTRON_USERDATA=$(mktemp -d) DEALIIX_SETTINGS_PRESET=docker/presets/immersx-de
 
 A test checks that every field of every file in `docker/presets/` is a valid setting.
 
+The [standalone Python orchestrator](tools/orchestrator/README.md) runs CORAL and standalone executables locally, over SSH or through Slurm from a workflow document.
+
 # Packaging
 
 Compile Electron Typescript + build the frontend with `npm run build` and then run the following commands to package the app.

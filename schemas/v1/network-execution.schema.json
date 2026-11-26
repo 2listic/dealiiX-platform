@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/network-execution.schema.json",
+  "title": "network (execution)",
+  "description": "A workflow as a backend runs it: a saved network after materialization. At every nesting level, each node has a `qualified_id`, each edge connects port positions, and no parameter-file metadata remains.",
+  "$ref": "#/$defs/network",
+  "$defs": {
+    "network": {
+      "$ref": "network.schema.json#/$defs/network",
+      "properties": {
+        "workflow": {
+          "properties": {
+            "nodes": {
+              "additionalProperties": {
+                "$ref": "#/$defs/node"
+              }
+            },
+            "edges": {
+              "additionalProperties": {
+                "$ref": "#/$defs/edge"
+              }
+            }
+          }
+        }
+      }
+    },
+    "node": {
+      "required": ["qualified_id"],
+      "not": {
+        "required": ["parameter_file"]
+      },
+      "if": {
+        "properties": {
+          "node_type": {
+            "const": "network"
+          }
+        },
+        "required": ["node_type"]
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "$ref": "#/$defs/network"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edge": {
+      "required": ["source_output", "target_input"],
+      "not": {
+        "anyOf": [
+          {
+            "required": ["source_handle"]
+          },
+          {
+            "required": ["target_handle"]
+          }
+        ]
+      }
+    }
+  }
+}
