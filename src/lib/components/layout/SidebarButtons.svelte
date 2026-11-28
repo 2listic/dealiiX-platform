@@ -11,14 +11,7 @@
     mergeRegistry,
   } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../graph/graphParser'
-  import {
-    mergeParametersFromFile,
-    downloadParameters,
-  } from '../../parameters/parametersFileActions'
-  import { parametersState } from '../../stores/parametersStore.svelte'
   import { openNewWindow } from '../../execution/sshMessages'
-  import { pipelineState } from '../../stores/pipeline.svelte'
-  import { buildExportMeta } from '../../graph/exportMeta'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -28,14 +21,11 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import { graphHistoryState } from '../../stores/graphStack.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
-  import DownloadIcon from '../icons/DownloadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
   import { settingsState } from '../../stores/settingsStore.svelte'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
-  import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../graph/graphParser'
   import { updateProject } from '../../requests/projects'
   import { confirmAction } from '../../stores/confirmation.svelte'
@@ -44,11 +34,8 @@
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
-  import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import RemoteFilePicker from '../RemoteFilePicker.svelte'
-  import { readRemoteGraphFile } from '../../execution/remoteFilePicker'
   import {
     obsolete,
     workflowService,
@@ -60,26 +47,9 @@
   let settings = $state<ReturnType<typeof Settings>>()
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
-  const remoteGraphPickerModalId = 'remote-graph-picker-modal'
-  let isCoralMode = $derived(
-    workflowService.enabled || executionSelectionState.isCoralMode
-  )
-  let isExecutableMode = $derived(
-    !workflowService.enabled && executionSelectionState.isExecutableMode
-  )
-  let hasParams = $derived(parametersState.value != null)
-  const paramsSyncHint =
-    'No parameters loaded — sync an executable from Settings first'
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
-  let isSingleMode = $derived(
-    workflowService.enabled || viewModeState.value === 'single'
-  )
-  let isPipelineMode = $derived(
-    !workflowService.enabled && viewModeState.value === 'pipeline'
-  )
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
-  let isRemote = $derived(executionSelectionState.location === 'remote')
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -92,9 +62,6 @@
 
   let importGraphInput: HTMLInputElement | undefined = $state()
   let importNodesInput: HTMLInputElement | undefined = $state()
-  let coralGraphInput: HTMLInputElement | undefined = $state()
-  let pipelineImportInput: HTMLInputElement | undefined = $state()
-  let paramsFileInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = async () => {
     if (!token) {
@@ -130,116 +97,6 @@
         message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
-    }
-  }
-
-  const handleAddCoralFromFile = async () => {
-    const file = coralGraphInput?.files?.[0]
-    if (!file) return
-    try {
-      const graph = JSON.parse(await file.text())
-      if (!graph || typeof graph !== 'object' || !('workflow' in graph)) {
-        toastState.add({
-          message:
-            'This file does not look like a CORAL graph (no "workflow").',
-          type: 'error',
-        })
-        return
-      }
-      const name = file.name.replace(/\.json$/i, '')
-      pipelineState.addCoralStage({ name, graph })
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to read graph file',
-        type: 'error',
-      })
-    } finally {
-      if (coralGraphInput) coralGraphInput.value = ''
-    }
-  }
-
-  const handleAddCoralFromCanvas = () => {
-    try {
-      const graph = parseGraphWithQualifiedIds(
-        getNodesSnapshot(),
-        getEdgesSnapshot(),
-        getRegistryBackend(executionSelectionState.location)
-      )
-      pipelineState.addCoralStage({
-        name: currentProjectState.name || 'canvas graph',
-        graph,
-      })
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to add the canvas graph',
-        type: 'error',
-      })
-    }
-  }
-
-  const handleAddExecutable = () => {
-    const target = settingsState[executionSelectionState.location]
-    pipelineState.addExecutableStage({
-      name: 'executable',
-      executablePath: target.executablePath,
-      parametersFileName: target.parametersFileName || 'parameters.json',
-    })
-  }
-
-  /**
-   * Downloads the current pipeline as a JSON file: `toPipeline()` wrapped under
-   * `pipeline` plus a metadata envelope, so positions and per-stage configs
-   * round-trip exactly on re-import.
-   */
-  const handleExportPipeline = () => {
-    const payload = {
-      pipeline: pipelineState.toPipeline(),
-      ...buildExportMeta(),
-    }
-    const jsonString = JSON.stringify(payload, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `pipeline-${Date.now()}.json`
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-    URL.revokeObjectURL(url)
-  }
-
-  /** Replaces the canvas with a previously exported pipeline file. */
-  const handleImportPipeline = async () => {
-    const file = pipelineImportInput?.files?.[0]
-    if (!file) return
-    try {
-      const parsed = JSON.parse(await file.text())
-      if (
-        !Array.isArray(parsed?.pipeline?.nodes) ||
-        !Array.isArray(parsed?.pipeline?.edges)
-      ) {
-        toastState.add({
-          message:
-            'This file does not look like a pipeline export (no pipeline.nodes/edges array).',
-          type: 'error',
-        })
-        return
-      }
-      pipelineState.load(parsed)
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to read pipeline file',
-        type: 'error',
-      })
-    } finally {
-      if (pipelineImportInput) pipelineImportInput.value = ''
     }
   }
 
@@ -306,40 +163,13 @@
     }
   }
 
-  /**
-   * Imports a graph JSON file from the remote working directory and closes
-   * the picker; a read or import error is shown as a toast and keeps it open.
-   * @param fileName - File name inside the remote working directory.
-   * @returns Resolves once the graph is loaded or the error is shown.
-   */
-  const loadGraphFromRemoteFile = async (fileName: string) => {
-    try {
-      const importedGraph = JSON.parse(
-        await readRemoteGraphFile(
-          settingsState.remote.workingDirectory,
-          fileName
-        )
-      )
-      await importGraphData(importedGraph, `Loaded remote graph ${fileName}`)
-      getModal(remoteGraphPickerModalId)?.close()
-    } catch (error) {
-      console.error('Failed to load remote graph:', error)
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to load remote graph',
-        type: 'error',
-      })
-    }
-  }
-
   const onFileChangeLoadNodes = async () => {
     const files = importNodesInput?.files
     if (files == null || files.length == 0) {
       return
     }
     const importedNodesAsText = await readFileAsText(files[0])
+    if (workflowService.enabled) return
     const importedNodes = JSON.parse(importedNodesAsText)
     if ('workflow' in importedNodes) {
       toastState.add({
@@ -349,12 +179,7 @@
       })
       return
     }
-    // Merge into the active location's registry (imported keys win) rather than
-    // replacing it, so nodes added by an earlier import survive.
-    const skippedKeys = await mergeRegistry(
-      importedNodes,
-      executionSelectionState.location
-    )
+    const skippedKeys = await mergeRegistry(importedNodes)
     skippedKeys.forEach((key) => {
       toastState.add({
         message: `Registry key '${key}' is not a valid node and was skipped`,
@@ -362,14 +187,6 @@
       })
     })
     toastState.add({ message: 'New nodes were loaded' })
-  }
-
-  /** Merges the selected parameters file (JSON or PRM) into the active location's tree. */
-  const handleMergeParams = async () => {
-    const file = paramsFileInput?.files?.[0]
-    if (!file) return
-    await mergeParametersFromFile(file)
-    if (paramsFileInput) paramsFileInput.value = ''
   }
 
   const readFileAsText = (file: File) =>
@@ -411,7 +228,7 @@
         const parsedGraph = parseGraphWithQualifiedIds(
           getNodesSnapshot(),
           getEdgesSnapshot(),
-          getRegistryBackend(executionSelectionState.location)
+          getRegistryBackend()
         )
         const updatedProject = await updateProject(currentProjectState.id, {
           graph: parsedGraph,
@@ -483,7 +300,7 @@
       const graphData = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
         getEdgesSnapshot(),
-        getRegistryBackend(executionSelectionState.location)
+        getRegistryBackend()
       )
       await window.electron.invoke('write-local-parameter-file', {
         workingDirectory: picked.directory,
@@ -504,77 +321,73 @@
 
 <aside>
   <!-- Login (standalone) -->
-  {#if isCoralMode && isSingleMode}
-    <div class="button-container">
-      <label
-        for="login-button"
-        class="element-label"
-        class:disabled={!hasRemoteServer}
-        title={loginTitle}
-      >
-        <LoginIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="login-button"
-        onclick={handleLoginLogout}
-        disabled={!hasRemoteServer}
-        style="display: none"
-        aria-label="Login"
-      ></button>
-      <span class="button-text" data-testid="login-status">
-        {loginText}
-      </span>
-    </div>
+  <div class="button-container">
+    <label
+      for="login-button"
+      class="element-label"
+      class:disabled={!hasRemoteServer}
+      title={loginTitle}
+    >
+      <LoginIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="login-button"
+      onclick={handleLoginLogout}
+      disabled={!hasRemoteServer}
+      style="display: none"
+      aria-label="Login"
+    ></button>
+    <span class="button-text" data-testid="login-status">
+      {loginText}
+    </span>
+  </div>
 
-    <Modal id={loginModalId}>
-      <LoginForm modalId={loginModalId} />
-    </Modal>
-  {/if}
+  <Modal id={loginModalId}>
+    <LoginForm modalId={loginModalId} />
+  </Modal>
 
   <!-- Project group -->
-  {#if isCoralMode && isSingleMode}
-    <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
-      {#snippet icon()}
-        <svg
-          fill="var(--ternary-color)"
-          width="30px"
-          height="30px"
-          viewBox="0 0 32 32"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
-          ></path>
-        </svg>
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Save Project"
-          onclick={handleSaveProject}
-        />
-        <SidebarGroupButtonItem
-          label="Load Projects"
-          onclick={handleLoadProjects}
-        />
-      {/snippet}
-    </SidebarGroupButton>
+  <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
+    {#snippet icon()}
+      <svg
+        fill="var(--ternary-color)"
+        width="30px"
+        height="30px"
+        viewBox="0 0 32 32"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
+        ></path>
+      </svg>
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Save Project"
+        onclick={handleSaveProject}
+      />
+      <SidebarGroupButtonItem
+        label="Load Projects"
+        onclick={handleLoadProjects}
+      />
+    {/snippet}
+  </SidebarGroupButton>
 
-    <Modal id={saveProjectModalId} size="sm">
-      <SaveProjectForm modalId={saveProjectModalId} />
-    </Modal>
-    <Modal id={projectsModalId}>
-      <ProjectsList modalId={projectsModalId} />
-    </Modal>
-  {/if}
+  <Modal id={saveProjectModalId} size="sm">
+    <SaveProjectForm modalId={saveProjectModalId} />
+  </Modal>
+  <Modal id={projectsModalId}>
+    <ProjectsList modalId={projectsModalId} />
+  </Modal>
 
   {#if !isParameterEditorOpen}
-    <!-- Run (unified: single job or pipeline) -->
+    <!-- Run -->
     <div class="button-container">
       <label
         for="execute-graph-button"
         class="element-label"
-        title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+        title="Run new job"
       >
         <ExecuteIcon width="30px" height="30px" />
       </label>
@@ -582,7 +395,7 @@
         id="execute-graph-button"
         onclick={handleExecution}
         style="display: none"
-        aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
+        aria-label="Run new job"
       ></button>
       <span class="button-text">Run</span>
     </div>
@@ -609,7 +422,7 @@
   {/if}
 
   <!-- Layout group (auto-layout + undo/redo) -->
-  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -638,22 +451,18 @@
   {/if}
 
   <!-- Import group -->
-  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen}
     <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
       {/snippet}
       {#snippet items()}
         <SidebarGroupButtonItem label="Import Graph" onclick={openGraph} />
-        {#if isRemote}
-          <SidebarGroupButtonItem
-            label="Import Remote Graph"
-            onclick={() =>
-              workflowService.enabled
-                ? obsolete('Remote file access is managed by the backend.')
-                : getModal(remoteGraphPickerModalId)?.open()}
-          />
-        {/if}
+        <SidebarGroupButtonItem
+          label="Import Remote Graph"
+          onclick={() =>
+            obsolete('Remote file access is managed by the backend.')}
+        />
         <SidebarGroupButtonItem
           label="Import Nodes"
           onclick={() =>
@@ -687,119 +496,6 @@
     accept=".json"
     style="display: none"
   />
-
-  <Modal id={remoteGraphPickerModalId} size="md">
-    <RemoteFilePicker
-      modalId={remoteGraphPickerModalId}
-      workingDirectory={settingsState.remote.workingDirectory}
-      onSelect={loadGraphFromRemoteFile}
-    />
-  </Modal>
-
-  <!-- Parameters actions (executable single mode only) -->
-  {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}
-    <div class="button-container">
-      <label
-        for="add-params-button"
-        class="element-label"
-        class:disabled={!hasParams}
-        title={hasParams ? 'Add fields from a parameters file' : paramsSyncHint}
-      >
-        <PlusIcon width="26px" height="26px" />
-      </label>
-      <button
-        id="add-params-button"
-        onclick={() => paramsFileInput?.click()}
-        disabled={!hasParams}
-        style="display: none"
-        aria-label="Add parameter fields from file"
-      ></button>
-      <span class="button-text">Update params</span>
-    </div>
-
-    <div class="button-container">
-      <label
-        for="download-params-button"
-        class="element-label"
-        class:disabled={!hasParams}
-        title={hasParams
-          ? 'Download parameters as a JSON or PRM file'
-          : paramsSyncHint}
-      >
-        <DownloadIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="download-params-button"
-        onclick={downloadParameters}
-        disabled={!hasParams}
-        style="display: none"
-        aria-label="Download parameters"
-      ></button>
-      <span class="button-text">Export</span>
-    </div>
-
-    <input
-      bind:this={paramsFileInput}
-      type="file"
-      accept=".json,.prm"
-      onchange={handleMergeParams}
-      style="display: none"
-    />
-  {/if}
-
-  <!-- Pipeline composition (pipeline mode only) -->
-  {#if !isParameterEditorOpen && isPipelineMode}
-    <SidebarGroupButton title="Add stage">
-      {#snippet icon()}
-        <PlusIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Coral (file)"
-          onclick={() => coralGraphInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Coral (canvas)"
-          onclick={handleAddCoralFromCanvas}
-        />
-        <SidebarGroupButtonItem
-          label="Executable"
-          onclick={handleAddExecutable}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <SidebarGroupButton title="Import / Export">
-      {#snippet icon()}
-        <UploadIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Import Pipeline"
-          onclick={() => pipelineImportInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Download Pipeline"
-          onclick={handleExportPipeline}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <input
-      bind:this={coralGraphInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleAddCoralFromFile}
-    />
-    <input
-      bind:this={pipelineImportInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleImportPipeline}
-    />
-  {/if}
 
   <!-- Settings (standalone) -->
   <div class="button-container">

@@ -11,9 +11,6 @@ const mocks = vi.hoisted(() => ({
   addToast: vi.fn(),
 }))
 
-vi.mock('../stores/executionSelection.svelte', () => ({
-  executionSelectionState: { location: 'remote' },
-}))
 vi.mock('../stores/settingsStore.svelte', () => ({
   settingsState: { urlVisualizer: 'https://visualizer.example' },
 }))

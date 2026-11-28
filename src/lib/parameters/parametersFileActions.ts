@@ -2,7 +2,6 @@ import type { ParameterNode, ParameterTree } from '../types/parameterTypes'
 import type { ExecutionLocation } from '../types/settingsTypes'
 import { parametersState } from '../stores/parametersStore.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
-import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { confirmAction } from '../stores/confirmation.svelte'
 import {
@@ -97,7 +96,7 @@ export async function downloadParameters(): Promise<void> {
 
   const defaultPath =
     lastParametersFilePath ||
-    settingsState.getParametersFileName(executionSelectionState.location) ||
+    settingsState.getParametersFileName('remote') ||
     'template_parameters.json'
 
   if (window.electron?.invoke) {
@@ -172,7 +171,7 @@ export async function mergeWorkingDirectoryParameters(
 export async function reloadParametersFromWorkingDirectory(): Promise<void> {
   const current = parametersState.value
   if (!current) return
-  const location = executionSelectionState.location
+  const location = 'remote'
   const fileName = settingsState.getParametersFileName(location)
   const { workingDirectory } = parameterFileTarget(location, fileName)
   if (
@@ -222,7 +221,7 @@ export async function reloadParametersFromWorkingDirectory(): Promise<void> {
 export async function saveParametersToWorkingDirectory(): Promise<void> {
   const snapshot = parametersState.snapshot
   if (!snapshot) return
-  const location = executionSelectionState.location
+  const location = 'remote'
   const target = parameterFileTarget(
     location,
     settingsState.getParametersFileName(location)

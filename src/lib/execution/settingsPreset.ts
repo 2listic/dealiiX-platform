@@ -1,12 +1,8 @@
 // Shared with the Electron main process, whose compiled ESM needs the `.js` suffix.
 import {
-  BACKEND_KINDS,
-  EXECUTION_LOCATIONS,
   MPI_LAUNCHER_KINDS,
   createDefaultSettings,
   type AppSettings,
-  type BackendKind,
-  type ExecutionLocation,
 } from '../types/settingsTypes.js'
 
 /**
@@ -20,7 +16,6 @@ export type SettingsPresetValues = Record<string, unknown>
  */
 export type SettingsPreset = {
   settings: SettingsPresetValues
-  selection: Partial<{ location: ExecutionLocation; backendKind: BackendKind }>
 }
 
 /**
@@ -51,26 +46,10 @@ export const parseSettingsPreset = (
     ignored.push('settings')
   }
 
-  const selection: SettingsPreset['selection'] = {}
-  if (isPlainObject(raw.selection)) {
-    const { location, backendKind } = raw.selection
-    if (location !== undefined) {
-      if (isOneOf(location, EXECUTION_LOCATIONS)) selection.location = location
-      else ignored.push('selection.location')
-    }
-    if (backendKind !== undefined) {
-      if (isOneOf(backendKind, BACKEND_KINDS))
-        selection.backendKind = backendKind
-      else ignored.push('selection.backendKind')
-    }
-  } else if (raw.selection !== undefined) {
-    ignored.push('selection')
-  }
-
   for (const key of Object.keys(raw)) {
-    if (key !== 'settings' && key !== 'selection') ignored.push(key)
+    if (key !== 'settings') ignored.push(key)
   }
-  return { preset: { settings, selection }, ignored }
+  return { preset: { settings }, ignored }
 }
 
 /**

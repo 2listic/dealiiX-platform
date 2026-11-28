@@ -10,8 +10,7 @@ import { getNodesSnapshot, setEdges, setNodes } from './nodes.svelte'
 import {
   getAvailableNodes,
   getNodeData,
-  setRegistry,
-  setActiveLocation,
+  setServiceRegistry,
 } from './registryStore.svelte'
 
 it('uses the registered CORAL palette inside each instance and restores its parent palette', async () => {
@@ -20,29 +19,25 @@ it('uses the registered CORAL palette inside each instance and restores its pare
   const outerType = 'parent::operation'
   const networkType = 'network::coral'
 
-  await setRegistry(
-    {
-      [outerType]: { ...ports, type: outerType, node_type: 'void_function' },
-      [networkType]: {
-        ...ports,
-        type: networkType,
-        node_type: 'network',
-        value: {
-          registry: {
-            [innerType]: {
-              ...ports,
-              type: innerType,
-              node_type: 'elementary_constructor',
-              outputs: [-1],
-              value: 'child value',
-            },
+  setServiceRegistry({
+    [outerType]: { ...ports, type: outerType, node_type: 'void_function' },
+    [networkType]: {
+      ...ports,
+      type: networkType,
+      node_type: 'network',
+      value: {
+        registry: {
+          [innerType]: {
+            ...ports,
+            type: innerType,
+            node_type: 'elementary_constructor',
+            outputs: [-1],
+            value: 'child value',
           },
         },
       },
     },
-    'local'
-  )
-  setActiveLocation('local')
+  })
   graphStackState.reset()
   const definition = getNodeData(networkType)
   const first = createCanvasNode(definition, { x: 0, y: 0 })

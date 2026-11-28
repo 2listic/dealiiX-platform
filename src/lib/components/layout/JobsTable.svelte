@@ -2,15 +2,7 @@
   import { fade, slide } from 'svelte/transition'
   import { Tween } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
-  import { jobsState, jobIdMapState } from '../../stores/jobsStore.svelte'
-  import {
-    getOutFileContent,
-    getNodesExecutionStatus,
-    JOB_DATE_INDEX,
-    JOB_LIST_DAYS,
-  } from '../../execution/sshMessages'
-  import { normalizeJobStatus, isTerminalStatus } from '../../types/jobTypes'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
+  import type { RunStatus } from '../../types/executionService'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import Button from './Button.svelte'
   import { toastState } from '../../stores/toastsStore.svelte'
@@ -22,38 +14,10 @@
     workflowService,
   } from '../../stores/workflowService.svelte'
 
-  let jobsData = $derived(
-    workflowService.enabled
-      ? [
-          ['Run', 'State'],
-          ...workflowService.runs.map((run) => [run.run_id, run.state]),
-        ]
-      : jobsState.current
-  )
-  // $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
     easing: cubicOut,
   })
-
-  // Formats a date string from either source into "YYYY-MM-DD HH:MM:SS" in the user's local timezone.
-  //
-  // Two date formats arrive here:
-  //   - Local runs:  full UTC ISO-8601 with Z suffix, e.g. "2026-04-24T14:30:45.123Z"
-  //                  JS Date parses the Z as UTC and then converts to local time.
-  //   - Remote sacct: server-local time with no timezone marker, e.g. "2026-02-09T08:20:39"
-  //                  JS Date parses a string without Z as local time, so no conversion happens —
-  //                  the value is displayed as-is (already in the server's wall-clock time).
-  //
-  // The 'sv' (Swedish) locale is used because its date/time format is "YYYY-MM-DD HH:MM:SS" —
-  // identical to ISO-8601 but in local time and without the T separator. This avoids pulling in a
-  // date library while still producing a consistent, readable format across all system locales.
-  const formatDate = (str: string | null | undefined) => {
-    if (!str) return str
-    const d = new Date(str)
-    if (isNaN(d.getTime())) return str
-    return d.toLocaleString('sv')
-  }
 
   let isJobListExpanded = $state(false)
   const toggleExpand = async () => {
@@ -68,8 +32,9 @@
 
   const refresh = async () => {
     try {
-      if (workflowService.enabled) await workflowService.refreshRuns()
-      else await jobsState.update()
+      if (!workflowService.enabled)
+        return obsolete('Configure a workflow backend to refresh runs.')
+      await workflowService.refreshRuns()
     } catch (error) {
       toastState.add({
         message: error instanceof Error ? error.message : String(error),
@@ -82,30 +47,31 @@
   let currentJobId = $state('')
   const outLogModalId = 'out-log-modal'
 
-  let nodeStatusMap = $state(new Map())
   let currentStatusJobId = $state('')
-  let currentJobIdInternal = $state<number | undefined>(undefined)
   const nodeStatusModalId = 'node-status-modal'
-
-  // Read from the live job list rather than captured when the modal opens, so a refresh while it
-  // is open stops its polling for a job that has since finished.
-  const isCurrentStatusJobTerminal = $derived.by(() => {
-    if (!currentStatusJobId) return false
-    const row = jobsData.slice(1).find((line) => line[0] === currentStatusJobId)
-    return row ? isTerminalStatus(normalizeJobStatus(row[1])) : false
-  })
+  const currentRun = $derived(
+    workflowService.runs.find((run) => run.run_id === currentStatusJobId)
+  )
+  const nodeStatusMap = $derived(
+    new Map(
+      Object.entries(currentRun?.nodes ?? {}).map(([id, status]) => [
+        id,
+        [status.state],
+      ])
+    )
+  )
+  const isCurrentStatusJobTerminal = $derived(
+    currentRun?.state === 'succeeded' ||
+      currentRun?.state === 'failed' ||
+      currentRun?.state === 'cancelled'
+  )
 
   const handleLogClick = async (jobId: string) => {
     try {
       currentJobId = jobId
-      if (
-        workflowService.enabled &&
-        !workflowService.operations.includes('logs')
-      )
+      if (!workflowService.operations.includes('logs'))
         return obsolete('This backend does not offer run logs.')
-      outLogText = workflowService.enabled
-        ? await workflowService.logs(jobId)
-        : await getOutFileContent(executionSelectionState.location, jobId)
+      outLogText = await workflowService.logs(jobId)
       getModal(outLogModalId)?.open()
     } catch (error) {
       toastState.add({
@@ -115,50 +81,15 @@
     }
   }
 
-  const handleNodesExecutionStatus = async (jobIdSlurm: string) => {
-    try {
-      if (workflowService.enabled) {
-        const run = workflowService.runs.find(
-          (entry) => entry.run_id === jobIdSlurm
-        )
-        if (!run) return
-        nodeStatusMap = new Map(
-          Object.entries(run.nodes).map(([id, status]) => [id, [status.state]])
-        )
-        currentStatusJobId = jobIdSlurm
-        currentJobIdInternal = undefined
-        getModal(nodeStatusModalId)?.open()
-        return
-      }
-      const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
-      if (jobIdInternal === undefined) {
-        throw new Error(
-          `No internal job Id found for scheduler job Id ${jobIdSlurm}`
-        )
-      }
-      console.log(
-        `Getting nodes execution status for Slurm job Id ${jobIdSlurm}, internal job Id ${jobIdInternal}`
-      )
-      const result = await getNodesExecutionStatus(
-        executionSelectionState.location,
-        jobIdInternal
-      )
-      nodeStatusMap = result
-      currentStatusJobId = jobIdSlurm
-      currentJobIdInternal = jobIdInternal
-      getModal(nodeStatusModalId)?.open()
-    } catch (error) {
-      toastState.add({
-        message: error instanceof Error ? error.message : String(error),
-        type: 'error',
-      })
-    }
+  const handleNodesExecutionStatus = (runId: string) => {
+    currentStatusJobId = runId
+    getModal(nodeStatusModalId)?.open()
   }
 </script>
 
 <div class="jobs-table-wrapper">
   <div class="wrap-joblist-buttons">
-    {#if jobsData.length > 2}
+    {#if workflowService.runs.length > 1}
       <div transition:slide>
         <button
           class="button-jobslist"
@@ -185,88 +116,48 @@
     </button>
   </div>
   <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
-    {#if jobsData.length > 1}
+    {#if workflowService.runs.length > 0}
       <div transition:slide>
         <table transition:fade>
-          <colgroup>
-            <col style="width: 8%;" />
-            <col style="width: 12%;" />
-            <col style="width: 16%;" />
-            <col style="width: 16%;" />
-            <col style="width: 22%;" />
-            <col style="width: 10%;" />
-            <col style="width: 8%;" />
-            <col style="width: 8%;" />
-          </colgroup>
           <thead>
             <tr>
-              {#each jobsData[0] as headCell, i (i)}
-                <th>{headCell}</th>
-              {/each}
-              <th>Working Directory</th>
-              <th>Backend</th>
+              <th>Run</th>
+              <th>State</th>
               <th>Logs</th>
               <th>Nodes Status</th>
             </tr>
           </thead>
           <tbody>
             {#if isJobListExpanded}
-              {#each jobsData.slice(1) as line (line[0])}
-                {@render jobRow(line)}
+              {#each workflowService.runs as run (run.run_id)}
+                {@render jobRow(run)}
               {/each}
             {:else}
-              {@render jobRow(jobsData[1])}
+              {@render jobRow(workflowService.runs[0])}
             {/if}
           </tbody>
         </table>
       </div>
 
-      {#snippet jobRow(line: string[])}
+      {#snippet jobRow(run: RunStatus)}
         <tr>
-          {#each line as bodyCell, i (i)}
-            <td>
-              <span>
-                {#if i === 1}
-                  {workflowService.enabled
-                    ? bodyCell
-                    : normalizeJobStatus(bodyCell)}
-                {:else if JOB_DATE_INDEX.includes(i)}
-                  {formatDate(bodyCell)}
-                {:else}
-                  {bodyCell}
-                {/if}
-              </span>
-            </td>
-          {/each}
-          <td
-            class="working-directory"
-            title={jobIdMapState.getJobWorkingDirectory(line[0]) || undefined}
-          >
-            {jobIdMapState.getJobWorkingDirectory(line[0]) || '—'}
-          </td>
-          <td
-            >{workflowService.enabled
-              ? 'Workflow'
-              : (jobIdMapState.getJobBackendKind(line[0]) ?? '—')}</td
-          >
+          <td>{run.run_id}</td>
+          <td>{run.state}</td>
           <td>
-            {#if workflowService.enabled || isTerminalStatus(normalizeJobStatus(line[1]))}
-              <Button
-                size="xsmall"
-                title="View logs from the current job"
-                onclick={() => handleLogClick(line[0])}>{line[0]}.out</Button
-              >
-            {/if}
+            <Button
+              size="xsmall"
+              title="View logs from the current job"
+              onclick={() => handleLogClick(run.run_id)}
+              >{run.run_id}.out</Button
+            >
           </td>
           <td>
-            {#if workflowService.enabled || jobIdMapState.getJobBackendKind(line[0]) === 'coral'}
-              <Button
-                size="xsmall"
-                title="View the execution status of nodes for the current job"
-                onclick={() => handleNodesExecutionStatus(line[0])}
-                >Status</Button
-              >
-            {/if}
+            <Button
+              size="xsmall"
+              title="View the execution status of nodes for the current job"
+              onclick={() => handleNodesExecutionStatus(run.run_id)}
+              >Status</Button
+            >
           </td>
         </tr>
       {/snippet}
@@ -275,7 +166,7 @@
         <table transition:fade>
           <tbody>
             <tr>
-              <td>No jobs submitted in the last {JOB_LIST_DAYS} days</td>
+              <td>No jobs submitted</td>
             </tr>
           </tbody>
         </table>
@@ -299,14 +190,9 @@
 <NodeStatusModal
   modalId={nodeStatusModalId}
   statusMap={nodeStatusMap}
-  jobIdInternal={currentJobIdInternal}
   isJobTerminal={isCurrentStatusJobTerminal}
   title={`Job ${currentStatusJobId} - Nodes Status`}
-  onClose={() => {
-    nodeStatusMap = new Map()
-    currentStatusJobId = ''
-    currentJobIdInternal = undefined
-  }}
+  onClose={() => (currentStatusJobId = '')}
 />
 
 <style>
@@ -363,23 +249,5 @@
     text-align: center;
     vertical-align: top; /* first line always visible when content wraps */
     padding: 0.4vh;
-  }
-
-  td.working-directory {
-    max-width: 0; /* let overflow rules take effect regardless of table-layout: auto */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Collapsed view has no scroll (fixed 8vh, overflow: hidden), so a wrapped
-     path would just get clipped — only wrap once expanded, where overflow-y:
-     scroll accommodates the taller row. */
-  .container-table-jobs.expanded td.working-directory {
-    max-width: none;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    word-break: break-all;
   }
 </style>

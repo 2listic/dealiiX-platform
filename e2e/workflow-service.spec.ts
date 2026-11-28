@@ -96,18 +96,26 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
       { start: dirname(profile), network }
     )
     await expect(page.getByTestId('flow-canvas')).toBeVisible()
+    await expect(page.getByLabel('Execution location')).toHaveCount(0)
+    await expect(page.getByLabel('Execution mode')).toHaveCount(0)
     const sidebar = page.getByTestId('sidebar')
     await sidebar.hover()
     await expect(sidebar.getByTestId('sidebar-node-class')).toHaveText(
       'Independent Independent -> Check'
     )
     await page.getByTitle('Settings', { exact: true }).click()
+    const backendSettings = page.locator('#settings-modal')
     await expect(
-      page.getByRole('heading', { name: 'Backend configuration' })
+      backendSettings.getByRole('heading', { name: 'Backend configuration' })
     ).toBeVisible()
-    await page.getByRole('checkbox', { name: 'Enabled', exact: true }).check()
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await backendSettings
+      .getByRole('checkbox', { name: 'Enabled', exact: true })
+      .check()
+    await backendSettings
+      .getByRole('button', { name: 'Save', exact: true })
+      .click()
     await expect(page.getByText('Backend configuration saved')).toBeVisible()
+    await expect(backendSettings).toBeHidden()
     await page.getByTitle('Import / Export', { exact: true }).click()
     await page
       .getByRole('button', { name: 'Import Nodes', exact: true })

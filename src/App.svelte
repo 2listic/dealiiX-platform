@@ -2,47 +2,20 @@
   import { onMount } from 'svelte'
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
-  import ExecutableParametersView from './lib/components/ExecutableParametersView.svelte'
-  import PipelineCanvas from './lib/components/PipelineCanvas.svelte'
   import Sidebar from './lib/components/layout/Sidebar.svelte'
   import SidebarButtons from './lib/components/layout/SidebarButtons.svelte'
   import JobsTable from './lib/components/layout/JobsTable.svelte'
   import ButtonToggleDarkMode from './lib/components/layout/ButtonToggleDarkMode.svelte'
-  import ExecutionBadge from './lib/components/layout/ExecutionBadge.svelte'
   import { sideBarState } from './lib/stores/sidebar.svelte'
   import ButtonToggleMenu from './lib/components/layout/ButtonToggleMenu.svelte'
   import ToastsWrapper from './lib/components/ToastsWrapper.svelte'
   import ConfirmationModal from './lib/components/layout/ConfirmationModal.svelte'
-  import { executionSelectionState } from './lib/stores/executionSelection.svelte'
   import { graphHistoryState } from './lib/stores/graphStack.svelte'
-  import { viewModeState } from './lib/stores/viewModeStore.svelte'
-  import { setActiveLocation as setRegistryLocation } from './lib/stores/registryStore.svelte'
-  import { setActiveLocation as setParamsLocation } from './lib/stores/parametersStore.svelte'
-  import { jobsState } from './lib/stores/jobsStore.svelte'
   import FileParametersView from './lib/components/FileParametersView.svelte'
   import { parameterNodeEditorState } from './lib/stores/parameterNodeEditor.svelte'
   import { workflowService } from './lib/stores/workflowService.svelte'
 
-  let isCoralMode = $derived(
-    workflowService.enabled || executionSelectionState.isCoralMode
-  )
-  let viewMode = $derived(
-    workflowService.enabled ? 'single' : viewModeState.value
-  )
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
-
-  // Keep the per-location registry/params stores pointed at the active location
-  // (covers the async load and any location switch). Also refreshes the jobs
-  // table on switch, skipping the initial mount which would toast an SSH error for
-  // remote users without a reachable server yet.
-  let hasSyncedLocationOnce = false
-  $effect(() => {
-    const location = executionSelectionState.location
-    setRegistryLocation(location)
-    setParamsLocation(location)
-    if (hasSyncedLocationOnce && !workflowService.enabled) jobsState.update()
-    hasSyncedLocationOnce = true
-  })
 
   onMount(() => {
     let closed = false
@@ -103,16 +76,14 @@
   <ToastsWrapper></ToastsWrapper>
   <SvelteFlowProvider>
     <div id="app-container">
-      {#if isCoralMode && viewMode === 'single'}
-        <ButtonToggleMenu />
-        <div id="sidebar-wrapper" bind:this={sidebarWrapperElem}>
-          <Sidebar />
-        </div>
-        <div
-          id="sidebar-position-holder"
-          bind:this={sidebarPositionHolderElem}
-        ></div>
-      {/if}
+      <ButtonToggleMenu />
+      <div id="sidebar-wrapper" bind:this={sidebarWrapperElem}>
+        <Sidebar />
+      </div>
+      <div
+        id="sidebar-position-holder"
+        bind:this={sidebarPositionHolderElem}
+      ></div>
       <div id="sidebar-buttons-wrapper">
         <SidebarButtons />
       </div>
@@ -122,17 +93,12 @@
         </div>
         <div class="top-right-overlay">
           <ButtonToggleDarkMode />
-          <ExecutionBadge />
         </div>
         <div class="flow-wrapper">
           {#if isParameterEditorOpen}
             <FileParametersView />
-          {:else if viewMode === 'pipeline'}
-            <PipelineCanvas />
-          {:else if isCoralMode}
-            <FlowCanvas />
           {:else}
-            <ExecutableParametersView />
+            <FlowCanvas />
           {/if}
         </div>
       </div>

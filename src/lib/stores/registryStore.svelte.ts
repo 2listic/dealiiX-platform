@@ -15,7 +15,6 @@ import {
   registryBackend,
 } from '../registry/registryValidator'
 import { graphStackState } from './graphStack.svelte'
-import type { ExecutionLocation } from '../types/settingsTypes'
 
 // ================= Registered nodes (sidebar) ========================
 
@@ -40,30 +39,11 @@ const sortRegistry = (nodes: RegisteredNodes): RegisteredNodes => {
   return Object.fromEntries([...elementary, ...rest])
 }
 
-type LocationRegistries = Record<ExecutionLocation, RegisteredNodes>
+type Registry = { nodes: RegisteredNodes; backend?: BackendIdentity }
 
-/**
- * Per-location application registries (one coral node set per execution
- * location). Reads resolve against the {@link activeLocation}; the palette and
- * graph only ever see the active location's registry.
- */
-let registries = $state<LocationRegistries>({
-  local: {},
-  remote: {},
-})
-
-/** Backend header of each location's registry, as its last sync returned it. */
-let registryBackends = $state<
-  Partial<Record<ExecutionLocation, BackendIdentity>>
->({})
-
-/**
- * Location whose registry the read APIs resolve against. Set by the
- * execution-mode switch orchestration and the startup bootstrap. Plain internal
- * state (no `settingsState` import) so this module stays free of electron side
- * effects in test/util contexts.
- */
-let activeLocation: ExecutionLocation = $state('remote')
+// The bundled nodes remain available for graph editing before a backend is configured.
+let bundledRegistry = $state<Registry>({ nodes: sortRegistry(defaultNodes) })
+let rootRegistry = $state<Registry>()
 
 const persistStoreValue = async (key: string, value: unknown) => {
   // globalThis.window (not bare window) so this never throws a ReferenceError in
@@ -75,152 +55,103 @@ const persistStoreValue = async (key: string, value: unknown) => {
   }
 }
 
-// Type guard distinguishing the per-location shape from a legacy flat registry.
-const isPerLocationRegistry = (
-  value: unknown
-): value is Record<ExecutionLocation, RegisteredNodes> => {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Record<string, unknown>
-  return (
-    typeof v.local === 'object' &&
-    v.local !== null &&
-    typeof v.remote === 'object' &&
-    v.remote !== null
-  )
-}
-
-// Load per-location registries from electron-store, migrating an old flat value.
-const loadRegistries = async () => {
-  if (!globalThis.window?.electron?.store) {
-    const fallback = sortRegistry(defaultNodes)
-    registries = { local: fallback, remote: fallback }
-    console.warn('Electron store not available (e.g., dev:vite mode)')
+const loadBundledRegistry = async () => {
+  const store = globalThis.window?.electron?.store
+  if (!store) return
+  const saved = (await store.get('editor_registry', undefined)) as
+    | Registry
+    | undefined
+  if (saved) {
+    bundledRegistry = saved
     return
   }
-  const stored = await window.electron.store.get('registered_nodes', undefined)
-  if (stored === undefined) {
-    const fallback = sortRegistry(defaultNodes)
-    registries = { local: fallback, remote: fallback }
-  } else if (isPerLocationRegistry(stored)) {
-    registries = {
-      local: sortRegistry(
-        Object.keys(stored.local).length ? stored.local : defaultNodes
-      ),
-      remote: sortRegistry(
-        Object.keys(stored.remote).length ? stored.remote : defaultNodes
-      ),
-    }
-  } else {
-    // Legacy flat registry — seed both locations from it and re-persist.
-    const flat = sortRegistry(stored as RegisteredNodes)
-    registries = { local: flat, remote: flat }
-    await persistStoreValue('registered_nodes', $state.snapshot(registries))
-  }
-  registryBackends =
-    (await window.electron.store.get('registry_backends', undefined)) ?? {}
+
+  // Older versions saved the default registry under "remote" or as a flat object.
+  const legacy = (await store.get('registered_nodes', undefined)) as
+    | RegisteredNodes
+    | { local: RegisteredNodes; remote: RegisteredNodes }
+    | undefined
+  if (!legacy) return
+  const legacyNodes =
+    'local' in legacy && 'remote' in legacy
+      ? (legacy as { remote: RegisteredNodes }).remote
+      : (legacy as RegisteredNodes)
+  const [nodes] = filterValidNodes(legacyNodes)
+  if (Object.keys(nodes).length)
+    bundledRegistry = { nodes: sortRegistry(nodes) }
 }
-loadRegistries()
+loadBundledRegistry()
 
 /**
- * Set which location's registry the read APIs resolve against.
- * @param location - The execution location to make active.
- */
-export const setActiveLocation = (location: ExecutionLocation): void => {
-  activeLocation = location
-}
-
-/**
- * Replace the given location's registry with the given nodes (does not change
- * the active location). Filters out entries that are not valid
- * StandardNodeDefinition objects, and keeps the registry's `__backend` header.
+ * Replace the registry used for standalone graph editing.
  * @param data - Dictionary of node data to register.
- * @param location - The execution location whose registry to replace.
  * @returns List of keys that were skipped due to invalid structure.
  */
 export const setRegistry = async (
-  data: Record<string, unknown>,
-  location: ExecutionLocation
+  data: Record<string, unknown>
 ): Promise<string[]> => {
-  const [filtered, skipped] = filterValidNodes(data)
-  registries[location] = sortRegistry(filtered)
-  const backend = registryBackend(data)
-  if (backend) registryBackends[location] = backend
-  else delete registryBackends[location]
-  await persistStoreValue('registered_nodes', $state.snapshot(registries))
-  await persistStoreValue(
-    'registry_backends',
-    $state.snapshot(registryBackends)
-  )
+  const [nodes, skipped] = filterValidNodes(data)
+  bundledRegistry = {
+    nodes: sortRegistry(nodes),
+    backend: registryBackend(data),
+  }
+  await persistStoreValue('editor_registry', $state.snapshot(bundledRegistry))
   return skipped
 }
 
-let serviceRegistry = $state<{ nodes: RegisteredNodes; backend?: BackendIdentity }>()
-
-/** Use the workflow service registry for this session.
+/**
+ * Set the root registry supplied by the workflow service.
  * @param data - The registry returned by describe.
  * @returns The registry keys that could not be read by the editor.
  */
 export const setServiceRegistry = (data: Record<string, unknown>): string[] => {
   const [nodes, skipped] = filterValidNodes(data)
-  serviceRegistry = { nodes: sortRegistry(nodes), backend: registryBackend(data) }
+  rootRegistry = { nodes: sortRegistry(nodes), backend: registryBackend(data) }
   return skipped
 }
 
 const activeRegistry = () =>
-  graphStackState.getTopContext()?.registry?.nodes ?? serviceRegistry?.nodes ?? registries[activeLocation]
+  graphStackState.getTopContext()?.registry ?? rootRegistry ?? bundledRegistry
 
 /**
- * Get the backend header of the active location's registry.
- * @param location - Explicit location for a root registry lookup.
- * @returns A plain copy of the header, or undefined when that registry has none.
+ * Get the backend header of the current graph's registry.
+ * @returns A plain copy of the header, or undefined when the registry has none.
  */
-export const getRegistryBackend = (
-  location?: ExecutionLocation
-): BackendIdentity | undefined => {
-  const context =
-    location === undefined
-      ? graphStackState.getTopContext()?.registry
-      : undefined
-  const backend = context
-    ? context.backend
-    : serviceRegistry ? serviceRegistry.backend : registryBackends[location ?? activeLocation]
+export const getRegistryBackend = (): BackendIdentity | undefined => {
+  const backend = activeRegistry().backend
   return backend && $state.snapshot(backend)
 }
 
 /**
- * Merge the given nodes into the given location's registry (imported keys win),
- * preserving nodes already registered for that location. Does not change the
- * active location.
+ * Merge nodes into the standalone editor registry, preserving its backend header.
  * @param data - Dictionary of node data to merge in.
- * @param location - The execution location whose registry to merge into.
  * @returns List of keys that were skipped due to invalid structure.
  */
 export const mergeRegistry = async (
-  data: Record<string, unknown>,
-  location: ExecutionLocation
+  data: Record<string, unknown>
 ): Promise<string[]> => {
-  const [filtered, skipped] = filterValidNodes(data)
-  registries[location] = sortRegistry({
-    ...registries[location],
-    ...filtered,
-  })
-  await persistStoreValue('registered_nodes', $state.snapshot(registries))
+  const [nodes, skipped] = filterValidNodes(data)
+  bundledRegistry = {
+    ...bundledRegistry,
+    nodes: sortRegistry({ ...bundledRegistry.nodes, ...nodes }),
+  }
+  await persistStoreValue('editor_registry', $state.snapshot(bundledRegistry))
   return skipped
 }
 
 /**
- * Get all the available nodes from the active location's registry.
+ * Get all the available nodes from the current graph's registry.
  * @remarks Returns reactive state - changes will trigger UI updates
  * @returns {StandardNodeDefinition[]}
  */
 export const getAvailableNodes = (): StandardNodeDefinition[] => {
-  return Object.values(activeRegistry()).filter(
+  return Object.values(activeRegistry().nodes).filter(
     (node) => node.type !== TypeField.ORCHESTRATOR_GENERIC_FILE
   )
 }
 
 /**
- * Get node definition from the active location's registry by type (snapshot for validation)
+ * Get node definition from the current graph's registry by type (snapshot for validation)
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
  * @returns {StandardNodeDefinition} A snapshot (non-reactive copy) of the node definition for the given type
  * @throws {Error} If the node type is not found in the registry
@@ -231,11 +162,11 @@ export const getNodeData = (type: string): StandardNodeDefinition => {
     console.error(`Node type '${type}' was not found in the available nodes.`)
     throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
-  return $state.snapshot(activeRegistry()[key])
+  return $state.snapshot(activeRegistry().nodes[key])
 }
 
 /**
- * Returns if node is present in the active location's registry of available nodes
+ * Returns if node is present in the current graph's registry of available nodes
  * @param {string} type - The node type identifier (e.g., 'Triangulation', 'DoFHandler')
  * @returns {boolean} True if present, false if not
  */
@@ -356,7 +287,7 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
 // Canonical type key → the first active-registry key with that form, as Coral picks it.
 const canonicalRegistryKeys = $derived.by(() => {
   const keys: Record<string, string> = Object.create(null)
-  for (const key of Object.keys(activeRegistry())) {
+  for (const key of Object.keys(activeRegistry().nodes)) {
     const canonical = canonicalTypeKey(key)
     if (!Object.hasOwn(keys, canonical)) keys[canonical] = key
   }
@@ -365,6 +296,6 @@ const canonicalRegistryKeys = $derived.by(() => {
 
 // The stored key for a type: an exact match, else the key with the same canonical spelling.
 const registryKey = (type: string): string | undefined =>
-  Object.hasOwn(activeRegistry(), type)
+  Object.hasOwn(activeRegistry().nodes, type)
     ? type
     : canonicalRegistryKeys[canonicalTypeKey(type)]

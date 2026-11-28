@@ -11,6 +11,5 @@
         "coralPluginPath": "/opt/dealiix/immersx/Release/lib/immersx/coral/libcoral_backend_immersx_2.so"
       }
     }
-  },
-  "selection": { "location": "remote", "backendKind": "coral" }
+  }
 }

@@ -62,13 +62,6 @@ export const settingsState = {
   getParametersFileName(location: ExecutionLocation): string {
     return settings.execution[location].parametersFileName
   },
-  /** Probe status recorded for a specific location × backend kind. */
-  getProbe(
-    location: ExecutionLocation,
-    backendKind: BackendKind
-  ): ProbeResult | undefined {
-    return settings.execution[location].probes?.[backendKind]
-  },
 }
 
 // Backfill per-target fields added after settings were first persisted. Defaults
