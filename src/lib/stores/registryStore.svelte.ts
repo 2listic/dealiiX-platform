@@ -314,15 +314,16 @@ export const removeNetworkNode = async (name: string) => {
 }
 
 /**
- * Get all the stored network nodes
+ * Get saved network nodes whose backend ID matches the open graph's registry.
  * @remarks Returns reactive state - changes will trigger UI updates
  * @returns {SubGraphNodeDefinition[]}
  */
 export const getStoredNetworkNodes = (): SubGraphNodeDefinition[] => {
-  const nodes = graphStackState.getTopContext()?.registry
-    ? []
-    : Object.values(networkNodes)
-  return nodes
+  const backendId = getRegistryBackend()?.id
+  if (!backendId) return []
+  return Object.values(networkNodes).filter(
+    (node) => node.value?.backend?.id === backendId
+  )
 }
 
 /**

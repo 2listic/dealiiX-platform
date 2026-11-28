@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // nodes stores, which try to initialise electron-store. Mock them to keep tests
 // free of electron side-effects.
 vi.mock('../stores/registryStore.svelte', () => ({
+  getRegistryBackend: () => ({ id: 'coral' }),
   getNodeData: vi.fn(),
   getNetworkNodeDefinition: vi.fn(),
   addNetworkNode: vi.fn(),
@@ -123,6 +124,7 @@ describe('networkNode utilities', () => {
       []
     )
 
+    expect(networkNode.value.backend).toEqual({ id: 'coral' })
     expect(networkNode.arguments[0]).toMatchObject({
       connection_type: ConnectionType.INPUT,
       name: 'parameters',

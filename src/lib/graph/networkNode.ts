@@ -18,6 +18,7 @@ import {
   type SubGraphNodeDefinition,
 } from '../types/nodeTypes'
 import { parseGraphToProtocol } from './graphParser'
+import { getRegistryBackend } from '../stores/registryStore.svelte'
 import { parameterHandle } from './handleIds'
 import {
   parameterExposureArgument,
@@ -76,6 +77,8 @@ export const createNetworkNodeDefinition = (
 ): SubGraphNodeDefinition => {
   const boundary = analyzeNetworkBoundary(currentNodes, currentEdges)
   const value = parseGraphToProtocol(currentNodes, currentEdges)
+  const backendId = getRegistryBackend()?.id
+  if (backendId) value.backend = { id: backendId }
   return {
     type: TypeField.CORAL_NETWORK,
     node_type: NodeType.NETWORK,
