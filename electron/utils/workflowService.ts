@@ -8,6 +8,7 @@ import {
   ipcMain,
   type OpenDialogOptions,
 } from 'electron/main'
+import { shell } from 'electron'
 import Ajv2020 from 'ajv/dist/2020.js'
 import {
   executionVersion,
@@ -56,6 +57,11 @@ export function registerWorkflowService(appPath: string): boolean {
   )
   if (!requestSchema || !responseSchema)
     throw new Error('Missing execution service schemas')
+
+  ipcMain.handle('workflow:open-configuration', async () => {
+    const error = await shell.openPath(configuration)
+    if (error) throw new Error(error)
+  })
 
   ipcMain.handle('workflow:open', async (event): Promise<string | null> => {
     const options: OpenDialogOptions = {

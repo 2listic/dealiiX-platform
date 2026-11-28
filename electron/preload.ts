@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electron', {
   workflow: {
     enabled: () => ipcRenderer.invoke('workflow:enabled'),
     openWorkflow: () => ipcRenderer.invoke('workflow:open'),
+    openConfiguration: () => ipcRenderer.invoke('workflow:open-configuration'),
     exchange: (request: unknown) =>
       ipcRenderer.invoke('workflow:exchange', request),
     subscribe: (listener: (response: unknown) => void) => {

@@ -1,5 +1,6 @@
 import { setServiceRegistry } from './registryStore.svelte'
 import { toastState } from './toastsStore.svelte'
+import type { ParameterTree } from '../types/parameterTypes'
 import {
   executionVersion,
   type ExecutionReply,
@@ -17,17 +18,24 @@ let registry = $state<RegistryDocument>()
 let runs = $state<Record<string, RunStatus>>({})
 
 export const workflowService = {
-  get enabled() { return enabled },
-  get runs() { return Object.values(runs).reverse() },
-  get operations() { return registry?.__backend.operations ?? [] },
+  get enabled() {
+    return enabled
+  },
+  get runs() {
+    return Object.values(runs).reverse()
+  },
+  get operations() {
+    return registry?.__backend.operations ?? []
+  },
 
   async initialize(): Promise<() => void> {
     const bridge = window.electron?.workflow
-    if (!bridge || !await bridge.enabled()) return () => {}
+    if (!bridge || !(await bridge.enabled())) return () => {}
     enabled = true
     setServiceRegistry({})
     const unsubscribe = bridge.subscribe((reply) => {
-      if ('result' in reply && reply.operation === 'status') record(reply.result)
+      if ('result' in reply && reply.operation === 'status')
+        record(reply.result)
     })
     try {
       await workflowService.refreshRegistry()
@@ -39,10 +47,30 @@ export const workflowService = {
 
   async refreshRegistry() {
     const reply = await exchange({ operation: 'describe' })
-    if (reply.operation !== 'describe') throw new Error('Expected the backend registry')
-    registry = reply.result
-    const skipped = setServiceRegistry(reply.result)
-    if (skipped.length) toastState.add({ message: `Skipped ${skipped.length} invalid registry entries`, type: 'warning' })
+    if (reply.operation !== 'describe')
+      throw new Error('Expected the backend registry')
+    acceptRegistry(reply.result)
+  },
+
+  getConfiguration() {
+    const backend = registry?.__backend
+    if (!backend?.configuration || !backend.operations?.includes('configure'))
+      return
+    return {
+      parameters: $state.snapshot(backend.configuration),
+      digest: backend.configuration_digest,
+    }
+  },
+
+  async configure(configuration: ParameterTree, configuration_digest: string) {
+    const reply = await exchange({
+      operation: 'configure',
+      configuration,
+      configuration_digest,
+    })
+    if (reply.operation !== 'configure')
+      throw new Error('Expected the updated backend registry')
+    acceptRegistry(reply.result)
   },
 
   async openGraph(): Promise<WorkflowDocument | null> {
@@ -51,28 +79,39 @@ export const workflowService = {
     const document = JSON.parse(text)
     if (!workflowService.operations.includes('migrate')) return document
     const reply = await exchange({ operation: 'migrate', document })
-    if (reply.operation !== 'migrate') throw new Error('Expected a workflow document')
+    if (reply.operation !== 'migrate')
+      throw new Error('Expected a workflow document')
     return reply.result.network
   },
 
   async submit(network: WorkflowDocument): Promise<void> {
-    if (!registry) throw new Error('Sync the backend registry before running a workflow')
+    if (!registry)
+      throw new Error('Sync the backend registry before running a workflow')
     const { configuration_digest, registry_digest } = registry.__backend
-    const reply = await exchange({ operation: 'submit', network, configuration_digest, registry_digest })
+    const reply = await exchange({
+      operation: 'submit',
+      network,
+      configuration_digest,
+      registry_digest,
+    })
     if (reply.operation === 'submit') record(reply.result)
   },
 
   async refreshRuns(): Promise<void> {
-    await Promise.all(Object.keys(runs).map(async (run_id) => {
-      const reply = await exchange({ operation: 'status', run_id })
-      if (reply.operation === 'status') record(reply.result)
-    }))
+    await Promise.all(
+      Object.keys(runs).map(async (run_id) => {
+        const reply = await exchange({ operation: 'status', run_id })
+        if (reply.operation === 'status') record(reply.result)
+      })
+    )
   },
 
   async logs(run_id: string): Promise<string> {
     const reply = await exchange({ operation: 'logs', run_id })
     return reply.operation === 'logs'
-      ? Object.entries(reply.result.logs).map(([node, log]) => `${node}\n${log}`).join('\n')
+      ? Object.entries(reply.result.logs)
+          .map(([node, log]) => `${node}\n${log}`)
+          .join('\n')
       : ''
   },
 }
@@ -86,9 +125,25 @@ export function obsolete(message: string): void {
 
 // ── Private helpers ──
 
-async function exchange(request: Request): Promise<Extract<ExecutionReply, { result: unknown }>> {
-  const reply = await window.electron.workflow.exchange({ ...request, version: executionVersion })
-  if ('error' in reply) throw new Error(`${reply.error.code}: ${reply.error.message}`)
+function acceptRegistry(document: RegistryDocument) {
+  registry = document
+  const skipped = setServiceRegistry(document)
+  if (skipped.length)
+    toastState.add({
+      message: `Skipped ${skipped.length} invalid registry entries`,
+      type: 'warning',
+    })
+}
+
+async function exchange(
+  request: Request
+): Promise<Extract<ExecutionReply, { result: unknown }>> {
+  const reply = await window.electron.workflow.exchange({
+    ...request,
+    version: executionVersion,
+  })
+  if ('error' in reply)
+    throw new Error(`${reply.error.code}: ${reply.error.message}`)
   return reply
 }
 
@@ -97,5 +152,8 @@ function record(run: RunStatus) {
 }
 
 function showError(error: unknown) {
-  toastState.add({ message: error instanceof Error ? error.message : String(error), type: 'error' })
+  toastState.add({
+    message: error instanceof Error ? error.message : String(error),
+    type: 'error',
+  })
 }

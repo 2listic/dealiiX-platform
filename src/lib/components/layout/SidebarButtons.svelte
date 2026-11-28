@@ -57,7 +57,7 @@
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  const settingsModalId = 'settings-modal'
+  let settings = $state<ReturnType<typeof Settings>>()
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const remoteGraphPickerModalId = 'remote-graph-picker-modal'
@@ -808,13 +808,13 @@
     </label>
     <button
       id="settings-button"
-      onclick={() => getModal(settingsModalId)?.open()}
+      onclick={() => settings?.open()}
       style="display: none"
       aria-label="Settings"
     ></button>
     <span class="button-text"> Settings </span>
   </div>
-  <Settings modalId={settingsModalId} />
+  <Settings bind:this={settings} modalId="settings-modal" />
 </aside>
 
 <style>

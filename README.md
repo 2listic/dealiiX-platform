@@ -43,8 +43,11 @@ export DEALIIX_BACKEND_COMMAND='["/absolute/path/to/python","/absolute/path/to/t
 npm start
 ```
 
-**Validate & Sync** refreshes the registry. **Import Graph** opens next to the
-profile and **Run** sends the saved graph to the backend. The existing job
+**Settings** opens the root backend configuration. If the backend publishes editable
+settings, the editor saves them through the protocol. For the Python backend,
+**Settings** opens the local profile in the system editor. After saving the
+profile, use **Validate & Sync** to refresh the registry. **Import Graph** opens
+next to the profile and **Run** sends the saved graph to the backend. The existing job
 table displays the backend status. Use the node gear to edit or expose a
 configuration entry. A node with an embedded registry opens in the existing
 subnetwork editor. Toolbar actions that still require the old execution path

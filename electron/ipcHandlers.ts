@@ -3,10 +3,7 @@ import { dialog } from 'electron'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import type {
-  AppSettings,
-  ProbeRequest,
-} from '../src/lib/types/settingsTypes.js'
+import type { AppSettings } from '../src/lib/types/settingsTypes.js'
 
 import {
   uploadFileViaSftp,
@@ -14,7 +11,6 @@ import {
   connectToSSHWithPassword,
   type SshConnection,
 } from './utils/sshConnections.js'
-import { probeAndSyncExecutionSettings } from './utils/executionProbe.js'
 import {
   getParameterFileFilters,
   serializeParametersFile,
@@ -62,25 +58,6 @@ export function registerIpcHandlers(): void {
     const settings = store.get('settings')
     const connectionSettings = getRemoteConnectionSettings(settings)
     return await uploadFileViaSftp(content, remotePath, connectionSettings)
-  })
-
-  ipcMain.handle(
-    'probe-sync-execution-settings',
-    async (_event, request: ProbeRequest) => {
-      return await probeAndSyncExecutionSettings(request)
-    }
-  )
-
-  ipcMain.handle('pick-directory', () => {
-    const filePaths = dialog.showOpenDialogSync({
-      properties: ['openDirectory'],
-    })
-    return filePaths?.[0] ?? null
-  })
-
-  ipcMain.handle('pick-file', () => {
-    const filePaths = dialog.showOpenDialogSync({ properties: ['openFile'] })
-    return filePaths?.[0] ?? null
   })
 
   /**

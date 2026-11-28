@@ -8,6 +8,7 @@ export interface ElectronAPI {
   workflow: {
     enabled(): Promise<boolean>
     openWorkflow(): Promise<string | null>
+    openConfiguration(): Promise<void>
     exchange(request: ExecutionRequest): Promise<ExecutionReply>
     subscribe(listener: (response: ExecutionReply) => void): () => void
   }
