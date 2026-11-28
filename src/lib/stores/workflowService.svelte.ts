@@ -84,17 +84,33 @@ export const workflowService = {
     return reply.result.network
   },
 
+  async validate(network: WorkflowDocument): Promise<void> {
+    const reply = await graphRequest('validate', network)
+    if (reply.operation !== 'validate')
+      throw new Error('Expected the validation result')
+  },
+
   async submit(network: WorkflowDocument): Promise<void> {
-    if (!registry)
-      throw new Error('Sync the backend registry before running a workflow')
-    const { configuration_digest, registry_digest } = registry.__backend
-    const reply = await exchange({
-      operation: 'submit',
-      network,
-      configuration_digest,
-      registry_digest,
-    })
+    const reply = await graphRequest('submit', network)
     if (reply.operation === 'submit') record(reply.result)
+  },
+
+  async updateRun(
+    operation: 'cancel' | 'replay',
+    run_id: string
+  ): Promise<RunStatus> {
+    const reply = await exchange({ operation, run_id })
+    if (reply.operation !== operation)
+      throw new Error('Expected the run status')
+    record(reply.result)
+    return reply.result
+  },
+
+  async outputs(run_id: string): Promise<Record<string, string[]>> {
+    const reply = await exchange({ operation: 'outputs', run_id })
+    if (reply.operation !== 'outputs')
+      throw new Error('Expected the run outputs')
+    return reply.result.outputs
   },
 
   async refreshRuns(): Promise<void> {
@@ -133,6 +149,16 @@ function acceptRegistry(document: RegistryDocument) {
       message: `Skipped ${skipped.length} invalid registry entries`,
       type: 'warning',
     })
+}
+
+function graphRequest(
+  operation: 'validate' | 'submit',
+  network: WorkflowDocument
+) {
+  if (!registry)
+    throw new Error('Sync the backend registry before using the workflow')
+  const { configuration_digest, registry_digest } = registry.__backend
+  return exchange({ operation, network, configuration_digest, registry_digest })
 }
 
 async function exchange(

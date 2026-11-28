@@ -13,6 +13,7 @@
   import { importGraphFromProtocol } from '../../graph/graphParser'
   import { openNewWindow } from '../../execution/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
+  import TextModal from './TextModal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -47,6 +48,15 @@
   let settings = $state<ReturnType<typeof Settings>>()
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
+  const outputsModalId = 'run-outputs-modal'
+  let outputsTitle = $state('')
+  let outputsText = $state('')
+  let runActionPending = $state(false)
+  const latestRun = $derived(workflowService.runs[0])
+  const canCancelLatestRun = $derived(
+    (latestRun?.state === 'queued' || latestRun?.state === 'running') &&
+      !latestRun.cancellation_requested
+  )
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
@@ -78,27 +88,96 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  const handleExecution = async () => {
-    if (!workflowService.enabled)
-      return obsolete('Configure a workflow backend to run this graph.')
-    if (graphStackState.canGoBack) return warnSavingFromSubnetwork()
-    if (!workflowService.operations.includes('submit')) {
-      return obsolete('This backend does not offer workflow submission.')
-    }
+  const runAction = async (action: () => Promise<void>) => {
+    if (runActionPending) return
+    runActionPending = true
     try {
-      const network = parseGraphWithQualifiedIds(
-        getNodesSnapshot(),
-        getEdgesSnapshot(),
-        getRegistryBackend()
-      )
-      await workflowService.submit({ ...network, version: 1 })
+      await action()
     } catch (error) {
       toastState.add({
         message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
+    } finally {
+      runActionPending = false
     }
   }
+
+  const handleGraphAction = (operation: 'submit' | 'validate') =>
+    runAction(async () => {
+      if (graphStackState.canGoBack) {
+        toastState.add({
+          message: 'Return to the root workflow to validate or run it.',
+          type: 'warning',
+        })
+        return
+      }
+      const network = {
+        ...parseGraphWithQualifiedIds(
+          getNodesSnapshot(),
+          getEdgesSnapshot(),
+          getRegistryBackend()
+        ),
+        version: 1 as const,
+      }
+      if (operation === 'validate') {
+        await workflowService.validate(network)
+        toastState.add({ message: 'Workflow is valid', type: 'success' })
+      } else {
+        await workflowService.submit(network)
+      }
+    })
+
+  const handleExecution = () => {
+    if (!workflowService.enabled)
+      return obsolete('Configure a workflow backend to run this graph.')
+    if (!workflowService.operations.includes('submit'))
+      return obsolete('This backend does not offer workflow submission.')
+    return handleGraphAction('submit')
+  }
+
+  const showLatestOutputs = () =>
+    runAction(async () => {
+      if (!latestRun) return
+      const { run_id } = latestRun
+      const outputs = await workflowService.outputs(run_id)
+      outputsTitle = `Outputs for ${run_id}`
+      outputsText =
+        Object.entries(outputs)
+          .filter(([, paths]) => paths.length > 0)
+          .map(([node, paths]) => [`Node ${node}`, ...paths].join('\n'))
+          .join('\n\n') || 'No outputs reported.'
+      getModal(outputsModalId)?.open()
+    })
+
+  const cancelLatestRun = () =>
+    runAction(async () => {
+      if (!latestRun || !canCancelLatestRun) return
+      const { run_id } = latestRun
+      if (
+        !(await confirmAction({
+          title: 'Cancel run?',
+          message: `Cancel ${run_id}?`,
+          confirmText: 'Cancel run',
+          cancelText: 'Keep running',
+          confirmVariant: 'delete',
+        }))
+      )
+        return
+      const result = await workflowService.updateRun('cancel', run_id)
+      toastState.add({
+        message: result.cancellation_requested
+          ? 'Cancellation requested'
+          : `Run status: ${result.state}`,
+        type: 'info',
+      })
+    })
+
+  const replayLatestRun = () =>
+    runAction(async () => {
+      if (latestRun?.state !== 'succeeded') return
+      await workflowService.updateRun('replay', latestRun.run_id)
+    })
 
   /**
    * Replaces the canvas with an imported graph, toasting each dropped edge
@@ -382,23 +461,46 @@
   </Modal>
 
   {#if !isParameterEditorOpen}
-    <!-- Run -->
-    <div class="button-container">
-      <label
-        for="execute-graph-button"
-        class="element-label"
-        title="Run new job"
-      >
+    <SidebarGroupButton title="Run">
+      {#snippet icon()}
         <ExecuteIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="execute-graph-button"
-        onclick={handleExecution}
-        style="display: none"
-        aria-label="Run new job"
-      ></button>
-      <span class="button-text">Run</span>
-    </div>
+      {/snippet}
+      {#snippet items()}
+        <SidebarGroupButtonItem
+          label="Run new job"
+          onclick={handleExecution}
+          disabled={runActionPending}
+        />
+        {#if workflowService.operations.includes('validate')}
+          <SidebarGroupButtonItem
+            label="Validate graph"
+            onclick={() => handleGraphAction('validate')}
+            disabled={runActionPending}
+          />
+        {/if}
+        {#if workflowService.operations.includes('outputs')}
+          <SidebarGroupButtonItem
+            label="View latest outputs"
+            onclick={showLatestOutputs}
+            disabled={runActionPending || !latestRun}
+          />
+        {/if}
+        {#if workflowService.operations.includes('cancel')}
+          <SidebarGroupButtonItem
+            label="Cancel latest run"
+            onclick={cancelLatestRun}
+            disabled={runActionPending || !canCancelLatestRun}
+          />
+        {/if}
+        {#if workflowService.operations.includes('replay')}
+          <SidebarGroupButtonItem
+            label="Replay latest run"
+            onclick={replayLatestRun}
+            disabled={runActionPending || latestRun?.state !== 'succeeded'}
+          />
+        {/if}
+      {/snippet}
+    </SidebarGroupButton>
 
     <!-- VTK Visualizer (standalone) -->
     <div class="button-container">
@@ -512,6 +614,14 @@
   </div>
   <Settings bind:this={settings} modalId="settings-modal" />
 </aside>
+
+<TextModal
+  modalId={outputsModalId}
+  title={outputsTitle}
+  message={outputsText}
+  size="lg"
+  buttonText="Close"
+/>
 
 <style>
   aside {

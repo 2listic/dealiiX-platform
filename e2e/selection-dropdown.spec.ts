@@ -127,7 +127,8 @@ test('the canvas selection edits the saved choice and keeps the configuration ed
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await page.getByRole('button', { name: 'Back to graph' }).click()
     await dropdown.selectOption('third case')
-    await page.getByTitle('Run new job', { exact: true }).click()
+    await page.getByTitle('Run', { exact: true }).click()
+    await page.getByRole('button', { name: 'Run new job', exact: true }).click()
     await expect(page.getByText('succeeded', { exact: true })).toBeVisible()
   } finally {
     await app.close()

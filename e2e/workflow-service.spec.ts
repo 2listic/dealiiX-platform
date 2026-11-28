@@ -134,7 +134,11 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     await page.getByTitle('Expose Enabled as a graph input').click()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await page.getByRole('button', { name: 'Back to graph' }).click()
-    await page.getByTitle('Run new job', { exact: true }).click()
+    await page.getByTitle('Run', { exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'Validate graph', exact: true })
+    ).toHaveCount(0)
+    await page.getByRole('button', { name: 'Run new job', exact: true }).click()
     await expect(page.getByText('succeeded', { exact: true })).toBeVisible()
     await page.getByTitle('View logs from the current job').click()
     await expect(

@@ -22,7 +22,8 @@
   let isJobListExpanded = $state(false)
   const toggleExpand = async () => {
     isJobListExpanded = !isJobListExpanded
-    if (isJobListExpanded) await refresh()
+    if (isJobListExpanded && workflowService.operations.includes('status'))
+      await refresh()
   }
 
   const updateJobs = async () => {
@@ -34,6 +35,8 @@
     try {
       if (!workflowService.enabled)
         return obsolete('Configure a workflow backend to refresh runs.')
+      if (!workflowService.operations.includes('status'))
+        return obsolete('This backend does not offer run status.')
       await workflowService.refreshRuns()
     } catch (error) {
       toastState.add({

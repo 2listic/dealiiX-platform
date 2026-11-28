@@ -102,11 +102,16 @@ export function registerWorkflowService(appPath: string): boolean {
     return response
   }
 
+  let operations: string[] = []
   const watched = new Set<string>()
   const watch = (run_id: string) => {
-    if (watched.has(run_id)) return
+    if (!operations.includes('status') || watched.has(run_id)) return
     watched.add(run_id)
     const tick = async () => {
+      if (!operations.includes('status')) {
+        watched.delete(run_id)
+        return
+      }
       try {
         const response = await call({
           version: executionVersion,
@@ -147,6 +152,12 @@ export function registerWorkflowService(appPath: string): boolean {
       const request = document as ExecutionRequest
       try {
         const response = await call(request)
+        if (
+          'result' in response &&
+          (response.operation === 'describe' ||
+            response.operation === 'configure')
+        )
+          operations = response.result.__backend.operations ?? []
         if (
           'result' in response &&
           (response.operation === 'submit' ||
