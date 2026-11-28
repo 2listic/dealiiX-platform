@@ -19,7 +19,14 @@ import {
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
 
 const terminal = new Set(['succeeded', 'failed', 'cancelled'])
-const mutations = new Set(['configure', 'submit', 'cancel', 'replay'])
+const mutations = new Set([
+  'configure',
+  'submit',
+  'cancel',
+  'pause',
+  'resume',
+  'replay',
+])
 
 export type BackendLaunch = { command: string[]; configuration: string }
 
@@ -301,6 +308,8 @@ export function registerWorkflowService(
           'result' in response &&
           (response.operation === 'submit' ||
             response.operation === 'replay' ||
+            response.operation === 'pause' ||
+            response.operation === 'resume' ||
             response.operation === 'status') &&
           !terminal.has(response.result.state)
         ) {

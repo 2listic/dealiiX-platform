@@ -52,6 +52,11 @@
 
   let currentStatusJobId = $state('')
   const nodeStatusModalId = 'node-status-modal'
+  const schedulingLabels = {
+    draining: 'Pausing · waiting for active stages',
+    paused: 'Paused',
+    resuming: 'Resuming',
+  }
   const currentRun = $derived(
     workflowService.runs.find((run) => run.run_id === currentStatusJobId)
   )
@@ -145,7 +150,11 @@
       {#snippet jobRow(run: RunStatus)}
         <tr>
           <td>{run.run_id}</td>
-          <td>{run.state}</td>
+          <td>
+            {run.scheduling && run.scheduling.state !== 'active'
+              ? schedulingLabels[run.scheduling.state]
+              : run.state}
+          </td>
           <td>
             <Button
               size="xsmall"

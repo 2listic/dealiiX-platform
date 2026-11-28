@@ -25,7 +25,7 @@ test('the Run menu uses the root backend operations and their diagnostics', asyn
     switch (operation) {
       case 'describe':
         result = { __backend: { id: 'independent', version, configuration_digest, registry_digest,
-          operations: profile.operations ?? ['describe', 'validate', 'submit', 'outputs', 'status', 'replay', 'cancel'] } }
+          operations: profile.operations ?? ['describe', 'validate', 'submit', 'outputs', 'status', 'replay', 'cancel', 'pause', 'resume'] } }
         break
       case 'validate':
       case 'submit':
@@ -41,7 +41,16 @@ test('the Run menu uses the root backend operations and their diagnostics', asyn
         break
       case 'replay':
         if (request.run_id !== source) throw Error('Expected the successful source run')
-        result = status(replay, 'running', { source_run_id: source })
+        result = status(replay, 'running', { source_run_id: source, scheduling: { revision: 0, state: 'active' } })
+        break
+      case 'pause':
+      case 'resume':
+        if (request.run_id !== replay) throw Error('Expected the same replayed run')
+        profile.scheduling = operation === 'pause'
+          ? { revision: 1, state: 'paused' }
+          : { revision: 2, state: 'active' }
+        fs.writeFileSync(profilePath, JSON.stringify(profile))
+        result = status(replay, 'running', { scheduling: profile.scheduling })
         break
       case 'cancel':
         if (request.run_id !== replay) throw Error('Expected the replayed run')
@@ -50,7 +59,9 @@ test('the Run menu uses the root backend operations and their diagnostics', asyn
         result = status(replay, 'cancelled')
         break
       case 'status':
-        result = request.run_id === source ? status(source, 'succeeded') : status(replay, profile.cancelled ? 'cancelled' : 'running')
+        result = request.run_id === source ? status(source, 'succeeded') : status(replay,
+          profile.cancelled ? 'cancelled' : 'running',
+          profile.cancelled ? {} : { scheduling: profile.scheduling ?? { revision: 0, state: 'active' } })
         break
     }
     console.log(JSON.stringify(error ? { version, operation, error } : { version, operation, result }))
@@ -75,6 +86,7 @@ test('the Run menu uses the root backend operations and their diagnostics', asyn
     await expect(action('View latest outputs')).toBeDisabled()
     await expect(action('Replay latest run')).toBeDisabled()
     await expect(action('Cancel latest run')).toBeDisabled()
+    await expect(action('Pause latest run')).toBeDisabled()
     await action('Validate graph').click()
     await expect(
       page.getByText('Workflow is valid', { exact: true })
@@ -98,6 +110,16 @@ test('the Run menu uses the root backend operations and their diagnostics', asyn
     await run.click()
     await action('Replay latest run').click()
     await expect(page.getByRole('cell', { name: 'running' })).toBeVisible()
+    await run.click()
+    await action('Pause latest run').click()
+    await expect(
+      page.getByRole('cell', { name: 'Paused', exact: true })
+    ).toBeVisible()
+    await run.click()
+    await action('Resume latest run').click()
+    await expect(
+      page.getByRole('cell', { name: 'running', exact: true })
+    ).toBeVisible()
     await run.click()
     await action('Cancel latest run').click()
     await action('Cancel run').click()

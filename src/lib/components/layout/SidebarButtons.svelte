@@ -59,6 +59,12 @@
     (latestRun?.state === 'queued' || latestRun?.state === 'running') &&
       !latestRun.cancellation_requested
   )
+  const latestScheduling = $derived(latestRun?.scheduling?.state)
+  const schedulingOperation = $derived(
+    latestScheduling === 'draining' || latestScheduling === 'paused'
+      ? 'resume'
+      : 'pause'
+  )
   let hasRemoteServer = $derived(
     Boolean(frontendSettingsState.projectServerUrl)
   )
@@ -179,6 +185,12 @@
           : `Run status: ${result.state}`,
         type: 'info',
       })
+    })
+
+  const changeLatestScheduling = () =>
+    runAction(async () => {
+      if (!canCancelLatestRun || !latestRun?.scheduling) return
+      await workflowService.updateRun(schedulingOperation, latestRun.run_id)
     })
 
   const replayLatestRun = () =>
@@ -494,6 +506,18 @@
             label="View latest outputs"
             onclick={showLatestOutputs}
             disabled={runActionPending || !latestRun}
+          />
+        {/if}
+        {#if workflowService.operations.includes(schedulingOperation)}
+          <SidebarGroupButtonItem
+            label={schedulingOperation === 'pause'
+              ? 'Pause latest run'
+              : 'Resume latest run'}
+            onclick={changeLatestScheduling}
+            disabled={runActionPending ||
+              !canCancelLatestRun ||
+              !latestScheduling ||
+              latestScheduling === 'resuming'}
           />
         {/if}
         {#if workflowService.operations.includes('cancel')}

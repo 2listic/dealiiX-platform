@@ -266,8 +266,21 @@ export type NodeExtension = NodeCapabilities & {
 
 /** Operations a backend lists in its registry header. */
 export type BackendOperation =
-  | 'register' | 'describe' | 'configure' | 'validate' | 'run' | 'submit'
-  | 'status' | 'logs' | 'outputs' | 'cancel' | 'replay' | 'artifact' | 'migrate'
+  | 'register'
+  | 'describe'
+  | 'configure'
+  | 'validate'
+  | 'run'
+  | 'submit'
+  | 'status'
+  | 'logs'
+  | 'outputs'
+  | 'cancel'
+  | 'pause'
+  | 'resume'
+  | 'replay'
+  | 'artifact'
+  | 'migrate'
 
 /**
  * Backend identity from a registry's `__backend` key. A network's `backend`

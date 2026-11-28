@@ -41,6 +41,10 @@ export type RunStatus = {
   state: Phase
   source_run_id?: string
   cancellation_requested?: boolean
+  scheduling?: {
+    revision: number
+    state: 'active' | 'draining' | 'paused' | 'resuming'
+  }
   error?: ExecutionDiagnostic
   nodes: Record<string, NodeRunStatus>
 }
@@ -67,7 +71,14 @@ export type ExecutionRequest = { version: typeof executionVersion } & (
       registry_digest: string
     }
   | {
-      operation: 'status' | 'logs' | 'outputs' | 'cancel' | 'replay'
+      operation:
+        | 'status'
+        | 'logs'
+        | 'outputs'
+        | 'cancel'
+        | 'pause'
+        | 'resume'
+        | 'replay'
       run_id: string
     }
 )
@@ -79,6 +90,8 @@ type ExecutionResults = {
   submit: RunStatus
   status: RunStatus
   cancel: RunStatus
+  pause: RunStatus
+  resume: RunStatus
   replay: RunStatus
   migrate: { network: WorkflowDocument; changes: string[] }
   artifact: {

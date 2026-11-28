@@ -127,7 +127,7 @@ export const workflowService = {
   },
 
   async updateRun(
-    operation: 'cancel' | 'replay',
+    operation: 'cancel' | 'pause' | 'resume' | 'replay',
     run_id: string
   ): Promise<RunStatus> {
     const reply = await exchange({ operation, run_id })
@@ -213,6 +213,16 @@ async function exchange(
 }
 
 function record(run: RunStatus) {
+  const previous = runs[run.run_id]
+  if (previous?.cancellation_requested && run.scheduling) {
+    run = { ...run, scheduling: undefined, cancellation_requested: true }
+  } else if (
+    previous?.scheduling &&
+    run.scheduling &&
+    previous.scheduling.revision > run.scheduling.revision
+  ) {
+    run = { ...run, scheduling: previous.scheduling }
+  }
   runs[run.run_id] = run
 }
 
