@@ -92,6 +92,7 @@
   import EditIcon from '../icons/EditIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
+  import ToggleSwitch from '../layout/ToggleSwitch.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
@@ -163,9 +164,12 @@
     data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR ||
       data.node_type === NodeType.PRIMITIVE
   )
+  let isBooleanLiteral = $derived(isLiteral && data.type === Type.BOOLEAN)
   // Only a literal's value names a file, so a marker elsewhere is ignored.
   let isParameterFile = $derived(
-    isLiteral && Boolean((data as StandardNodeDefinition).parameter_file)
+    isLiteral &&
+      !isBooleanLiteral &&
+      Boolean((data as StandardNodeDefinition).parameter_file)
   )
   let suggestsParameterFile = $derived(
     isLiteral &&
@@ -365,7 +369,9 @@
       ('x-dealiix' in data ? data['x-dealiix'] : undefined)
   )
   let configuration = $derived(
-    'configuration' in data && capabilities?.actions?.includes('configure')
+    !isBooleanLiteral &&
+      'configuration' in data &&
+      capabilities?.actions?.includes('configure')
       ? data.configuration
       : undefined
   )
@@ -785,19 +791,22 @@
 
   <!-- Elementary constructor / primitive literal input fields -->
   {#if isLiteral && !isParameterFile}
-    <div class="value-row">
-      {#if data.type === Type.BOOLEAN}
-        <input
-          type="checkbox"
-          value={valueForNode()}
-          oninput={(evt) => {
+    <div class="value-row" class:nodrag={isBooleanLiteral}>
+      {#if isBooleanLiteral}
+        <ToggleSwitch
+          size="small"
+          checked={valueForNode() === 'true'}
+          ariaLabel={`Toggle ${nodeDisplayName}`}
+          title={`Toggle ${nodeDisplayName}`}
+          onchange={(event) => {
             graphHistoryState.checkpoint()
             updateNodeData(id, {
-              value: evt.currentTarget.checked ? 'true' : 'false',
+              value: (event.currentTarget as HTMLInputElement).checked
+                ? 'true'
+                : 'false',
             })
           }}
         />
-        <span>{valueForNode() === 'true' ? 'true' : 'false'}</span>
       {:else}
         <!-- All other elementary constructors -->
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->

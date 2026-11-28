@@ -25,6 +25,7 @@ import {
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 import { handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
+  isConfigurationInput,
   parameterAtPath,
   parameterExposureForHandle,
   parameterPathLabel,
@@ -418,13 +419,16 @@ export const compatibleNodeOptionLabel = (
  * @param availableNodes - All available node definitions to search.
  * @param expectedInputType - Input type to match against.
  * @param excludedNodeType - Node type to skip (usually the target node itself).
+ * @param frontendScalarOnly - Only offer editable literals.
+ * @param requireExactType - Reject widening when binding backend configuration.
  * @returns List of `CompatibleNodeOption` entries, one per matching output handle for concrete nodes and one per overload family.
  */
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
   expectedInputType: string | string[],
   excludedNodeType?: string,
-  frontendScalarOnly = false
+  frontendScalarOnly = false,
+  requireExactType = false
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
   const expectedTypes = Array.isArray(expectedInputType)
@@ -450,7 +454,11 @@ export const findCompatibleSourceNodesAsOptions = (
       if (!outputTypes.length) continue
       if (
         !outputTypes.some((output) =>
-          expectedTypes.some((expected) => isTypeCompatible(output, expected))
+          expectedTypes.some((expected) =>
+            requireExactType
+              ? output === expected
+              : isTypeCompatible(output, expected)
+          )
         )
       )
         continue
@@ -504,7 +512,11 @@ export const resolveConnectionAndCompatibleNodes = (
           availableNodes,
           connectionTypes,
           targetIsParameterInput ? undefined : nodeType,
-          targetIsParameterInput
+          targetIsParameterInput,
+          isConfigurationInput(
+            node.data as NodeDefinitions,
+            connectStartParams.handleId
+          )
         ) // 'target'
 
   return { connectionType, connectionName, compatibleOptions }

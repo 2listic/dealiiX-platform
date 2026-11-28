@@ -135,6 +135,44 @@ describe('isValidConnection', () => {
     ).toBe(true)
   })
 
+  it('requires an exact type from a scalar literal to exposed configuration', () => {
+    const enabled = ['Enabled']
+    const iterations = ['Iterations']
+    const integer = {
+      path: iterations,
+      type: 'int',
+      input: true,
+      output: false,
+    } as const
+    nodes.push(
+      canvasNode('option', literal(Type.BOOLEAN, 'true')),
+      canvasNode('configured', {
+        ...consumer.data,
+        node_type: NodeType.VOID_FUNCTION,
+        configuration_exposures: {
+          exposures: [
+            { path: enabled, type: 'bool', input: true, output: false },
+            integer,
+          ],
+        },
+      }),
+      canvasNode('native', {
+        ...literal(Type.STRING, 'iterations.prm'),
+        parameter_file: { exposures: [integer] },
+      })
+    )
+
+    expect(
+      connect('option', 'configured', parameterHandle('input', enabled))
+    ).toBe(true)
+    expect(
+      connect('option', 'configured', parameterHandle('input', iterations))
+    ).toBe(false)
+    expect(
+      connect('option', 'native', parameterHandle('input', iterations))
+    ).toBe(true)
+  })
+
   it('accepts a family output into an ordinary input of the same type', () => {
     expect(connect('family', 'consumer', 'input-0')).toBe(true)
   })

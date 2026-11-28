@@ -49,15 +49,15 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
 /**
  * Returns the label of a registry entry in the sidebar and the connected-node
  * picker, from the first source present:
- * 1. a literal's value type (`int`, `std::string`);
- * 2. `display_name`;
+ * 1. `display_name`;
+ * 2. a literal's value type (`int`, `std::string`);
  * 3. `method_name` without numeric template arguments, for an entry with
  *    `class_name` and `method_name`;
  * 4. for a method: its qualified `operation`, else `Class::method` from the type;
  * 5. `operation`;
  * 6. for a constructor: the class name from the type;
  * 7. the type without its numeric template arguments.
- * Names in steps 2, 3 and 5 are sentence-cased; types keep their C++ spelling.
+ * Names in steps 1, 3 and 5 are sentence-cased; types keep their C++ spelling.
  *
  * @param node - Registry definition to label.
  * @returns Human-readable label.
@@ -65,10 +65,10 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
-  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
-    return displayTypeName(node.type)
   const displayName = node.display_name?.trim()
   if (displayName) return formatSuggestedNodeName(displayName)
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
+    return displayTypeName(node.type)
   if (node.class_name?.trim() && node.method_name?.trim())
     return formatSuggestedNodeName(paletteMethodName(node))
   if (isMethodNode(node))

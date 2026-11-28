@@ -49,6 +49,7 @@ import {
   protocolEdgeHandles,
 } from './handleIds'
 import {
+  isConfigurationInput,
   parameterExposureForHandle,
   parameterPortCoralType,
   normalizeParameterFile,
@@ -447,10 +448,13 @@ export const validateGraphData = (
       )
     }
 
-    // Check if types are compatible (wildcard 'any' on either side, or numeric widening).
+    // Only ordinary ports and native parameter files allow widening.
+    const exact = isConfigurationInput(targetNodeData, edge.target_handle)
     if (
       !sourceOutputTypes.some((type) =>
-        isTypeCompatible(type, targetInputArg.type)
+        exact
+          ? type === targetInputArg.type
+          : isTypeCompatible(type, targetInputArg.type)
       )
     ) {
       const errorMessage = `Edge id: ${edgeId} - Type mismatch - source output type '${sourceOutputType}' does not match target input '${targetInputArg.type}'`

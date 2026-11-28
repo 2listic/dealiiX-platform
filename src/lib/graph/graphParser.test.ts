@@ -450,6 +450,48 @@ describe('parameter-node graph persistence', () => {
     }
   })
 
+  it('keeps literal bindings only when the exposed configuration type matches', () => {
+    const enabled = ['Enabled']
+    const iterations = ['Iterations']
+    const graph: Network = {
+      version: 1,
+      author: 'test',
+      date_time_utc: '',
+      workflow: {
+        nodes: {
+          0: { type: Type.BOOLEAN, value: 'true' },
+          1: {
+            type: 'consumer',
+            configuration_exposures: {
+              exposures: [
+                { path: enabled, type: 'bool', input: true, output: false },
+                { path: iterations, type: 'int', input: true, output: false },
+              ],
+            },
+          },
+        },
+        edges: {
+          0: {
+            source: 0,
+            source_output: 0,
+            target: 1,
+            target_handle: parameterHandle('input', enabled),
+          },
+          1: {
+            source: 0,
+            source_output: 0,
+            target: 1,
+            target_handle: parameterHandle('input', iterations),
+          },
+        },
+      },
+    }
+
+    const [valid, invalid] = validateGraphData(graph)
+    expect(Object.keys(valid)).toEqual(['0'])
+    expect(invalid.map(({ edgeId }) => edgeId)).toEqual(['1'])
+  })
+
   it('round-trips exposure metadata and stable virtual handles', () => {
     const inputHandle = parameterHandle('input', ['Solver', 'Tolerance'])
     const outputHandle = parameterHandle('output', ['Solver', 'Tolerance'])

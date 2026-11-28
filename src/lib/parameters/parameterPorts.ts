@@ -3,6 +3,7 @@ import {
   ConnectionType,
   Type,
   type Argument,
+  type NodeDefinitions,
   type ParameterExposure,
   type ParameterFileMetadata,
   type ParameterPortType,
@@ -10,6 +11,15 @@ import {
 } from '../types/nodeTypes'
 import { parameterHandlePath } from '../graph/handleIds'
 import { isParameterLeaf } from './parameterFileFormat'
+
+/** Configuration bindings use an exact scalar type declared by the backend. */
+export const isConfigurationInput = (
+  data: NodeDefinitions,
+  handle: string | null | undefined
+): boolean =>
+  'configuration_exposures' in data &&
+  Boolean(data.configuration_exposures) &&
+  parameterHandlePath(handle)?.direction === 'input'
 
 /** Returns the frontend port type implied by a parameter template description. */
 export const parameterPortType = (

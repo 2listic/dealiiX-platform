@@ -31,6 +31,7 @@ import {
 } from '../stores/registryStore.svelte'
 import { isSubnetworkParameterOutput } from './subnetworkParameterPorts'
 import { resolveOverloadGraph } from '../registry/overloadResolution'
+import { isConfigurationInput } from '../parameters/parameterPorts'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -160,8 +161,11 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
       connection.targetHandle
     } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
+  const exact = isConfigurationInput(targetNode.data, targetHandle)
   const isValid = sourceTypes.some((type) =>
-    isTypeCompatible(type, expectedInputType)
+    exact
+      ? type === expectedInputType
+      : isTypeCompatible(type, expectedInputType)
   )
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid) // Cache the result
