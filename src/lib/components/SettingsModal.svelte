@@ -1,103 +1,145 @@
 <script lang="ts">
+  import { confirmAction } from '../stores/confirmation.svelte'
+  import { frontendSettingsState } from '../stores/frontendSettings.svelte'
+  import { graphStackState } from '../stores/graphStack.svelte'
+  import { getNodesSnapshot } from '../stores/nodes.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { workflowService } from '../stores/workflowService.svelte'
+  import type { ParameterTree } from '../types/parameterTypes'
   import ParametersView from './ParametersView.svelte'
   import Button from './layout/Button.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
 
-  let { modalId }: { modalId: string } = $props()
-  let configuration =
-    $state<ReturnType<typeof workflowService.getConfiguration>>()
+  let { modalId, scope }: { modalId: string; scope: 'backend' | 'frontend' } =
+    $props()
+  const title = $derived(
+    scope === 'backend' ? 'Backend Settings' : 'Frontend Settings'
+  )
+  let parameters = $state<ParameterTree>()
+  let backendRevision = ''
+  let published = false
   let busy = $state(false)
+  let error = $state('')
 
   export async function open() {
     if (busy) return
-    configuration = workflowService.getConfiguration()
     getModal(modalId)?.open()
-    if (workflowService.enabled && !configuration) await openProfile()
+    await loadConfiguration()
   }
 
-  async function openProfile() {
+  async function loadConfiguration() {
+    parameters = undefined
+    error = ''
+    busy = true
     try {
-      busy = true
-      await window.electron.workflow.openConfiguration()
-    } catch (error) {
-      showError(error)
-    } finally {
-      busy = false
-    }
-  }
-
-  async function syncRegistry() {
-    try {
-      busy = true
-      await workflowService.refreshRegistry()
-      configuration = workflowService.getConfiguration()
-      toastState.add({ message: 'Backend registry synced', type: 'success' })
-    } catch (error) {
-      showError(error)
+      if (scope === 'frontend') {
+        parameters = await frontendSettingsState.getConfiguration()
+      } else if (!workflowService.enabled) {
+        error = 'Select a root backend in Frontend Settings.'
+      } else {
+        const supported = workflowService.getConfiguration()
+        if (supported) {
+          parameters = supported.parameters
+          backendRevision = supported.digest
+          published = true
+        } else {
+          const profile = await window.electron.workflow.readConfiguration()
+          parameters = profile.parameters
+          backendRevision = profile.revision
+          published = false
+        }
+      }
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
     } finally {
       busy = false
     }
   }
 
   async function saveConfiguration() {
-    if (!configuration) return
+    if (!parameters || busy) return
+    busy = true
+    error = ''
     try {
-      busy = true
-      await workflowService.configure(
-        $state.snapshot(configuration.parameters),
-        configuration.digest
-      )
+      const draft = $state.snapshot(parameters)
+      if (scope === 'frontend') {
+        if (
+          frontendSettingsState.changesBackend(draft) &&
+          (getNodesSnapshot().length || graphStackState.canGoBack)
+        ) {
+          if (
+            !(await confirmAction({
+              title: 'Switch root backend?',
+              message:
+                'The current graph will close when the new root backend is ready.',
+              confirmText: 'Switch backend',
+              cancelText: 'Keep editing',
+              confirmVariant: 'action',
+            }))
+          )
+            return
+        }
+        await frontendSettingsState.save(draft)
+      } else if (published) {
+        await workflowService.configure(draft, backendRevision)
+      } else {
+        const registry = await window.electron.workflow.saveConfiguration(
+          draft,
+          backendRevision
+        )
+        workflowService.adoptBackend(registry, false)
+      }
       getModal(modalId)?.close()
       toastState.add({
-        message: 'Backend configuration saved',
+        message:
+          scope === 'backend'
+            ? 'Backend configuration saved'
+            : 'Frontend settings saved',
         type: 'success',
       })
-    } catch (error) {
-      showError(error)
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
     } finally {
       busy = false
     }
   }
-
-  function showError(error: unknown) {
-    toastState.add({
-      message: error instanceof Error ? error.message : String(error),
-      type: 'error',
-    })
-  }
 </script>
 
-<Modal id={modalId} size={configuration ? 'lg' : 'md'}>
-  <h2>Backend configuration</h2>
-  {#if configuration}
-    {@const draft = configuration}
-    <ParametersView
-      parameters={draft.parameters}
-      onChange={(parameters) => (draft.parameters = parameters)}
-      onEdit={() => {}}
-    />
-    <div class="actions">
-      <Button onclick={syncRegistry} disabled={busy}>Reload</Button>
+<Modal id={modalId} size={parameters ? 'lg' : 'md'} closeOnBackdrop={!busy}>
+  <h2>{title}</h2>
+  {#if parameters}
+    <fieldset disabled={busy}>
+      <ParametersView
+        {parameters}
+        onChange={(draft) => (parameters = draft)}
+        onEdit={() => {}}
+      />
+    </fieldset>
+  {/if}
+  {#if error}
+    <p role="alert">{error}</p>
+  {:else if busy && !parameters}
+    <p role="status">Loading settings…</p>
+  {/if}
+  <div class="actions">
+    <Button onclick={() => getModal(modalId)?.close()} disabled={busy}
+      >Close</Button
+    >
+    {#if parameters}
       <Button variant="action" onclick={saveConfiguration} disabled={busy}
         >Save</Button
       >
-    </div>
-  {:else if workflowService.enabled}
-    <p>After saving the backend profile, refresh the editor’s registry.</p>
-    <div class="actions">
-      <Button onclick={openProfile} disabled={busy}>Open profile</Button>
-      <Button variant="action" onclick={syncRegistry} disabled={busy}>
-        Validate &amp; Sync
-      </Button>
-    </div>
-  {:else}
-    <p>Launch the desktop with a backend command and configuration profile.</p>
-  {/if}
+    {/if}
+  </div>
 </Modal>
 
 <style>
+  fieldset {
+    border: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+  }
   .actions {
     display: flex;
     justify-content: flex-end;

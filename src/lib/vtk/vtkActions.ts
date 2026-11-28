@@ -3,7 +3,7 @@
  * working directory and open it in coral-visualizer.
  */
 
-import { settingsState } from '../stores/settingsStore.svelte'
+import { frontendSettingsState } from '../stores/frontendSettings.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
 import { openNewWindow } from '../execution/sshMessages'
 import {
@@ -21,15 +21,15 @@ import { buildVtkVisualizerUrl } from './vtkVisualizerUrl'
  */
 export const openVtkFile = async (fileName: string): Promise<void> => {
   try {
-    if (!settingsState.urlVisualizer) {
-      throw new Error('Set the visualizer URL in Settings')
+    if (!frontendSettingsState.visualizerUrl) {
+      throw new Error('Set the visualizer URL in Frontend Settings')
     }
     const target = parameterFileTarget('remote', fileName)
     if (!(await parameterFileExists(target))) {
       throw new Error('VTK file is not available in the working directory')
     }
     await openNewWindow(
-      buildVtkVisualizerUrl(settingsState.urlVisualizer, target)
+      buildVtkVisualizerUrl(frontendSettingsState.visualizerUrl, target)
     )
   } catch (error) {
     toastState.add({

@@ -43,15 +43,20 @@ export DEALIIX_BACKEND_COMMAND='["/absolute/path/to/python","/absolute/path/to/t
 npm start
 ```
 
-**Settings** opens the root backend configuration. If the backend publishes editable
-settings, the editor saves them through the protocol. For the Python backend,
-**Settings** opens the local profile in the system editor. After saving the
-profile, use **Validate & Sync** to refresh the registry. **Import Graph** opens
-next to the profile and **Run** sends the saved graph to the backend. The existing job
-table displays the backend status. Use the node gear to edit or expose a
-configuration entry. A node with an embedded registry opens in the existing
-subnetwork editor. Toolbar actions that still require the old execution path
-show a `[TODO]` warning.
+**Frontend Settings** uses the existing parameter editor for the backend command,
+backend profile, theme, visualizer URL, and project server URL. The desktop saves
+this private document as `frontend.config.json` in its Electron user-data
+directory, using the [frontend settings schema](schemas/desktop/frontend-settings.schema.json).
+Variables in the launch example initialize profiles that do not yet have saved
+settings. On save the desktop validates and loads the selected root backend.
+
+**Backend Settings** opens the active backend configuration in the same editor.
+Saving either settings form automatically refreshes the registry. **Import Graph**
+opens next to the backend profile, and **Run** shows the backend's available
+workflow actions. The existing job table displays the backend status. Use a
+node's gear to edit or expose a configuration entry, and open a node with an
+embedded registry to edit its subnetwork. Toolbar actions that still require the
+old execution path show a `[TODO]` warning.
 
 ## Linting and Formatting
 

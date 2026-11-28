@@ -25,7 +25,7 @@
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
+  import { frontendSettingsState } from '../../stores/frontendSettings.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../graph/graphParser'
   import { updateProject } from '../../requests/projects'
@@ -45,7 +45,8 @@
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  let settings = $state<ReturnType<typeof Settings>>()
+  let backendSettings = $state<ReturnType<typeof Settings>>()
+  let frontendSettings = $state<ReturnType<typeof Settings>>()
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
   const outputsModalId = 'run-outputs-modal'
@@ -57,8 +58,10 @@
     (latestRun?.state === 'queued' || latestRun?.state === 'running') &&
       !latestRun.cancellation_requested
   )
-  let hasRemoteServer = $derived(settingsState.hasRemoteServer)
-  let hasVisualizer = $derived(settingsState.hasVisualizer)
+  let hasRemoteServer = $derived(
+    Boolean(frontendSettingsState.projectServerUrl)
+  )
+  let hasVisualizer = $derived(Boolean(frontendSettingsState.visualizerUrl))
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
 
   const token = $derived(auth.token)
@@ -277,7 +280,7 @@
     })
 
   const handleOpenVisualizer = () => {
-    const url = settingsState.current.urlVisualizer
+    const url = frontendSettingsState.visualizerUrl
     openNewWindow(url)
   }
 
@@ -569,9 +572,7 @@
           label="Import Nodes"
           onclick={() =>
             workflowService.enabled
-              ? obsolete(
-                  'The backend supplies the registry. Use Validate & Sync in Settings.'
-                )
+              ? obsolete('The backend supplies the registry.')
               : importNodesInput?.click()}
         />
         <SidebarGroupButtonItem
@@ -599,20 +600,31 @@
     style="display: none"
   />
 
-  <!-- Settings (standalone) -->
-  <div class="button-container">
-    <label for="settings-button" class="element-label" title="Settings">
-      <SettingsIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="settings-button"
-      onclick={() => settings?.open()}
-      style="display: none"
-      aria-label="Settings"
-    ></button>
-    <span class="button-text"> Settings </span>
-  </div>
-  <Settings bind:this={settings} modalId="settings-modal" />
+  {#snippet settingsButton(label: string, open: () => void)}
+    <div class="button-container">
+      <button
+        class="element-label"
+        title={label}
+        aria-label={label}
+        onclick={open}
+      >
+        <SettingsIcon width="30px" height="30px" />
+      </button>
+      <span class="button-text">{label}</span>
+    </div>
+  {/snippet}
+  {@render settingsButton('Backend Settings', () => backendSettings?.open())}
+  {@render settingsButton('Frontend Settings', () => frontendSettings?.open())}
+  <Settings
+    bind:this={backendSettings}
+    modalId="settings-modal"
+    scope="backend"
+  />
+  <Settings
+    bind:this={frontendSettings}
+    modalId="frontend-settings-modal"
+    scope="frontend"
+  />
 </aside>
 
 <TextModal

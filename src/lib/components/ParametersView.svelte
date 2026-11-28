@@ -91,7 +91,8 @@
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
-  const duplicateSectionModalId = 'duplicate-parameters-section-modal'
+  const editorId = $props.id()
+  const duplicateSectionModalId = `${editorId}-duplicate-parameters-section-modal`
 
   // Action: sets open once on mount, then lets the browser own the state.
   // No update() → Svelte never re-applies this on re-renders, so user-opened

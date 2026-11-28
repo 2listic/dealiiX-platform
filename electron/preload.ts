@@ -5,10 +5,19 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
  * Docs: https://www.electronjs.org/docs/latest/tutorial/context-isolation#usage-with-typescript
  */
 contextBridge.exposeInMainWorld('electron', {
+  frontendSettings: {
+    get: () => ipcRenderer.invoke('frontend-settings:get'),
+    save: (configuration: unknown) =>
+      ipcRenderer.invoke('frontend-settings:save', configuration),
+    setTheme: (theme: unknown) =>
+      ipcRenderer.invoke('frontend-settings:theme', theme),
+  },
   workflow: {
     enabled: () => ipcRenderer.invoke('workflow:enabled'),
     openWorkflow: () => ipcRenderer.invoke('workflow:open'),
-    openConfiguration: () => ipcRenderer.invoke('workflow:open-configuration'),
+    readConfiguration: () => ipcRenderer.invoke('workflow:read-configuration'),
+    saveConfiguration: (parameters: unknown, revision: string) =>
+      ipcRenderer.invoke('workflow:save-configuration', parameters, revision),
     exchange: (request: unknown) =>
       ipcRenderer.invoke('workflow:exchange', request),
     subscribe: (listener: (response: unknown) => void) => {

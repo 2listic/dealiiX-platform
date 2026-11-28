@@ -1,5 +1,9 @@
 import { setServiceRegistry } from './registryStore.svelte'
 import { toastState } from './toastsStore.svelte'
+import { currentProjectState } from './currentProjectStore.svelte'
+import { graphStackState } from './graphStack.svelte'
+import { setEdges, setNodes, updateLastNodeId } from './nodes.svelte'
+import { parameterNodeEditorState } from './parameterNodeEditor.svelte'
 import type { ParameterTree } from '../types/parameterTypes'
 import {
   executionVersion,
@@ -30,19 +34,37 @@ export const workflowService = {
 
   async initialize(): Promise<() => void> {
     const bridge = window.electron?.workflow
-    if (!bridge || !(await bridge.enabled())) return () => {}
-    enabled = true
-    setServiceRegistry({})
+    if (!bridge) return () => {}
+    enabled = await bridge.enabled()
+    if (enabled) setServiceRegistry({})
     const unsubscribe = bridge.subscribe((reply) => {
       if ('result' in reply && reply.operation === 'status')
         record(reply.result)
     })
     try {
-      await workflowService.refreshRegistry()
+      if (enabled) await workflowService.refreshRegistry()
     } catch (error) {
       showError(error)
     }
     return unsubscribe
+  },
+
+  adoptBackend(document: RegistryDocument | null, backendChanged: boolean) {
+    if (backendChanged) {
+      runs = {}
+      parameterNodeEditorState.close()
+      currentProjectState.clear()
+      setNodes([])
+      setEdges([])
+      updateLastNodeId()
+      graphStackState.reset()
+    }
+    enabled = document !== null
+    if (document) acceptRegistry(document)
+    else if (backendChanged) {
+      registry = undefined
+      setServiceRegistry({})
+    }
   },
 
   async refreshRegistry() {
@@ -142,6 +164,13 @@ export function obsolete(message: string): void {
 // ── Private helpers ──
 
 function acceptRegistry(document: RegistryDocument) {
+  if (
+    registry &&
+    (registry.__backend.id !== document.__backend.id ||
+      registry.__backend.configuration_digest !==
+        document.__backend.configuration_digest)
+  )
+    runs = {}
   registry = document
   const skipped = setServiceRegistry(document)
   if (skipped.length)

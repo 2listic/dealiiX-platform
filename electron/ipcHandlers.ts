@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, nativeTheme, screen } from 'electron/main'
+import { ipcMain, BrowserWindow, screen } from 'electron/main'
 import { dialog } from 'electron'
 import fs from 'fs'
 import os from 'os'
@@ -193,15 +193,6 @@ export function registerIpcHandlers(): void {
         error: error instanceof Error ? error.message : String(error),
       }
     }
-  })
-
-  ipcMain.handle('set-theme', (_event, theme: string) => {
-    if (theme === 'dark') {
-      nativeTheme.themeSource = 'dark'
-    } else {
-      nativeTheme.themeSource = 'light'
-    }
-    return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
   })
 }
 

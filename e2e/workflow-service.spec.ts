@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 test('the standard editor submits its saved graph to the workflow backend', async ({}, info) => {
@@ -103,10 +103,13 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     await expect(sidebar.getByTestId('sidebar-node-class')).toHaveText(
       'Independent Independent -> Check'
     )
-    await page.getByTitle('Settings', { exact: true }).click()
+    await page.getByTitle('Backend Settings', { exact: true }).click()
     const backendSettings = page.locator('#settings-modal')
     await expect(
-      backendSettings.getByRole('heading', { name: 'Backend configuration' })
+      backendSettings.getByRole('heading', {
+        name: 'Backend Settings',
+        exact: true,
+      })
     ).toBeVisible()
     await backendSettings
       .getByRole('checkbox', { name: 'Enabled', exact: true })
@@ -149,19 +152,43 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
   }
 })
 
-test('Settings opens the active local profile and refreshes its registry', async ({}, info) => {
+test('Backend Settings edits the private profile in the shared modal and refreshes its registry on Save', async ({}, info) => {
   const helper = info.outputPath('backend.cjs')
   const profile = info.outputPath('backend.config.json')
   await mkdir(dirname(profile), { recursive: true })
-  await writeFile(profile, '{}')
+  const initial = JSON.stringify({
+    Label: {
+      value: 'Before',
+      default_value: 'Before',
+      documentation: '',
+      pattern: '[Anything]',
+      pattern_description: '[Anything]',
+    },
+  })
+  await writeFile(profile, initial)
   await writeFile(
     helper,
     `
-    const { version, operation } = JSON.parse(require('node:fs').readFileSync(0, 'utf8'))
-    console.log(JSON.stringify({ version, operation, result: { __backend: {
-      id: 'independent', version, operations: ['describe'],
-      configuration_digest: 'sha256:' + '1'.repeat(64), registry_digest: 'sha256:' + '2'.repeat(64),
-    } } }))
+    const fs = require('node:fs')
+    const { version, operation } = JSON.parse(fs.readFileSync(0, 'utf8'))
+    const { Label: { value } } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
+    if (operation !== 'describe') throw Error('Expected describe')
+    if (value === 'Invalid') {
+      console.log(JSON.stringify({ version, operation, error: {
+        code: 'invalid_configuration', message: 'Choose a valid backend label',
+      } }))
+    } else {
+      console.log(JSON.stringify({ version, operation, result: {
+        __backend: {
+          id: 'independent', version, operations: ['describe'],
+          configuration_digest: 'sha256:' + '1'.repeat(64), registry_digest: 'sha256:' + '2'.repeat(64),
+        },
+        'independent::Check': {
+          type: 'independent::Check', node_type: 'void_function',
+          arguments: [], inputs: [], outputs: [], class_name: value,
+        },
+      } }))
+    }
   `
   )
   const app = await electron.launch({
@@ -176,21 +203,36 @@ test('Settings opens the active local profile and refreshes its registry', async
   })
   try {
     const page = await app.firstWindow()
-    await app.evaluate(({ shell }) => {
-      shell.openPath = async (filename) => {
-        process.env.PLAYWRIGHT_OPENED_BACKEND_PROFILE = filename
-        return ''
-      }
-    })
     await expect(page.getByTestId('flow-canvas')).toBeVisible()
-    await page.getByTitle('Settings', { exact: true }).click()
-    await expect
-      .poll(() =>
-        app.evaluate(() => process.env.PLAYWRIGHT_OPENED_BACKEND_PROFILE)
-      )
-      .toBe(profile)
-    await page.getByRole('button', { name: 'Validate & Sync' }).click()
-    await expect(page.getByText('Backend registry synced')).toBeVisible()
+    const sidebar = page.getByTestId('sidebar')
+    await expect(sidebar.locator('[data-class-name="Before"]')).toBeAttached()
+    await page.getByTitle('Backend Settings', { exact: true }).click()
+    const backendSettings = page.locator('#settings-modal')
+    await expect(
+      backendSettings.getByRole('heading', { name: 'Backend Settings' })
+    ).toBeVisible()
+    await expect(
+      backendSettings.getByRole('button', { name: 'Validate & Sync' })
+    ).toHaveCount(0)
+    const label = backendSettings.getByRole('textbox', { name: 'Label' })
+    await expect(label).toHaveValue('Before')
+    const save = backendSettings.getByRole('button', {
+      name: 'Save',
+      exact: true,
+    })
+    await label.fill('Invalid')
+    await save.click()
+    await expect(
+      page.getByText('Choose a valid backend label', { exact: false })
+    ).toBeVisible()
+    expect(await readFile(profile, 'utf8')).toEqual(initial)
+    await label.fill('After')
+    await save.click()
+    await expect(backendSettings).toBeHidden()
+    await expect(sidebar.locator('[data-class-name="After"]')).toBeAttached()
+    expect(JSON.parse(await readFile(profile, 'utf8')).Label.value).toBe(
+      'After'
+    )
   } finally {
     await app.close()
   }
