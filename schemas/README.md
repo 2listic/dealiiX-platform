@@ -88,3 +88,23 @@ The two current backends read the execution form as follows:
 
 - **CORAL** ignores top-level keys other than `workflow` and `plugin`, requires both port positions on every edge, and generates a `qualified_id` for a node without one.
 - **coral-python** requires a `qualified_id` on every node, accepts `null` for a valueless literal, and rejects nested workflows.
+
+### Workflow collections and directory variables
+
+The root registry can advertise `workflow_locations` with an ID, label and
+`writable` flag per location. Locations are scoped to the active backend
+configuration revision. `list_workflows` returns JSON basenames and revisions
+in a location. `read_workflow` returns the selected network and its revision.
+`write_workflow` accepts a network and an `expected_revision`. Use `null` to
+create exclusively, or the previous revision to replace a file. A competing
+change returns `workflow_conflict`. Storage paths and credentials are private to
+the backend. The published operations determine which actions are available.
+
+Backends that advertise `path_variables` expand the corresponding placeholders
+in runtime string values of node parameters and command arguments. `{workdir}`
+is the stage's persistent working directory. `{rundir}` is its execution
+directory for the current run. `{workflowdir}` is the workflow collection
+directory selected for the execution host. Saving or opening the graph in a
+different location leaves the execution target and its directory mappings intact.
+Backends resolve these references in their execution context and retain the
+placeholders in the serialized graph.

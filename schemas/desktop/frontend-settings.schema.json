@@ -11,6 +11,10 @@
     "Backend configuration file": {
       "$ref": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/parameters.schema.json#/$defs/leaf"
     },
+    "Workflow directory": {
+      "description": "Optional directory initially shown by the native workflow file pickers.",
+      "$ref": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/parameters.schema.json#/$defs/leaf"
+    },
     "Theme": {
       "allOf": [
         {

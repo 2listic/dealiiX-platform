@@ -476,3 +476,73 @@ after(() => {
     [...service.$defs.operation.enum].sort()
   )
 })
+
+test('discovers workflow locations and reads and writes graphs with revision checks', (t) => {
+  const client = fixture(t)
+  const settings = read(client.profile)
+  settings.configuration.Archive = leaf('true')
+  write(client.profile, settings)
+  const header = client.result('describe').__backend
+  assert.deepEqual(header.path_variables, ['workdir', 'rundir', 'workflowdir'])
+  assert.deepEqual(
+    header.workflow_locations.map(({ id, writable }) => [id, writable]),
+    [
+      ['shared', true],
+      ['examples', false],
+    ]
+  )
+  const context = {
+    location_id: 'shared',
+    configuration_digest: header.configuration_digest,
+  }
+  const file = { ...context, workflow_name: 'ADAN56.network.json' }
+  client.rejection(
+    'list_workflows',
+    {
+      ...context,
+      configuration_digest: 'sha256:' + '0'.repeat(64),
+    },
+    'stale_configuration'
+  )
+  const network = workflow()
+  const create = { ...file, network, expected_revision: null }
+  assert.deepEqual(client.result('list_workflows', context), { entries: [] })
+  const created = client.result('write_workflow', create)
+  assert.deepEqual(client.result('list_workflows', context).entries, [created])
+  assert.deepEqual(client.result('read_workflow', file), {
+    ...created,
+    network,
+  })
+  client.rejection('write_workflow', create, 'workflow_conflict')
+  const updated = client.result('write_workflow', {
+    ...create,
+    network: { ...network, author: 'next' },
+    expected_revision: created.revision,
+  })
+  assert.notEqual(updated.revision, created.revision)
+  client.rejection(
+    'write_workflow',
+    { ...create, expected_revision: created.revision },
+    'workflow_conflict'
+  )
+  client.rejection(
+    'write_workflow',
+    { ...create, location_id: 'examples' },
+    'workflow_read_only'
+  )
+  client.rejection(
+    'read_workflow',
+    { ...file, workflow_name: '../ADAN56.network.json' },
+    'invalid_request'
+  )
+  client.rejection(
+    'read_workflow',
+    { ...file, workflow_name: 'missing.json' },
+    'workflow_not_found'
+  )
+  client.rejection(
+    'list_workflows',
+    { ...context, location_id: 'other' },
+    'unknown_workflow_location'
+  )
+})

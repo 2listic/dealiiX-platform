@@ -35,11 +35,15 @@
         "connection_type": {
           "enum": ["input", "output", "pass_through"]
         },
-        "multiple": { "type": "boolean" },
+        "multiple": {
+          "type": "boolean"
+        },
         "configuration_path": {
           "description": "For a configuration output, the path of the scalar value in the source node's configuration.",
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 1
         },
         "base": {
@@ -53,7 +57,11 @@
       "required": ["name", "type", "connection_type"],
       "dependentSchemas": {
         "configuration_path": {
-          "properties": { "connection_type": { "const": "output" } }
+          "properties": {
+            "connection_type": {
+              "const": "output"
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -208,12 +216,18 @@
       "description": "Header a backend writes under the registry's `__backend` key.",
       "$ref": "#/$defs/backendIdentity",
       "properties": {
-        "configuration": { "$ref": "parameters.schema.json" },
-        "capabilities": { "$ref": "registry.schema.json#/$defs/capabilities" },
+        "configuration": {
+          "$ref": "parameters.schema.json"
+        },
+        "capabilities": {
+          "$ref": "registry.schema.json#/$defs/capabilities"
+        },
         "registry_digest": {
           "$ref": "#/$defs/registryDigest"
         },
-        "configuration_digest": { "$ref": "#/$defs/registryDigest" },
+        "configuration_digest": {
+          "$ref": "#/$defs/registryDigest"
+        },
         "operations": {
           "description": "Operations the backend supports. A backend that lists `migrate` can upgrade a network built against an older registry.",
           "type": "array",
@@ -233,22 +247,50 @@
               "resume",
               "replay",
               "artifact",
-              "migrate"
+              "migrate",
+              "list_workflows",
+              "read_workflow",
+              "write_workflow"
             ]
           },
           "uniqueItems": true
+        },
+        "workflow_locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workflowLocation"
+          },
+          "maxItems": 64
+        },
+        "path_variables": {
+          "description": "Directory placeholders the backend expands in runtime node settings.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["workdir", "rundir", "workflowdir"]
+          }
         }
       },
       "required": ["id"],
       "if": {
         "anyOf": [
-          { "required": ["version"] },
-          { "required": ["operations"] },
-          { "required": ["plugins"] },
-          { "required": ["registry_digest"] }
+          {
+            "required": ["version"]
+          },
+          {
+            "required": ["operations"]
+          },
+          {
+            "required": ["plugins"]
+          },
+          {
+            "required": ["registry_digest"]
+          }
         ]
       },
-      "then": { "required": ["version", "registry_digest", "operations"] },
+      "then": {
+        "required": ["version", "registry_digest", "operations"]
+      },
       "unevaluatedProperties": false
     },
     "networkBackend": {
@@ -260,6 +302,29 @@
         }
       },
       "unevaluatedProperties": false
+    },
+    "workflowLocationId": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "workflowLocation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/workflowLocationId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "writable": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "label", "writable"],
+      "additionalProperties": false
     }
   }
 }

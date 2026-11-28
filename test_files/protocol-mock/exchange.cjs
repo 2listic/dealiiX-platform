@@ -1,6 +1,9 @@
 const { createHash, randomUUID } = require('node:crypto')
 const {
   mkdirSync,
+  readdirSync,
+  linkSync,
+  unlinkSync,
   readFileSync,
   renameSync,
   writeFileSync,
@@ -51,15 +54,31 @@ function values(tree) {
   )
 }
 
+const archiveOperations = ['list_workflows', 'read_workflow', 'write_workflow']
+const pathVariables = ['workdir', 'rundir', 'workflowdir']
+
 function describe(configuration) {
   const nodes = definitions(configuration)
   const configurable = configuration.Editable?.value === 'true'
+  const locations =
+    configuration.Archive?.value === 'true'
+      ? [
+          { id: 'shared', label: 'Shared workflows', writable: true },
+          { id: 'examples', label: 'Examples', writable: false },
+        ]
+      : []
   return {
     __backend: {
       ...identity,
       configuration_digest: digest(values(configuration)),
       registry_digest: digest(nodes),
-      operations: operations.filter((op) => configurable || op !== 'configure'),
+      operations: operations.filter(
+        (op) =>
+          (configurable || op !== 'configure') &&
+          (locations.length || !archiveOperations.includes(op))
+      ),
+      workflow_locations: locations,
+      path_variables: pathVariables,
       ...(configurable && {
         configuration,
         capabilities: { actions: ['configure'] },
@@ -212,6 +231,89 @@ function runOperation(run, request) {
   }
 }
 
+function archive(profilePath, header, request) {
+  if (request.configuration_digest !== header.configuration_digest)
+    fail('stale_configuration', 'Reload the active backend configuration')
+  const location = header.workflow_locations.find(
+    ({ id }) => id === request.location_id
+  )
+  if (!location)
+    fail('unknown_workflow_location', 'Select a configured workflow location')
+  const directory = join(profilePath + '.workflows', location.id)
+  mkdirSync(directory, { recursive: true })
+  const validName = (name) =>
+    /^[A-Za-z0-9_][A-Za-z0-9_. -]*\.json$/u.test(name) && !/[\r\n]/u.test(name)
+  const stored = (name) => {
+    try {
+      return readFileSync(join(directory, name))
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      return null
+    }
+  }
+  const entry = (name, data) => ({
+    name,
+    revision: 'sha256:' + createHash('sha256').update(data).digest('hex'),
+  })
+  const parseNetwork = (data) => {
+    try {
+      const document = JSON.parse(data)
+      return validator('network')(document) ? document : undefined
+    } catch {
+      return undefined
+    }
+  }
+  if (request.operation === 'list_workflows') {
+    const entries = []
+    const files = readdirSync(directory, { withFileTypes: true })
+      .filter((file) => file.isFile() && validName(file.name))
+      .map(({ name }) => name)
+      .sort()
+    for (const name of files) {
+      const data = stored(name)
+      if (data && data.length <= 4 * 1024 * 1024 && parseNetwork(data))
+        entries.push(entry(name, data))
+    }
+    return { entries }
+  }
+  const name = request.workflow_name
+  if (!validName(name))
+    fail('invalid_workflow_name', 'Expected a workflow JSON basename')
+  const previous = stored(name)
+  if (request.operation === 'read_workflow') {
+    if (previous === null) fail('workflow_not_found', 'Workflow does not exist')
+    if (previous.length > 4 * 1024 * 1024)
+      fail('workflow_too_large', 'Workflow exceeds 4 MiB')
+    const network = parseNetwork(previous)
+    if (!network) fail('invalid_network', 'Expected a workflow document')
+    return { ...entry(name, previous), network }
+  }
+  if (!location.writable)
+    fail('workflow_read_only', 'This location is read-only')
+  const current = previous === null ? null : entry(name, previous).revision
+  if (request.expected_revision !== current)
+    fail('workflow_conflict', 'Workflow changed or already exists')
+  const contents = JSON.stringify(request.network)
+  if (Buffer.byteLength(contents) > 4 * 1024 * 1024)
+    fail('workflow_too_large', 'Workflow exceeds 4 MiB')
+  const destination = join(directory, name)
+  if (current === null) {
+    const temporary = join(directory, '.' + randomUUID())
+    writeFileSync(temporary, contents)
+    try {
+      linkSync(temporary, destination)
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+      fail('workflow_conflict', 'Workflow already exists')
+    } finally {
+      unlinkSync(temporary)
+    }
+  } else {
+    write(destination, request.network)
+  }
+  return entry(name, contents)
+}
+
 function dispatch(profilePath, request) {
   const profile = read(profilePath)
   if (!validator('backend-settings')(profile))
@@ -221,6 +323,8 @@ function dispatch(profilePath, request) {
     fail('invalid_configuration', 'Greeting is required')
   const registry = describe(profile.configuration)
   const header = registry.__backend
+  if (archiveOperations.includes(request.operation))
+    return archive(profilePath, header, request)
   const runDirectory = profilePath + '.runs'
   const saveRun = (run) => {
     mkdirSync(runDirectory, { recursive: true })

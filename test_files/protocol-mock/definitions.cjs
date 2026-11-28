@@ -14,6 +14,9 @@ const operations = [
   'replay',
   'migrate',
   'artifact',
+  'list_workflows',
+  'read_workflow',
+  'write_workflow',
 ]
 const leaf = (value, pattern = '[Anything]') => ({
   value,
