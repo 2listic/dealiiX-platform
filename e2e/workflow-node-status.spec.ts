@@ -120,6 +120,7 @@ test('the canvas follows checked, active and failed nodes in the submitted graph
   })
   try {
     const page = await app.firstWindow()
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
     await app.evaluate(({ dialog }, file) => {
       dialog.showOpenDialog = async () => ({
         canceled: false,
@@ -138,6 +139,7 @@ test('the canvas follows checked, active and failed nodes in the submitted graph
     }
     const node = (name: string) =>
       page.getByRole('group', { name, exact: true })
+    const spinner = (name: string) => node(name).locator('.run-status-spinner')
 
     await importGraph()
     await runAction('Validate graph')
@@ -154,6 +156,15 @@ test('the canvas follows checked, active and failed nodes in the submitted graph
       'background-color',
       'rgb(255, 226, 189)'
     )
+    await expect(spinner('Output file')).toBeVisible()
+    await expect(spinner('Output file')).toHaveJSProperty('naturalWidth', 168)
+    await expect(spinner('Output file')).toHaveCSS(
+      'animation-iteration-count',
+      'infinite'
+    )
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect(spinner('Output file')).toHaveCSS('animation-name', 'none')
+    await expect(spinner('Waiting step')).toHaveCount(0)
     await expect(node('Input file')).toHaveCSS(
       'background-color',
       'rgb(216, 243, 220)'
@@ -183,6 +194,7 @@ test('the canvas follows checked, active and failed nodes in the submitted graph
       'background-color',
       'rgb(246, 176, 176)'
     )
+    await expect(spinner('Output file')).toHaveCount(0)
     await expect(node('Waiting step')).toHaveAttribute(
       'data-run-state',
       'cancelled'

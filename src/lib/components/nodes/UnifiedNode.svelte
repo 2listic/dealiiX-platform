@@ -55,6 +55,7 @@
 </script>
 
 <script lang="ts">
+  import dualisticMark from '../../../assets/dualistic-mark.svg'
   import {
     Handle,
     Position,
@@ -525,6 +526,14 @@
       {runStatusLabel}
     </span>
   {/if}
+  {#if runStatus?.state === 'running'}
+    <img
+      src={dualisticMark}
+      alt=""
+      aria-hidden="true"
+      class="run-status-spinner"
+    />
+  {/if}
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
@@ -879,6 +888,32 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .run-status-spinner {
+    position: absolute;
+    inset-block-start: -0.6rem;
+    inset-inline-end: 0.55rem;
+    inline-size: 1rem;
+    block-size: 1rem;
+    padding: 0.12rem;
+    border-radius: 50%;
+    background: var(--node-run-bg);
+    object-fit: contain;
+    pointer-events: none;
+    animation: spin 1.4s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .run-status-spinner {
+      animation: none;
+    }
   }
 
   .selected-node {
