@@ -1,0 +1,563 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/execution-service.schema.json",
+  "$defs": {
+    "run_id": {
+      "type": "string",
+      "pattern": "^run-[a-f0-9]{32}$"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/registryDigest"
+    },
+    "phase": {
+      "enum": ["queued", "running", "succeeded", "failed", "cancelled"]
+    },
+    "operation": {
+      "enum": [
+        "describe",
+        "configure",
+        "validate",
+        "submit",
+        "status",
+        "logs",
+        "outputs",
+        "cancel",
+        "pause",
+        "resume",
+        "replay",
+        "migrate",
+        "artifact",
+        "list_workflows",
+        "read_workflow",
+        "write_workflow"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.1"
+        },
+        "operation": {
+          "$ref": "#/$defs/operation"
+        },
+        "network": {
+          "$ref": "network.schema.json"
+        },
+        "configuration": {
+          "$ref": "parameters.schema.json"
+        },
+        "configuration_digest": {
+          "$ref": "#/$defs/revision"
+        },
+        "registry_digest": {
+          "$ref": "#/$defs/revision"
+        },
+        "run_id": {
+          "$ref": "#/$defs/run_id"
+        },
+        "document": {
+          "type": "object"
+        },
+        "qualified_id": {
+          "$ref": "common.schema.json#/$defs/qualifiedId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "location_id": {
+          "$ref": "common.schema.json#/$defs/workflowLocationId"
+        },
+        "workflow_name": {
+          "$ref": "#/$defs/workflowName"
+        },
+        "expected_revision": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/workflowRevision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["version", "operation"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "operation": {
+              "const": "describe"
+            }
+          },
+          "maxProperties": 2
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "configure"
+            }
+          },
+          "required": ["configuration", "configuration_digest"],
+          "maxProperties": 4
+        },
+        {
+          "properties": {
+            "operation": {
+              "enum": ["validate", "submit"]
+            }
+          },
+          "required": ["network", "configuration_digest", "registry_digest"],
+          "maxProperties": 5
+        },
+        {
+          "properties": {
+            "operation": {
+              "enum": [
+                "status",
+                "logs",
+                "outputs",
+                "cancel",
+                "pause",
+                "resume",
+                "replay"
+              ]
+            }
+          },
+          "required": ["run_id"],
+          "maxProperties": 3
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "migrate"
+            }
+          },
+          "required": ["document"],
+          "maxProperties": 3
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "artifact"
+            }
+          },
+          "required": ["run_id", "qualified_id", "name", "offset"],
+          "maxProperties": 6
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "list_workflows"
+            }
+          },
+          "required": ["location_id", "configuration_digest"],
+          "maxProperties": 4
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "read_workflow"
+            }
+          },
+          "required": ["location_id", "configuration_digest", "workflow_name"],
+          "maxProperties": 5
+        },
+        {
+          "properties": {
+            "operation": {
+              "const": "write_workflow"
+            }
+          },
+          "required": [
+            "location_id",
+            "configuration_digest",
+            "workflow_name",
+            "network",
+            "expected_revision"
+          ],
+          "maxProperties": 7
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string"
+        },
+        "run_id": {
+          "$ref": "#/$defs/run_id"
+        },
+        "qualified_id": {
+          "description": "Node implicated by the diagnostic, when the backend can attribute the failure to a node in the workflow.",
+          "$ref": "common.schema.json#/$defs/qualifiedId"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "node_state": {
+      "type": "object",
+      "properties": {
+        "qualified_id": {
+          "$ref": "common.schema.json#/$defs/qualifiedId"
+        },
+        "state": {
+          "$ref": "#/$defs/phase"
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        },
+        "reused": {
+          "type": "boolean"
+        },
+        "waiting_for": {
+          "type": "string"
+        }
+      },
+      "required": ["qualified_id", "state"],
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/run_id"
+        },
+        "state": {
+          "$ref": "#/$defs/phase"
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Execution and check states keyed by qualified node ID. Entries may include stages, artifacts and nodes evaluated during preparation.",
+          "additionalProperties": {
+            "$ref": "#/$defs/node_state"
+          }
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        },
+        "cancellation_requested": {
+          "type": "boolean"
+        },
+        "scheduling": {
+          "description": "Run-level admission state. Paused confirms that admitted stages finished or their pending Slurm jobs are held.",
+          "type": "object",
+          "properties": {
+            "revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "state": {
+              "enum": ["active", "draining", "paused", "resuming"]
+            }
+          },
+          "required": ["revision", "state"],
+          "additionalProperties": false
+        },
+        "source_run_id": {
+          "$ref": "#/$defs/run_id"
+        }
+      },
+      "required": ["run_id", "state", "nodes"],
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "const": true
+        }
+      },
+      "required": ["valid"],
+      "additionalProperties": false
+    },
+    "logs": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/run_id"
+        },
+        "logs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["run_id", "logs"],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/run_id"
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": ["run_id", "outputs"],
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.1"
+        },
+        "operation": {
+          "$ref": "#/$defs/operation"
+        },
+        "result": {},
+        "error": {
+          "$ref": "#/$defs/error"
+        }
+      },
+      "required": ["version"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["error"],
+          "not": {
+            "required": ["result"]
+          }
+        },
+        {
+          "required": ["operation", "result"],
+          "not": {
+            "required": ["error"]
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "operation": {
+                  "enum": ["describe", "configure"]
+                },
+                "result": {
+                  "$ref": "registry.schema.json"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "validate"
+                },
+                "result": {
+                  "$ref": "#/$defs/validation"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "enum": [
+                    "submit",
+                    "status",
+                    "cancel",
+                    "pause",
+                    "resume",
+                    "replay"
+                  ]
+                },
+                "result": {
+                  "$ref": "#/$defs/status"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "logs"
+                },
+                "result": {
+                  "$ref": "#/$defs/logs"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "outputs"
+                },
+                "result": {
+                  "$ref": "#/$defs/outputs"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "migrate"
+                },
+                "result": {
+                  "$ref": "#/$defs/migrate"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "artifact"
+                },
+                "result": {
+                  "$ref": "#/$defs/artifact"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "list_workflows"
+                },
+                "result": {
+                  "$ref": "#/$defs/list_workflows"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "read_workflow"
+                },
+                "result": {
+                  "$ref": "#/$defs/read_workflow"
+                }
+              }
+            },
+            {
+              "properties": {
+                "operation": {
+                  "const": "write_workflow"
+                },
+                "result": {
+                  "$ref": "#/$defs/write_workflow"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "migrate": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "$ref": "network.schema.json"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["network", "changes"],
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "next_offset": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      },
+      "required": ["name", "media_type", "data", "next_offset"],
+      "additionalProperties": false
+    },
+    "workflowName": {
+      "description": "A JSON file name within a configured workflow location.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_][A-Za-z0-9_. -]*\\.json$"
+    },
+    "workflowRevision": {
+      "description": "SHA-256 of the persisted file bytes.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "list_workflows": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/workflowName"
+              },
+              "revision": {
+                "$ref": "#/$defs/workflowRevision"
+              }
+            },
+            "required": ["name", "revision"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "read_workflow": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/workflowName"
+        },
+        "revision": {
+          "$ref": "#/$defs/workflowRevision"
+        },
+        "network": {
+          "$ref": "network.schema.json"
+        }
+      },
+      "required": ["name", "revision", "network"],
+      "additionalProperties": false
+    },
+    "write_workflow": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/workflowName"
+        },
+        "revision": {
+          "$ref": "#/$defs/workflowRevision"
+        }
+      },
+      "required": ["name", "revision"],
+      "additionalProperties": false
+    }
+  }
+}

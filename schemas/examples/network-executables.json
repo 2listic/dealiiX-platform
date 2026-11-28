@@ -1,0 +1,118 @@
+{
+  "backend": {
+    "id": "dealiix.orchestrator",
+    "version": "0.1",
+    "registry_digest": "sha256:a96ac18e843c512b43bc5ed0e23c7674f8b0dce9f085331b3645368565197cbf"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "std::string",
+        "position": { "x": 0, "y": 120 },
+        "value": "data/mesh.msh"
+      },
+      "1": {
+        "type": "std::string",
+        "position": { "x": 0, "y": 280 },
+        "value": "data/materials.csv"
+      },
+      "2": {
+        "type": "std::string",
+        "position": { "x": 0, "y": 480 },
+        "value": "data/load-cases.csv"
+      },
+      "3": {
+        "type": "std::string",
+        "position": { "x": 220, "y": 0 },
+        "value": "run/solver.prm",
+        "parameter_file": { "exposures": [] }
+      },
+      "4": {
+        "type": "unsigned int",
+        "position": { "x": 0, "y": -120 },
+        "value": "2"
+      },
+      "5": {
+        "type": "double",
+        "position": { "x": 0, "y": -40 },
+        "value": "1e-8"
+      },
+      "6": {
+        "type": "demo::generate_parameters",
+        "position": { "x": 440, "y": 0 }
+      },
+      "7": {
+        "type": "std::string",
+        "position": { "x": 680, "y": 180 },
+        "value": "run/serial-solution.vtu"
+      },
+      "8": {
+        "type": "std::string",
+        "position": { "x": 680, "y": 260 },
+        "value": "run/serial-residuals.csv"
+      },
+      "9": {
+        "type": "demo::serial_solver",
+        "position": { "x": 940, "y": 220 }
+      },
+      "10": {
+        "type": "unsigned int",
+        "position": { "x": 440, "y": 500 },
+        "value": "8"
+      },
+      "11": {
+        "type": "std::string",
+        "position": { "x": 680, "y": 460 },
+        "value": "run/parallel-solution.pvtu"
+      },
+      "12": {
+        "type": "std::string",
+        "position": { "x": 680, "y": 540 },
+        "value": "run/parallel-timings.csv"
+      },
+      "13": {
+        "type": "demo::parallel_solver",
+        "position": { "x": 940, "y": 500 }
+      }
+    },
+    "edges": {
+      "0": { "source": 3, "target": 6, "source_output": 0, "target_input": 0 },
+      "1": { "source": 4, "target": 6, "source_output": 0, "target_input": 1 },
+      "2": { "source": 5, "target": 6, "source_output": 0, "target_input": 2 },
+      "3": { "source": 0, "target": 9, "source_output": 0, "target_input": 0 },
+      "4": { "source": 1, "target": 9, "source_output": 0, "target_input": 1 },
+      "5": { "source": 6, "target": 9, "source_output": 0, "target_input": 2 },
+      "6": { "source": 7, "target": 9, "source_output": 0, "target_input": 3 },
+      "7": { "source": 8, "target": 9, "source_output": 0, "target_input": 4 },
+      "8": { "source": 0, "target": 13, "source_output": 0, "target_input": 0 },
+      "9": { "source": 2, "target": 13, "source_output": 0, "target_input": 1 },
+      "10": {
+        "source": 6,
+        "target": 13,
+        "source_output": 0,
+        "target_input": 2
+      },
+      "11": {
+        "source": 10,
+        "target": 13,
+        "source_output": 0,
+        "target_input": 3
+      },
+      "12": {
+        "source": 11,
+        "target": 13,
+        "source_output": 0,
+        "target_input": 4
+      },
+      "13": {
+        "source": 12,
+        "target": 13,
+        "source_output": 0,
+        "target_input": 5
+      }
+    }
+  },
+  "version": 1,
+  "author": "dealiiX-platform mockup",
+  "date_time_utc": "2026-11-17T15:00:00.000Z"
+}

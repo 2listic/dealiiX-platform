@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/common.schema.json",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/common.schema.json",
   "title": "common",
   "description": "Definitions shared by the registry and network schemas.",
   "$defs": {
     "nodeType": {
-      "description": "Node category from the registry. The editor uses it for rendering. Backends identify a node by its `type`; CORAL only checks that a node's `node_type`, when given, equals its registry entry's.",
+      "description": "Rendering hint for a node. Backends identify a node by its `type`, never by `node_type`.",
       "enum": [
         "elementary_constructor",
         "primitive",
@@ -35,6 +35,17 @@
         "connection_type": {
           "enum": ["input", "output", "pass_through"]
         },
+        "multiple": {
+          "type": "boolean"
+        },
+        "configuration_path": {
+          "description": "For a configuration output, the path of the scalar value in the source node's configuration.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
         "base": {
           "type": "string",
           "minLength": 1
@@ -44,6 +55,15 @@
         }
       },
       "required": ["name", "type", "connection_type"],
+      "dependentSchemas": {
+        "configuration_path": {
+          "properties": {
+            "connection_type": {
+              "const": "output"
+            }
+          }
+        }
+      },
       "additionalProperties": false
     },
     "inputs": {
@@ -151,19 +171,159 @@
       }
     },
     "backendIdentity": {
-      "description": "Logical identity of the backend and, where needed, its plugin. These are identifiers, not installation paths.",
+      "description": "Names a backend and its plugins independently of installation paths.",
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          "minLength": 1
         },
         "plugin": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["id"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["id"]
+    },
+    "registryDigest": {
+      "description": "SHA-256 digest. Protocol 1.1 hashes the RFC 8785 canonical JSON representation.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registryBackend": {
+      "description": "Header a backend writes under the registry's `__backend` key.",
+      "$ref": "#/$defs/backendIdentity",
+      "properties": {
+        "configuration": {
+          "$ref": "parameters.schema.json"
+        },
+        "capabilities": {
+          "$ref": "registry.schema.json#/$defs/capabilities"
+        },
+        "registry_digest": {
+          "$ref": "#/$defs/registryDigest"
+        },
+        "configuration_digest": {
+          "$ref": "#/$defs/registryDigest"
+        },
+        "operations": {
+          "description": "Operations the backend supports. A backend that lists `migrate` can upgrade a network built against an older registry.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "register",
+              "describe",
+              "configure",
+              "validate",
+              "run",
+              "submit",
+              "status",
+              "logs",
+              "outputs",
+              "cancel",
+              "pause",
+              "resume",
+              "replay",
+              "artifact",
+              "migrate",
+              "list_workflows",
+              "read_workflow",
+              "write_workflow"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "workflow_locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/workflowLocation"
+          },
+          "maxItems": 64
+        },
+        "path_variables": {
+          "description": "Directory placeholders the backend expands in runtime node settings.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["workdir", "rundir", "workflowdir"]
+          }
         }
       },
       "required": ["id"],
+      "if": {
+        "anyOf": [
+          {
+            "required": ["version"]
+          },
+          {
+            "required": ["operations"]
+          },
+          {
+            "required": ["plugins"]
+          },
+          {
+            "required": ["registry_digest"]
+          }
+        ]
+      },
+      "then": {
+        "required": ["version", "registry_digest", "operations"]
+      },
+      "unevaluatedProperties": false
+    },
+    "networkBackend": {
+      "description": "Header naming the backend a network targets. With `registry_digest`, the backend rejects the network as stale when its current registry differs; without it, `version` must match when given.",
+      "$ref": "#/$defs/backendIdentity",
+      "properties": {
+        "registry_digest": {
+          "$ref": "#/$defs/registryDigest"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "workflowLocationId": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "workflowLocation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/workflowLocationId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "writable": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "label", "writable"],
       "additionalProperties": false
     }
   }

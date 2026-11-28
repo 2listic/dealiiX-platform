@@ -1,0 +1,51 @@
+{
+  "backend": {
+    "id": "orchestrator"
+  },
+  "workflow": {
+    "nodes": {
+      "0": {
+        "type": "orchestrator::CoralLocal",
+        "node_type": "network",
+        "value": {
+          "backend": {
+            "id": "coral",
+            "plugin": "dealii"
+          },
+          "workflow": {
+            "nodes": {
+              "1": {
+                "type": "int",
+                "value": "42"
+              }
+            },
+            "edges": {}
+          }
+        }
+      },
+      "1": {
+        "type": "orchestrator::CountLines",
+        "node_type": "void_function",
+        "configuration": {
+          "parameters": {
+            "Refinement": {
+              "value": "3",
+              "default_value": "3",
+              "pattern": "[Integer]",
+              "pattern_description": "[Integer]",
+              "documentation": "Initial refinement."
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "0": {
+        "source": 0,
+        "target": 1,
+        "source_output": 0,
+        "target_input": 0
+      }
+    }
+  }
+}

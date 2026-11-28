@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/backend-settings.schema.json",
+  "title": "Backend settings document",
+  "type": "object",
+  "properties": {
+    "backend": {
+      "$ref": "common.schema.json#/$defs/backendIdentity",
+      "unevaluatedProperties": false
+    },
+    "configuration": {
+      "$ref": "parameters.schema.json"
+    }
+  },
+  "required": ["backend", "configuration"],
+  "additionalProperties": false
+}
