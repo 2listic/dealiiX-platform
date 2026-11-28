@@ -41,6 +41,38 @@ function parameter(tree, path) {
   )
 }
 
+function literalValue(item, definition, qualified_id) {
+  for (const field of ['node_type', 'arguments', 'inputs', 'outputs'])
+    if (
+      field in item &&
+      JSON.stringify(item[field]) !== JSON.stringify(definition[field])
+    )
+      fail(
+        'invalid_network',
+        'Literal does not match its registry definition',
+        qualified_id
+      )
+  if ('configuration' in item || 'parameter_file' in item)
+    fail('invalid_network', 'Literal nodes use value', qualified_id)
+
+  const value = item.value ?? definition.value
+  if (item.type === 'std::string') return value
+  if (item.type === 'bool' && (value === 'true' || value === 'false'))
+    return value
+  if (item.type === 'int' && /^[+-]?[0-9]+$/.test(value))
+    return BigInt(value).toString()
+  if (
+    item.type === 'double' &&
+    /^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(value)
+  )
+    return value
+  fail(
+    'invalid_parameters',
+    'Invalid value for ' + item.type + ' literal',
+    qualified_id
+  )
+}
+
 function exposure(node, handle, direction) {
   const prefix = 'parameter-' + direction + '-'
   if (!handle?.startsWith(prefix))
@@ -102,6 +134,7 @@ function prepare(network, registry) {
     const runtime = []
     const bindings = []
     const parameters = {}
+    const literals = {}
 
     for (const [key, item] of Object.entries(graphNodes)) {
       const qualified_id = prefix + key
@@ -123,6 +156,8 @@ function prepare(network, registry) {
           'Node cannot expose configuration',
           qualified_id
         )
+      if (!prefix && definition.node_type === 'elementary_constructor')
+        literals[key] = literalValue(item, definition, qualified_id)
       parameters[key] = {
         ...structuredClone(definition.configuration ?? {}),
         ...structuredClone(item.configuration ?? {}),
@@ -175,7 +210,7 @@ function prepare(network, registry) {
         const path = output?.path ?? output?.configuration_path
         const value = path
           ? parameter(parameters[edge.source], path)?.value
-          : source.value
+          : (literals[edge.source] ?? source.value)
         if (
           sourceType !== parameterType[input.type] ||
           typeof value !== 'string' ||
@@ -204,7 +239,10 @@ function prepare(network, registry) {
       const file = isFile(item.type)
       const produced =
         file && runtime.some(({ target }) => String(target) === key)
-      const checked = (!produced && file) || item.type === 'mock::Selection'
+      const checked =
+        (!produced && file) ||
+        item.type === 'mock::Selection' ||
+        Object.hasOwn(literals, key)
       if (file && !produced && parameters[key].path.value === 'missing.dat')
         fail('missing_input', 'Required file is missing', qualified_id)
       nodes[qualified_id] = {

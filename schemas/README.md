@@ -49,6 +49,20 @@ When a leaf declares `selection_options`, its dropdown uses the pipe-separated t
 
 A flat object keyed by `type`; a library of stored network nodes is keyed by `name`. `inputs` and `outputs` hold indices into `arguments`, one per port, and an output of `-1` is the node itself. `node_type` is a rendering hint only. Literal defaults in `value` are strings. A stored subnetwork definition has a workflow in `value`, or `{}` for the generic `coral::Network` entry. A backend node such as `orchestrator::immersx::coral` publishes its child registry in `value.registry`. The parent backend discovers it with the configured CORAL plugin. The child definitions stay scoped to that node and the editor uses them when opening its workflow. A placed node's `value` contains its editable workflow, so saved and submitted networks do not duplicate registry definitions.
 
+The root workflow service can offer scalar literals using the existing
+`elementary_constructor` node type. A literal has empty `arguments` and
+`inputs` arrays, a single SELF output (`outputs: [-1]`), and a text `value`.
+The definitions are `bool` (displayed as **Option**, initial value `"false"`),
+`int` and `double` (initial value `"0"`), and `std::string` (initial value
+`""`). A missing or null instance value uses its registry default.
+
+A literal connects from `source_output: 0` to the handle of an exposed input
+with the matching type. A `std::string` literal matches an exposure of type
+`string`. The backend validates the literal text and binds it during
+preparation. Boolean literals are exactly `"true"` or `"false"`. Integers
+use signed decimal notation and doubles accept decimal and scientific notation.
+Prepared literals report `succeeded` and consume no execution stage.
+
 Keys starting with `__` carry metadata:
 
 - `__backend`: the backend's `id`, `version` and `plugins`, the `operations` it supports (`register`, `validate`, `run`, and `migrate` when it can upgrade an older network), and `registry_digest`. The digest is the SHA-256 of the RFC 8785 canonical registry definitions, excluding `__` metadata, written `sha256:<hex>`. The Python backend publishes the private profile revision as an opaque `configuration_digest`.

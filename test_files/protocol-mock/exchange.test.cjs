@@ -72,11 +72,11 @@ const edge = (source, source_output, target, target_input) => ({
 })
 const handle = (direction, key) =>
   'parameter-' + direction + '-' + encodeURIComponent(JSON.stringify([key]))
-const exposure = (key, direction) => ({
+const exposure = (key, direction, type = 'string') => ({
   exposures: [
     {
       path: [key],
-      type: 'string',
+      type,
       input: direction === 'input',
       output: direction === 'output',
     },
@@ -192,6 +192,115 @@ test('discovers registry capabilities, families, file ports and a scoped CORAL r
       configuration_digest: registry.__backend.configuration_digest,
     },
     'unsupported_operation'
+  )
+})
+
+test('evaluates typed primitive literals before submitting any stages', (t) => {
+  const client = fixture(t)
+  const registry = client.result('describe')
+  const rev = revision(registry)
+  const literals = [
+    {
+      type: 'bool',
+      port: 'bool',
+      name: 'enabled',
+      fallback: 'false',
+      value: 'true',
+      bound: 'true',
+    },
+    {
+      type: 'int',
+      port: 'int',
+      name: 'iterations',
+      fallback: '0',
+      value: '+007',
+      bound: '7',
+    },
+    {
+      type: 'double',
+      port: 'double',
+      name: 'tolerance',
+      fallback: '0',
+      value: '.125e-2',
+      bound: '.125e-2',
+    },
+    {
+      type: 'std::string',
+      port: 'string',
+      name: 'message',
+      fallback: '',
+      value: null,
+      bound: '',
+    },
+  ]
+  for (const { type, fallback } of literals) {
+    const definition = registry[type]
+    assert.equal(definition.node_type, 'elementary_constructor')
+    assert.equal(definition.value, fallback)
+    assert.deepEqual(definition.arguments, [])
+    assert.deepEqual(definition.inputs, [])
+    assert.deepEqual(definition.outputs, [-1])
+    assert.equal(definition.configuration, undefined)
+  }
+  assert.equal(registry.bool.display_name, 'Option')
+
+  const network = {
+    backend: { id: 'mock' },
+    workflow: {
+      nodes: {
+        ...Object.fromEntries(
+          literals.map(({ type, value }, index) => [index, { type, value }])
+        ),
+        4: {
+          type: 'mock::Stage',
+          configuration: {},
+          configuration_exposures: {
+            exposures: literals.map(
+              ({ name, port }) => exposure(name, 'input', port).exposures[0]
+            ),
+          },
+        },
+      },
+      edges: Object.fromEntries(
+        literals.map(({ name }, source) => [
+          source,
+          {
+            source,
+            source_output: 0,
+            target: 4,
+            target_handle: handle('input', name),
+          },
+        ])
+      ),
+    },
+  }
+  assert.equal(client.result('validate', { network, ...rev }).valid, true)
+  const run = client.result('submit', { network, ...rev })
+  for (const id of ['0', '1', '2', '3'])
+    assert.equal(run.nodes[id].state, 'succeeded')
+  assert.equal(run.nodes[4].state, 'queued')
+
+  const snapshot = read(join(client.profile + '.runs', run.run_id + '.json'))
+  assert.deepEqual(snapshot.plan.work, ['4'])
+  for (const { name, bound } of literals)
+    assert.equal(snapshot.plan.effective[4][name].value, bound)
+  assert.equal(snapshot.network.workflow.nodes[1].value, '+007')
+  assert.equal(complete(client, run.run_id).state, 'succeeded')
+
+  const wrongType = structuredClone(network)
+  wrongType.workflow.nodes[4].configuration_exposures.exposures[0].type = 'int'
+  client.rejection('validate', { network: wrongType, ...rev }, 'invalid_edge')
+
+  const wrongBool = structuredClone(network)
+  wrongBool.workflow.nodes[0].value = '1'
+  delete wrongBool.workflow.edges[0]
+  assert.equal(
+    client.rejection(
+      'validate',
+      { network: wrongBool, ...rev },
+      'invalid_parameters'
+    ).qualified_id,
+    '0'
   )
 })
 

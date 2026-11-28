@@ -39,11 +39,14 @@ const node = (type, fields = {}) => ({
   ...fields,
 })
 const configurable = { actions: ['configure'], configuration_exposable: true }
-const stringLiteral = node('std::string', {
-  node_type: 'elementary_constructor',
-  value: '',
-  outputs: [-1],
-})
+const literal = (type, value, fields = {}) =>
+  node(type, {
+    node_type: 'elementary_constructor',
+    value,
+    outputs: [-1],
+    ...fields,
+  })
+const stringLiteral = literal('std::string', '')
 const dependency = 'mock::dependency'
 const artifact = 'mock::file'
 const file = (type) =>
@@ -62,6 +65,9 @@ const file = (type) =>
 
 function definitions(configuration) {
   return {
+    bool: literal('bool', 'false', { display_name: 'Option' }),
+    int: literal('int', '0'),
+    double: literal('double', '0'),
     'std::string': stringLiteral,
     'mock::Selection': node('mock::Selection', {
       arguments: [
@@ -111,6 +117,9 @@ function definitions(configuration) {
       outputs: [1, 3],
       configuration: {
         message: configuration.Greeting,
+        enabled: leaf('false', '[Bool]'),
+        iterations: leaf('0', '[Integer]'),
+        tolerance: leaf('0', '[Double]'),
         outcome: leaf('success', '[Selection success|missing_output ]'),
         run_policy: leaf('always', '[Selection always|if_missing ]'),
       },
