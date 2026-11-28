@@ -8,12 +8,20 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
   const network = join(dirname(profile), 'network.json')
   await mkdir(dirname(profile), { recursive: true })
   await writeFile(profile, '{}')
-  await writeFile(network, JSON.stringify({
-    version: 1,
-    backend: { id: 'independent' },
-    workflow: { nodes: { 0: { type: 'independent::Check', name: 'Opened check' } }, edges: {} },
-  }))
-  await writeFile(helper, `
+  await writeFile(
+    network,
+    JSON.stringify({
+      version: 1,
+      backend: { id: 'independent' },
+      workflow: {
+        nodes: { 0: { type: 'independent::Check', name: 'Opened check' } },
+        edges: {},
+      },
+    })
+  )
+  await writeFile(
+    helper,
+    `
     const request = JSON.parse(require('node:fs').readFileSync(0, 'utf8'))
     const { version, operation } = request
     const configuration_digest = 'sha256:' + '1'.repeat(64)
@@ -45,7 +53,8 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
       result = { run_id, logs: { 0: 'Backend ran the configured graph' } }
     }
     console.log(JSON.stringify({ version, operation, result }))
-  `)
+  `
+  )
   const app = await electron.launch({
     args: [process.cwd(), '--no-sandbox'],
     env: {
@@ -58,33 +67,53 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
   })
   try {
     const page = await app.firstWindow()
-    await app.evaluate(({ dialog }, expected) => {
-      dialog.showOpenDialog = async (parentOrOptions, options) => {
-        const actual = options ?? parentOrOptions
-        if (!('defaultPath' in actual) || actual.defaultPath !== expected.start) {
-          throw new Error('Expected the workflow picker to start beside the profile')
+    await app.evaluate(
+      ({ dialog }, expected) => {
+        dialog.showOpenDialog = async (parentOrOptions, options) => {
+          const actual = options ?? parentOrOptions
+          if (
+            !('defaultPath' in actual) ||
+            actual.defaultPath !== expected.start
+          ) {
+            throw new Error(
+              'Expected the workflow picker to start beside the profile'
+            )
+          }
+          return { canceled: false, filePaths: [expected.network] }
         }
-        return { canceled: false, filePaths: [expected.network] }
-      }
-    }, { start: dirname(profile), network })
+      },
+      { start: dirname(profile), network }
+    )
     await expect(page.getByTestId('flow-canvas')).toBeVisible()
     const sidebar = page.getByTestId('sidebar')
     await sidebar.hover()
-    await expect(sidebar.getByTestId('sidebar-node-class')).toHaveText('Independent Independent -> Check')
+    await expect(sidebar.getByTestId('sidebar-node-class')).toHaveText(
+      'Independent Independent -> Check'
+    )
     await page.getByTitle('Import / Export', { exact: true }).click()
-    await page.getByRole('button', { name: 'Import Nodes', exact: true }).click()
-    await expect(page.getByText('[TODO] The backend supplies the registry.', { exact: false })).toBeVisible()
+    await page
+      .getByRole('button', { name: 'Import Nodes', exact: true })
+      .click()
+    await expect(
+      page.getByText('[TODO] The backend supplies the registry.', {
+        exact: false,
+      })
+    ).toBeVisible()
     await page.getByTitle('Import / Export', { exact: true }).click()
-    await page.getByRole('button', { name: 'Import Graph', exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Import Graph', exact: true })
+      .click()
     await page.getByRole('button', { name: 'Configure Opened check' }).click()
     await page.getByRole('checkbox', { name: 'Enabled', exact: true }).check()
-    await page.getByRole('checkbox', { name: 'Expose Enabled as input' }).check()
+    await page.getByTitle('Expose Enabled as a graph input').click()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await page.getByRole('button', { name: 'Back to graph' }).click()
     await page.getByTitle('Run new job', { exact: true }).click()
     await expect(page.getByText('succeeded', { exact: true })).toBeVisible()
     await page.getByTitle('View logs from the current job').click()
-    await expect(page.getByText('Backend ran the configured graph', { exact: false })).toBeVisible()
+    await expect(
+      page.getByText('Backend ran the configured graph', { exact: false })
+    ).toBeVisible()
   } finally {
     await app.close()
   }
