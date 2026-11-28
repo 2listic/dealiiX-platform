@@ -1,4 +1,7 @@
-import type { ParameterFileFormat } from '../parameters/parameterFileFormat'
+import {
+  restoreExposableParameterControls,
+  type ParameterFileFormat,
+} from '../parameters/parameterFileFormat'
 import type { ParameterTree } from '../types/parameterTypes'
 import type { ParameterExposure } from '../types/nodeTypes'
 import {
@@ -10,6 +13,8 @@ import {
   saveNodeConfiguration,
   setNodeParameterExposures,
 } from '../parameters/parameterNodeCanvas'
+import { getNodes } from './nodes.svelte'
+import { getNodeData, isNodeInRegistry } from './registryStore.svelte'
 
 type ParameterDocument = {
   nodeId: string
@@ -96,12 +101,23 @@ export const parameterNodeEditorState = {
       configurationExposable,
     }: ParameterNodeEditorOptions
   ): void {
+    const type = getNodes().find((node) => node.id === nodeId)?.data.type
+    const template =
+      configurationExposable !== false &&
+      typeof type === 'string' &&
+      isNodeInRegistry(type)
+        ? getNodeData(type).configuration
+        : undefined
     document = {
       kind: 'configuration',
       name,
       nodeId,
       configurationExposable,
-      parameters: structuredClone(parameters),
+      parameters: structuredClone(
+        template
+          ? restoreExposableParameterControls(template, parameters)
+          : parameters
+      ),
       exposures: structuredClone(exposures),
       edited: false,
       saving: false,

@@ -74,14 +74,7 @@ test('frontend settings validate, persist and switch the root backend', async ({
       name: 'Backend configuration file',
     })
     await expect(backendProfile).toHaveValue(initial)
-    const setProfile = async (path: string) => {
-      await backendProfile.evaluate((input: HTMLInputElement, value) => {
-        input.value = value
-        input.dispatchEvent(new Event('change', { bubbles: true }))
-      }, path)
-      await expect(backendProfile).toHaveValue(path)
-    }
-    await setProfile(invalid)
+    await backendProfile.fill(invalid)
     await settings.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(settings.getByRole('alert')).toContainText(
       'Invalid backend profile'

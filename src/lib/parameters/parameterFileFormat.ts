@@ -41,9 +41,17 @@ export const parameterTreeAtPath = (
   return current
 }
 
+const selectionPattern = (leaf: ParameterLeaf) =>
+  [leaf.pattern_description, leaf.pattern]
+    .map((pattern) => pattern?.trim())
+    .find((pattern) => pattern && /^\[Selection\s/.test(pattern))
+
 export const isSelectionParameter = (leaf: ParameterLeaf): boolean =>
-  Boolean(leaf.selection_options) ||
-  leaf.pattern_description.startsWith('[Selection')
+  Boolean(leaf.selection_options || selectionPattern(leaf))
+
+export const isBooleanParameter = (leaf: ParameterLeaf): boolean =>
+  leaf.pattern_description?.trim() === '[Bool]' ||
+  leaf.pattern?.trim() === '[Bool]'
 
 /** Uses the declared sibling field or the static selection pattern. */
 export const parameterSelectionOptions = (
@@ -56,7 +64,7 @@ export const parameterSelectionOptions = (
     ? isParameterLeaf(optionsLeaf)
       ? optionsLeaf.value
       : ''
-    : (leaf.pattern_description.match(/\[Selection\s+(.*?)\]/)?.[1] ?? '')
+    : (selectionPattern(leaf)?.match(/\[Selection\s+(.*?)\]/)?.[1] ?? '')
   return [
     ...new Set(
       choices
@@ -65,6 +73,40 @@ export const parameterSelectionOptions = (
         .filter(Boolean)
     ),
   ]
+}
+
+/** Recover the editing controls declared by the registry for saved values. */
+export const restoreExposableParameterControls = (
+  template: ParameterTree,
+  configuration: ParameterTree
+): ParameterTree => {
+  const restored = { ...configuration }
+  for (const [key, declared] of Object.entries(template)) {
+    if (key === '__extra') continue
+    const saved = configuration[key]
+    if (isParameterTree(declared) && isParameterTree(saved)) {
+      restored[key] = restoreExposableParameterControls(declared, saved)
+    } else if (
+      isParameterLeaf(declared) &&
+      isParameterLeaf(saved) &&
+      (isSelectionParameter(declared) || isBooleanParameter(declared))
+    ) {
+      const { selection_options: options } = declared
+      if (
+        options &&
+        !isParameterLeaf(restored[options]) &&
+        isParameterLeaf(template[options])
+      ) {
+        restored[options] = template[options]
+      }
+      restored[key] = {
+        __extra: saved.__extra,
+        ...declared,
+        value: saved.value,
+      }
+    }
+  }
+  return restored
 }
 
 /**

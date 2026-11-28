@@ -8,13 +8,30 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
   const network = join(dirname(profile), 'network.json')
   await mkdir(dirname(profile), { recursive: true })
   await writeFile(profile, '{}')
+  const savedLeaf = (value: string) => ({
+    value,
+    default_value: value,
+    documentation: '',
+    pattern: '[Anything]',
+    pattern_description: '[Anything]',
+  })
   await writeFile(
     network,
     JSON.stringify({
       version: 1,
       backend: { id: 'independent' },
       workflow: {
-        nodes: { 0: { type: 'independent::Check', name: 'Opened check' } },
+        nodes: {
+          0: {
+            type: 'independent::Check',
+            name: 'Opened check',
+            configuration: {
+              Enabled: savedLeaf('false'),
+              Nested: { Mode: savedLeaf('baseline') },
+              Text: savedLeaf('true'),
+            },
+          },
+        },
         edges: {},
       },
     })
@@ -38,6 +55,8 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     }
     if (operation === 'describe' || operation === 'configure') {
       const Enabled = { value: 'false', default_value: 'false', documentation: '', pattern: '[Bool]', pattern_description: '[Bool]' }
+      const Mode = ${JSON.stringify({ ...savedLeaf('baseline'), pattern: '[Selection baseline|alternate ]' })}
+      const Text = ${JSON.stringify(savedLeaf('true'))}
       result = {
         __backend: {
           id: 'independent', version, operations: ['describe', 'configure', 'migrate', 'submit', 'status', 'logs'],
@@ -45,7 +64,7 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
         },
         'independent::Check': {
           type: 'independent::Check', node_type: 'void_function', arguments: [], inputs: [], outputs: [],
-          display_name: 'Check', class_name: 'Independent', configuration: { Enabled },
+          display_name: 'Check', class_name: 'Independent', configuration: { Enabled, Nested: { Mode }, Text },
           capabilities: { actions: ['configure'], configuration_exposable: true },
         },
       }
@@ -54,6 +73,9 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     } else if (operation === 'submit') {
       const node = request.network.workflow.nodes['0']
       if (node.configuration?.Enabled?.value !== 'true' ||
+          node.configuration?.Nested?.Mode?.value !== 'alternate' ||
+          node.configuration?.Text?.value !== 'true' ||
+          node.configuration_exposures.exposures[0].type !== 'bool' ||
           !node.configuration_exposures.exposures[0].input ||
           enabled !== 'true' || request.configuration_digest !== digest() ||
           request.registry_digest !== registry_digest) throw Error('Expected the saved exposed graph and both revisions')
@@ -130,9 +152,23 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
       .getByRole('button', { name: 'Import Graph', exact: true })
       .click()
     await page.getByRole('button', { name: 'Configure Opened check' }).click()
-    await page.getByRole('checkbox', { name: 'Enabled', exact: true }).check()
+    const enabled = page.getByRole('checkbox', { name: 'Enabled', exact: true })
+    const mode = page.getByRole('combobox', { name: 'Mode', exact: true })
+    await expect(enabled).not.toBeChecked()
+    await page.getByText('Enabled', { exact: true }).click()
+    await expect(enabled).toBeChecked()
+    await mode.selectOption('alternate')
+    await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue(
+      'true'
+    )
     await page.getByTitle('Expose Enabled as a graph input').click()
+    await expect(enabled).toBeDisabled()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByRole('button', { name: 'Back to graph' }).click()
+    await page.getByRole('button', { name: 'Configure Opened check' }).click()
+    await expect(enabled).toBeChecked()
+    await expect(enabled).toBeDisabled()
+    await expect(mode).toHaveValue('alternate')
     await page.getByRole('button', { name: 'Back to graph' }).click()
     await page.getByTitle('Run', { exact: true }).click()
     await expect(
@@ -243,16 +279,11 @@ test('Backend Settings edits the private profile in the shared modal and refresh
     )
     await expect(label).toHaveValue('Before')
     expect(await readFile(profile, 'utf8')).toEqual(initial)
-    const setLabel = (value: string) =>
-      label.evaluate((input: HTMLInputElement, value) => {
-        input.value = value
-        input.dispatchEvent(new Event('change', { bubbles: true }))
-      }, value)
     const save = backendSettings.getByRole('button', {
       name: 'Save',
       exact: true,
     })
-    await setLabel('Invalid')
+    await label.fill('Invalid')
     await save.click()
     await expect(
       page.getByText('Choose a valid backend label', { exact: false })
