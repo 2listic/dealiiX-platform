@@ -15,24 +15,34 @@ export type RegistryDocument = Record<string, unknown> & {
   }
 }
 
-export type ExecutionDiagnostic = { code: string; message: string }
+export type ExecutionDiagnostic = {
+  code: string
+  message: string
+  qualified_id?: string
+}
+
+export class WorkflowRequestError extends Error {
+  constructor(public readonly diagnostic: ExecutionDiagnostic) {
+    super(`${diagnostic.code}: ${diagnostic.message}`)
+  }
+}
+
 export type Phase = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+export type NodeRunStatus = {
+  qualified_id: string
+  state: Phase
+  waiting_for?: string
+  reused?: boolean
+  error?: ExecutionDiagnostic
+}
+
 export type RunStatus = {
   run_id: string
   state: Phase
   source_run_id?: string
   cancellation_requested?: boolean
   error?: ExecutionDiagnostic
-  nodes: Record<
-    string,
-    {
-      qualified_id: string
-      state: Phase
-      waiting_for?: string
-      reused?: boolean
-      error?: ExecutionDiagnostic
-    }
-  >
+  nodes: Record<string, NodeRunStatus>
 }
 
 export type ExecutionRequest = { version: typeof executionVersion } & (

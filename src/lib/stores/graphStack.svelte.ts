@@ -48,6 +48,7 @@ let graphStack = $state<GraphContext[]>([
     future: [],
   },
 ])
+let graphGeneration = $state(0)
 
 /** Temporary pre-gesture snapshot held between begin() and commit().
  *  Discarded on any navigation action to prevent cross-level contamination. */
@@ -114,6 +115,17 @@ export const graphStackState = {
     return graphStack.at(-1)?.label ?? rootLabel()
   },
 
+  get generation(): number {
+    return graphGeneration
+  },
+
+  qualifiedId(nodeId: string): string {
+    return [
+      ...graphStack.slice(1).map((context) => context.parentNodeId),
+      nodeId,
+    ].join('_')
+  },
+
   // ---- Read accessors ----
 
   /** Returns the top (current) context, or undefined if the stack is empty. */
@@ -140,6 +152,7 @@ export const graphStackState = {
 
   /** Resets the context stack to a single empty root context. */
   reset(): void {
+    graphGeneration++
     graphStack = [
       {
         label: rootLabel(),

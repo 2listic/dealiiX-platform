@@ -4,9 +4,11 @@ import { currentProjectState } from './currentProjectStore.svelte'
 import { graphStackState } from './graphStack.svelte'
 import { setEdges, setNodes, updateLastNodeId } from './nodes.svelte'
 import { parameterNodeEditorState } from './parameterNodeEditor.svelte'
+import { canvasRunState } from './canvasRun.svelte'
 import type { ParameterTree } from '../types/parameterTypes'
 import {
   executionVersion,
+  WorkflowRequestError,
   type ExecutionReply,
   type ExecutionRequest,
   type RegistryDocument,
@@ -27,6 +29,9 @@ export const workflowService = {
   },
   get runs() {
     return Object.values(runs).reverse()
+  },
+  getRun(runId: string) {
+    return runs[runId]
   },
   get operations() {
     return registry?.__backend.operations ?? []
@@ -52,6 +57,7 @@ export const workflowService = {
   adoptBackend(document: RegistryDocument | null, backendChanged: boolean) {
     if (backendChanged) {
       runs = {}
+      canvasRunState.clear()
       parameterNodeEditorState.close()
       currentProjectState.clear()
       setNodes([])
@@ -112,9 +118,12 @@ export const workflowService = {
       throw new Error('Expected the validation result')
   },
 
-  async submit(network: WorkflowDocument): Promise<void> {
+  async submit(network: WorkflowDocument): Promise<RunStatus> {
     const reply = await graphRequest('submit', network)
-    if (reply.operation === 'submit') record(reply.result)
+    if (reply.operation !== 'submit')
+      throw new Error('Expected the submitted run')
+    record(reply.result)
+    return reply.result
   },
 
   async updateRun(
@@ -169,8 +178,10 @@ function acceptRegistry(document: RegistryDocument) {
     (registry.__backend.id !== document.__backend.id ||
       registry.__backend.configuration_digest !==
         document.__backend.configuration_digest)
-  )
+  ) {
     runs = {}
+    canvasRunState.clear()
+  }
   registry = document
   const skipped = setServiceRegistry(document)
   if (skipped.length)
@@ -197,8 +208,7 @@ async function exchange(
     ...request,
     version: executionVersion,
   })
-  if ('error' in reply)
-    throw new Error(`${reply.error.code}: ${reply.error.message}`)
+  if ('error' in reply) throw new WorkflowRequestError(reply.error)
   return reply
 }
 

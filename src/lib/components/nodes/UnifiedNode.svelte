@@ -96,7 +96,11 @@
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
-  import { graphHistoryState } from '../../stores/graphStack.svelte'
+  import {
+    graphHistoryState,
+    graphStackState,
+  } from '../../stores/graphStack.svelte'
+  import { canvasRunState } from '../../stores/canvasRun.svelte'
   import { explodeNetworkNodeInGraph } from '../../graph/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
@@ -329,6 +333,28 @@
   let nodeInfoModalId = $derived(`node-info-${id}`)
   let nodeInfoJson = $derived(JSON.stringify(data, null, 2))
   let nodeDisplayName = $derived(returnNodeName(data))
+  const stateLabels = {
+    queued: 'Waiting',
+    running: 'Running',
+    succeeded: 'Succeeded',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+  }
+  const runStatus = $derived(
+    canvasRunState.node(
+      graphStackState.generation,
+      graphStackState.qualifiedId(id),
+      workflowService.getRun
+    )
+  )
+  const runStatusLabel = $derived(
+    runStatus &&
+      (runStatus.error
+        ? `${stateLabels[runStatus.state]}. ${runStatus.error.message}`
+        : runStatus.reused
+          ? 'Succeeded (reused existing outputs)'
+          : stateLabels[runStatus.state])
+  )
 
   const { updateNodeData } = useSvelteFlow()
 
@@ -487,8 +513,18 @@
 <div
   class:selected-node={selected}
   class="custom-node"
+  data-run-state={runStatus?.state}
+  role="group"
+  aria-label={nodeDisplayName}
+  aria-describedby={runStatusLabel ? `node-run-status-${id}` : undefined}
+  title={runStatusLabel}
   style="--border-color: {color}"
 >
+  {#if runStatusLabel}
+    <span id={`node-run-status-${id}`} class="run-status-description">
+      {runStatusLabel}
+    </span>
+  {/if}
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
@@ -807,13 +843,42 @@
     position: relative;
     padding: 15px;
     border-radius: 5px;
-    background: var(--primary-color);
+    background: var(--node-run-bg, var(--primary-color));
     border: 2px solid var(--border-color);
     min-width: 200px;
     transition:
       box-shadow 0.18s ease,
       border-color 0.18s ease,
-      filter 0.18s ease;
+      filter 0.18s ease,
+      background-color 0.18s ease;
+  }
+
+  .custom-node[data-run-state] {
+    --node-run-bg: #fff;
+    --ternary-color: #262626;
+    --secondary-color: #ebebeb;
+    color: var(--ternary-color);
+  }
+
+  .custom-node[data-run-state='running'] {
+    --node-run-bg: #ffe2bd;
+  }
+
+  .custom-node[data-run-state='succeeded'] {
+    --node-run-bg: #d8f3dc;
+  }
+
+  .custom-node[data-run-state='failed'] {
+    --node-run-bg: #f6b0b0;
+  }
+
+  .run-status-description {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .selected-node {

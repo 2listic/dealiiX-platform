@@ -34,6 +34,7 @@
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
+  import { canvasRunState } from '../../stores/canvasRun.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
@@ -124,10 +125,14 @@
         version: 1 as const,
       }
       if (operation === 'validate') {
-        await workflowService.validate(network)
+        await canvasRunState.track(graphStackState.generation, operation, () =>
+          workflowService.validate(network)
+        )
         toastState.add({ message: 'Workflow is valid', type: 'success' })
       } else {
-        await workflowService.submit(network)
+        await canvasRunState.track(graphStackState.generation, operation, () =>
+          workflowService.submit(network)
+        )
       }
     })
 
@@ -179,7 +184,10 @@
   const replayLatestRun = () =>
     runAction(async () => {
       if (latestRun?.state !== 'succeeded') return
-      await workflowService.updateRun('replay', latestRun.run_id)
+      const graph = graphStackState.generation
+      const source = latestRun.run_id
+      const result = await workflowService.updateRun('replay', source)
+      canvasRunState.adoptReplay(graph, source, result.run_id)
     })
 
   /**
