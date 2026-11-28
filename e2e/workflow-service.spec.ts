@@ -152,23 +152,32 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
 test('Backend Settings edits the private profile in the shared modal and refreshes its registry on Save', async ({}, info) => {
   const helper = info.outputPath('backend.cjs')
   const profile = info.outputPath('backend.config.json')
+  const incompatible = info.outputPath('incompatible.json')
+  const compatible = info.outputPath('compatible.json')
   await mkdir(dirname(profile), { recursive: true })
-  const initial = JSON.stringify({
-    Label: {
-      value: 'Before',
-      default_value: 'Before',
-      documentation: '',
-      pattern: '[Anything]',
-      pattern_description: '[Anything]',
-    },
-  })
+  const settingsFile = (value: string, plugin?: string) =>
+    JSON.stringify({
+      backend: { id: 'independent', ...(plugin && { plugin }) },
+      configuration: {
+        Label: {
+          value,
+          default_value: 'Before',
+          documentation: '',
+          pattern: '[Anything]',
+          pattern_description: '[Anything]',
+        },
+      },
+    })
+  const initial = settingsFile('Before')
   await writeFile(profile, initial)
+  await writeFile(incompatible, settingsFile('Wrong', 'other-plugin'))
+  await writeFile(compatible, settingsFile('After'))
   await writeFile(
     helper,
     `
     const fs = require('node:fs')
     const { version, operation } = JSON.parse(fs.readFileSync(0, 'utf8'))
-    const { Label: { value } } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
+    const { configuration: { Label: { value } } } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
     if (operation !== 'describe') throw Error('Expected describe')
     if (value === 'Invalid') {
       console.log(JSON.stringify({ version, operation, error: {
@@ -208,6 +217,15 @@ test('Backend Settings edits the private profile in the shared modal and refresh
       .getByRole('button', { name: 'Backend Settings', exact: true })
       .click()
     const backendSettings = page.locator('#settings-modal')
+    await app.evaluate(
+      ({ dialog }, paths) => {
+        dialog.showOpenDialog = async () => ({
+          canceled: false,
+          filePaths: [paths.shift()!],
+        })
+      },
+      [incompatible, compatible]
+    )
     await expect(
       backendSettings.getByRole('heading', { name: 'Backend Settings' })
     ).toBeVisible()
@@ -216,6 +234,15 @@ test('Backend Settings edits the private profile in the shared modal and refresh
     ).toHaveCount(0)
     const label = backendSettings.getByRole('textbox', { name: 'Label' })
     await expect(label).toHaveValue('Before')
+    const importFile = backendSettings.getByRole('button', {
+      name: 'Import from file',
+    })
+    await importFile.click()
+    await expect(backendSettings.getByRole('alert')).toContainText(
+      'independent/other-plugin'
+    )
+    await expect(label).toHaveValue('Before')
+    expect(await readFile(profile, 'utf8')).toEqual(initial)
     const setLabel = (value: string) =>
       label.evaluate((input: HTMLInputElement, value) => {
         input.value = value
@@ -231,12 +258,14 @@ test('Backend Settings edits the private profile in the shared modal and refresh
       page.getByText('Choose a valid backend label', { exact: false })
     ).toBeVisible()
     expect(await readFile(profile, 'utf8')).toEqual(initial)
-    await setLabel('After')
+    await importFile.click()
+    await expect(label).toHaveValue('After')
+    expect(await readFile(profile, 'utf8')).toEqual(initial)
     await save.click()
     await expect(backendSettings).toBeHidden()
     await expect(sidebar.locator('[data-class-name="After"]')).toBeAttached()
-    expect(JSON.parse(await readFile(profile, 'utf8')).Label.value).toBe(
-      'After'
+    expect(JSON.parse(await readFile(profile, 'utf8'))).toEqual(
+      JSON.parse(settingsFile('After'))
     )
   } finally {
     await app.close()

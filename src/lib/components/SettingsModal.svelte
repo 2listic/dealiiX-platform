@@ -6,6 +6,7 @@
   import { toastState } from '../stores/toastsStore.svelte'
   import { workflowService } from '../stores/workflowService.svelte'
   import type { ParameterTree } from '../types/parameterTypes'
+  import type { SettingsDraft, SettingsTarget } from '../types/settingsFile'
   import ParametersView from './ParametersView.svelte'
   import Button from './layout/Button.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
@@ -17,18 +18,21 @@
   )
   let parameters = $state<ParameterTree>()
   let backendRevision = ''
+  let importedTarget: SettingsTarget | undefined
   let published = false
   let busy = $state(false)
   let error = $state('')
 
-  export async function open() {
+  export async function open(draft?: SettingsDraft) {
     if (busy) return
     getModal(modalId)?.open()
     await loadConfiguration()
+    if (draft && parameters) applyDraft(draft)
   }
 
   async function loadConfiguration() {
     parameters = undefined
+    importedTarget = undefined
     error = ''
     busy = true
     try {
@@ -81,11 +85,12 @@
         }
         await frontendSettingsState.save(draft)
       } else if (published) {
-        await workflowService.configure(draft, backendRevision)
+        await workflowService.configure(draft, backendRevision, importedTarget)
       } else {
         const registry = await window.electron.workflow.saveConfiguration(
           draft,
-          backendRevision
+          backendRevision,
+          importedTarget
         )
         workflowService.adoptBackend(registry, false)
       }
@@ -97,6 +102,31 @@
             : 'Frontend settings saved',
         type: 'success',
       })
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      busy = false
+    }
+  }
+
+  function applyDraft(draft: SettingsDraft) {
+    parameters = draft.parameters
+    importedTarget = draft.target
+  }
+
+  async function importConfiguration() {
+    if (!parameters || busy) return
+    error = ''
+    busy = true
+    try {
+      if (scope === 'backend') {
+        const draft = await window.electron.workflow.importConfiguration()
+        if (draft) applyDraft(draft)
+      } else {
+        const configuration =
+          await window.electron.frontendSettings.importConfiguration()
+        if (configuration) applyDraft({ parameters: configuration })
+      }
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     } finally {
@@ -126,6 +156,9 @@
       >Close</Button
     >
     {#if parameters}
+      <Button onclick={importConfiguration} disabled={busy}
+        >Import from file</Button
+      >
       <Button variant="action" onclick={saveConfiguration} disabled={busy}
         >Save</Button
       >

@@ -7,6 +7,7 @@ test('frontend settings validate, persist and switch the root backend', async ({
   const initial = info.outputPath('initial.json')
   const alternative = info.outputPath('alternative.json')
   const invalid = info.outputPath('invalid.json')
+  const imported = info.outputPath('frontend-settings.json')
   const userData = info.outputPath('userdata')
   await mkdir(dirname(helper), { recursive: true })
   await Promise.all([
@@ -90,8 +91,29 @@ test('frontend settings validate, persist and switch the root backend', async ({
       readFile(info.outputPath('userdata', 'frontend.config.json'))
     ).rejects.toHaveProperty('code', 'ENOENT')
 
-    await setProfile(alternative)
-    await settings.getByRole('combobox', { name: 'Theme' }).selectOption('dark')
+    const draft = await page.evaluate(
+      async () => (await window.electron.frontendSettings.get()).configuration
+    )
+    draft['Backend configuration file'].value = alternative
+    draft.Theme.value = 'dark'
+    await writeFile(imported, JSON.stringify(draft))
+    await app.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [path],
+      })
+    }, imported)
+    await settings.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(settings).toBeHidden()
+    await page.getByTitle('Settings', { exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Import settings from file' })
+      .click()
+    await expect(backendProfile).toHaveValue(alternative)
+    await expect(settings.getByRole('combobox', { name: 'Theme' })).toHaveValue(
+      'dark'
+    )
+    await expect(initialPalette).toBeVisible()
     await settings.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(settings).toBeHidden()
     await expect(alternativePalette).toBeVisible()

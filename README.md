@@ -52,6 +52,10 @@ Variables in the launch example initialize profiles that do not yet have saved
 settings. On save the desktop validates and loads the selected root backend.
 
 **Backend Settings** opens the active backend configuration in the same editor.
+**Import settings from file** opens the matching settings editor with a draft
+for review. Both settings dialogs also offer **Import from file**.
+Backend imports require a [settings document](schemas/backend-settings.schema.json)
+with an identity compatible with the active backend and its plugin.
 Saving either settings form automatically refreshes the registry. **Import Graph**
 opens next to the backend profile, and **Run** shows the backend's available
 workflow actions. The existing job table displays the backend status. Use a

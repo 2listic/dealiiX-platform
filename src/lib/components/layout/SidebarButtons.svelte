@@ -269,6 +269,21 @@
       reader.readAsText(file)
     })
 
+  const importSettingsFile = async () => {
+    try {
+      const draft = await window.electron.importSettingsFile()
+      if (draft)
+        await (
+          draft.scope === 'backend' ? backendSettings : frontendSettings
+        )?.open(draft)
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    }
+  }
+
   const handleOpenVisualizer = () => {
     const url = frontendSettingsState.visualizerUrl
     openNewWindow(url)
@@ -600,6 +615,10 @@
       <SidebarGroupButtonItem
         label="Backend Settings"
         onclick={() => backendSettings?.open()}
+      />
+      <SidebarGroupButtonItem
+        label="Import settings from file"
+        onclick={importSettingsFile}
       />
     {/snippet}
   </SidebarGroupButton>

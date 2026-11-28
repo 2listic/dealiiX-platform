@@ -17,6 +17,12 @@ import {
   type RegistryDocument,
 } from '../../src/lib/types/executionService.js'
 import type { ParameterTree } from '../../src/lib/types/parameterTypes.js'
+import type {
+  BackendSettingsDocument,
+  SettingsDraft,
+  SettingsTarget,
+} from '../../src/lib/types/settingsFile.js'
+import { pickSettingsFile } from './settingsFiles.js'
 
 const terminal = new Set(['succeeded', 'failed', 'cancelled'])
 const mutations = new Set([
@@ -34,6 +40,7 @@ type BackendSession = {
   launch: BackendLaunch
   operations: NonNullable<RegistryDocument['__backend']['operations']>
   revision?: string
+  identity?: SettingsTarget
   watched: Set<string>
 }
 
@@ -54,6 +61,7 @@ const acceptRegistry = (
       ? newSession(session.launch)
       : session
   next.revision = revision
+  next.identity = registry.__backend
   next.operations = operations ?? []
   return next
 }
@@ -61,7 +69,29 @@ const acceptRegistry = (
 const profileRevision = (path: string, text: string): string =>
   createHash('sha256').update(path).update('\0').update(text).digest('hex')
 
+function requireSettingsTarget(target: SettingsTarget, active: SettingsTarget) {
+  const qualified = ({ id, plugin }: SettingsTarget) =>
+    plugin ? `${id}/${plugin}` : id
+  if (target.id !== active.id || target.plugin !== active.plugin)
+    throw new Error(
+      `Settings target ${qualified(target)}. The active backend is ${qualified(active)}.`
+    )
+  if (target.version !== undefined && target.version !== active.version)
+    throw new Error(`Settings require backend version ${target.version}.`)
+  for (const plugin of target.plugins ?? []) {
+    if (
+      !active.plugins?.some(
+        ({ id, version }) =>
+          id === plugin.id &&
+          (plugin.version === undefined || version === plugin.version)
+      )
+    )
+      throw new Error(`Settings require backend plugin ${plugin.id}.`)
+  }
+}
+
 type BackendControl = {
+  importSettings(document: unknown): SettingsDraft
   switchBackend(
     backend: BackendLaunch | undefined,
     persist: () => void
@@ -88,23 +118,82 @@ export function registerWorkflowService(
   const schemaDirectory = join(appPath, 'schemas')
   let serviceId: string | undefined
   let parametersId: string | undefined
+  let backendSettingsId: string | undefined
   for (const file of readdirSync(schemaDirectory)) {
     if (!file.endsWith('.schema.json')) continue
     const schema = JSON.parse(readFileSync(join(schemaDirectory, file), 'utf8'))
     ajv.addSchema(schema)
     if (file === 'execution-service.schema.json') serviceId = schema.$id
     if (file === 'parameters.schema.json') parametersId = schema.$id
+    if (file === 'backend-settings.schema.json') backendSettingsId = schema.$id
   }
+  if (!serviceId || !parametersId || !backendSettingsId)
+    throw new Error('Missing workflow or settings schemas')
   const requestSchema = ajv.getSchema<ExecutionRequest>(
     `${serviceId}#/$defs/request`
   )
   const responseSchema = ajv.getSchema<ExecutionReply>(
     `${serviceId}#/$defs/response`
   )
-  const parametersSchema =
-    parametersId && ajv.getSchema<ParameterTree>(parametersId)
-  if (!requestSchema || !responseSchema || !parametersSchema)
-    throw new Error('Missing workflow or parameter schemas')
+  const parametersSchema = ajv.getSchema<ParameterTree>(parametersId)
+  const backendSettingsSchema =
+    ajv.getSchema<BackendSettingsDocument>(backendSettingsId)
+  if (
+    !requestSchema ||
+    !responseSchema ||
+    !parametersSchema ||
+    !backendSettingsSchema
+  )
+    throw new Error('Missing workflow or settings schemas')
+
+  const isBackendSettings = (
+    document: unknown
+  ): document is BackendSettingsDocument =>
+    backendSettingsSchema(document) === true
+  const isParameters = (document: unknown): document is ParameterTree =>
+    parametersSchema(document) === true
+
+  const parseProfile = (document: unknown) => {
+    if (isBackendSettings(document)) return document
+    if (isParameters(document)) return { configuration: document }
+    throw new Error('This backend profile is not a valid settings document')
+  }
+
+  const checkImportTarget = (session: BackendSession, target: unknown) => {
+    if (target === undefined) return
+    const header = { backend: target, configuration: {} }
+    if (!isBackendSettings(header))
+      throw new Error('Invalid backend settings identity.')
+    if (!session.identity)
+      throw new Error('Wait for the active backend registry to load.')
+    requireSettingsTarget(header.backend, session.identity)
+  }
+
+  const importSettings = (document: unknown): SettingsDraft => {
+    if (!isBackendSettings(document))
+      throw new Error(
+        'Choose frontend settings or a backend settings file with a valid identity and configuration.'
+      )
+    if (!active)
+      throw new Error('Wait for the active backend registry to load.')
+    checkImportTarget(active, document.backend)
+    return { parameters: document.configuration, target: document.backend }
+  }
+
+  ipcMain.handle('workflow:import-configuration', async (event) => {
+    const session = active
+    if (!session?.identity)
+      throw new Error('Wait for the active backend registry to load.')
+    const selected = await pickSettingsFile(
+      event,
+      'Import backend settings',
+      dirname(session.launch.configuration)
+    )
+    if (!selected) return null
+    if (session !== active)
+      throw new Error('The active backend has changed. Reopen Settings.')
+    return importSettings(selected.document)
+  })
 
   ipcMain.handle('workflow:open', async (event): Promise<string | null> => {
     const session = active
@@ -171,15 +260,18 @@ export function registerWorkflowService(
     const path = await realpath(session.launch.configuration)
     const text = await readFile(path, 'utf8')
     if (session !== active) throw new Error('The active backend has changed')
-    const parameters: unknown = JSON.parse(text)
-    if (!parametersSchema(parameters))
-      throw new Error('This backend profile is not a JSON parameter tree')
-    return { parameters, revision: profileRevision(path, text) }
+    const profile = parseProfile(JSON.parse(text))
+    if ('backend' in profile && session.identity)
+      requireSettingsTarget(profile.backend, session.identity)
+    return {
+      parameters: profile.configuration,
+      revision: profileRevision(path, text),
+    }
   })
 
   ipcMain.handle(
     'workflow:save-configuration',
-    async (_event, parameters: unknown, revision: unknown) => {
+    async (_event, parameters: unknown, revision: unknown, target: unknown) => {
       const session = active
       if (!session) throw new Error('No workflow backend is configured')
       if (session.operations.includes('configure'))
@@ -190,6 +282,7 @@ export function registerWorkflowService(
         throw new Error('Wait for the current backend operation to finish')
       if (typeof revision !== 'string' || !parametersSchema(parameters))
         throw new Error('Invalid backend profile parameters')
+      checkImportTarget(session, target)
       switching = true
       try {
         const path = await realpath(session.launch.configuration)
@@ -200,8 +293,15 @@ export function registerWorkflowService(
             throw new Error(
               'The backend profile changed on disk. Open Settings again.'
             )
+          return text
         }
-        await requireRevision()
+        const previous = parseProfile(JSON.parse(await requireRevision()))
+        if ('backend' in previous && session.identity)
+          requireSettingsTarget(previous.backend, session.identity)
+        const document =
+          'backend' in previous
+            ? { backend: previous.backend, configuration: parameters }
+            : parameters
         const candidate = join(
           dirname(path),
           `.${basename(path)}-${randomUUID()}.json`
@@ -210,7 +310,7 @@ export function registerWorkflowService(
         const file = await open(candidate, 'wx', mode)
         try {
           try {
-            await file.writeFile(`${JSON.stringify(parameters, null, 2)}\n`)
+            await file.writeFile(`${JSON.stringify(document, null, 2)}\n`)
           } finally {
             await file.close()
           }
@@ -218,6 +318,8 @@ export function registerWorkflowService(
             ...session.launch,
             configuration: candidate,
           })
+          if ('backend' in previous)
+            requireSettingsTarget(previous.backend, registry.__backend)
           await requireRevision()
           await rename(candidate, path)
           active = acceptRegistry(session, registry)
@@ -268,7 +370,11 @@ export function registerWorkflowService(
 
   ipcMain.handle(
     'workflow:exchange',
-    async (_event, document: unknown): Promise<ExecutionReply> => {
+    async (
+      _event,
+      document: unknown,
+      target: unknown
+    ): Promise<ExecutionReply> => {
       if (!requestSchema(document)) {
         return {
           version: executionVersion,
@@ -290,6 +396,16 @@ export function registerWorkflowService(
           'backend_unavailable',
           'No workflow backend is configured'
         )
+      if (request.operation === 'configure') {
+        try {
+          checkImportTarget(session, target)
+        } catch (error) {
+          return errorReply(
+            'incompatible_backend',
+            error instanceof Error ? error.message : String(error)
+          )
+        }
+      }
       const mutation = mutations.has(request.operation)
       if (switching && mutation)
         return errorReply('backend_busy', 'Settings are updating the backend')
@@ -324,6 +440,7 @@ export function registerWorkflowService(
     }
   )
   return {
+    importSettings,
     async switchBackend(backend, persist) {
       if (switching || pendingMutations)
         throw new Error('Wait for the current backend operation to finish')

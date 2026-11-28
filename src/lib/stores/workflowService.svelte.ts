@@ -6,6 +6,7 @@ import { setEdges, setNodes, updateLastNodeId } from './nodes.svelte'
 import { parameterNodeEditorState } from './parameterNodeEditor.svelte'
 import { canvasRunState } from './canvasRun.svelte'
 import type { ParameterTree } from '../types/parameterTypes'
+import type { SettingsTarget } from '../types/settingsFile'
 import {
   executionVersion,
   WorkflowRequestError,
@@ -90,12 +91,19 @@ export const workflowService = {
     }
   },
 
-  async configure(configuration: ParameterTree, configuration_digest: string) {
-    const reply = await exchange({
-      operation: 'configure',
-      configuration,
-      configuration_digest,
-    })
+  async configure(
+    configuration: ParameterTree,
+    configuration_digest: string,
+    target?: SettingsTarget
+  ) {
+    const reply = await exchange(
+      {
+        operation: 'configure',
+        configuration,
+        configuration_digest,
+      },
+      target
+    )
     if (reply.operation !== 'configure')
       throw new Error('Expected the updated backend registry')
     acceptRegistry(reply.result)
@@ -202,12 +210,16 @@ function graphRequest(
 }
 
 async function exchange(
-  request: Request
+  request: Request,
+  target?: SettingsTarget
 ): Promise<Extract<ExecutionReply, { result: unknown }>> {
-  const reply = await window.electron.workflow.exchange({
-    ...request,
-    version: executionVersion,
-  })
+  const reply = await window.electron.workflow.exchange(
+    {
+      ...request,
+      version: executionVersion,
+    },
+    target
+  )
   if ('error' in reply) throw new WorkflowRequestError(reply.error)
   return reply
 }

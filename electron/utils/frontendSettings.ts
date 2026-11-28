@@ -1,5 +1,5 @@
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { app, ipcMain, nativeTheme } from 'electron/main'
 import Ajv2020 from 'ajv/dist/2020.js'
@@ -10,6 +10,7 @@ import type {
 } from '../../src/lib/types/frontendSettings.js'
 import type { ParameterLeaf } from '../../src/lib/types/parameterTypes.js'
 import store from './storage.js'
+import { pickSettingsFile } from './settingsFiles.js'
 import {
   registerWorkflowService,
   type BackendLaunch,
@@ -169,6 +170,30 @@ export function registerFrontendSettings(appPath: string): void {
   }
 
   ipcMain.handle('frontend-settings:get', snapshot)
+  ipcMain.handle('settings:import-file', async (event) => {
+    const selected = await pickSettingsFile(
+      event,
+      'Import settings from file',
+      active ? dirname(active.configuration) : app.getPath('userData')
+    )
+    if (!selected) return null
+    const { document } = selected
+    if (valid(document)) {
+      validate(document)
+      return { scope: 'frontend', parameters: document }
+    }
+    return { scope: 'backend', ...service.importSettings(document) }
+  })
+  ipcMain.handle('frontend-settings:import', async (event) => {
+    const selected = await pickSettingsFile(
+      event,
+      'Import frontend settings',
+      app.getPath('userData')
+    )
+    if (!selected) return null
+    validate(selected.document)
+    return selected.document as FrontendPreferences
+  })
   ipcMain.handle('frontend-settings:save', (_event, document: unknown) =>
     save(document)
   )
