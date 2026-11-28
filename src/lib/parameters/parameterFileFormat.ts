@@ -28,6 +28,124 @@ export const isParameterLeaf = (value: unknown): value is ParameterLeaf => {
   )
 }
 
+export const parameterTreeAtPath = (
+  tree: ParameterTree,
+  path: string[]
+): ParameterTree | null => {
+  let current = tree
+  for (const segment of path) {
+    const next = current[segment]
+    if (!isParameterTree(next)) return null
+    current = next
+  }
+  return current
+}
+
+const selectionPattern = (leaf: ParameterLeaf) =>
+  [leaf.pattern_description, leaf.pattern]
+    .map((pattern) => pattern?.trim())
+    .find((pattern) => pattern && /^\[Selection\s/.test(pattern))
+
+export const isSelectionParameter = (leaf: ParameterLeaf): boolean =>
+  Boolean(leaf.selection_options || selectionPattern(leaf))
+
+export const isBooleanParameter = (leaf: ParameterLeaf): boolean =>
+  leaf.pattern_description?.trim() === '[Bool]' ||
+  leaf.pattern?.trim() === '[Bool]'
+
+/** Uses the declared sibling field or the static selection pattern. */
+export const parameterSelectionOptions = (
+  tree: ParameterTree,
+  leaf: ParameterLeaf
+): string[] => {
+  const sibling = leaf.selection_options
+  const optionsLeaf = sibling ? tree[sibling] : undefined
+  const choices = sibling
+    ? isParameterLeaf(optionsLeaf)
+      ? optionsLeaf.value
+      : ''
+    : (selectionPattern(leaf)?.match(/\[Selection\s+(.*?)\]/)?.[1] ?? '')
+  return [
+    ...new Set(
+      choices
+        .split('|')
+        .map((choice) => choice.trim())
+        .filter(Boolean)
+    ),
+  ]
+}
+
+/** Recover the editing controls declared by the registry for saved values. */
+export const restoreExposableParameterControls = (
+  template: ParameterTree,
+  configuration: ParameterTree
+): ParameterTree => {
+  const restored = { ...configuration }
+  for (const [key, declared] of Object.entries(template)) {
+    if (key === '__extra') continue
+    const saved = configuration[key]
+    if (isParameterTree(declared) && isParameterTree(saved)) {
+      restored[key] = restoreExposableParameterControls(declared, saved)
+    } else if (
+      isParameterLeaf(declared) &&
+      isParameterLeaf(saved) &&
+      (isSelectionParameter(declared) || isBooleanParameter(declared))
+    ) {
+      const { selection_options: options } = declared
+      if (
+        options &&
+        !isParameterLeaf(restored[options]) &&
+        isParameterLeaf(template[options])
+      ) {
+        restored[options] = template[options]
+      }
+      restored[key] = {
+        __extra: saved.__extra,
+        ...declared,
+        value: saved.value,
+      }
+    }
+  }
+  return restored
+}
+
+/**
+ * Restores a registry-declared choice and its options field on an imported
+ * node. Older workflows save the values without the selection metadata.
+ */
+export const restoreSelectionParameter = (
+  template: ParameterTree,
+  configuration: ParameterTree,
+  [key, ...rest]: string[]
+): ParameterTree => {
+  if (key === undefined) return configuration
+  const declared = template[key]
+  const saved = configuration[key]
+  if (rest.length) {
+    if (!isParameterTree(declared)) return configuration
+    const section = isParameterTree(saved) ? saved : {}
+    const updated = restoreSelectionParameter(declared, section, rest)
+    return updated === section
+      ? configuration
+      : { ...configuration, [key]: updated }
+  }
+  if (!isParameterLeaf(declared) || !isSelectionParameter(declared))
+    return configuration
+  const sibling = declared.selection_options
+  return {
+    ...configuration,
+    ...(sibling &&
+      isParameterLeaf(template[sibling]) &&
+      !isParameterLeaf(configuration[sibling]) && {
+        [sibling]: template[sibling],
+      }),
+    [key]: {
+      ...declared,
+      value: isParameterLeaf(saved) ? saved.value : declared.value,
+    },
+  }
+}
+
 /**
  * Returns whether a parameter node carries the UI-only `__extra` flag, which marks
  * sections or leaves added on top of the canonical template (e.g. via file merge

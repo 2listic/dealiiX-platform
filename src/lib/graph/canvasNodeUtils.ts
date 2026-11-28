@@ -1,3 +1,8 @@
+import {
+  embeddedRegistry,
+  registryBackend,
+} from '../registry/registryValidator'
+import { buildExportMeta } from './exportMeta'
 /**
  * Utilities for creating and connecting nodes on the canvas.
  * Handles the drag-to-connect flow: resolving compatible node types,
@@ -11,6 +16,7 @@ import {
   isOverloadNodeDefinition,
   isTypeCompatible,
   NodeType,
+  ORCHESTRATOR_FILE_NODES,
   SELF,
   type Argument,
   type NodeDefinitions,
@@ -19,6 +25,8 @@ import {
 import { getNextNodeId } from '../stores/nodeIdCounter.svelte'
 import { handleIdToIndex, parameterHandlePath } from './handleIds'
 import {
+  isConfigurationInput,
+  parameterAtPath,
   parameterExposureForHandle,
   parameterPathLabel,
   parameterPortCoralType,
@@ -129,6 +137,27 @@ const cloneNodeDefinition = (
       })),
     }),
   } as NodeDefinitions
+
+  const childRegistry =
+    cloned.node_type === 'network'
+      ? embeddedRegistry(cloned as StandardNodeDefinition)
+      : undefined
+  if (
+    childRegistry ||
+    (cloned.type === 'network::coral' && cloned.node_type === 'network')
+  ) {
+    return {
+      ...cloned,
+      name: cloned.name ?? (childRegistry ? cloned.type : 'CORAL'),
+      value: {
+        backend: (childRegistry && registryBackend(childRegistry)) || {
+          id: 'coral',
+        },
+        workflow: { nodes: {}, edges: {} },
+        ...buildExportMeta(),
+      },
+    }
+  }
 
   if ('value' in cloned && cloned.type === 'coral::Network') {
     // Stored network nodes keep an embedded graph that is not needed on-canvas.
@@ -350,6 +379,12 @@ export const getInputTypeAndName = (
 export const returnNodeName = (node: NodeDefinitions): string => {
   if (node.name) return formatSuggestedNodeName(node.name)
 
+  if (ORCHESTRATOR_FILE_NODES.has(node.type) && 'configuration' in node) {
+    const path =
+      node.configuration && parameterAtPath(node.configuration, ['path'])?.value
+    if (path) return path
+  }
+
   if (node.node_type !== NodeType.NETWORK) {
     if (isOverloadNodeDefinition(node)) {
       return formatSuggestedNodeName(node.display_name)
@@ -384,13 +419,16 @@ export const compatibleNodeOptionLabel = (
  * @param availableNodes - All available node definitions to search.
  * @param expectedInputType - Input type to match against.
  * @param excludedNodeType - Node type to skip (usually the target node itself).
+ * @param frontendScalarOnly - Only offer editable literals.
+ * @param requireExactType - Reject widening when binding backend configuration.
  * @returns List of `CompatibleNodeOption` entries, one per matching output handle for concrete nodes and one per overload family.
  */
 export const findCompatibleSourceNodesAsOptions = (
   availableNodes: NodeDefinitions[],
   expectedInputType: string | string[],
   excludedNodeType?: string,
-  frontendScalarOnly = false
+  frontendScalarOnly = false,
+  requireExactType = false
 ): CompatibleNodeOption[] => {
   const options: CompatibleNodeOption[] = []
   const expectedTypes = Array.isArray(expectedInputType)
@@ -416,7 +454,11 @@ export const findCompatibleSourceNodesAsOptions = (
       if (!outputTypes.length) continue
       if (
         !outputTypes.some((output) =>
-          expectedTypes.some((expected) => isTypeCompatible(output, expected))
+          expectedTypes.some((expected) =>
+            requireExactType
+              ? output === expected
+              : isTypeCompatible(output, expected)
+          )
         )
       )
         continue
@@ -470,7 +512,11 @@ export const resolveConnectionAndCompatibleNodes = (
           availableNodes,
           connectionTypes,
           targetIsParameterInput ? undefined : nodeType,
-          targetIsParameterInput
+          targetIsParameterInput,
+          isConfigurationInput(
+            node.data as NodeDefinitions,
+            connectStartParams.handleId
+          )
         ) // 'target'
 
   return { connectionType, connectionName, compatibleOptions }

@@ -33,6 +33,36 @@ The [protocol v1 reference](schemas/README.md) documents the registry, saved
 graphs, execution graphs and parameter files exchanged by Platform and CORAL.
 It includes JSON Schemas and examples for backend authors.
 
+### Use the workflow service in the desktop editor
+
+Build the desktop and launch it with an absolute backend command and profile:
+
+```sh
+export DEALIIX_CONFIGURATION=/absolute/path/to/backend.config.json
+export DEALIIX_BACKEND_COMMAND='["/absolute/path/to/python","/absolute/path/to/tools/orchestrator/orchestrator"]'
+npm start
+```
+
+The **Settings** menu offers **Frontend Settings** and **Backend Settings**.
+**Frontend Settings** uses the existing parameter editor for the backend command,
+backend profile, theme, visualizer URL, and project server URL. The desktop saves
+this private document as `frontend.config.json` in its Electron user-data
+directory, using the [frontend settings schema](schemas/desktop/frontend-settings.schema.json).
+Variables in the launch example initialize profiles that do not yet have saved
+settings. On save the desktop validates and loads the selected root backend.
+
+**Backend Settings** opens the active backend configuration in the same editor.
+**Import settings from file** opens the matching settings editor with a draft
+for review. Both settings dialogs also offer **Import from file**.
+Backend imports require a [settings document](schemas/backend-settings.schema.json)
+with an identity compatible with the active backend and its plugin.
+Saving either settings form automatically refreshes the registry. **Import Graph**
+opens next to the backend profile, and **Run** shows the backend's available
+workflow actions. The existing job table displays the backend status. Use a
+node's gear to edit or expose a configuration entry, and open a node with an
+embedded registry to edit its subnetwork. Toolbar actions that still require the
+old execution path show a `[TODO]` warning.
+
 ## Linting and Formatting
 
 ### Linting
@@ -155,30 +185,24 @@ Available keys are defined in [electron/utils/storage.ts](electron/utils/storage
 - Execute `npm run dev` and open the Source tab in the Chormium dev tools (**CTRL+SHIFT+I**). Then manually add the folder containing this repository from the Workspace sub-tab. Now add your breakpoints and start debugging.
 - In Svelte code you can also use [`{@debug}`](https://svelte.dev/docs/svelte/@debug) or [`$inspect`](https://svelte.dev/docs/svelte/$inspect).
 
-# Execution modes
+# Execution through the root backend
 
-The app supports four execution modes. See the dedicated guide for each:
-
-| Mode                              | Description                                                                         | Guide                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **Remote + Coral**                | Docker containers with Slurm and SSH, simulating a remote HPC cluster               | [docs/run-coral-docker.md](docs/run-coral-docker.md)                 |
-| **Remote + Coral (ImmersX)**      | Prebuilt Coral + ImmersX images with Slurm and SSH, for graphs with parameter files | [docs/run-coral-immersx-docker.md](docs/run-coral-immersx-docker.md) |
-| **Remote + Coral (real machine)** | Connect to CORAL + Slurm containers running on a real remote machine over SSH       | [docs/remote-setup.md](docs/remote-setup.md)                         |
-| **Local + Coral**                 | Coral binary running directly on your machine, serial or single-host MPI            | [docs/run-coral-local.md](docs/run-coral-local.md)                   |
-| **Local + Executable**            | DealiiX executable running locally, serial or single-host MPI                       | [docs/run-executable-local.md](docs/run-executable-local.md)         |
-| **Remote + Executable**           | Any deal.II executable run on a remote machine over SSH                             | [docs/run-executable-remote.md](docs/run-executable-remote.md)       |
-
-Any of these can also run as a stage of a pipeline, locally or remotely: see [docs/run-pipelines.md](docs/run-pipelines.md).
+The editor opens the workflow graph with the root backend registry. A graph can
+contain local and remote stages, executable stages and CORAL subnetworks when
+the root backend publishes them. See the [Python orchestrator guide](tools/orchestrator/README.md)
+for target configuration and workflow examples.
 
 ## Settings presets
 
-A preset is a JSON file of settings values for one setup, `{ "settings": {...}, "selection": {...} }`, in the shape of the app's settings. The app reads the file named by `DEALIIX_SETTINGS_PRESET` at startup, before the window opens:
+A preset supplies desktop preferences such as connection and visualizer URLs
+using a `{ "settings": {...} }` JSON file. The app reads
+`DEALIIX_SETTINGS_PRESET` at startup. The workflow backend is configured
+through `DEALIIX_BACKEND_COMMAND` and `DEALIIX_CONFIGURATION`.
 
 - A setting you have not changed takes the preset's value, or the default when the preset does not name it.
-- A setting you changed in Settings keeps your value, also when the preset or its values change.
-- The preset's `selection` (location and mode) applies only when none is saved yet.
+- An existing preference you previously changed keeps your value when the preset changes.
 
-`npm run dev`, `npm start` and `npm run start:debug` use [docker/presets/dev-stack.json](docker/presets/dev-stack.json) by default; another preset is picked with `DEALIIX_SETTINGS_PRESET=docker/presets/<file> npm start`. The packaged app uses none, so a fresh install starts with an empty remote target. To start again from a preset's values alone, point `ELECTRON_USERDATA` at an empty folder, which starts with a fresh store:
+`npm run dev`, `npm start` and `npm run start:debug` use [docker/presets/dev-stack.json](docker/presets/dev-stack.json) by default; another preset is picked with `DEALIIX_SETTINGS_PRESET=docker/presets/<file> npm start`. The packaged app uses none. To start again from a preset's values alone, point `ELECTRON_USERDATA` at an empty folder, which starts with a fresh store:
 
 ```bash
 ELECTRON_USERDATA=$(mktemp -d) DEALIIX_SETTINGS_PRESET=docker/presets/immersx-desktop.json npm start

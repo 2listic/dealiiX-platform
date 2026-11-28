@@ -1,58 +1,41 @@
-import { type ColorModeClass } from '@xyflow/svelte'
+import { frontendSettingsState } from './frontendSettings.svelte'
+import { toastState } from './toastsStore.svelte'
 
-// Initialize reactive state
-let colorMode: ColorModeClass = $state('light')
+const darkSystem = globalThis.window?.matchMedia?.(
+  '(prefers-color-scheme: dark)'
+)
+let systemDark = $state(darkSystem?.matches ?? false)
+darkSystem?.addEventListener('change', (event) => (systemDark = event.matches))
 
-const persistColorMode = async () => {
-  if (window.electron?.store) {
-    await window.electron.store.set('colorMode', colorMode)
-  } else {
-    console.warn("Electron store not available while persisting 'colorMode'")
-  }
-}
+const colorMode = $derived(
+  frontendSettingsState.theme === 'dark' ||
+    (frontendSettingsState.theme === 'auto' && systemDark)
+    ? 'dark'
+    : 'light'
+)
 
-// Load initial color mode from electron-store
-const loadColorMode = async () => {
-  if (window.electron?.store) {
-    colorMode = (await window.electron.store.get(
-      'colorMode',
-      'light'
-    )) as ColorModeClass
-    updateThemeMode()
-  } else {
-    console.warn('Electron store not available (e.g., dev:vite mode)')
-  }
-}
-loadColorMode()
-
-/**
- * It updates the theme mode browser side and in the electron main process if running. It also updates the store
- */
-const updateThemeMode = async () => {
-  if (window.electron) {
-    const actualTheme = await window.electron.invoke('set-theme', colorMode)
-    console.log('Electron theme: ', actualTheme)
-  }
-  if (colorMode == 'dark') {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
-  await persistColorMode()
-  console.log('Browser theme', colorMode)
+if (globalThis.document) {
+  $effect.root(() => {
+    $effect(() => {
+      document.documentElement.classList.toggle('dark', colorMode === 'dark')
+    })
+  })
 }
 
 export const colorModeState = {
   get value() {
     return colorMode
   },
-  set value(value) {
-    colorMode = value
-    updateThemeMode()
-  },
-  toggle() {
-    const newColorMode = colorMode === 'light' ? 'dark' : 'light'
-    colorMode = newColorMode
-    updateThemeMode()
+  async toggle() {
+    try {
+      await frontendSettingsState.setTheme(
+        colorMode === 'dark' ? 'light' : 'dark'
+      )
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    }
   },
 }

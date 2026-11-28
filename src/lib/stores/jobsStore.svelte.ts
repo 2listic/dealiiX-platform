@@ -1,6 +1,3 @@
-import { fetchRemoteJobs, JOB_LIST_DAYS } from '../execution/sshMessages'
-import { executionSelectionState } from './executionSelection.svelte'
-import { toastState } from './toastsStore.svelte'
 import type { JobIdEntry } from '../types/jobTypes'
 
 /**
@@ -157,24 +154,5 @@ export const jobsState = {
   },
   set current(value: string[][]) {
     jobs = value
-  },
-  /** Refreshes the job list from the appropriate source for the current execution location. */
-  async update(): Promise<void> {
-    try {
-      const isLocal = executionSelectionState.location === 'local'
-      jobs = isLocal
-        ? await window.electron.invoke('list-local-runs', {
-            numDays: JOB_LIST_DAYS,
-          })
-        : await fetchRemoteJobs(JOB_LIST_DAYS)
-      await window.electron?.store?.set('jobs', $state.snapshot(jobs))
-    } catch (error) {
-      console.error('Error updating jobs state:', error)
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to refresh job list',
-        type: 'error',
-      })
-    }
   },
 }

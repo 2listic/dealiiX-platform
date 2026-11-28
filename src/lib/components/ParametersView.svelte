@@ -4,13 +4,17 @@
   import Modal, { getModal } from './layout/Modal.svelte'
   import { toastState } from '../stores/toastsStore.svelte'
   import { confirmAction } from '../stores/confirmation.svelte'
-  import type { ParameterTree } from '../types/parameterTypes'
+  import type { ParameterLeaf, ParameterTree } from '../types/parameterTypes'
   import type { ParameterExposure } from '../types/nodeTypes'
   import {
+    isBooleanParameter,
     isExtraNode,
     isParameterLeaf,
     isParameterTree,
+    isSelectionParameter,
     markAsExtra,
+    parameterSelectionOptions,
+    parameterTreeAtPath,
   } from '../parameters/parameterFileFormat'
   import {
     findParameterExposure,
@@ -48,7 +52,7 @@
 
   const setExposure = (
     path: string[],
-    leaf: { pattern_description: string },
+    leaf: ParameterLeaf,
     direction: 'input' | 'output',
     enabled: boolean
   ) => {
@@ -63,7 +67,11 @@
 
     const updated: ParameterExposure = {
       path: [...path],
-      type: current?.type ?? parameterPortType(leaf.pattern_description),
+      type:
+        current?.type ??
+        (isBooleanParameter(leaf)
+          ? 'bool'
+          : parameterPortType(leaf.pattern_description)),
       input: current?.input ?? false,
       output: current?.output ?? false,
     }
@@ -77,7 +85,7 @@
   const toggleExposure = async (
     event: Event,
     path: string[],
-    leaf: { pattern_description: string },
+    leaf: ParameterLeaf,
     direction: 'input' | 'output'
   ) => {
     const box = event.target as HTMLInputElement
@@ -88,34 +96,14 @@
   let duplicateModalName = $state('')
   let duplicateModalKey = ''
   let duplicateModalPath: string[] = []
-  const duplicateSectionModalId = 'duplicate-parameters-section-modal'
+  const editorId = $props.id()
+  const duplicateSectionModalId = `${editorId}-duplicate-parameters-section-modal`
 
   // Action: sets open once on mount, then lets the browser own the state.
   // No update() → Svelte never re-applies this on re-renders, so user-opened
   // sections stay open when the tree is mutated (e.g. after a duplication).
   function setInitialOpen(node: HTMLDetailsElement, open: boolean) {
     node.open = open
-  }
-
-  /**
-   * Returns the subtree at `path`, or null if any segment is missing or a leaf.
-   * `path` points to the PARENT — the node itself is `getTreeAtPath(root, path)[key]`.
-   * @param root - The root of the tree to navigate.
-   * @param path - Array of keys from the root to the target's parent.
-   */
-  function getTreeAtPath(
-    root: ParameterTree,
-    path: string[]
-  ): ParameterTree | null {
-    let current: ParameterTree = root
-    for (const segment of path) {
-      const next = current[segment]
-      if (!isParameterTree(next)) {
-        return null
-      }
-      current = next
-    }
-    return current
   }
 
   /**
@@ -144,7 +132,7 @@
     // Deep-clone so intermediate mutations don't touch the live reactive store.
     const nextParameters = $state.snapshot(parameters) as ParameterTree
     // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
-    const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
+    const parentTree = parameterTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
     if (!parentTree || !isParameterTree(sourceNode)) {
       toastState.add({
@@ -203,7 +191,7 @@
     // Deep-clone so intermediate mutations don't touch the live reactive store.
     const next = $state.snapshot(parameters) as ParameterTree
     // parent is a reference into next — mutations propagate back via JS reference semantics.
-    const parent = getTreeAtPath(next, path)
+    const parent = parameterTreeAtPath(next, path)
     if (!parent) return
     // mutation here propagates back to next.
     delete parent[key]
@@ -212,23 +200,15 @@
     toastState.add({ message: `${key} removed`, type: 'success' })
   }
 
-  function parsePatternType(
-    desc: string
-  ): 'bool' | 'selection' | 'number' | 'text' {
-    if (desc === '[Bool]') return 'bool'
-    if (desc.startsWith('[Selection')) return 'selection'
+  function parsePatternType(desc: string): 'number' | 'text' {
     if (desc.startsWith('[Integer') || desc.startsWith('[Double'))
       return 'number'
     return 'text'
   }
 
-  function getSelectionOptions(desc: string): string[] {
-    const match = desc.match(/\[Selection\s+(.*?)\]/)
-    if (!match) return []
-    return match[1]
-      .split('|')
-      .map((s) => s.trim())
-      .filter(Boolean)
+  function updateBoolean(leaf: ParameterLeaf, event: Event) {
+    leaf.value = (event.target as HTMLInputElement).checked ? 'true' : 'false'
+    markEdited()
   }
 </script>
 
@@ -252,8 +232,12 @@
         .map(([key]) => key)}
       {#each entries as [key, val] (key)}
         {#if isParameterLeaf(val)}
-          {@const inputType = parsePatternType(val.pattern_description)}
           {@const exposure = exposureAt([...path, key])}
+          {@const inputType = isSelectionParameter(val)
+            ? 'selection'
+            : isBooleanParameter(val) || exposure?.type === 'bool'
+              ? 'bool'
+              : parsePatternType(val.pattern_description)}
           <!-- Column headers before a level's first leaf. Inside a section the
                leaves can form two grid columns (≥900px), each needing its own. -->
           {#if onExposureChange && key === leafKeys[0]}
@@ -270,58 +254,72 @@
                 title={val.documentation}>i</span
               >
             {/if}
-            <label title={val.documentation || undefined}>
-              <span class="param-name" class:extra={val.__extra}>{key}</span>
-              {#if inputType === 'bool'}
-                <input
-                  type="checkbox"
+            {#if inputType === 'bool' && onExposureChange}
+              <div class="param-toggle" class:extra={val.__extra}>
+                <ToggleSwitch
+                  label={key}
+                  title={val.documentation || undefined}
+                  size="small"
                   checked={val.value === 'true'}
                   disabled={exposure?.input ?? false}
-                  onchange={(e) => {
-                    val.value = (e.target as HTMLInputElement).checked
-                      ? 'true'
-                      : 'false'
-                    markEdited()
-                  }}
+                  onchange={(event) => updateBoolean(val, event)}
                 />
-              {:else if inputType === 'selection'}
-                <select
-                  value={val.value}
-                  disabled={exposure?.input ?? false}
-                  onchange={(e) => {
-                    val.value = (e.target as HTMLSelectElement).value
-                    markEdited()
-                  }}
-                >
-                  {#each getSelectionOptions(val.pattern_description) as opt (opt)}
-                    <option value={opt}>{opt}</option>
-                  {/each}
-                </select>
-              {:else if inputType === 'number'}
-                <input
-                  type="number"
-                  value={val.value}
-                  disabled={exposure?.input ?? false}
-                  step={val.pattern_description.startsWith('[Integer')
-                    ? '1'
-                    : 'any'}
-                  onchange={(e) => {
-                    val.value = (e.target as HTMLInputElement).value
-                    markEdited()
-                  }}
-                />
-              {:else}
-                <input
-                  type="text"
-                  value={val.value}
-                  disabled={exposure?.input ?? false}
-                  onchange={(e) => {
-                    val.value = (e.target as HTMLInputElement).value
-                    markEdited()
-                  }}
-                />
-              {/if}
-            </label>
+              </div>
+            {:else}
+              <label title={val.documentation || undefined}>
+                <span class="param-name" class:extra={val.__extra}>{key}</span>
+                {#if inputType === 'bool'}
+                  <input
+                    type="checkbox"
+                    checked={val.value === 'true'}
+                    disabled={exposure?.input ?? false}
+                    onchange={(event) => updateBoolean(val, event)}
+                  />
+                {:else if inputType === 'selection'}
+                  {@const options = parameterSelectionOptions(tree, val)}
+                  <select
+                    value={val.value}
+                    disabled={exposure?.input ?? false}
+                    onchange={(e) => {
+                      val.value = (e.target as HTMLSelectElement).value
+                      markEdited()
+                    }}
+                  >
+                    {#if val.selection_options && !options.includes(val.value)}
+                      <option value={val.value} disabled
+                        >Choose an option</option
+                      >
+                    {/if}
+                    {#each options as opt (opt)}
+                      <option value={opt}>{opt}</option>
+                    {/each}
+                  </select>
+                {:else if inputType === 'number'}
+                  <input
+                    type="number"
+                    value={val.value}
+                    disabled={exposure?.input ?? false}
+                    step={val.pattern_description.startsWith('[Integer')
+                      ? '1'
+                      : 'any'}
+                    onchange={(e) => {
+                      val.value = (e.target as HTMLInputElement).value
+                      markEdited()
+                    }}
+                  />
+                {:else}
+                  <input
+                    type="text"
+                    value={val.value}
+                    disabled={exposure?.input ?? false}
+                    oninput={(e) => {
+                      val.value = (e.target as HTMLInputElement).value
+                      markEdited()
+                    }}
+                  />
+                {/if}
+              </label>
+            {/if}
             {#if onExposureChange}
               <div class="exposure-switches">
                 <ToggleSwitch
@@ -516,6 +514,7 @@
   }
 
   summary.extra,
+  .param-toggle.extra,
   .param-name.extra,
   .param-doc.extra {
     color: var(--link-color);
@@ -542,12 +541,25 @@
     padding: 0.25rem 0.25rem;
   }
 
-  .param-leaf label {
+  .param-leaf > label,
+  .param-toggle {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex: 1;
     min-width: 0;
+  }
+
+  .param-toggle :global(.toggle) {
+    flex: 1;
+    min-width: 0;
+    justify-content: space-between;
+    font-size: 0.85rem;
+  }
+
+  .param-toggle :global(.toggle-label) {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   /* Two fixed-width columns at the right edge of the row; the header uses the

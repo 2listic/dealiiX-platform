@@ -13,7 +13,7 @@
   import { parameterHandle } from '../../graph/handleIds'
   import {
     groupExposuresBySection,
-    normalizeParameterExposures,
+    nodeParameterExposures,
     parameterPathLabel,
     parameterPortCoralType,
   } from '../../parameters/parameterPorts'
@@ -21,43 +21,45 @@
   let {
     id,
     data,
+    inlineConfiguration = false,
   }: {
     /** Id of the node. */
     id: string
     /** The node's data; it carries `parameter_file`. */
     data: StandardNodeDefinition
+    inlineConfiguration?: boolean
   } = $props()
 
-  let exposures = $derived(
-    normalizeParameterExposures(data.parameter_file?.exposures)
-  )
+  let exposures = $derived(nodeParameterExposures(data))
   let sections = $derived(groupExposuresBySection(exposures))
 </script>
 
-<div class="row path-row">
-  {#each data.inputs as i, index (i)}
-    <Handle id={`input-${index}`} type="target" position={Position.Left} />
-  {/each}
-  <input
-    type="text"
-    class="path"
-    value={data.value}
-    title={data.value}
-    aria-label="Parameter file path"
-    disabled
-  />
-  <button
-    class="unmark"
-    title="Stop using as parameter file"
-    aria-label="Stop using as parameter file"
-    onclick={() => confirmUnmarkParameterFile(id)}
-  >
-    <UnmarkIcon width="20px" height="20px" />
-  </button>
-  {#each data.outputs as o, index (o)}
-    <Handle id={`output-${index}`} type="source" position={Position.Right} />
-  {/each}
-</div>
+{#if !inlineConfiguration}
+  <div class="row path-row">
+    {#each data.inputs as i, index (i)}
+      <Handle id={`input-${index}`} type="target" position={Position.Left} />
+    {/each}
+    <input
+      type="text"
+      class="path"
+      value={data.value}
+      title={data.value}
+      aria-label="Parameter file path"
+      disabled
+    />
+    <button
+      class="unmark"
+      title="Stop using as parameter file"
+      aria-label="Stop using as parameter file"
+      onclick={() => confirmUnmarkParameterFile(id)}
+    >
+      <UnmarkIcon width="20px" height="20px" />
+    </button>
+    {#each data.outputs as o, index (o)}
+      <Handle id={`output-${index}`} type="source" position={Position.Right} />
+    {/each}
+  </div>
+{/if}
 
 {#if exposures.length === 0}
   <div class="hint">Open the parameters to expose entries as ports.</div>

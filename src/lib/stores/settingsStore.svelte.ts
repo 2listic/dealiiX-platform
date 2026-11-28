@@ -2,7 +2,6 @@ import {
   createDefaultSettings,
   isValidAppSettings,
   type AppSettings,
-  type ExecutionSettings,
   type ExecutionLocation,
   type BackendKind,
   type ProbeResult,
@@ -63,73 +62,6 @@ export const settingsState = {
   getParametersFileName(location: ExecutionLocation): string {
     return settings.execution[location].parametersFileName
   },
-  /** Probe status recorded for a specific location × backend kind. */
-  getProbe(
-    location: ExecutionLocation,
-    backendKind: BackendKind
-  ): ProbeResult | undefined {
-    return settings.execution[location].probes?.[backendKind]
-  },
-  async saveUrlVisualizer(url: string) {
-    await persistSettings({ ...settings, urlVisualizer: url })
-  },
-  async saveUrlRemoteServer(url: string) {
-    await persistSettings({ ...settings, urlRemoteServer: url })
-  },
-  /** Persist the edited path fields, preserving each target's probe status. */
-  async saveExecutionPaths(execution: ExecutionSettings) {
-    await persistSettings({
-      ...settings,
-      execution: {
-        ...execution,
-        local: { ...execution.local, probes: settings.execution.local.probes },
-        remote: {
-          ...execution.remote,
-          probes: settings.execution.remote.probes,
-        },
-      },
-    })
-  },
-  /** Record a probe outcome into the given location × backend kind slot. */
-  async recordProbe(
-    location: ExecutionLocation,
-    backendKind: BackendKind,
-    status: ProbeResult
-  ) {
-    const target = settings.execution[location]
-    await persistSettings({
-      ...settings,
-      execution: {
-        ...settings.execution,
-        [location]: {
-          ...target,
-          probes: { ...target.probes, [backendKind]: status },
-        },
-      },
-    })
-  },
-  async saveParametersFileName(
-    location: ExecutionLocation,
-    parametersFileName: string
-  ) {
-    await persistSettings({
-      ...settings,
-      execution: {
-        ...settings.execution,
-        [location]: {
-          ...settings.execution[location],
-          parametersFileName,
-        },
-      },
-    })
-  },
-}
-
-// ── Private helpers ──
-
-const persistSettings = async (nextSettings: AppSettings) => {
-  settings = nextSettings
-  await window.electron.store.set('settings', $state.snapshot(settings))
 }
 
 // Backfill per-target fields added after settings were first persisted. Defaults
@@ -161,7 +93,7 @@ const normalizeStoredSettings = (stored: AppSettings): AppSettings => {
 
 // Keeps only the probes carrying an `outcome`. Ones recorded before that field
 // existed are dropped rather than translated, so the combination reads as
-// unvalidated until Validate & Sync runs again.
+// unvalidated.
 const currentProbes = (
   stored: Partial<Record<BackendKind, ProbeResult>> | undefined
 ): Partial<Record<BackendKind, ProbeResult>> =>

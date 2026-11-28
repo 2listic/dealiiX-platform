@@ -1,3 +1,4 @@
+import { canonicalTypeKey } from './canonicalTypeKey'
 /**
  * Validation utilities for the CORAL node registry.
  * Filters raw registry payloads received from CORAL or loaded from disk,
@@ -10,15 +11,15 @@ import type {
   RegisteredNodes,
 } from '../types/nodeTypes'
 
-const BACKEND_HEADER = '__backend'
-const BACKEND_NAME = '__backend_name'
+/** Registry keys with this prefix carry metadata, not node definitions. */
+export const REGISTRY_METADATA_PREFIX = '__'
+
 const logicalId = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/
 
 /**
  * Filters a registry object, separating valid nodes from non-compliant ones.
  * A valid node must be a non-null object with `node_type`, `arguments`, `inputs`, and `outputs`.
- * The metadata keys `__backend` and `__backend_name` are never nodes; they are
- * reported as skipped only when unusable.
+ * Metadata keys (prefix `__`) are neither kept nor reported as skipped.
  * @param registry - Raw dictionary that may contain both valid node entries and non-compliant nodes
  * @returns Tuple of [filtered valid registry, list of skipped keys]
  */
@@ -28,12 +29,10 @@ export const filterValidNodes = (
   const skipped: string[] = []
   const filtered: RegisteredNodes = {}
   for (const [key, value] of Object.entries(registry)) {
-    if (key === BACKEND_HEADER || key === BACKEND_NAME) {
-      const usable =
-        key === BACKEND_HEADER
-          ? registryBackend(registry) !== undefined
-          : typeof value === 'string'
-      if (!usable) skipped.push(key)
+    if (key.startsWith(REGISTRY_METADATA_PREFIX)) {
+      if (key === '__backend' && !registryBackend(registry)) skipped.push(key)
+      if (key === '__backend_name' && typeof value !== 'string')
+        skipped.push(key)
       continue
     }
     if (
@@ -53,21 +52,56 @@ export const filterValidNodes = (
 }
 
 /**
- * Reads the backend identity a registry carries under `__backend`. Keys other
- * than `id` and `plugin` are ignored, so a header with later fields still
- * yields its identity.
+ * Reads the backend header a registry carries under `__backend`.
  * @param registry - Raw registry payload.
- * @returns `{ id, plugin? }`, or undefined when the registry has no header or
- *   its `id` or `plugin` is not a logical identifier.
+ * @returns The header, or undefined when the registry has none or it has no string `id`.
  */
 export const registryBackend = (
   registry: Record<string, unknown>
 ): BackendIdentity | undefined => {
-  const header = registry[BACKEND_HEADER]
-  if (typeof header !== 'object' || header === null) return
-  const { id, plugin } = header as { id?: unknown; plugin?: unknown }
-  if (typeof id !== 'string' || !logicalId.test(id)) return
-  if (plugin === undefined) return { id }
-  if (typeof plugin === 'string' && logicalId.test(plugin))
-    return { id, plugin }
+  const header = registry[`${REGISTRY_METADATA_PREFIX}backend`]
+  if (typeof header !== 'object' || header === null) return undefined
+  const { id, plugin, version, plugins, operations, registry_digest } =
+    header as Partial<BackendIdentity>
+  if (typeof id !== 'string' || !logicalId.test(id)) return undefined
+  if (
+    plugin !== undefined &&
+    (typeof plugin !== 'string' || !logicalId.test(plugin))
+  ) {
+    return undefined
+  }
+  return {
+    id,
+    ...(plugin && { plugin }),
+    ...(typeof version === 'string' && { version }),
+    ...(Array.isArray(plugins) && { plugins }),
+    ...(Array.isArray(operations) && { operations }),
+    ...(typeof registry_digest === 'string' && { registry_digest }),
+  }
+}
+
+// Backend nodes carry their child registry in the definition's value.
+// A placed network node instead carries its editable workflow in value.
+export const embeddedRegistry = (
+  definition: StandardNodeDefinition
+): Record<string, unknown> | undefined => {
+  const value: unknown = definition.value
+  if (!value || typeof value !== 'object' || !('registry' in value)) return
+  const registry = value.registry
+  if (registry && typeof registry === 'object' && !Array.isArray(registry)) {
+    return registry as Record<string, unknown>
+  }
+}
+
+export const definitionInRegistry = (
+  registry: RegisteredNodes,
+  type: string
+) => {
+  const canonical = canonicalTypeKey(type)
+  const key = Object.hasOwn(registry, type)
+    ? type
+    : Object.keys(registry).find((key) => canonicalTypeKey(key) === canonical)
+  if (key === undefined)
+    throw new Error(`Node type '${type}' is not in the child registry`)
+  return registry[key]
 }

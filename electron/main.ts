@@ -45,6 +45,10 @@ app.whenReady().then(async () => {
   applyStartupSettings()
   const { registerIpcHandlers } = await import('./ipcHandlers.js')
   registerIpcHandlers()
+  const { registerFrontendSettings } = await import(
+    './utils/frontendSettings.js'
+  )
+  registerFrontendSettings(app.getAppPath())
   createWindow()
 
   app.on('activate', () => {

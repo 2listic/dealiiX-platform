@@ -12,6 +12,5 @@
         "coralPluginPath": "/app/build/backends/dealii/libcoral_backend_dealii.so"
       }
     }
-  },
-  "selection": { "location": "remote", "backendKind": "coral" }
+  }
 }

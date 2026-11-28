@@ -4,6 +4,7 @@ import {
   ConnectionType,
   NodeType,
   Type,
+  TypeField,
   type NodeDefinitions,
   type StandardNodeDefinition,
 } from '../types/nodeTypes'
@@ -134,8 +135,109 @@ describe('isValidConnection', () => {
     ).toBe(true)
   })
 
+  it('requires an exact type from a scalar literal to exposed configuration', () => {
+    const enabled = ['Enabled']
+    const iterations = ['Iterations']
+    const integer = {
+      path: iterations,
+      type: 'int',
+      input: true,
+      output: false,
+    } as const
+    nodes.push(
+      canvasNode('option', literal(Type.BOOLEAN, 'true')),
+      canvasNode('configured', {
+        ...consumer.data,
+        node_type: NodeType.VOID_FUNCTION,
+        configuration_exposures: {
+          exposures: [
+            { path: enabled, type: 'bool', input: true, output: false },
+            integer,
+          ],
+        },
+      }),
+      canvasNode('native', {
+        ...literal(Type.STRING, 'iterations.prm'),
+        parameter_file: { exposures: [integer] },
+      })
+    )
+
+    expect(
+      connect('option', 'configured', parameterHandle('input', enabled))
+    ).toBe(true)
+    expect(
+      connect('option', 'configured', parameterHandle('input', iterations))
+    ).toBe(false)
+    expect(
+      connect('option', 'native', parameterHandle('input', iterations))
+    ).toBe(true)
+  })
+
   it('accepts a family output into an ordinary input of the same type', () => {
     expect(connect('family', 'consumer', 'input-0')).toBe(true)
+  })
+})
+
+describe('orchestrator file ports', () => {
+  it('accepts multiple declarations on a stage input and a single producer on a file', () => {
+    const filePort = {
+      type: Type.ORCHESTRATOR_FILE,
+      name: 'File',
+      connection_type: ConnectionType.INPUT,
+    }
+    const definition: StandardNodeDefinition = {
+      type: TypeField.ORCHESTRATOR_LOCAL_FILE,
+      node_type: NodeType.VOID_FUNCTION,
+      arguments: [
+        filePort,
+        { ...filePort, connection_type: ConnectionType.OUTPUT },
+      ],
+      inputs: [0],
+      outputs: [1],
+      is_valid: true,
+    }
+    nodes = [
+      canvasNode('first', definition),
+      canvasNode('second', {
+        ...definition,
+        type: TypeField.ORCHESTRATOR_REMOTE_FILE,
+      }),
+      canvasNode('output', definition),
+      canvasNode('transfer', {
+        ...definition,
+        type: TypeField.ORCHESTRATOR_TRANSFER,
+      }),
+      canvasNode('stage', { ...definition, type: 'orchestrator::Produce' }),
+      canvasNode('another', { ...definition, type: 'orchestrator::Consume' }),
+    ]
+    edges = [
+      {
+        id: 'in',
+        source: 'first',
+        sourceHandle: 'output-0',
+        target: 'stage',
+        targetHandle: 'input-0',
+      },
+      {
+        id: 'transfer-in',
+        source: 'first',
+        sourceHandle: 'output-0',
+        target: 'transfer',
+        targetHandle: 'input-0',
+      },
+      {
+        id: 'out',
+        source: 'stage',
+        sourceHandle: 'output-0',
+        target: 'output',
+        targetHandle: 'input-0',
+      },
+    ]
+    clearConnectionCache()
+    expect(connect('second', 'stage', 'input-0')).toBe(true)
+    expect(connect('first', 'stage', 'input-0')).toBe(false)
+    expect(connect('another', 'output', 'input-0')).toBe(false)
+    expect(connect('second', 'transfer', 'input-0')).toBe(false)
   })
 })
 

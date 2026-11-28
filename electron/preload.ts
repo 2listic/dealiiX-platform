@@ -5,6 +5,42 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
  * Docs: https://www.electronjs.org/docs/latest/tutorial/context-isolation#usage-with-typescript
  */
 contextBridge.exposeInMainWorld('electron', {
+  importSettingsFile: () => ipcRenderer.invoke('settings:import-file'),
+  frontendSettings: {
+    get: () => ipcRenderer.invoke('frontend-settings:get'),
+    importConfiguration: () => ipcRenderer.invoke('frontend-settings:import'),
+    save: (configuration: unknown) =>
+      ipcRenderer.invoke('frontend-settings:save', configuration),
+    setTheme: (theme: unknown) =>
+      ipcRenderer.invoke('frontend-settings:theme', theme),
+  },
+  workflow: {
+    enabled: () => ipcRenderer.invoke('workflow:enabled'),
+    openWorkflow: () => ipcRenderer.invoke('workflow:open'),
+    saveDefault: (name: string) =>
+      ipcRenderer.invoke('workflow:save-default', name),
+    readConfiguration: () => ipcRenderer.invoke('workflow:read-configuration'),
+    importConfiguration: () =>
+      ipcRenderer.invoke('workflow:import-configuration'),
+    saveConfiguration: (
+      parameters: unknown,
+      revision: string,
+      target?: unknown
+    ) =>
+      ipcRenderer.invoke(
+        'workflow:save-configuration',
+        parameters,
+        revision,
+        target
+      ),
+    exchange: (request: unknown, target?: unknown) =>
+      ipcRenderer.invoke('workflow:exchange', request, target),
+    subscribe: (listener: (response: unknown) => void) => {
+      const handler = (_event: unknown, response: unknown) => listener(response)
+      ipcRenderer.on('workflow:status', handler)
+      return () => ipcRenderer.removeListener('workflow:status', handler)
+    },
+  },
   send: (channel: string, data?: unknown) => ipcRenderer.send(channel, data),
   on: (channel: string, func: (...args: unknown[]) => void) =>
     ipcRenderer.on(channel, (_event, ...args) => func(...args)),

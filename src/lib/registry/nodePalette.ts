@@ -49,15 +49,15 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
 /**
  * Returns the label of a registry entry in the sidebar and the connected-node
  * picker, from the first source present:
- * 1. a literal's value type (`int`, `std::string`);
- * 2. `display_name`;
+ * 1. `display_name`;
+ * 2. a literal's value type (`int`, `std::string`);
  * 3. `method_name` without numeric template arguments, for an entry with
  *    `class_name` and `method_name`;
  * 4. for a method: its qualified `operation`, else `Class::method` from the type;
  * 5. `operation`;
  * 6. for a constructor: the class name from the type;
  * 7. the type without its numeric template arguments.
- * Names in steps 2, 3 and 5 are sentence-cased; types keep their C++ spelling.
+ * Names in steps 1, 3 and 5 are sentence-cased; types keep their C++ spelling.
  *
  * @param node - Registry definition to label.
  * @returns Human-readable label.
@@ -65,10 +65,10 @@ export const nodePaletteKey = (node: StandardNodeDefinition): string => {
 export const nodePaletteDisplayName = (
   node: StandardNodeDefinition
 ): string => {
-  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
-    return displayTypeName(node.type)
   const displayName = node.display_name?.trim()
   if (displayName) return formatSuggestedNodeName(displayName)
+  if (node.node_type === NodeType.ELEMENTARY_CONSTRUCTOR)
+    return displayTypeName(node.type)
   if (node.class_name?.trim() && node.method_name?.trim())
     return formatSuggestedNodeName(paletteMethodName(node))
   if (isMethodNode(node))
@@ -99,16 +99,18 @@ export const nodeOwnerDisplayName = (node: StandardNodeDefinition): string => {
 }
 
 /**
- * Returns the sidebar section a registry entry is listed under: the class
- * named by its `class_name`, without namespace or template arguments.
+ * Returns the sidebar section explicitly declared for this entry, or the
+ * class named by its `class_name` without namespace or template arguments.
  *
  * @param node - Registry definition.
- * @returns The section's key and label, or `undefined` for an entry without
- * `class_name`, which is listed on its own.
+ * @returns The section's key and label, or `undefined` for a standalone tile.
  */
 export const nodeClassSection = (
   node: StandardNodeDefinition
 ): { key: string; label: string } | undefined => {
+  const section = node.palette_section?.trim()
+  if (section)
+    return { key: `section:${section.toLowerCase()}`, label: section }
   const className = node.class_name?.trim()
   const name = className ? classPaletteName(className) : ''
   if (!name) return undefined

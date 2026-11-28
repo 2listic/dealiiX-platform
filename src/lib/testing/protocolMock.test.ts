@@ -13,8 +13,7 @@ import {
 import { getEdgesSnapshot, getNodesSnapshot } from '../stores/nodes.svelte'
 import {
   getRegistryBackend,
-  setActiveLocation,
-  setRegistry,
+  setServiceRegistry,
 } from '../stores/registryStore.svelte'
 import { createDefaultSettings } from '../types/settingsTypes'
 import { probeAndSyncExecutionSettings } from '../../../electron/utils/executionProbe'
@@ -44,8 +43,7 @@ it('loads a graph using the registry returned by the register-only backend', asy
     if (probe.metadata?.kind !== 'nodeRegistry')
       throw new Error(probe.status.message)
     expect(protocolErrors('registry', probe.metadata.data)).toEqual([])
-    expect(await setRegistry(probe.metadata.data, 'local')).toEqual([])
-    setActiveLocation('local')
+    expect(setServiceRegistry(probe.metadata.data)).toEqual([])
 
     const graph = JSON.parse(
       await readFile(join(fixture, 'network.json'), 'utf8')
@@ -58,9 +56,8 @@ it('loads a graph using the registry returned by the register-only backend', asy
     ])
     expect(getEdgesSnapshot()).toHaveLength(1)
 
-    const identity = getRegistryBackend('local')
+    const identity = getRegistryBackend()
     expect(identity).toEqual(graph.backend)
-    expect(getRegistryBackend('remote')).toBeUndefined()
     const exported = parseGraphWithQualifiedIds(
       getNodesSnapshot(),
       getEdgesSnapshot(),

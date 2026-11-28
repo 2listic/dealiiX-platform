@@ -22,9 +22,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
    *
    * Launches the Electron app with an isolated userData directory so the real
    * electron-store is never read or written. The app starts from a clean state:
-   * - registered_nodes falls back to defaultNodes.json (built-in fallback)
-   * - settings come from the dev-stack preset — backendKind: 'coral',
-   *   so FlowCanvas renders and [data-testid="flow-canvas"] is always present
+   * - the editor uses the bundled node definitions until a root backend is configured
    *
    * The cold-start wait (up to 60 s) is paid once per worker; subsequent tests
    * share the same Electron instance.

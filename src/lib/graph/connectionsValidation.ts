@@ -10,6 +10,7 @@ import { getNodesSnapshot, getEdgesSnapshot } from '../stores/nodes.svelte'
 import {
   getInputTypeAndName,
   getOutputTypeAndName,
+  resolveInputArgument,
   resolveOutputTypeCandidates,
 } from './canvasNodeUtils'
 import {
@@ -17,6 +18,9 @@ import {
   isOverloadNodeDefinition,
   isTypeCompatible,
   NodeType,
+  ORCHESTRATOR_FILE_NODES,
+  Type,
+  TypeField,
 } from '../types/nodeTypes'
 import type { NodeDefinitions } from '../types/nodeTypes'
 import { edgeHandle, handleIdToIndex, parameterHandlePath } from './handleIds'
@@ -25,8 +29,9 @@ import {
   getNodeData,
   isNodeInNetworkNodes,
 } from '../stores/registryStore.svelte'
-import { isSubnetworkParameterOutput } from '../orchestration/materializeNetwork'
+import { isSubnetworkParameterOutput } from './subnetworkParameterPorts'
 import { resolveOverloadGraph } from '../registry/overloadResolution'
+import { isConfigurationInput } from '../parameters/parameterPorts'
 
 let connectionCache = new Map<string, boolean>()
 
@@ -46,13 +51,27 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   console.log('nodes', nodes)
   console.log('edges', edges)
 
-  // Check if the target handle is already connected
+  const targetNode = nodes.find((node) => node.id === connection.target)
+  if (!targetNode) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
+
+  // A stage's file input accepts multiple declarations. Each file has one producer.
   if (
     isTargetHandleConnected(
       edges,
       connection.target,
       connection.targetHandle as string
-    )
+    ) &&
+    (!acceptsMultipleFiles(targetNode, connection.targetHandle as string) ||
+      edges.some(
+        (edge) =>
+          edge.target === connection.target &&
+          edge.targetHandle === connection.targetHandle &&
+          edge.source === connection.source &&
+          edge.sourceHandle === connection.sourceHandle
+      ))
   ) {
     console.warn(
       `Handle ${connection.targetHandle} on node ${connection.target} already connected`
@@ -70,16 +89,21 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   }
 
   // Resolve the expected input type and the source's output type
-  const targetNode = nodes.find((node) => node.id === connection.target)
-  if (!targetNode) {
-    connectionCache.set(cacheKey, false)
-    return false
-  }
-
   const targetHandle = connection.targetHandle as string
   const sourceHandle = connection.sourceHandle as string
   const targetParameter = parameterHandlePath(targetHandle)
   const sourceParameter = parameterHandlePath(sourceHandle)
+  const outputArgument =
+    sourceNode.data.arguments?.[
+      sourceNode.data.outputs?.[handleIdToIndex(sourceHandle)] ?? -1
+    ]
+  if (
+    outputArgument?.configuration_path &&
+    targetParameter?.direction !== 'input'
+  ) {
+    connectionCache.set(cacheKey, false)
+    return false
+  }
 
   // Exposed parameter inputs are evaluated before execution. A computed
   // backend/subnetwork output cannot provide their value at that point; only
@@ -88,6 +112,7 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
   if (
     targetParameter?.direction === 'input' &&
     !sourceParameter &&
+    !outputArgument?.configuration_path &&
     sourceNode.data.node_type !== NodeType.ELEMENTARY_CONSTRUCTOR &&
     sourceNode.data.node_type !== NodeType.PRIMITIVE &&
     !isCanvasSubnetworkParameterOutput(sourceNode, sourceHandle)
@@ -136,8 +161,11 @@ const isValidConnection = (connection: Connection | Edge): boolean => {
       connection.targetHandle
     } expects ${expectedInputType?.toString()}, source provides ${sourceType?.toString()}`
   )
+  const exact = isConfigurationInput(targetNode.data, targetHandle)
   const isValid = sourceTypes.some((type) =>
-    isTypeCompatible(type, expectedInputType)
+    exact
+      ? type === expectedInputType
+      : isTypeCompatible(type, expectedInputType)
   )
   console.log('connection is valid?', isValid)
   connectionCache.set(cacheKey, isValid) // Cache the result
@@ -229,5 +257,20 @@ const isTargetHandleConnected = (
   handleId: string
 ): boolean =>
   edges.some((e) => e.target === nodeId && e.targetHandle === handleId)
+
+/**
+ * Checks whether the port accepts multiple file declarations.
+ * @param node - Canvas node declaring the port.
+ * @param handle - Input handle id.
+ * @returns True for an orchestrator stage's file input.
+ */
+export const acceptsMultipleFiles = (node: Node, handle: string): boolean =>
+  resolveInputArgument(node.data as NodeDefinitions, handleIdToIndex(handle))
+    ?.multiple === true ||
+  (typeof node.data.type === 'string' &&
+    !ORCHESTRATOR_FILE_NODES.has(node.data.type) &&
+    node.data.type !== TypeField.ORCHESTRATOR_TRANSFER &&
+    getInputTypeAndName(node, handle)?.connectionType ===
+      Type.ORCHESTRATOR_FILE)
 
 export { isValidConnection, clearConnectionCache, isTargetHandleConnected }

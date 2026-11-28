@@ -9,6 +9,7 @@
 // export type ConcatNodeData = { value: string, inputsTypes: InOutTypes[], outputsTypes: InOutTypes[] }
 
 import { canonicalTypeKey } from '../registry/canonicalTypeKey'
+import type { ParameterTree } from './parameterTypes'
 
 export enum ConnectionType {
   INPUT = 'input',
@@ -27,6 +28,8 @@ export type Argument = {
   connection_type: ConnectionType
   name: string
   type: Type
+  multiple?: boolean
+  configuration_path?: string[]
 } & InheritanceMetadata
 
 /** The four scalar types that can be exposed by a frontend parameter port. */
@@ -74,7 +77,19 @@ export enum NodeType {
 
 export enum TypeField {
   CORAL_NETWORK = 'coral::Network',
+  CORAL_BACKEND_NETWORK = 'network::coral',
+  ORCHESTRATOR_GENERIC_FILE = 'orchestrator::GenericFile',
+  ORCHESTRATOR_LOCAL_FILE = 'orchestrator::LocalFile',
+  ORCHESTRATOR_REMOTE_FILE = 'orchestrator::RemoteFile',
+  ORCHESTRATOR_TRANSFER = 'orchestrator::Transfer',
 }
+
+/** File declarations, including the original on-disk name. */
+export const ORCHESTRATOR_FILE_NODES: ReadonlySet<string> = new Set([
+  TypeField.ORCHESTRATOR_GENERIC_FILE,
+  TypeField.ORCHESTRATOR_LOCAL_FILE,
+  TypeField.ORCHESTRATOR_REMOTE_FILE,
+])
 
 /**
  * Node types that should not appear in the sidebar's available nodes list.
@@ -107,6 +122,7 @@ export const nodeColors = {
 export const PARAMETER_FILE_COLOR = 'darkorange'
 
 export enum Type {
+  ORCHESTRATOR_FILE = 'orchestrator::file',
   INT = 'int',
   UNSIGNED = 'unsigned',
   UNSIGNED_INT = 'unsigned int',
@@ -191,6 +207,9 @@ export type StandardNodeDefinition = {
   overload_group?: string
   /** Optional user-facing label for the logical operation. */
   display_name?: string
+  /** Optional palette section, independent of class and overload metadata. */
+  palette_section?: string
+  palette_subsection?: string
   /** Optional user-facing label for one concrete operation specialization. */
   variant_name?: string
   /** Stable owner class for method-like operations exposed by a plugin. */
@@ -204,10 +223,82 @@ export type StandardNodeDefinition = {
   value?: any
   is_valid?: boolean
   parameter_file?: ParameterFileMetadata
+  /** Parameter document of the node: the registry's template, or the instance's own copy. */
+  configuration?: ParameterTree
+  configuration_exposures?: ParameterFileMetadata
+  capabilities?: NodeCapabilities
+  'x-dealiix'?: NodeExtension
 } & InheritanceMetadata
 
-/** Logical backend identity carried by the registry and graph. */
-export type BackendIdentity = { id: string; plugin?: string }
+/** Actions and configuration controls advertised by a registry definition. */
+export type NodeCapabilities = {
+  actions?: ('open_child_workflow' | 'configure')[]
+  configuration_exposable?: boolean
+  hidden?: boolean
+}
+
+/** Draft execution metadata used by the prototype backend. */
+export type NodeExtension = NodeCapabilities & {
+  execution?: {
+    kind: 'in_process' | 'executable' | 'child_workflow'
+    target?: 'local' | 'remote' | 'any'
+    parallelism?: {
+      mode: 'serial' | 'mpi'
+      processes?: number
+      /** Name of the input argument holding the process count. */
+      processes_from?: string
+    }
+    run_policy?: 'always' | 'if_outputs_missing_or_inputs_changed'
+  }
+  files?: {
+    inputs?: {
+      argument: string
+      media_type: string
+      role?: string
+      required?: boolean
+    }[]
+    outputs?: ({
+      media_type: string
+      role?: string
+      must_exist_after_success?: boolean
+    } & ({ argument: string } | { path: string }))[]
+  }
+}
+
+/** Operations a backend lists in its registry header. */
+export type BackendOperation =
+  | 'register'
+  | 'describe'
+  | 'configure'
+  | 'validate'
+  | 'run'
+  | 'submit'
+  | 'status'
+  | 'logs'
+  | 'outputs'
+  | 'cancel'
+  | 'pause'
+  | 'resume'
+  | 'replay'
+  | 'artifact'
+  | 'migrate'
+  | 'list_workflows'
+  | 'read_workflow'
+  | 'write_workflow'
+
+/**
+ * Backend identity from a registry's `__backend` key. A network's `backend`
+ * header carries the same fields except `operations`.
+ */
+export type BackendIdentity = {
+  id: string
+  plugin?: string
+  version?: string
+  plugins?: { id: string; version?: string }[]
+  /** `sha256:<hex>` of the registry's node definitions. */
+  registry_digest?: string
+  operations?: BackendOperation[]
+}
 
 /**
  * Returns all ancestors, including the legacy single-base field.
@@ -284,18 +375,21 @@ export type LeanStandardNode = {
   name?: string
   position?: { x: number; y: number }
   parameter_file?: ParameterFileMetadata
+  configuration?: ParameterTree
+  configuration_exposures?: ParameterFileMetadata
 } & InheritanceMetadata
 
 /**
  * Full definition of a subgraph node — an encapsulated computational graph
  * that can be reused as a single node on the canvas.
- * Always has `type === TypeField.CORAL_NETWORK` and carries the embedded
- * sub-network in its `value` field.
+ * Carries the instance workflow in its `value` field.
  * Stored in {@link RegisteredSubGraphNodes}, keyed by node name.
  */
 export type SubGraphNodeDefinition = {
-  type: TypeField.CORAL_NETWORK
+  type: string
   node_type: NodeType.NETWORK
+  configuration?: ParameterTree
+  capabilities?: NodeCapabilities
   value: Network
   name: string
   arguments: Argument[]
@@ -333,7 +427,7 @@ export type Network = {
   date_time_utc: string
   version: number
   /** The registry header the network was built against. */
-  backend?: BackendIdentity
+  backend?: Omit<BackendIdentity, 'operations'>
   workflow: {
     edges: NetworkEdges
     nodes: LeanNodes
@@ -366,16 +460,12 @@ export type QualifiedNetwork = Omit<Network, 'workflow'> & {
 /**
  * Type guard to check if a protocol node is a {@link SubGraphNodeDefinition}.
  * @param node - The node to check
- * @returns True if the node is a coral::Network node with all required fields
+ * @returns True if the node declares a network workflow
  */
 export const isSubGraphNodeDefinition = (
   node: LeanNodes[string]
 ): node is SubGraphNodeDefinition => {
-  return (
-    node.type === TypeField.CORAL_NETWORK &&
-    'node_type' in node &&
-    node.node_type === NodeType.NETWORK
-  )
+  return 'node_type' in node && node.node_type === NodeType.NETWORK
 }
 
 /** Type guard for the frontend-only overload family node. */

@@ -390,6 +390,34 @@ describe('canvasNodeUtils', () => {
     )
   })
 
+  it('offers exact scalar types when creating a source for exposed configuration', () => {
+    const path = ['Iterations']
+    const target = {
+      id: 'configured',
+      position: { x: 0, y: 0 },
+      data: {
+        type: 'mock::Configured',
+        configuration_exposures: {
+          exposures: [{ path, type: 'int', input: true, output: false }],
+        },
+      },
+    }
+    const resolved = resolveConnectionAndCompatibleNodes(
+      {
+        nodeId: target.id,
+        handleId: parameterHandle('input', path),
+        handleType: 'target',
+      },
+      target,
+      [registry.bool, registry.int, registry.double]
+    )
+    expect(
+      resolved?.compatibleOptions.map(
+        ({ nodeDefinition }) => nodeDefinition.type
+      )
+    ).toEqual([Type.INT])
+  })
+
   it('matches a source typed "any" against a concrete target input', () => {
     const anyOutputNode = {
       type: 'list_get',

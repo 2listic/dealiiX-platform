@@ -33,6 +33,7 @@
     "node_type": "network",
     "type": "coral::Network",
     "value": {
+      "backend": { "id": "coral" },
       "workflow": {
         "nodes": {
           "0": {
@@ -227,6 +228,7 @@
     "inputs": [0, 1, 2, 3, 4],
     "outputs": [5],
     "value": {
+      "backend": { "id": "coral" },
       "workflow": {
         "nodes": {
           "3": {

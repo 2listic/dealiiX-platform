@@ -183,13 +183,11 @@
     name: string,
     mode: SelectionSubgraphMode = 'create'
   ) => {
+    const result = await collapseSelectionToSubnetwork(name, mode)
+    if (!result) return
     graphHistoryState.checkpoint()
-    const { newNodes, newEdges } = await collapseSelectionToSubnetwork(
-      name,
-      mode
-    )
-    setNodes(newNodes)
-    setEdges(newEdges)
+    setNodes(result.newNodes)
+    setEdges(result.newEdges)
   }
 
   // Records which handle the user started dragging from so it is available

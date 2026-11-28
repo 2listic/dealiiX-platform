@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // nodes stores, which try to initialise electron-store. Mock them to keep tests
 // free of electron side-effects.
 vi.mock('../stores/registryStore.svelte', () => ({
+  getRegistryBackend: () => ({ id: 'coral' }),
   getNodeData: vi.fn(),
   getNetworkNodeDefinition: vi.fn(),
   addNetworkNode: vi.fn(),
@@ -96,10 +97,14 @@ const protoEdgeToCanvas = (edge: {
 const STEP1_SUBGRAPH_IDS = new Set(['3', '5', '8', '10', '11'])
 
 describe('networkNode utilities', () => {
-  it('rejects creating a network node from an empty graph', () => {
-    expect(() => createNetworkNodeDefinition('Empty', [], [])).toThrow(
-      'Cannot create network node from empty graph'
-    )
+  it('finds no boundary ports in an empty graph', () => {
+    expect(analyzeNetworkBoundary([], [])).toMatchObject({
+      argumentsArray: [],
+      inputsArray: [],
+      outputsArray: [],
+      networkInputToInternalHandle: {},
+      networkOutputToInternalHandle: {},
+    })
   })
 
   it('preserves the input metadata on an exposed network input', () => {
@@ -123,6 +128,7 @@ describe('networkNode utilities', () => {
       []
     )
 
+    expect(networkNode.value.backend).toEqual({ id: 'coral' })
     expect(networkNode.arguments[0]).toMatchObject({
       connection_type: ConnectionType.INPUT,
       name: 'parameters',

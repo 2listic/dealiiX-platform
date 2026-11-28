@@ -6,26 +6,13 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import {
-    getRegistryBackend,
-    mergeRegistry,
-  } from '../../stores/registryStore.svelte'
+  import { getRegistryBackend } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../graph/graphParser'
-  import {
-    mergeParametersFromFile,
-    downloadParameters,
-  } from '../../parameters/parametersFileActions'
-  import { parametersState } from '../../stores/parametersStore.svelte'
-  import { buildGraphPayload, openNewWindow } from '../../execution/sshMessages'
-  import { pipelineState } from '../../stores/pipeline.svelte'
-  import {
-    runPipeline,
-    type PipelineProgress,
-  } from '../../orchestration/pipelineOrchestrator'
-  import { buildExportMeta } from '../../graph/exportMeta'
-  import { jobsState } from '../../stores/jobsStore.svelte'
-  import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
+  import { openNewWindow } from '../../execution/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
+  import TextModal from './TextModal.svelte'
+  import WorkflowArchiveModal from './WorkflowArchiveModal.svelte'
+  import type { WorkflowSource } from '../../types/executionService'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -34,49 +21,67 @@
   import { toastState } from '../../stores/toastsStore.svelte'
   import { graphHistoryState } from '../../stores/graphStack.svelte'
   import UploadIcon from '../icons/UploadIcon.svelte'
-  import DownloadIcon from '../icons/DownloadIcon.svelte'
   import SettingsIcon from '../icons/SettingsIcon.svelte'
   import LoginIcon from '../icons/LoginIcon.svelte'
   import CubeIcon from '../icons/CubeIcon.svelte'
-  import { settingsState } from '../../stores/settingsStore.svelte'
-  import { executionSelectionState } from '../../stores/executionSelection.svelte'
+  import { frontendSettingsState } from '../../stores/frontendSettings.svelte'
   import { currentProjectState } from '../../stores/currentProjectStore.svelte'
-  import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parseGraphWithQualifiedIds } from '../../graph/graphParser'
   import { updateProject } from '../../requests/projects'
   import { confirmAction } from '../../stores/confirmation.svelte'
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
-  import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
+  import { canvasRunState } from '../../stores/canvasRun.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
-  import PlusIcon from '../icons/PlusIcon.svelte'
   import { useSvelteFlow } from '@xyflow/svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import RemoteFilePicker from '../RemoteFilePicker.svelte'
-  import { readRemoteGraphFile } from '../../execution/remoteFilePicker'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
 
   const { fitView } = useSvelteFlow()
 
   const loginModalId = 'login-modal'
-  const settingsModalId = 'settings-modal'
+  let backendSettings = $state<ReturnType<typeof Settings>>()
+  let frontendSettings = $state<ReturnType<typeof Settings>>()
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
-  const JobConfigModalId = 'job-config-modal'
-  const runNameModalId = 'pipeline-run-name-modal'
-  const remoteGraphPickerModalId = 'remote-graph-picker-modal'
-  let isCoralMode = $derived(executionSelectionState.isCoralMode)
-  let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
-  let hasParams = $derived(parametersState.value != null)
-  const paramsSyncHint =
-    'No parameters loaded — sync an executable from Settings first'
-  let hasRemoteServer = $derived(settingsState.hasRemoteServer)
-  let hasVisualizer = $derived(settingsState.hasVisualizer)
-  let isSingleMode = $derived(viewModeState.value === 'single')
-  let isPipelineMode = $derived(viewModeState.value === 'pipeline')
+  const outputsModalId = 'run-outputs-modal'
+  let outputsTitle = $state('')
+  let outputsText = $state('')
+  let runActionPending = $state(false)
+  let archiveModal = $state<ReturnType<typeof WorkflowArchiveModal>>()
+  let archivedGraph = $state<{ source: WorkflowSource; generation: number }>()
+  const canOpenArchive = $derived(
+    workflowService.operations.includes('list_workflows') &&
+      workflowService.operations.includes('read_workflow') &&
+      Boolean(workflowService.archive)
+  )
+  const canSaveArchive = $derived(
+    workflowService.operations.includes('write_workflow') &&
+      Boolean(
+        workflowService.archive?.locations.some(({ writable }) => writable)
+      )
+  )
+  const latestRun = $derived(workflowService.runs[0])
+  const canCancelLatestRun = $derived(
+    (latestRun?.state === 'queued' || latestRun?.state === 'running') &&
+      !latestRun.cancellation_requested
+  )
+  const latestScheduling = $derived(latestRun?.scheduling?.state)
+  const schedulingOperation = $derived(
+    latestScheduling === 'draining' || latestScheduling === 'paused'
+      ? 'resume'
+      : 'pause'
+  )
+  let hasRemoteServer = $derived(
+    Boolean(frontendSettingsState.projectServerUrl)
+  )
+  let hasVisualizer = $derived(Boolean(frontendSettingsState.visualizerUrl))
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
-  let isRemote = $derived(executionSelectionState.location === 'remote')
 
   const token = $derived(auth.token)
   const username = $derived(auth.username)
@@ -88,10 +93,6 @@
   })
 
   let importGraphInput: HTMLInputElement | undefined = $state()
-  let importNodesInput: HTMLInputElement | undefined = $state()
-  let coralGraphInput: HTMLInputElement | undefined = $state()
-  let pipelineImportInput: HTMLInputElement | undefined = $state()
-  let paramsFileInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = async () => {
     if (!token) {
@@ -108,164 +109,109 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  /**
-   * Unified Run entry point. In single mode it opens the job-config modal; in
-   * pipeline mode it validates and opens the run-name modal.
-   */
+  const runAction = async (action: () => Promise<void>) => {
+    if (runActionPending) return
+    runActionPending = true
+    try {
+      await action()
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    } finally {
+      runActionPending = false
+    }
+  }
+
+  const handleGraphAction = (operation: 'submit' | 'validate') =>
+    runAction(async () => {
+      if (graphStackState.canGoBack) {
+        toastState.add({
+          message: 'Return to the root workflow to validate or run it.',
+          type: 'warning',
+        })
+        return
+      }
+      const network = {
+        ...parseGraphWithQualifiedIds(
+          getNodesSnapshot(),
+          getEdgesSnapshot(),
+          getRegistryBackend()
+        ),
+        version: 1 as const,
+      }
+      if (operation === 'validate') {
+        await canvasRunState.track(graphStackState.generation, operation, () =>
+          workflowService.validate(network)
+        )
+        toastState.add({ message: 'Workflow is valid', type: 'success' })
+      } else {
+        await canvasRunState.track(graphStackState.generation, operation, () =>
+          workflowService.submit(network)
+        )
+      }
+    })
+
   const handleExecution = () => {
-    if (isPipelineMode) {
-      const validation = pipelineState.validate(
-        executionSelectionState.location
-      )
-      if (!validation.runnable) {
-        toastState.add({
-          message: `Cannot run: ${validation.issues.join('; ')}`,
-          type: 'error',
-        })
-        return
-      }
-      getModal(runNameModalId)?.open()
-      return
-    }
-    getModal(JobConfigModalId)?.open()
+    if (!workflowService.enabled)
+      return obsolete('Configure a workflow backend to run this graph.')
+    if (!workflowService.operations.includes('submit'))
+      return obsolete('This backend does not offer workflow submission.')
+    return handleGraphAction('submit')
   }
 
-  const handleAddCoralFromFile = async () => {
-    const file = coralGraphInput?.files?.[0]
-    if (!file) return
-    try {
-      const graph = JSON.parse(await file.text())
-      if (!graph || typeof graph !== 'object' || !('workflow' in graph)) {
-        toastState.add({
-          message:
-            'This file does not look like a CORAL graph (no "workflow").',
-          type: 'error',
-        })
-        return
-      }
-      const name = file.name.replace(/\.json$/i, '')
-      pipelineState.addCoralStage({ name, graph })
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error ? error.message : 'Failed to read graph file',
-        type: 'error',
-      })
-    } finally {
-      if (coralGraphInput) coralGraphInput.value = ''
-    }
-  }
-
-  const handleAddCoralFromCanvas = () => {
-    try {
-      const graph = buildGraphPayload(
-        getNodesSnapshot(),
-        getEdgesSnapshot(),
-        false,
-        getRegistryBackend(executionSelectionState.location)
-      )
-      pipelineState.addCoralStage({
-        name: currentProjectState.name || 'canvas graph',
-        graph,
-      })
-    } catch (error) {
-      toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to add the canvas graph',
-        type: 'error',
-      })
-    }
-  }
-
-  const handleAddExecutable = () => {
-    const target = settingsState[executionSelectionState.location]
-    pipelineState.addExecutableStage({
-      name: 'executable',
-      executablePath: target.executablePath,
-      parametersFileName: target.parametersFileName || 'parameters.json',
+  const showLatestOutputs = () =>
+    runAction(async () => {
+      if (!latestRun) return
+      const { run_id } = latestRun
+      const outputs = await workflowService.outputs(run_id)
+      outputsTitle = `Outputs for ${run_id}`
+      outputsText =
+        Object.entries(outputs)
+          .filter(([, paths]) => paths.length > 0)
+          .map(([node, paths]) => [`Node ${node}`, ...paths].join('\n'))
+          .join('\n\n') || 'No outputs reported.'
+      getModal(outputsModalId)?.open()
     })
-  }
 
-  /**
-   * Downloads the current pipeline as a JSON file: `toPipeline()` wrapped under
-   * `pipeline` plus a metadata envelope, so positions and per-stage configs
-   * round-trip exactly on re-import.
-   */
-  const handleExportPipeline = () => {
-    const payload = {
-      pipeline: pipelineState.toPipeline(),
-      ...buildExportMeta(),
-    }
-    const jsonString = JSON.stringify(payload, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `pipeline-${Date.now()}.json`
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-    URL.revokeObjectURL(url)
-  }
-
-  /** Replaces the canvas with a previously exported pipeline file. */
-  const handleImportPipeline = async () => {
-    const file = pipelineImportInput?.files?.[0]
-    if (!file) return
-    try {
-      const parsed = JSON.parse(await file.text())
+  const cancelLatestRun = () =>
+    runAction(async () => {
+      if (!latestRun || !canCancelLatestRun) return
+      const { run_id } = latestRun
       if (
-        !Array.isArray(parsed?.pipeline?.nodes) ||
-        !Array.isArray(parsed?.pipeline?.edges)
-      ) {
-        toastState.add({
-          message:
-            'This file does not look like a pipeline export (no pipeline.nodes/edges array).',
-          type: 'error',
-        })
+        !(await confirmAction({
+          title: 'Cancel run?',
+          message: `Cancel ${run_id}?`,
+          confirmText: 'Cancel run',
+          cancelText: 'Keep running',
+          confirmVariant: 'delete',
+        }))
+      )
         return
-      }
-      pipelineState.load(parsed)
-    } catch (error) {
+      const result = await workflowService.updateRun('cancel', run_id)
       toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to read pipeline file',
-        type: 'error',
-      })
-    } finally {
-      if (pipelineImportInput) pipelineImportInput.value = ''
-    }
-  }
-
-  /** Surfaces a pipeline progress event as a toast; success/error also refreshes the jobs table. */
-  const handlePipelineProgress = (event: PipelineProgress) => {
-    if (event.type === 'info' || event.type === 'success') {
-      toastState.add({ message: event.message, type: event.type })
-    } else {
-      toastState.add({ message: event.message, type: 'error' })
-    }
-    if (event.type !== 'info') jobsState.update()
-  }
-
-  /** Runs the pipeline at the active location, surfacing progress events as toasts. */
-  const handleRunPipeline = (name: string) => {
-    const pipeline = pipelineState.toPipeline()
-    runPipeline(
-      executionSelectionState.location,
-      pipeline,
-      name || undefined,
-      handlePipelineProgress
-    ).catch((error) => {
-      toastState.add({
-        message: error instanceof Error ? error.message : 'Pipeline run failed',
-        type: 'error',
+        message: result.cancellation_requested
+          ? 'Cancellation requested'
+          : `Run status: ${result.state}`,
+        type: 'info',
       })
     })
-  }
+
+  const changeLatestScheduling = () =>
+    runAction(async () => {
+      if (!canCancelLatestRun || !latestRun?.scheduling) return
+      await workflowService.updateRun(schedulingOperation, latestRun.run_id)
+    })
+
+  const replayLatestRun = () =>
+    runAction(async () => {
+      if (latestRun?.state !== 'succeeded') return
+      const graph = graphStackState.generation
+      const source = latestRun.run_id
+      const result = await workflowService.updateRun('replay', source)
+      canvasRunState.adoptReplay(graph, source, result.run_id)
+    })
 
   /**
    * Replaces the canvas with an imported graph, toasting each dropped edge
@@ -316,70 +262,18 @@
     }
   }
 
-  /**
-   * Imports a graph JSON file from the remote working directory and closes
-   * the picker; a read or import error is shown as a toast and keeps it open.
-   * @param fileName - File name inside the remote working directory.
-   * @returns Resolves once the graph is loaded or the error is shown.
-   */
-  const loadGraphFromRemoteFile = async (fileName: string) => {
+  const openGraph = async () => {
+    if (!workflowService.enabled) return importGraphInput?.click()
     try {
-      const importedGraph = JSON.parse(
-        await readRemoteGraphFile(
-          settingsState.remote.workingDirectory,
-          fileName
-        )
-      )
-      await importGraphData(importedGraph, `Loaded remote graph ${fileName}`)
-      getModal(remoteGraphPickerModalId)?.close()
+      const graph = await workflowService.openGraph()
+      if (graph)
+        await importGraphData(graph as Parameters<typeof importGraphData>[0])
     } catch (error) {
-      console.error('Failed to load remote graph:', error)
       toastState.add({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to load remote graph',
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }
-  }
-
-  const onFileChangeLoadNodes = async () => {
-    const files = importNodesInput?.files
-    if (files == null || files.length == 0) {
-      return
-    }
-    const importedNodesAsText = await readFileAsText(files[0])
-    const importedNodes = JSON.parse(importedNodesAsText)
-    if ('workflow' in importedNodes) {
-      toastState.add({
-        message:
-          'This looks like a graph file, not a registry. Use "Open graph" to load it.',
-        type: 'error',
-      })
-      return
-    }
-    // Merge into the active location's registry (imported keys win) rather than
-    // replacing it, so nodes added by an earlier import survive.
-    const skippedKeys = await mergeRegistry(
-      importedNodes,
-      executionSelectionState.location
-    )
-    skippedKeys.forEach((key) => {
-      toastState.add({
-        message: `Registry key '${key}' is not a valid node and was skipped`,
-        type: 'error',
-      })
-    })
-    toastState.add({ message: 'New nodes were loaded' })
-  }
-
-  /** Merges the selected parameters file (JSON or PRM) into the active location's tree. */
-  const handleMergeParams = async () => {
-    const file = paramsFileInput?.files?.[0]
-    if (!file) return
-    await mergeParametersFromFile(file)
-    if (paramsFileInput) paramsFileInput.value = ''
   }
 
   const readFileAsText = (file: File) =>
@@ -390,8 +284,23 @@
       reader.readAsText(file)
     })
 
+  const importSettingsFile = async () => {
+    try {
+      const draft = await window.electron.importSettingsFile()
+      if (draft)
+        await (
+          draft.scope === 'backend' ? backendSettings : frontendSettings
+        )?.open(draft)
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    }
+  }
+
   const handleOpenVisualizer = () => {
-    const url = settingsState.current.urlVisualizer
+    const url = frontendSettingsState.visualizerUrl
     openNewWindow(url)
   }
 
@@ -421,7 +330,7 @@
         const parsedGraph = parseGraphWithQualifiedIds(
           getNodesSnapshot(),
           getEdgesSnapshot(),
-          getRegistryBackend(executionSelectionState.location)
+          getRegistryBackend()
         )
         const updatedProject = await updateProject(currentProjectState.id, {
           graph: parsedGraph,
@@ -479,6 +388,35 @@
    * Saves the graph as the editor holds it, with its parameter-file markers,
    * exposures and their connections, so Import Graph can load it back.
    */
+  const snapshotWorkflow = () => ({
+    ...parseGraphWithQualifiedIds(
+      getNodesSnapshot(),
+      getEdgesSnapshot(),
+      getRegistryBackend()
+    ),
+    version: 1 as const,
+  })
+
+  const showWorkflowArchive = (mode: 'open' | 'save') => {
+    if (mode === 'save' && graphStackState.canGoBack) {
+      warnSavingFromSubnetwork()
+      return
+    }
+    const source =
+      archivedGraph?.generation === graphStackState.generation
+        ? archivedGraph.source
+        : undefined
+    archiveModal?.open(
+      mode,
+      `${currentProjectState.name || 'graph'}.json`,
+      source
+    )
+  }
+
+  const rememberArchiveSource = (source: WorkflowSource) => {
+    archivedGraph = { source, generation: graphStackState.generation }
+  }
+
   const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
@@ -486,14 +424,16 @@
       return
     }
     try {
+      const name = `${currentProjectState.name || 'graph'}.json`
+      const defaultPath = await window.electron.workflow.saveDefault(name)
       const picked = await window.electron.invoke('pick-save-path', {
-        defaultPath: `${currentProjectState.name || 'graph'}.json`,
+        defaultPath,
       })
       if (!picked) return
       const graphData = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
         getEdgesSnapshot(),
-        getRegistryBackend(executionSelectionState.location)
+        getRegistryBackend()
       )
       await window.electron.invoke('write-local-parameter-file', {
         workingDirectory: picked.directory,
@@ -514,94 +454,119 @@
 
 <aside>
   <!-- Login (standalone) -->
-  {#if isCoralMode && isSingleMode}
-    <div class="button-container">
-      <label
-        for="login-button"
-        class="element-label"
-        class:disabled={!hasRemoteServer}
-        title={loginTitle}
-      >
-        <LoginIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="login-button"
-        onclick={handleLoginLogout}
-        disabled={!hasRemoteServer}
-        style="display: none"
-        aria-label="Login"
-      ></button>
-      <span class="button-text" data-testid="login-status">
-        {loginText}
-      </span>
-    </div>
+  <div class="button-container">
+    <label
+      for="login-button"
+      class="element-label"
+      class:disabled={!hasRemoteServer}
+      title={loginTitle}
+    >
+      <LoginIcon width="30px" height="30px" />
+    </label>
+    <button
+      id="login-button"
+      onclick={handleLoginLogout}
+      disabled={!hasRemoteServer}
+      style="display: none"
+      aria-label="Login"
+    ></button>
+    <span class="button-text" data-testid="login-status">
+      {loginText}
+    </span>
+  </div>
 
-    <Modal id={loginModalId}>
-      <LoginForm modalId={loginModalId} />
-    </Modal>
-  {/if}
+  <Modal id={loginModalId}>
+    <LoginForm modalId={loginModalId} />
+  </Modal>
 
   <!-- Project group -->
-  {#if isCoralMode && isSingleMode}
-    <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
+  <SidebarGroupButton title="Project" disabled={!hasRemoteServer || !token}>
+    {#snippet icon()}
+      <svg
+        fill="var(--ternary-color)"
+        width="30px"
+        height="30px"
+        viewBox="0 0 32 32"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
+        ></path>
+      </svg>
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Save Project"
+        onclick={handleSaveProject}
+      />
+      <SidebarGroupButtonItem
+        label="Load Projects"
+        onclick={handleLoadProjects}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+
+  <Modal id={saveProjectModalId} size="sm">
+    <SaveProjectForm modalId={saveProjectModalId} />
+  </Modal>
+  <Modal id={projectsModalId}>
+    <ProjectsList modalId={projectsModalId} />
+  </Modal>
+
+  {#if !isParameterEditorOpen}
+    <SidebarGroupButton title="Run">
       {#snippet icon()}
-        <svg
-          fill="var(--ternary-color)"
-          width="30px"
-          height="30px"
-          viewBox="0 0 32 32"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M23.845 8.124c-1.395-3.701-4.392-6.045-8.921-6.045-5.762 0-9.793 4.279-10.14 9.86-2.778 0.889-4.784 3.723-4.784 6.933 0 3.93 3.089 7.249 6.744 7.249h2.889c0.552 0 1-0.448 1-1s-0.448-1-1-1h-2.889c-2.572 0-4.776-2.404-4.776-5.249 0-2.514 1.763-4.783 3.974-5.163l0.907-0.156-0.080-0.916-0.008-0.011c0-4.871 3.205-8.545 8.161-8.545 3.972 0 6.204 1.957 7.236 5.295l0.214 0.688 0.721 0.015c3.715 0.078 6.972 3.092 6.972 6.837 0 3.408-2.259 7.206-5.678 7.206h-2.285c-0.552 0-1 0.448-1 1s0.448 1 1 1l2.277-0.003c5-0.132 7.605-4.908 7.605-9.203 0-4.616-3.617-8.305-8.14-8.791zM16.75 16.092c-0.006-0.006-0.008-0.011-0.011-0.016l-0.253-0.264c-0.139-0.146-0.323-0.219-0.508-0.218-0.184-0.002-0.368 0.072-0.509 0.218l-0.253 0.264c-0.005 0.005-0.006 0.011-0.011 0.016l-3.61 3.992c-0.28 0.292-0.28 0.764 0 1.058l0.252 0.171c0.28 0.292 0.732 0.197 1.011-0.095l2.128-2.373v10.076c0 0.552 0.448 1 1 1s1-0.448 1-1v-10.066l2.199 2.426c0.279 0.292 0.732 0.387 1.011 0.095l0.252-0.171c0.279-0.293 0.279-0.765 0-1.058z"
-          ></path>
-        </svg>
+        <ExecuteIcon width="30px" height="30px" />
       {/snippet}
       {#snippet items()}
         <SidebarGroupButtonItem
-          label="Save Project"
-          onclick={handleSaveProject}
+          label="Run new job"
+          onclick={handleExecution}
+          disabled={runActionPending}
         />
-        <SidebarGroupButtonItem
-          label="Load Projects"
-          onclick={handleLoadProjects}
-        />
+        {#if workflowService.operations.includes('validate')}
+          <SidebarGroupButtonItem
+            label="Validate graph"
+            onclick={() => handleGraphAction('validate')}
+            disabled={runActionPending}
+          />
+        {/if}
+        {#if workflowService.operations.includes('outputs')}
+          <SidebarGroupButtonItem
+            label="View latest outputs"
+            onclick={showLatestOutputs}
+            disabled={runActionPending || !latestRun}
+          />
+        {/if}
+        {#if workflowService.operations.includes(schedulingOperation)}
+          <SidebarGroupButtonItem
+            label={schedulingOperation === 'pause'
+              ? 'Pause latest run'
+              : 'Resume latest run'}
+            onclick={changeLatestScheduling}
+            disabled={runActionPending ||
+              !canCancelLatestRun ||
+              !latestScheduling ||
+              latestScheduling === 'resuming'}
+          />
+        {/if}
+        {#if workflowService.operations.includes('cancel')}
+          <SidebarGroupButtonItem
+            label="Cancel latest run"
+            onclick={cancelLatestRun}
+            disabled={runActionPending || !canCancelLatestRun}
+          />
+        {/if}
+        {#if workflowService.operations.includes('replay')}
+          <SidebarGroupButtonItem
+            label="Replay latest run"
+            onclick={replayLatestRun}
+            disabled={runActionPending || latestRun?.state !== 'succeeded'}
+          />
+        {/if}
       {/snippet}
     </SidebarGroupButton>
-
-    <Modal id={saveProjectModalId} size="sm">
-      <SaveProjectForm modalId={saveProjectModalId} />
-    </Modal>
-    <Modal id={projectsModalId}>
-      <ProjectsList modalId={projectsModalId} />
-    </Modal>
-  {/if}
-
-  {#if !isParameterEditorOpen}
-    <!-- Run (unified: single job or pipeline) -->
-    <div class="button-container">
-      <label
-        for="execute-graph-button"
-        class="element-label"
-        title={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-      >
-        <ExecuteIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="execute-graph-button"
-        onclick={handleExecution}
-        style="display: none"
-        aria-label={isPipelineMode ? 'Run pipeline' : 'Run new job'}
-      ></button>
-      <span class="button-text">Run</span>
-    </div>
-
-    <JobConfigModal modalId={JobConfigModalId} />
-    <PipelineRunNameModal
-      modalId={runNameModalId}
-      onConfirm={handleRunPipeline}
-    />
 
     <!-- VTK Visualizer (standalone) -->
     <div class="button-container">
@@ -625,7 +590,7 @@
   {/if}
 
   <!-- Layout group (auto-layout + undo/redo) -->
-  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen}
     <SidebarGroupButton title="Layout">
       {#snippet icon()}
         <GridIcon width="28px" height="28px" />
@@ -653,27 +618,41 @@
     </SidebarGroupButton>
   {/if}
 
+  <WorkflowArchiveModal
+    bind:this={archiveModal}
+    getNetwork={snapshotWorkflow}
+    onOpen={async (network, source) => {
+      await importGraphData(network as Parameters<typeof importGraphData>[0])
+      rememberArchiveSource(source)
+    }}
+    onSave={(source) => {
+      rememberArchiveSource(source)
+      toastState.add({
+        message: `Graph saved as ${source.name}`,
+        type: 'success',
+      })
+    }}
+  />
+
   <!-- Import group -->
-  {#if !isParameterEditorOpen && isCoralMode && isSingleMode}
+  {#if !isParameterEditorOpen}
     <SidebarGroupButton title="Import / Export">
       {#snippet icon()}
         <UploadIcon width="30px" height="30px" />
       {/snippet}
       {#snippet items()}
+        <SidebarGroupButtonItem label="Import Graph" onclick={openGraph} />
         <SidebarGroupButtonItem
-          label="Import Graph"
-          onclick={() => importGraphInput?.click()}
+          label="Import Remote Graph"
+          onclick={() => showWorkflowArchive('open')}
+          disabled={!canOpenArchive}
         />
-        {#if isRemote}
+        {#if canSaveArchive}
           <SidebarGroupButtonItem
-            label="Import Remote Graph"
-            onclick={() => getModal(remoteGraphPickerModalId)?.open()}
+            label="Save Remote Graph"
+            onclick={() => showWorkflowArchive('save')}
           />
         {/if}
-        <SidebarGroupButtonItem
-          label="Import Nodes"
-          onclick={() => importNodesInput?.click()}
-        />
         <SidebarGroupButtonItem
           label="Download Graph"
           onclick={handleGraphDownload}
@@ -691,142 +670,45 @@
     accept=".json"
     style="display: none"
   />
-  <input
-    bind:this={importNodesInput}
-    type="file"
-    onchange={onFileChangeLoadNodes}
-    accept=".json"
-    style="display: none"
-  />
 
-  <Modal id={remoteGraphPickerModalId} size="md">
-    <RemoteFilePicker
-      modalId={remoteGraphPickerModalId}
-      workingDirectory={settingsState.remote.workingDirectory}
-      onSelect={loadGraphFromRemoteFile}
-    />
-  </Modal>
-
-  <!-- Parameters actions (executable single mode only) -->
-  {#if !isParameterEditorOpen && isExecutableMode && isSingleMode}
-    <div class="button-container">
-      <label
-        for="add-params-button"
-        class="element-label"
-        class:disabled={!hasParams}
-        title={hasParams ? 'Add fields from a parameters file' : paramsSyncHint}
-      >
-        <PlusIcon width="26px" height="26px" />
-      </label>
-      <button
-        id="add-params-button"
-        onclick={() => paramsFileInput?.click()}
-        disabled={!hasParams}
-        style="display: none"
-        aria-label="Add parameter fields from file"
-      ></button>
-      <span class="button-text">Update params</span>
-    </div>
-
-    <div class="button-container">
-      <label
-        for="download-params-button"
-        class="element-label"
-        class:disabled={!hasParams}
-        title={hasParams
-          ? 'Download parameters as a JSON or PRM file'
-          : paramsSyncHint}
-      >
-        <DownloadIcon width="30px" height="30px" />
-      </label>
-      <button
-        id="download-params-button"
-        onclick={downloadParameters}
-        disabled={!hasParams}
-        style="display: none"
-        aria-label="Download parameters"
-      ></button>
-      <span class="button-text">Export</span>
-    </div>
-
-    <input
-      bind:this={paramsFileInput}
-      type="file"
-      accept=".json,.prm"
-      onchange={handleMergeParams}
-      style="display: none"
-    />
-  {/if}
-
-  <!-- Pipeline composition (pipeline mode only) -->
-  {#if !isParameterEditorOpen && isPipelineMode}
-    <SidebarGroupButton title="Add stage">
-      {#snippet icon()}
-        <PlusIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Coral (file)"
-          onclick={() => coralGraphInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Coral (canvas)"
-          onclick={handleAddCoralFromCanvas}
-        />
-        <SidebarGroupButtonItem
-          label="Executable"
-          onclick={handleAddExecutable}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <SidebarGroupButton title="Import / Export">
-      {#snippet icon()}
-        <UploadIcon width="30px" height="30px" />
-      {/snippet}
-      {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Import Pipeline"
-          onclick={() => pipelineImportInput?.click()}
-        />
-        <SidebarGroupButtonItem
-          label="Download Pipeline"
-          onclick={handleExportPipeline}
-        />
-      {/snippet}
-    </SidebarGroupButton>
-
-    <input
-      bind:this={coralGraphInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleAddCoralFromFile}
-    />
-    <input
-      bind:this={pipelineImportInput}
-      type="file"
-      accept=".json"
-      style="display: none"
-      onchange={handleImportPipeline}
-    />
-  {/if}
-
-  <!-- Settings (standalone) -->
-  <div class="button-container">
-    <label for="settings-button" class="element-label" title="Settings">
+  <SidebarGroupButton title="Settings">
+    {#snippet icon()}
       <SettingsIcon width="30px" height="30px" />
-    </label>
-    <button
-      id="settings-button"
-      onclick={() => getModal(settingsModalId)?.open()}
-      style="display: none"
-      aria-label="Settings"
-    ></button>
-    <span class="button-text"> Settings </span>
-  </div>
-  <Settings modalId={settingsModalId} />
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Frontend Settings"
+        onclick={() => frontendSettings?.open()}
+      />
+      <SidebarGroupButtonItem
+        label="Backend Settings"
+        onclick={() => backendSettings?.open()}
+      />
+      <SidebarGroupButtonItem
+        label="Import settings from file"
+        onclick={importSettingsFile}
+      />
+    {/snippet}
+  </SidebarGroupButton>
+  <Settings
+    bind:this={backendSettings}
+    modalId="settings-modal"
+    scope="backend"
+  />
+  <Settings
+    bind:this={frontendSettings}
+    modalId="frontend-settings-modal"
+    scope="frontend"
+  />
 </aside>
+
+<TextModal
+  modalId={outputsModalId}
+  title={outputsTitle}
+  message={outputsText}
+  size="lg"
+  buttonText="Close"
+/>
 
 <style>
   aside {

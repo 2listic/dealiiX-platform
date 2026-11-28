@@ -1,5 +1,7 @@
+import { createCanvasNode } from './canvasNodeUtils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
+  BackendIdentity,
   Network,
   StandardNodeDefinition,
   RegisteredNodes,
@@ -15,6 +17,7 @@ import collectionsMathRegistry from '../data/collectionsMathNodes.json'
 
 const mockStore = vi.hoisted(() => ({
   nodeDataByType: {} as Record<string, StandardNodeDefinition>,
+  backend: undefined as BackendIdentity | undefined,
 }))
 
 vi.mock('../stores/registryStore.svelte', () => ({
@@ -29,6 +32,7 @@ vi.mock('../stores/registryStore.svelte', () => ({
   }),
   getNetworkNodeDefinition: vi.fn(),
   addNetworkNode: vi.fn(),
+  getRegistryBackend: vi.fn(() => mockStore.backend),
 }))
 
 import {
@@ -446,6 +450,48 @@ describe('parameter-node graph persistence', () => {
     }
   })
 
+  it('keeps literal bindings only when the exposed configuration type matches', () => {
+    const enabled = ['Enabled']
+    const iterations = ['Iterations']
+    const graph: Network = {
+      version: 1,
+      author: 'test',
+      date_time_utc: '',
+      workflow: {
+        nodes: {
+          0: { type: Type.BOOLEAN, value: 'true' },
+          1: {
+            type: 'consumer',
+            configuration_exposures: {
+              exposures: [
+                { path: enabled, type: 'bool', input: true, output: false },
+                { path: iterations, type: 'int', input: true, output: false },
+              ],
+            },
+          },
+        },
+        edges: {
+          0: {
+            source: 0,
+            source_output: 0,
+            target: 1,
+            target_handle: parameterHandle('input', enabled),
+          },
+          1: {
+            source: 0,
+            source_output: 0,
+            target: 1,
+            target_handle: parameterHandle('input', iterations),
+          },
+        },
+      },
+    }
+
+    const [valid, invalid] = validateGraphData(graph)
+    expect(Object.keys(valid)).toEqual(['0'])
+    expect(invalid.map(({ edgeId }) => edgeId)).toEqual(['1'])
+  })
+
   it('round-trips exposure metadata and stable virtual handles', () => {
     const inputHandle = parameterHandle('input', ['Solver', 'Tolerance'])
     const outputHandle = parameterHandle('output', ['Solver', 'Tolerance'])
@@ -587,17 +633,109 @@ describe('parameter-node graph persistence', () => {
 })
 
 describe('saved network contract', () => {
-  it('writes the identity explicitly supplied by the caller', () => {
-    const backend = { id: 'coral', plugin: 'dealii' }
+  const greeting = {
+    Greeting: {
+      value: 'Ciao',
+      default_value: '',
+      documentation: 'Message printed by this node.',
+      pattern: '[Anything]',
+      pattern_description: '[Anything]',
+    },
+  }
+
+  beforeEach(() => {
+    mockStore.nodeDataByType = {
+      ...(defaultRegistry as unknown as RegisteredNodes),
+      'mock::hello': {
+        type: 'mock::hello',
+        node_type: NodeType.VOID_FUNCTION,
+        arguments: [],
+        inputs: [],
+        outputs: [],
+        configuration: { Greeting: { ...greeting.Greeting, value: '' } },
+      },
+    }
+    mockStore.backend = undefined
+  })
+
+  it('places a backend workflow with its plugin and round-trips the stage settings', () => {
+    const target = 'orchestrator::LocalDealii'
+    const definition: StandardNodeDefinition = {
+      type: target,
+      node_type: NodeType.NETWORK,
+      arguments: [],
+      inputs: [],
+      outputs: [],
+      configuration: greeting,
+      capabilities: { actions: ['configure', 'open_child_workflow'] },
+      value: { registry: { __backend: { id: 'coral', plugin: 'dealii' } } },
+    }
+    mockStore.nodeDataByType[target] = definition
+
+    const placed = createCanvasNode(definition, { x: 0, y: 0 }).data
+    expect(placed).toMatchObject({
+      value: {
+        backend: { id: 'coral', plugin: 'dealii' },
+        workflow: { nodes: {}, edges: {} },
+      },
+    })
+    const saved = parseGraphWithQualifiedIds(
+      [{ id: '0', data: placed, position: { x: 0, y: 0 } }],
+      [],
+      { id: 'orchestrator' }
+    )
+    expect(saved.backend).toEqual({ id: 'orchestrator' })
+    expect(saved.workflow.nodes['0']).toMatchObject({
+      type: target,
+      configuration: greeting,
+      qualified_id: '0',
+    })
+    expect(protocolErrors('network', saved)).toEqual([])
+    expect(nodesFromProtocolToFlow(saved.workflow.nodes)[0].data).toMatchObject(
+      {
+        capabilities: definition.capabilities,
+        configuration: greeting,
+      }
+    )
+  })
+
+  it('writes the active registry header without its operations', () => {
+    mockStore.backend = {
+      id: 'dealiix.mock',
+      version: '1',
+      registry_digest: `sha256:${'a'.repeat(64)}`,
+      operations: ['register', 'validate', 'run'],
+    }
     const nodes = nodesFromProtocolToFlow({
       '0': { type: 'std::string', value: 'mesh.msh' },
     })
-    const graph = parseGraphWithQualifiedIds(nodes, [], backend)
-    expect(graph.backend).toEqual(backend)
+
+    const graph = parseGraphWithQualifiedIds(nodes, [])
+
+    expect(graph.backend).toEqual({
+      id: 'dealiix.mock',
+      version: '1',
+      registry_digest: `sha256:${'a'.repeat(64)}`,
+    })
     expect(protocolErrors('network', graph)).toEqual([])
   })
 
-  it('keeps the existing wire shape when no identity is supplied', () => {
-    expect(parseGraphWithQualifiedIds([], [])).not.toHaveProperty('backend')
+  it('writes no header when the registry has none', () => {
+    const nodes = nodesFromProtocolToFlow({
+      '0': { type: 'std::string', value: 'mesh.msh' },
+    })
+
+    expect(parseGraphWithQualifiedIds(nodes, [])).not.toHaveProperty('backend')
+  })
+
+  it("round-trips a node's configuration", () => {
+    const nodes = nodesFromProtocolToFlow({
+      '0': { type: 'mock::hello', configuration: greeting },
+    })
+
+    const graph = parseGraphWithQualifiedIds(nodes, [])
+
+    expect(graph.workflow.nodes['0']).toMatchObject({ configuration: greeting })
+    expect(protocolErrors('network', graph)).toEqual([])
   })
 })

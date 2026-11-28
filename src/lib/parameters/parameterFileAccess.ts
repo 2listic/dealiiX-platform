@@ -1,7 +1,7 @@
 import type { ExecutionLocation } from '../types/settingsTypes'
 import type { ParameterTree } from '../types/parameterTypes'
 import { settingsState } from '../stores/settingsStore.svelte'
-import { findExistingFiles } from '../orchestration/fileReferences'
+import { findExistingFiles } from './findExistingFiles'
 import {
   parseParametersFileWithFormat,
   serializeParametersAs,

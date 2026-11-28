@@ -3,6 +3,7 @@ import {
   ConnectionType,
   Type,
   type Argument,
+  type NodeDefinitions,
   type ParameterExposure,
   type ParameterFileMetadata,
   type ParameterPortType,
@@ -10,6 +11,15 @@ import {
 } from '../types/nodeTypes'
 import { parameterHandlePath } from '../graph/handleIds'
 import { isParameterLeaf } from './parameterFileFormat'
+
+/** Configuration bindings use an exact scalar type declared by the backend. */
+export const isConfigurationInput = (
+  data: NodeDefinitions,
+  handle: string | null | undefined
+): boolean =>
+  'configuration_exposures' in data &&
+  Boolean(data.configuration_exposures) &&
+  parameterHandlePath(handle)?.direction === 'input'
 
 /** Returns the frontend port type implied by a parameter template description. */
 export const parameterPortType = (
@@ -137,21 +147,28 @@ export const parameterExposureArgument = (
   type: parameterPortCoralType(exposure.type),
 })
 
+/** Reads the same port definitions for an inline configuration or a file. */
+export const nodeParameterExposures = (
+  data: Pick<
+    StandardNodeDefinition,
+    'parameter_file' | 'configuration_exposures'
+  >
+): ParameterExposure[] =>
+  normalizeParameterExposures(
+    (data.configuration_exposures ?? data.parameter_file)?.exposures
+  )
+
 /** Returns the virtual inputs of a parameter-file node in persisted order. */
 export const parameterInputExposures = (
   data: StandardNodeDefinition
 ): ParameterExposure[] =>
-  normalizeParameterExposures(data.parameter_file?.exposures).filter(
-    (exposure) => exposure.input
-  )
+  nodeParameterExposures(data).filter((exposure) => exposure.input)
 
 /** Returns the virtual outputs of a parameter-file node in persisted order. */
 export const parameterOutputExposures = (
   data: StandardNodeDefinition
 ): ParameterExposure[] =>
-  normalizeParameterExposures(data.parameter_file?.exposures).filter(
-    (exposure) => exposure.output
-  )
+  nodeParameterExposures(data).filter((exposure) => exposure.output)
 
 /**
  * Groups exposures by their section (every path segment but the last), in

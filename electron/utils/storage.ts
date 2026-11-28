@@ -29,7 +29,7 @@ const store = new Store<StorageSchema>({
     username: { type: 'string' },
     settings: { type: 'object' },
     settings_supplied: { type: 'object' },
-    colorMode: { type: 'string', default: 'light' },
+    colorMode: { type: 'string' },
     registered_nodes: { type: 'object' },
     registry_backends: { type: 'object' },
     registered_network_nodes: { type: 'object' },

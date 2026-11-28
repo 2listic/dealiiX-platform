@@ -1,3 +1,4 @@
+import { protocolErrors } from '../testing/protocolSchemas'
 import { describe, it, expect } from 'vitest'
 import defaultRegistry from '../data/defaultNodes.json'
 import { filterValidNodes, registryBackend } from './registryValidator'
@@ -14,11 +15,11 @@ describe('filterValidNodes', () => {
     )
   })
 
-  it('keeps usable metadata keys out of the nodes without reporting them', () => {
+  it('ignores metadata keys without reporting them', () => {
     const data = {
       ...defaultRegistry,
       __backend_name: 'dealii',
-      __backend: { id: 'coral', plugin: 'dealii' },
+      __backend: { id: 'coral', version: '1' },
     }
 
     const [filtered, skipped] = filterValidNodes(
@@ -108,23 +109,11 @@ describe('filterValidNodes', () => {
     expect(skipped).toEqual(['broken_node'])
   })
 
-  it('reports unusable metadata keys as skipped', () => {
-    const data = {
-      ...defaultRegistry,
-      __backend_name: 42,
-      __backend: { id: '/opt/coral' },
-    }
-
-    const [, skipped] = filterValidNodes(data as Record<string, unknown>)
-
-    expect(skipped).toEqual(['__backend_name', '__backend'])
-  })
-
   it('skips multiple non-compliant entries at once', () => {
     const data = {
       ...defaultRegistry,
-      __backend_name: 42,
-      __version: 42,
+      backend_name: 'dealii',
+      version: 42,
       missing_fields: { node_type: 'constructor' },
     }
 
@@ -133,8 +122,8 @@ describe('filterValidNodes', () => {
     )
 
     expect(skipped).toHaveLength(3)
-    expect(skipped).toContain('__backend_name')
-    expect(skipped).toContain('__version')
+    expect(skipped).toContain('backend_name')
+    expect(skipped).toContain('version')
     expect(skipped).toContain('missing_fields')
     expect(Object.keys(filtered)).toHaveLength(
       Object.keys(defaultRegistry).length
@@ -143,8 +132,8 @@ describe('filterValidNodes', () => {
 
   it('returns an empty registry when all entries are invalid', () => {
     const data = {
-      __version: 42,
-      broken: 'x',
+      backend_name: 'dealii',
+      version: 42,
     }
 
     const [filtered, skipped] = filterValidNodes(
@@ -157,19 +146,38 @@ describe('filterValidNodes', () => {
 })
 
 describe('registryBackend', () => {
-  it('reads id and plugin and ignores later fields', () => {
-    expect(
-      registryBackend({
-        __backend: { id: 'coral', plugin: 'dealii', version: '2' },
-      })
-    ).toEqual({ id: 'coral', plugin: 'dealii' })
+  it('returns the __backend header', () => {
+    const header = {
+      id: 'dealiix.mock',
+      version: '1',
+      registry_digest: `sha256:${'0'.repeat(64)}`,
+      operations: ['register', 'validate', 'run'],
+    }
+
+    expect(registryBackend({ ...defaultRegistry, __backend: header })).toEqual(
+      header
+    )
   })
 
-  it('rejects a path or a malformed plugin', () => {
-    expect(registryBackend({ __backend: { id: '/opt/coral' } })).toBeUndefined()
+  it('keeps the logical identity while excluding backend configuration and capabilities', () => {
+    const registry = {
+      __backend: {
+        id: 'coral',
+        plugin: 'dealii',
+        configuration: {},
+        capabilities: { actions: ['configure'] },
+      },
+    }
+    expect(registryBackend(registry)).toEqual({ id: 'coral', plugin: 'dealii' })
+    expect(protocolErrors('registry', registry)).toEqual([])
     expect(
-      registryBackend({ __backend: { id: 'coral', plugin: 3 } })
-    ).toBeUndefined()
-    expect(registryBackend({})).toBeUndefined()
+      filterValidNodes({ __backend: { id: '/path/to/coral' } })[1]
+    ).toEqual(['__backend'])
+  })
+
+  it('returns undefined without a header or without an id', () => {
+    expect(registryBackend(defaultRegistry)).toBeUndefined()
+    expect(registryBackend({ __backend: { version: '1' } })).toBeUndefined()
+    expect(registryBackend({ __backend: 'coral' })).toBeUndefined()
   })
 })

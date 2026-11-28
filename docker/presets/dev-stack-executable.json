@@ -13,6 +13,5 @@
         "executablePath": "/app/shared-data/step-70/build/step-70"
       }
     }
-  },
-  "selection": { "location": "remote", "backendKind": "executable" }
+  }
 }

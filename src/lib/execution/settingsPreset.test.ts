@@ -36,7 +36,6 @@ describe('parseSettingsPreset', () => {
           local: { mpiLauncher: { kind: 'mpirun' } },
         },
       },
-      selection: { location: 'remote', backendKind: 'coral' },
     })
 
     expect(preset).toEqual({
@@ -47,7 +46,6 @@ describe('parseSettingsPreset', () => {
           local: { mpiLauncher: { kind: 'mpirun' } },
         },
       },
-      selection: { location: 'remote', backendKind: 'coral' },
     })
     expect(ignored).toEqual([])
   })
@@ -71,14 +69,13 @@ describe('parseSettingsPreset', () => {
 
     expect(preset).toEqual({
       settings: { execution: { remote: { host: 'coral-ssh-slurm' } } },
-      selection: { backendKind: 'coral' },
     })
     expect(ignored).toEqual([
       'settings.execution.remote.port',
       'settings.execution.remote.hots',
       'settings.execution.remote.mpiLauncher.kind',
       'settings.execution.remote.probes',
-      'selection.location',
+      'selection',
       'extra',
     ])
   })

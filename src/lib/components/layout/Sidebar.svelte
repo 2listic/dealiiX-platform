@@ -12,6 +12,7 @@
     type NodeDefinitions,
     type SubGraphNodeDefinition,
   } from '../../types/nodeTypes'
+  import { embeddedRegistry } from '../../registry/registryValidator'
   import { returnNodeName } from '../../graph/canvasNodeUtils'
   import {
     buildNodePalette,
@@ -30,12 +31,19 @@
   let searchQuery = $state('')
   const filteredAvailableNodes = $derived(
     availableNodes?.filter((node) => {
-      if (HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type)) return false
+      if (node.capabilities?.hidden) return false
+      if (
+        HIDDEN_SIDEBAR_NODE_TYPES.includes(node.node_type) &&
+        !embeddedRegistry(node)
+      )
+        return false
       const query = searchQuery.toLowerCase()
       return [
         node.type,
         node.operation,
         node.display_name,
+        node.palette_section,
+        node.palette_subsection,
         node.variant_name,
         node.class_name,
         node.method_name,
@@ -161,6 +169,22 @@
             {#each item.tiles as tile (tile.node.type)}
               {@render paletteTile(tile)}
             {/each}
+            {#each item.subsections ?? [] as subsection (subsection.label)}
+              <section
+                class="class-group palette-subsection"
+                class:collapsed={!showNodeNames}
+                data-subsection-name={subsection.label}
+              >
+                {#if showNodeNames}
+                  <div class="class-label subsection-label">
+                    {subsection.label}
+                  </div>
+                {/if}
+                {#each subsection.tiles as tile (tile.node.type)}
+                  {@render paletteTile(tile)}
+                {/each}
+              </section>
+            {/each}
           </section>
         {:else if item.kind === 'tile'}
           {@render paletteTile(item.tile)}
@@ -220,6 +244,15 @@
     color: var(--ternary-color);
     font-weight: 600;
     text-align: left;
+  }
+
+  .palette-subsection {
+    padding-block: 0.15rem;
+  }
+
+  .subsection-label {
+    padding-left: 0.6rem;
+    font-size: 0.88rem;
   }
 
   .search-input {

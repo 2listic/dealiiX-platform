@@ -7,7 +7,6 @@
  */
 
 import type { StandardNodeDefinition } from '../types/nodeTypes'
-import { executionSelectionState } from '../stores/executionSelection.svelte'
 import { parameterNodeEditorState } from '../stores/parameterNodeEditor.svelte'
 import { settingsState } from '../stores/settingsStore.svelte'
 import { toastState } from '../stores/toastsStore.svelte'
@@ -21,7 +20,7 @@ import {
   getParameterFileFormat,
   parseParametersFileWithFormat,
 } from './parameterFileFormat'
-import { findExistingFiles } from '../orchestration/fileReferences'
+import { findExistingFiles } from './findExistingFiles'
 import { confirmAction } from '../stores/confirmation.svelte'
 import {
   markParameterFile,
@@ -36,14 +35,9 @@ import {
  * @returns The reason, or `undefined` when the file can be opened.
  */
 export const parameterFileUnavailableReason = (): string | undefined => {
-  const location = executionSelectionState.location
-  const workingDirectory =
-    location === 'local'
-      ? settingsState.local.workingDirectory
-      : settingsState.remote.workingDirectory
-  return workingDirectory
+  return settingsState.remote.workingDirectory
     ? undefined
-    : `Set the ${location} working directory in Settings first`
+    : 'Set the remote working directory in Settings first'
 }
 
 /**
@@ -60,7 +54,7 @@ export const openParameterFile = async (
 ): Promise<boolean> => {
   try {
     await parameterNodeEditorState.open(
-      parameterFileTarget(executionSelectionState.location, data.value),
+      parameterFileTarget('remote', data.value),
       { nodeId, exposures: data.parameter_file?.exposures }
     )
     return true
@@ -83,10 +77,7 @@ export const useAsParameterFile = async (
   nodeId: string,
   data: StandardNodeDefinition
 ): Promise<void> => {
-  const target = parameterFileTarget(
-    executionSelectionState.location,
-    data.value
-  )
+  const target = parameterFileTarget('remote', data.value)
   try {
     // The file opened in the editor: mark the node.
     await parameterNodeEditorState.open(target, {

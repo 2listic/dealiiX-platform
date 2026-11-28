@@ -55,6 +55,7 @@
 </script>
 
 <script lang="ts">
+  import dualisticMark from '../../../assets/dualistic-mark.svg'
   import {
     Handle,
     Position,
@@ -62,6 +63,13 @@
     type NodeProps,
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
+  import {
+    findParameterExposure,
+    nodeParameterExposures,
+    parameterAtPath,
+  } from '../../parameters/parameterPorts'
+  import { saveNodeConfiguration } from '../../parameters/parameterNodeCanvas'
   import {
     nodeColors,
     ConnectionType,
@@ -69,6 +77,7 @@
     PARAMETER_FILE_COLOR,
     SELF,
     Type,
+    TypeField,
     isNumericType,
   } from '../../types/nodeTypes'
   import {
@@ -81,13 +90,19 @@
   } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../graph/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
+  import SettingsIcon from '../icons/SettingsIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
+  import ToggleSwitch from '../layout/ToggleSwitch.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import SuccessIcon from '../icons/SuccessIcon.svelte'
   import TrashIcon from '../icons/TrashIcon.svelte'
   import EditNodeNameModal from './EditNodeNameModal.svelte'
   import { enterSubnetwork } from '../../stores/graphNavigation.svelte'
-  import { graphHistoryState } from '../../stores/graphStack.svelte'
+  import {
+    graphHistoryState,
+    graphStackState,
+  } from '../../stores/graphStack.svelte'
+  import { canvasRunState } from '../../stores/canvasRun.svelte'
   import { explodeNetworkNodeInGraph } from '../../graph/networkNodeCanvas'
   import { toastState } from '../../stores/toastsStore.svelte'
   import OpenIcon from '../icons/OpenIcon.svelte'
@@ -95,7 +110,17 @@
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import MarkIcon from '../icons/MarkIcon.svelte'
   import ParameterFilePorts from './ParameterFilePorts.svelte'
-  import { isParameterFileName } from '../../parameters/parameterFileFormat'
+  import {
+    isParameterFileName,
+    isParameterLeaf,
+    isSelectionParameter,
+    parameterSelectionOptions,
+    parameterTreeAtPath,
+  } from '../../parameters/parameterFileFormat'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
   import {
     openParameterFile,
     parameterFileUnavailableReason,
@@ -139,9 +164,12 @@
     data.node_type === NodeType.ELEMENTARY_CONSTRUCTOR ||
       data.node_type === NodeType.PRIMITIVE
   )
+  let isBooleanLiteral = $derived(isLiteral && data.type === Type.BOOLEAN)
   // Only a literal's value names a file, so a marker elsewhere is ignored.
   let isParameterFile = $derived(
-    isLiteral && Boolean((data as StandardNodeDefinition).parameter_file)
+    isLiteral &&
+      !isBooleanLiteral &&
+      Boolean((data as StandardNodeDefinition).parameter_file)
   )
   let suggestsParameterFile = $derived(
     isLiteral &&
@@ -310,10 +338,86 @@
   let nodeInfoModalId = $derived(`node-info-${id}`)
   let nodeInfoJson = $derived(JSON.stringify(data, null, 2))
   let nodeDisplayName = $derived(returnNodeName(data))
+  const stateLabels = {
+    queued: 'Waiting',
+    running: 'Running',
+    succeeded: 'Succeeded',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+  }
+  const runStatus = $derived(
+    canvasRunState.node(
+      graphStackState.generation,
+      graphStackState.qualifiedId(id),
+      workflowService.getRun
+    )
+  )
+  const runStatusLabel = $derived(
+    runStatus &&
+      (runStatus.error
+        ? `${stateLabels[runStatus.state]}. ${runStatus.error.message}`
+        : runStatus.reused
+          ? 'Succeeded (reused existing outputs)'
+          : stateLabels[runStatus.state])
+  )
 
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
+  let capabilities = $derived(
+    ('capabilities' in data ? data.capabilities : undefined) ??
+      ('x-dealiix' in data ? data['x-dealiix'] : undefined)
+  )
+  let configuration = $derived(
+    !isBooleanLiteral &&
+      'configuration' in data &&
+      capabilities?.actions?.includes('configure')
+      ? data.configuration
+      : undefined
+  )
+
+  const configurationSelection = (argumentIndex: number) => {
+    const path = data.arguments[argumentIndex]?.configuration_path
+    if (!configuration || !path?.length) return null
+    const parent = parameterTreeAtPath(configuration, path.slice(0, -1))
+    const leaf = parent?.[path[path.length - 1]]
+    if (!parent || !isParameterLeaf(leaf) || !isSelectionParameter(leaf)) {
+      return null
+    }
+    return {
+      path,
+      value: leaf.value,
+      options: parameterSelectionOptions(parent, leaf),
+      input: findParameterExposure(
+        nodeParameterExposures(data as StandardNodeDefinition),
+        path
+      )?.input,
+    }
+  }
+
+  const saveConfigurationSelection = (path: string[], value: string) => {
+    if (!configuration) return
+    const next = $state.snapshot(configuration)
+    const leaf = parameterAtPath(next, path)
+    if (!leaf || leaf.value === value) return
+    leaf.value = value
+    saveNodeConfiguration(id, next)
+  }
+
+  const openConfiguration = () => {
+    if (!configuration) return
+    parameterNodeEditorState.openConfiguration(
+      nodeDisplayName,
+      $state.snapshot(configuration),
+      {
+        nodeId: id,
+        configurationExposable: capabilities?.configuration_exposable,
+        exposures: nodeParameterExposures(
+          $state.snapshot(data) as StandardNodeDefinition
+        ),
+      }
+    )
+  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -416,8 +520,26 @@
 <div
   class:selected-node={selected}
   class="custom-node"
+  data-run-state={runStatus?.state}
+  role="group"
+  aria-label={nodeDisplayName}
+  aria-describedby={runStatusLabel ? `node-run-status-${id}` : undefined}
+  title={runStatusLabel}
   style="--border-color: {color}"
 >
+  {#if runStatusLabel}
+    <span id={`node-run-status-${id}`} class="run-status-description">
+      {runStatusLabel}
+    </span>
+  {/if}
+  {#if runStatus?.state === 'running'}
+    <img
+      src={dualisticMark}
+      alt=""
+      aria-hidden="true"
+      class="run-status-spinner"
+    />
+  {/if}
   <!-- Headers -->
   <div class="node-header">
     <div style="font-size: x-small;">ID {id}</div>
@@ -474,6 +596,16 @@
       {/if}
     </div>
     <div class="node-buttons">
+      {#if configuration}
+        <button
+          class="node-button"
+          title="Configure node"
+          aria-label={`Configure ${nodeDisplayName}`}
+          onclick={openConfiguration}
+        >
+          <SettingsIcon width="20px" height="20px" />
+        </button>
+      {/if}
       {#if isNetworkNode}
         <button
           class="node-button"
@@ -482,22 +614,31 @@
         >
           <OpenIcon width="20px" height="20px" />
         </button>
-        <button
-          class="node-button"
-          title="Explode subnetwork"
-          onclick={handleExplodeSubnetwork}
-        >
-          <ExplosionIcon width="20px" height="20px" />
-        </button>
+        {#if data.type === TypeField.CORAL_NETWORK}
+          <button
+            class="node-button"
+            title="Explode subnetwork"
+            onclick={handleExplodeSubnetwork}
+          >
+            <ExplosionIcon width="20px" height="20px" />
+          </button>
+        {/if}
       {:else}
         {#if isParameterFile}
           <button
             class="node-button"
-            title={parameterFileUnavailable ?? 'Open parameters'}
+            title={workflowService.enabled
+              ? 'Open parameters'
+              : (parameterFileUnavailable ?? 'Open parameters')}
             aria-label="Open parameters"
-            disabled={Boolean(parameterFileUnavailable)}
+            disabled={!workflowService.enabled &&
+              Boolean(parameterFileUnavailable)}
             onclick={() =>
-              openParameterFile(id, data as StandardNodeDefinition)}
+              workflowService.enabled
+                ? obsolete(
+                    'Parameter file editing needs a backend file operation.'
+                  )
+                : openParameterFile(id, data as StandardNodeDefinition)}
           >
             <OpenIcon width="20px" height="20px" />
           </button>
@@ -592,6 +733,7 @@
       {#each data.outputs as i, index (index)}
         {@const output =
           data.arguments.length > 0 ? outputPortInfo(i, index) : null}
+        {@const selection = output ? configurationSelection(i) : null}
         <div
           class="port-label output-port"
           style="grid-row: {(argumentPortRows.outputs[index] ?? index) + 1};"
@@ -603,9 +745,33 @@
             class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
           />
           {#if output}
-            <div class="output-label">
-              {output.name}
-            </div>
+            {#if selection}
+              <select
+                class="output-choice nodrag"
+                aria-label={output.name}
+                value={selection.value}
+                disabled={selection.input || selection.options.length === 0}
+                onchange={(event) =>
+                  saveConfigurationSelection(
+                    selection.path,
+                    event.currentTarget.value
+                  )}
+                onmousedown={(event) => event.stopPropagation()}
+              >
+                {#if !selection.options.includes(selection.value)}
+                  <option value={selection.value} disabled
+                    >Choose an option</option
+                  >
+                {/if}
+                {#each selection.options as option (option)}
+                  <option value={option}>{option}</option>
+                {/each}
+              </select>
+            {:else}
+              <div class="output-label">
+                {output.name}
+              </div>
+            {/if}
             {#each output.types as portType (portType)}
               <div class="output-type">{displayTypeName(portType)}</div>
             {/each}
@@ -615,21 +781,32 @@
     </div>
   {/if}
 
+  {#if configuration}
+    <ParameterFilePorts
+      {id}
+      data={data as StandardNodeDefinition}
+      inlineConfiguration
+    />
+  {/if}
+
   <!-- Elementary constructor / primitive literal input fields -->
   {#if isLiteral && !isParameterFile}
-    <div class="value-row">
-      {#if data.type === Type.BOOLEAN}
-        <input
-          type="checkbox"
-          value={valueForNode()}
-          oninput={(evt) => {
+    <div class="value-row" class:nodrag={isBooleanLiteral}>
+      {#if isBooleanLiteral}
+        <ToggleSwitch
+          size="small"
+          checked={valueForNode() === 'true'}
+          ariaLabel={`Toggle ${nodeDisplayName}`}
+          title={`Toggle ${nodeDisplayName}`}
+          onchange={(event) => {
             graphHistoryState.checkpoint()
             updateNodeData(id, {
-              value: evt.currentTarget.checked ? 'true' : 'false',
+              value: (event.currentTarget as HTMLInputElement).checked
+                ? 'true'
+                : 'false',
             })
           }}
         />
-        <span>{valueForNode() === 'true' ? 'true' : 'false'}</span>
       {:else}
         <!-- All other elementary constructors -->
         <!-- onfocus/onblur bracket the edit gesture so undo restores the pre-edit value -->
@@ -650,8 +827,14 @@
           class="node-button"
           title={parameterFileUnavailable ?? 'Use as parameter file'}
           aria-label="Use as parameter file"
-          disabled={Boolean(parameterFileUnavailable)}
-          onclick={() => useAsParameterFile(id, data as StandardNodeDefinition)}
+          disabled={!workflowService.enabled &&
+            Boolean(parameterFileUnavailable)}
+          onclick={() =>
+            workflowService.enabled
+              ? obsolete(
+                  'Marking a parameter file needs backend file discovery.'
+                )
+              : useAsParameterFile(id, data as StandardNodeDefinition)}
         >
           <MarkIcon width="20px" height="20px" />
         </button>
@@ -678,13 +861,68 @@
     position: relative;
     padding: 15px;
     border-radius: 5px;
-    background: var(--primary-color);
+    background: var(--node-run-bg, var(--primary-color));
     border: 2px solid var(--border-color);
     min-width: 200px;
     transition:
       box-shadow 0.18s ease,
       border-color 0.18s ease,
-      filter 0.18s ease;
+      filter 0.18s ease,
+      background-color 0.18s ease;
+  }
+
+  .custom-node[data-run-state] {
+    --node-run-bg: #fff;
+    --ternary-color: #262626;
+    --secondary-color: #ebebeb;
+    color: var(--ternary-color);
+  }
+
+  .custom-node[data-run-state='running'] {
+    --node-run-bg: #ffe2bd;
+  }
+
+  .custom-node[data-run-state='succeeded'] {
+    --node-run-bg: #d8f3dc;
+  }
+
+  .custom-node[data-run-state='failed'] {
+    --node-run-bg: #f6b0b0;
+  }
+
+  .run-status-description {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .run-status-spinner {
+    position: absolute;
+    inset-block-start: -0.6rem;
+    inset-inline-end: 0.55rem;
+    inline-size: 1rem;
+    block-size: 1rem;
+    padding: 0.12rem;
+    border-radius: 50%;
+    background: var(--node-run-bg);
+    object-fit: contain;
+    pointer-events: none;
+    animation: spin 1.4s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .run-status-spinner {
+      animation: none;
+    }
   }
 
   .selected-node {
@@ -948,6 +1186,20 @@
   .output-label {
     font-weight: bold;
     text-align: right;
+  }
+
+  .output-choice {
+    width: 100%;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--secondary-color);
+    color: inherit;
+  }
+
+  .output-choice:hover:not(:disabled) {
+    border-color: var(--border-color-hover);
+    cursor: pointer;
   }
 
   .output-type {

@@ -1,4 +1,4 @@
-import { settingsState } from '../stores/settingsStore.svelte'
+import { frontendSettingsState } from '../stores/frontendSettings.svelte'
 import { apiRequest } from './api'
 
 /**
@@ -12,7 +12,7 @@ const saveProject = async (projectData: {
   description?: string
   graph: Record<string, unknown>
 }) => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects`, 'POST', projectData)
 }
 
@@ -31,7 +31,7 @@ const updateProject = async (
     graph?: Record<string, unknown>
   }
 ) => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'PUT', projectData)
 }
 
@@ -41,7 +41,7 @@ const updateProject = async (
  * @throws If the request fails
  */
 const getProjects = async () => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects/`, 'GET')
 }
 
@@ -52,7 +52,7 @@ const getProjects = async () => {
  * @throws If the request fails
  */
 const getProject = async (projectId: number) => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'GET')
 }
 
@@ -63,7 +63,7 @@ const getProject = async (projectId: number) => {
  * @throws If the delete request fails
  */
 const deleteProject = async (projectId: number) => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects/${projectId}`, 'DELETE')
 }
 
@@ -74,7 +74,7 @@ const deleteProject = async (projectId: number) => {
  * @throws If the request fails
  */
 const searchUsers = async (query = '') => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   const url = query
     ? `${baseUrl}/api/users/search?q=${encodeURIComponent(query)}`
     : `${baseUrl}/api/users/search`
@@ -94,7 +94,7 @@ const shareProject = async (
   userId: number,
   permissionLevel: string
 ) => {
-  const baseUrl = settingsState.current.urlRemoteServer
+  const baseUrl = frontendSettingsState.projectServerUrl
   return apiRequest(`${baseUrl}/api/projects/${projectId}/share`, 'POST', {
     user_id: userId,
     permission_level: permissionLevel,

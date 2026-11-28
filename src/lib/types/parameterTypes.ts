@@ -5,6 +5,7 @@ export type ParameterLeaf = {
   pattern: string
   pattern_description: string
   actions?: string
+  selection_options?: string
   __extra?: boolean
 }
 
