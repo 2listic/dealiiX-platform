@@ -73,6 +73,10 @@ export function registerFrontendSettings(appPath: string): void {
       process.env.DEALIIX_CONFIGURATION ?? '',
       'Absolute path to the profile passed to the root backend.'
     ),
+    'Workflow directory': leaf(
+      '',
+      'Absolute local directory shown when opening or saving a workflow. Blank uses the backend profile directory.'
+    ),
     Theme: {
       ...leaf(
         'auto',
@@ -115,6 +119,12 @@ export function registerFrontendSettings(appPath: string): void {
         throw new Error(`${name} must be an HTTP(S) URL.`)
       }
     }
+    const workflowDirectory = document['Workflow directory']?.value
+    if (
+      workflowDirectory &&
+      (!isAbsolute(workflowDirectory) || workflowDirectory.includes('\0'))
+    )
+      throw new Error('Workflow directory must be an absolute local path.')
     return backendLaunch(
       document['Backend command'].value,
       document['Backend configuration file'].value
@@ -127,7 +137,7 @@ export function registerFrontendSettings(appPath: string): void {
   try {
     const supplied: unknown = JSON.parse(readFileSync(path, 'utf8'))
     active = validate(supplied)
-    preferences = supplied as FrontendPreferences
+    preferences = { ...defaults, ...(supplied as FrontendPreferences) }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
       warning = `Could not load frontend.config.json: ${error instanceof Error ? error.message : String(error)}`
@@ -137,7 +147,11 @@ export function registerFrontendSettings(appPath: string): void {
       warning ??= error instanceof Error ? error.message : String(error)
     }
   }
-  const service = registerWorkflowService(appPath, active)
+  const service = registerWorkflowService(
+    appPath,
+    active,
+    () => preferences['Workflow directory']?.value
+  )
   const applyTheme = () => {
     const theme = preferences.Theme.value
     nativeTheme.themeSource = theme === 'auto' ? 'system' : theme
@@ -149,11 +163,12 @@ export function registerFrontendSettings(appPath: string): void {
   })
   const save = async (document: unknown): Promise<FrontendSettingsSave> => {
     const launch = validate(document)
+    const updated = { ...defaults, ...(document as FrontendPreferences) }
     const backendChanged = JSON.stringify(launch) !== JSON.stringify(active)
     const registry = await service.switchBackend(launch, () => {
       const temporary = `${path}.${randomUUID()}.tmp`
       try {
-        writeFileSync(temporary, JSON.stringify(document, null, 2) + '\n', {
+        writeFileSync(temporary, JSON.stringify(updated, null, 2) + '\n', {
           mode: 0o600,
           flag: 'wx',
         })
@@ -163,7 +178,7 @@ export function registerFrontendSettings(appPath: string): void {
       }
     })
     active = launch
-    preferences = document as FrontendPreferences
+    preferences = updated
     warning = undefined
     applyTheme()
     return { ...snapshot(), registry, backendChanged }
@@ -180,7 +195,7 @@ export function registerFrontendSettings(appPath: string): void {
     const { document } = selected
     if (valid(document)) {
       validate(document)
-      return { scope: 'frontend', parameters: document }
+      return { scope: 'frontend', parameters: { ...defaults, ...document } }
     }
     return { scope: 'backend', ...service.importSettings(document) }
   })
@@ -192,7 +207,7 @@ export function registerFrontendSettings(appPath: string): void {
     )
     if (!selected) return null
     validate(selected.document)
-    return selected.document as FrontendPreferences
+    return { ...defaults, ...(selected.document as FrontendPreferences) }
   })
   ipcMain.handle('frontend-settings:save', (_event, document: unknown) =>
     save(document)

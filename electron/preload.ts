@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('electron', {
   workflow: {
     enabled: () => ipcRenderer.invoke('workflow:enabled'),
     openWorkflow: () => ipcRenderer.invoke('workflow:open'),
+    saveDefault: (name: string) =>
+      ipcRenderer.invoke('workflow:save-default', name),
     readConfiguration: () => ipcRenderer.invoke('workflow:read-configuration'),
     importConfiguration: () =>
       ipcRenderer.invoke('workflow:import-configuration'),

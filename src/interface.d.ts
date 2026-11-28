@@ -26,6 +26,7 @@ export interface ElectronAPI {
   workflow: {
     enabled(): Promise<boolean>
     openWorkflow(): Promise<string | null>
+    saveDefault(name: string): Promise<string>
     importConfiguration(): Promise<SettingsDraft | null>
     readConfiguration(): Promise<{
       parameters: ParameterTree

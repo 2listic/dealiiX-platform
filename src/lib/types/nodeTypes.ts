@@ -282,6 +282,9 @@ export type BackendOperation =
   | 'replay'
   | 'artifact'
   | 'migrate'
+  | 'list_workflows'
+  | 'read_workflow'
+  | 'write_workflow'
 
 /**
  * Backend identity from a registry's `__backend` key. A network's `backend`

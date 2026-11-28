@@ -15,6 +15,7 @@ import {
   type RegistryDocument,
   type RunStatus,
   type WorkflowDocument,
+  type WorkflowSource,
 } from '../types/executionService'
 
 type RequestWithoutVersion<T> = T extends unknown ? Omit<T, 'version'> : never
@@ -36,6 +37,71 @@ export const workflowService = {
   },
   get operations() {
     return registry?.__backend.operations ?? []
+  },
+
+  get archive() {
+    const header = registry?.__backend
+    return header?.workflow_locations?.length
+      ? {
+          configuration_digest: header.configuration_digest,
+          locations: $state.snapshot(header.workflow_locations),
+        }
+      : undefined
+  },
+
+  async listWorkflows(location_id: string, configuration_digest: string) {
+    const reply = await exchange({
+      operation: 'list_workflows',
+      location_id,
+      configuration_digest,
+    })
+    if (reply.operation !== 'list_workflows')
+      throw new Error('Expected the workflow list')
+    return reply.result.entries
+  },
+
+  async readWorkflow(
+    location_id: string,
+    configuration_digest: string,
+    workflow_name: string
+  ) {
+    const reply = await exchange({
+      operation: 'read_workflow',
+      location_id,
+      configuration_digest,
+      workflow_name,
+    })
+    if (reply.operation !== 'read_workflow')
+      throw new Error('Expected the stored workflow')
+    return {
+      source: {
+        location_id,
+        configuration_digest,
+        name: reply.result.name,
+        revision: reply.result.revision,
+      },
+      network: await migrateGraph(reply.result.network),
+    }
+  },
+
+  async writeWorkflow(
+    location_id: string,
+    configuration_digest: string,
+    workflow_name: string,
+    network: WorkflowDocument,
+    expected_revision: string | null
+  ): Promise<WorkflowSource> {
+    const reply = await exchange({
+      operation: 'write_workflow',
+      location_id,
+      configuration_digest,
+      workflow_name,
+      network,
+      expected_revision,
+    })
+    if (reply.operation !== 'write_workflow')
+      throw new Error('Expected the saved workflow reference')
+    return { ...reply.result, location_id, configuration_digest }
   },
 
   async initialize(): Promise<() => void> {
@@ -112,12 +178,7 @@ export const workflowService = {
   async openGraph(): Promise<WorkflowDocument | null> {
     const text = await window.electron.workflow.openWorkflow()
     if (text === null) return null
-    const document = JSON.parse(text)
-    if (!workflowService.operations.includes('migrate')) return document
-    const reply = await exchange({ operation: 'migrate', document })
-    if (reply.operation !== 'migrate')
-      throw new Error('Expected a workflow document')
-    return reply.result.network
+    return migrateGraph(JSON.parse(text))
   },
 
   async validate(network: WorkflowDocument): Promise<void> {
@@ -197,6 +258,16 @@ function acceptRegistry(document: RegistryDocument) {
       message: `Skipped ${skipped.length} invalid registry entries`,
       type: 'warning',
     })
+}
+
+async function migrateGraph(
+  document: WorkflowDocument
+): Promise<WorkflowDocument> {
+  if (!workflowService.operations.includes('migrate')) return document
+  const reply = await exchange({ operation: 'migrate', document })
+  if (reply.operation !== 'migrate')
+    throw new Error('Expected a workflow document')
+  return reply.result.network
 }
 
 function graphRequest(

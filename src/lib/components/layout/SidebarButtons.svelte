@@ -11,6 +11,8 @@
   import { openNewWindow } from '../../execution/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
   import TextModal from './TextModal.svelte'
+  import WorkflowArchiveModal from './WorkflowArchiveModal.svelte'
+  import type { WorkflowSource } from '../../types/executionService'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
   import { auth } from '../../stores/auth.svelte'
@@ -51,6 +53,19 @@
   let outputsTitle = $state('')
   let outputsText = $state('')
   let runActionPending = $state(false)
+  let archiveModal = $state<ReturnType<typeof WorkflowArchiveModal>>()
+  let archivedGraph = $state<{ source: WorkflowSource; generation: number }>()
+  const canOpenArchive = $derived(
+    workflowService.operations.includes('list_workflows') &&
+      workflowService.operations.includes('read_workflow') &&
+      Boolean(workflowService.archive)
+  )
+  const canSaveArchive = $derived(
+    workflowService.operations.includes('write_workflow') &&
+      Boolean(
+        workflowService.archive?.locations.some(({ writable }) => writable)
+      )
+  )
   const latestRun = $derived(workflowService.runs[0])
   const canCancelLatestRun = $derived(
     (latestRun?.state === 'queued' || latestRun?.state === 'running') &&
@@ -373,6 +388,35 @@
    * Saves the graph as the editor holds it, with its parameter-file markers,
    * exposures and their connections, so Import Graph can load it back.
    */
+  const snapshotWorkflow = () => ({
+    ...parseGraphWithQualifiedIds(
+      getNodesSnapshot(),
+      getEdgesSnapshot(),
+      getRegistryBackend()
+    ),
+    version: 1 as const,
+  })
+
+  const showWorkflowArchive = (mode: 'open' | 'save') => {
+    if (mode === 'save' && graphStackState.canGoBack) {
+      warnSavingFromSubnetwork()
+      return
+    }
+    const source =
+      archivedGraph?.generation === graphStackState.generation
+        ? archivedGraph.source
+        : undefined
+    archiveModal?.open(
+      mode,
+      `${currentProjectState.name || 'graph'}.json`,
+      source
+    )
+  }
+
+  const rememberArchiveSource = (source: WorkflowSource) => {
+    archivedGraph = { source, generation: graphStackState.generation }
+  }
+
   const handleGraphDownload = async () => {
     // Continue only if we are at the root level of the graph
     if (graphStackState.canGoBack) {
@@ -380,8 +424,10 @@
       return
     }
     try {
+      const name = `${currentProjectState.name || 'graph'}.json`
+      const defaultPath = await window.electron.workflow.saveDefault(name)
       const picked = await window.electron.invoke('pick-save-path', {
-        defaultPath: `${currentProjectState.name || 'graph'}.json`,
+        defaultPath,
       })
       if (!picked) return
       const graphData = parseGraphWithQualifiedIds(
@@ -572,6 +618,22 @@
     </SidebarGroupButton>
   {/if}
 
+  <WorkflowArchiveModal
+    bind:this={archiveModal}
+    getNetwork={snapshotWorkflow}
+    onOpen={async (network, source) => {
+      await importGraphData(network as Parameters<typeof importGraphData>[0])
+      rememberArchiveSource(source)
+    }}
+    onSave={(source) => {
+      rememberArchiveSource(source)
+      toastState.add({
+        message: `Graph saved as ${source.name}`,
+        type: 'success',
+      })
+    }}
+  />
+
   <!-- Import group -->
   {#if !isParameterEditorOpen}
     <SidebarGroupButton title="Import / Export">
@@ -582,9 +644,15 @@
         <SidebarGroupButtonItem label="Import Graph" onclick={openGraph} />
         <SidebarGroupButtonItem
           label="Import Remote Graph"
-          onclick={() =>
-            obsolete('Remote file access is managed by the backend.')}
+          onclick={() => showWorkflowArchive('open')}
+          disabled={!canOpenArchive}
         />
+        {#if canSaveArchive}
+          <SidebarGroupButtonItem
+            label="Save Remote Graph"
+            onclick={() => showWorkflowArchive('save')}
+          />
+        {/if}
         <SidebarGroupButtonItem
           label="Download Graph"
           onclick={handleGraphDownload}

@@ -6,12 +6,25 @@ export const executionVersion = '1.1' as const
 export type WorkflowDocument = Pick<Network, 'backend' | 'workflow'> &
   Partial<Pick<Network, 'author' | 'date_time_utc'>> & { version?: 1 | '1.1' }
 
+export type WorkflowLocation = { id: string; label: string; writable: boolean }
+export type WorkflowEntry = { name: string; revision: string }
+export type WorkflowSource = WorkflowEntry & {
+  location_id: string
+  configuration_digest: string
+}
+type ArchiveRequest = Pick<
+  WorkflowSource,
+  'location_id' | 'configuration_digest'
+>
+
 export type RegistryDocument = Record<string, unknown> & {
   __backend: BackendIdentity & {
     configuration?: ParameterTree
     capabilities?: NodeCapabilities
     configuration_digest: string
     registry_digest: string
+    workflow_locations?: WorkflowLocation[]
+    path_variables?: ('workdir' | 'rundir' | 'workflowdir')[]
   }
 }
 
@@ -52,6 +65,14 @@ export type RunStatus = {
 export type ExecutionRequest = { version: typeof executionVersion } & (
   | { operation: 'describe' }
   | { operation: 'migrate'; document: Record<string, unknown> }
+  | (ArchiveRequest & { operation: 'list_workflows' })
+  | (ArchiveRequest & { operation: 'read_workflow'; workflow_name: string })
+  | (ArchiveRequest & {
+      operation: 'write_workflow'
+      workflow_name: string
+      expected_revision: string | null
+      network: WorkflowDocument
+    })
   | {
       operation: 'artifact'
       run_id: string
@@ -94,6 +115,9 @@ type ExecutionResults = {
   resume: RunStatus
   replay: RunStatus
   migrate: { network: WorkflowDocument; changes: string[] }
+  list_workflows: { entries: WorkflowEntry[] }
+  read_workflow: WorkflowEntry & { network: WorkflowDocument }
+  write_workflow: WorkflowEntry
   artifact: {
     name: string
     media_type: string

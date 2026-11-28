@@ -32,6 +32,7 @@ const mutations = new Set([
   'pause',
   'resume',
   'replay',
+  'write_workflow',
 ])
 
 export type BackendLaunch = { command: string[]; configuration: string }
@@ -102,12 +103,14 @@ type BackendControl = {
  * Registers the JSON bridge for the root workflow backend.
  * @param appPath - Application root containing the protocol schemas.
  * @param startup - Root command and configuration selected at startup.
+ * @param workflowDirectory - The current native workflow picker preference.
  * @returns The control for validating and switching the active backend.
  * @throws If the bundled schemas are invalid.
  */
 export function registerWorkflowService(
   appPath: string,
-  startup?: BackendLaunch
+  startup: BackendLaunch | undefined,
+  workflowDirectory: () => string | undefined
 ): BackendControl {
   let active = startup && newSession(startup)
   let switching = false
@@ -195,12 +198,21 @@ export function registerWorkflowService(
     return importSettings(selected.document)
   })
 
+  const workflowPickerDirectory = () =>
+    workflowDirectory() || (active && dirname(active.launch.configuration))
+
+  ipcMain.handle('workflow:save-default', (_event, name: string) => {
+    if (typeof name !== 'string') throw new Error('Expected a workflow name')
+    const directory = workflowPickerDirectory()
+    return directory ? join(directory, basename(name)) : basename(name)
+  })
+
   ipcMain.handle('workflow:open', async (event): Promise<string | null> => {
     const session = active
     if (!session) throw new Error('No workflow backend is configured')
     const options: OpenDialogOptions = {
       title: 'Open workflow',
-      defaultPath: dirname(session.launch.configuration),
+      defaultPath: workflowPickerDirectory(),
       properties: ['openFile'],
       filters: [{ name: 'Workflow JSON', extensions: ['json'] }],
     }

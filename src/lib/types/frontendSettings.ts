@@ -6,6 +6,7 @@ export type FrontendTheme = 'auto' | 'light' | 'dark'
 export type FrontendPreferences = {
   'Backend command': ParameterLeaf
   'Backend configuration file': ParameterLeaf
+  'Workflow directory'?: ParameterLeaf
   Theme: ParameterLeaf & { value: FrontendTheme }
   'VTK visualizer URL': ParameterLeaf
   'Project server URL': ParameterLeaf
