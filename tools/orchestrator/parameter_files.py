@@ -6,7 +6,16 @@ from graphlib import TopologicalSorter
 from pathlib import PurePosixPath
 from urllib.parse import unquote
 
-from protocol import SELECTION_TYPE, Error, check, dependencies, leaf, merge_choices, parameter_text
+from protocol import (
+    LITERAL_DEFAULTS,
+    SELECTION_TYPE,
+    Error,
+    check,
+    dependencies,
+    leaf,
+    merge_choices,
+    parameter_text,
+)
 
 LITERAL_TYPES = {
     "string": "std::string",
@@ -15,6 +24,8 @@ LITERAL_TYPES = {
     "double": "double",
     "bool": "bool",
 }
+
+LITERAL_KINDS = {type_name: kind for kind, type_name in LITERAL_TYPES.items()}
 
 
 def parse_prm(text):
@@ -112,8 +123,26 @@ def bind_configuration(workflow, registry):
     metadata = "configuration_exposures"
     nodes, edges = workflow["nodes"], workflow["edges"]
     choices = {}
+    literals = {}
     for key, node in nodes.items():
-        if node["type"] == SELECTION_TYPE:
+        type_name = node["type"]
+        if type_name in LITERAL_DEFAULTS:
+            qid = node["qualified_id"]
+            definition = registry[type_name]
+            if (
+                node.get("node_type", definition["node_type"]) != definition["node_type"]
+                or "configuration" in node
+                or "parameter_file" in node
+            ):
+                raise Error("invalid_network", f"{qid}: set literal text in value")
+            for field in ("arguments", "inputs", "outputs"):
+                if node.get(field, definition[field]) != definition[field]:
+                    raise Error("invalid_network", f"{qid}: {field} disagrees with the literal registry")
+            literals[key] = convert(
+                node.get("value", definition["value"]), LITERAL_KINDS[type_name], qid
+            )
+            continue
+        if type_name == SELECTION_TYPE:
             qid = node["qualified_id"]
             if node.get("node_type", "void_function") != "void_function" or "value" in node or "parameter_file" in node:
                 raise Error("invalid_network", f"{qid}: set Selection options in configuration")
@@ -153,7 +182,12 @@ def bind_configuration(workflow, registry):
             port = exposure(nodes[target], edge, "input", metadata)
             qid = nodes[target]["qualified_id"]
             path = tuple(port["path"])
-            if "source_handle" in edge:
+            value = literals.get(source)
+            if value is not None:
+                if edge.get("source_output") != 0:
+                    raise Error("invalid_edge", f"{qid}: expected the literal output")
+                output_type = nodes[source]["type"]
+            elif "source_handle" in edge:
                 output = exposure(nodes[source], edge, "output", metadata)
                 output_path = output["path"]
                 output_type = LITERAL_TYPES[output["type"]]
@@ -169,8 +203,12 @@ def bind_configuration(workflow, registry):
             if path in seen or output_type != LITERAL_TYPES[port["type"]]:
                 raise Error("invalid_edge", f"{qid}: incompatible or repeated input for {path}")
             seen.add(path)
-            value = entry(choices.get(source, {}), output_path, nodes[source]["qualified_id"])["value"]
-            entry(choices[target], path, qid)["value"] = convert(value, port["type"], qid)
+            if value is None:
+                value = entry(
+                    choices.get(source, {}), output_path, nodes[source]["qualified_id"]
+                )["value"]
+                value = convert(value, port["type"], qid)
+            entry(choices[target], path, qid)["value"] = value
     return choices, execution_edges
 
 

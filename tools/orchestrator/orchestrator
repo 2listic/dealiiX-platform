@@ -26,9 +26,9 @@ try:
     from protocol import (
         Error,
         FileBinding,
-        SELECTION_TYPE,
         Stage,
         Target,
+        VALUE_TYPES,
         VERSION,
         WORKFLOW_OPERATIONS,
         check,
@@ -138,10 +138,10 @@ def new_run(config, network, stages, parents, artifacts, verified_inputs, touch)
             "stages": {key: asdict(stage) for key, stage in stages.items()},
             "parents": {key: sorted(items) for key, items in parents.items()},
             "verified_inputs": sorted(verified_inputs),
-            "selections": [
+            "evaluated": [
                 item["qualified_id"]
                 for item in network["workflow"]["nodes"].values()
-                if item["type"] == SELECTION_TYPE
+                if item["type"] in VALUE_TYPES
             ],
             "touch": str(touch) if touch is not None else None,
         },
@@ -274,7 +274,7 @@ def status(run):
         state["scheduling"] = scheduling
     nodes = {
         qid: {"qualified_id": qid, "state": "succeeded"}
-        for qid in snapshot.get("selections", ())
+        for qid in snapshot.get("evaluated", snapshot.get("selections", ()))
     }
     state["nodes"] = nodes
 

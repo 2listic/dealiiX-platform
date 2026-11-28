@@ -413,6 +413,70 @@ class OrchestratorTest(unittest.TestCase):
         self.assertEqual(read(self.jobs / result["run_id"] / "1/copied.json")["Degree"]["value"], "3")
         self.assertEqual(read(record / "plan.json")["parents"]["1"], [])
 
+    def test_root_literals_bind_to_matching_exposed_parameters(self):
+        literals = [
+            ("bool", "bool", "false", "true", "true"),
+            ("int", "int", "0", "+003", "3"),
+            ("double", "double", "0", "-1.25e-3", "-1.25e-3"),
+            ("std::string", "string", "", "", ""),
+        ]
+        registry = self.exchange("describe")["result"]
+        parameters, ports, nodes, edges = {}, [], {}, {}
+        for index, (type_name, port_type, default, supplied, _) in enumerate(literals, 1):
+            definition = registry[type_name]
+            self.assertEqual(definition["node_type"], "elementary_constructor")
+            self.assertEqual(definition["arguments"], [])
+            self.assertEqual(definition["inputs"], [])
+            self.assertEqual(definition["outputs"], [-1])
+            self.assertEqual(definition["value"], default)
+            self.assertNotIn("configuration", definition)
+            path = ["parameters", port_type]
+            parameters[port_type] = leaf("unused", "[Anything]", "")
+            ports.append({"path": path, "type": port_type, "input": True, "output": False})
+            nodes[str(index)] = {"type": type_name, "value": supplied}
+            edges[str(index)] = {
+                "source": index,
+                "source_output": 0,
+                "target": 0,
+                "target_handle": "parameter-input-" + quote(json.dumps(path), safe=""),
+            }
+        self.assertEqual(registry["bool"]["display_name"], "Option")
+        nodes["0"] = stage(
+            "Success",
+            configuration={"parameters": parameters},
+            configuration_exposures={"exposures": ports},
+        )
+        self.write_graph(nodes, edges)
+        result = self.invoke("run", self.network)
+        self.assertEqual(result["state"], "succeeded")
+        for index in range(1, 5):
+            self.assertEqual(
+                result["nodes"][str(index)], {"qualified_id": str(index), "state": "succeeded"}
+            )
+        record = self.runs / result["run_id"]
+        self.assertEqual(read(record / "plan.json")["parents"], {"0": []})
+        saved = read(record / "network.json")["workflow"]["nodes"]
+        self.assertEqual(saved["2"]["value"], "+003")
+        written = read(Path(result["nodes"]["0"]["directory"]) / "copied.json")
+        self.assertEqual(
+            {name: field["value"] for name, field in written.items()},
+            {port_type: expected for _, port_type, _, _, expected in literals},
+        )
+
+        for key, invalid in (("1", "True"), ("2", "3.5"), ("3", "NaN")):
+            with self.subTest(node=key, value=invalid):
+                modified = {**nodes, key: {**nodes[key], "value": invalid}}
+                self.write_graph(modified, edges)
+                error = self.invoke("validate", self.network, success=False)
+                self.assertEqual(error["code"], "invalid_parameters")
+                self.assertIn("is invalid", error["message"])
+
+        edges["1"]["source"] = 2
+        self.write_graph(nodes, edges)
+        error = self.invoke("validate", self.network, success=False)
+        self.assertEqual(error["code"], "invalid_edge")
+        self.assertIn("incompatible", error["message"])
+
     def test_selection_binds_an_exposed_configuration_input(self):
         condition = leaf("baseline", "[Selection baseline|alternate ]", "")
         template = self.root / "template.json"

@@ -48,6 +48,8 @@ REMOTE_FILE = "orchestrator::RemoteFile"
 FILE_TYPES = {FILE_TYPE, LOCAL_FILE, REMOTE_FILE}
 TRANSFER_TYPE = "orchestrator::Transfer"
 SELECTION_TYPE = "orchestrator::Selection"
+LITERAL_DEFAULTS = {"bool": "false", "int": "0", "double": "0", "std::string": ""}
+VALUE_TYPES = {*LITERAL_DEFAULTS, SELECTION_TYPE}
 FILE_PORT = "orchestrator::file"
 
 
@@ -452,6 +454,16 @@ def describe(config, discovery):
             "configuration_digest": digest(values(config.tree)),
         }
     }
+    for type_name, value in LITERAL_DEFAULTS.items():
+        registry[type_name] = {
+            "type": type_name,
+            "node_type": "elementary_constructor",
+            "arguments": [],
+            "inputs": [],
+            "outputs": [-1],
+            "value": value,
+        }
+    registry["bool"]["display_name"] = "Option"
     file_definition = {
         "type": FILE_TYPE,
         "palette_section": "Orchestrator",
@@ -1081,7 +1093,7 @@ def plan(network, config, registry, discover_child):
     native_registries = {}
     for key, node in workflow["nodes"].items():
         qid = node["qualified_id"]
-        if node["type"] in FILE_TYPES or node["type"] == SELECTION_TYPE:
+        if node["type"] in FILE_TYPES or node["type"] in VALUE_TYPES:
             continue
         if node["type"] == TRANSFER_TYPE:
             if (

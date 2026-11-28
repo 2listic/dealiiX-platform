@@ -114,6 +114,11 @@ the output with `configuration_path` and links the dropdown to the options
 through `selection_options`. The backend checks the chosen value against the
 source options and any declared destination choices before it starts the run.
 
+The root palette also provides the elementary constructors **Option**
+(`bool`), `int`, `double` and `std::string`. They store text in the node's
+`value` and bind only to exposed inputs of the same type. These nodes
+provide values during materialization and require no execution stage.
+
 The example configuration is also a template for additional targets. Each section
 creates a node named `orchestrator::<section>` by default. Set `node_id`
 to publish a stable scoped identifier such as `orchestrator::immersx::coral`
