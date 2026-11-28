@@ -6,10 +6,7 @@
     getNodesSnapshot,
     setNodes,
   } from '../../stores/nodes.svelte'
-  import {
-    getRegistryBackend,
-    mergeRegistry,
-  } from '../../stores/registryStore.svelte'
+  import { getRegistryBackend } from '../../stores/registryStore.svelte'
   import { importGraphFromProtocol } from '../../graph/graphParser'
   import { openNewWindow } from '../../execution/sshMessages'
   import Modal, { getModal } from './Modal.svelte'
@@ -81,7 +78,6 @@
   })
 
   let importGraphInput: HTMLInputElement | undefined = $state()
-  let importNodesInput: HTMLInputElement | undefined = $state()
 
   const handleLoginLogout = async () => {
     if (!token) {
@@ -263,32 +259,6 @@
         type: 'error',
       })
     }
-  }
-
-  const onFileChangeLoadNodes = async () => {
-    const files = importNodesInput?.files
-    if (files == null || files.length == 0) {
-      return
-    }
-    const importedNodesAsText = await readFileAsText(files[0])
-    if (workflowService.enabled) return
-    const importedNodes = JSON.parse(importedNodesAsText)
-    if ('workflow' in importedNodes) {
-      toastState.add({
-        message:
-          'This looks like a graph file, not a registry. Use "Open graph" to load it.',
-        type: 'error',
-      })
-      return
-    }
-    const skippedKeys = await mergeRegistry(importedNodes)
-    skippedKeys.forEach((key) => {
-      toastState.add({
-        message: `Registry key '${key}' is not a valid node and was skipped`,
-        type: 'error',
-      })
-    })
-    toastState.add({ message: 'New nodes were loaded' })
   }
 
   const readFileAsText = (file: File) =>
@@ -601,13 +571,6 @@
             obsolete('Remote file access is managed by the backend.')}
         />
         <SidebarGroupButtonItem
-          label="Import Nodes"
-          onclick={() =>
-            workflowService.enabled
-              ? obsolete('The backend supplies the registry.')
-              : importNodesInput?.click()}
-        />
-        <SidebarGroupButtonItem
           label="Download Graph"
           onclick={handleGraphDownload}
         />
@@ -621,13 +584,6 @@
     data-testid="import-graph-input"
     type="file"
     onchange={loadGraphFromFile}
-    accept=".json"
-    style="display: none"
-  />
-  <input
-    bind:this={importNodesInput}
-    type="file"
-    onchange={onFileChangeLoadNodes}
     accept=".json"
     style="display: none"
   />

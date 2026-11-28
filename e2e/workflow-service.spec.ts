@@ -123,15 +123,9 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     await expect(page.getByText('Backend configuration saved')).toBeVisible()
     await expect(backendSettings).toBeHidden()
     await page.getByTitle('Import / Export', { exact: true }).click()
-    await page
-      .getByRole('button', { name: 'Import Nodes', exact: true })
-      .click()
     await expect(
-      page.getByText('[TODO] The backend supplies the registry.', {
-        exact: false,
-      })
-    ).toBeVisible()
-    await page.getByTitle('Import / Export', { exact: true }).click()
+      page.getByRole('button', { name: 'Import Nodes', exact: true })
+    ).toHaveCount(0)
     await page
       .getByRole('button', { name: 'Import Graph', exact: true })
       .click()
@@ -222,17 +216,22 @@ test('Backend Settings edits the private profile in the shared modal and refresh
     ).toHaveCount(0)
     const label = backendSettings.getByRole('textbox', { name: 'Label' })
     await expect(label).toHaveValue('Before')
+    const setLabel = (value: string) =>
+      label.evaluate((input: HTMLInputElement, value) => {
+        input.value = value
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      }, value)
     const save = backendSettings.getByRole('button', {
       name: 'Save',
       exact: true,
     })
-    await label.fill('Invalid')
+    await setLabel('Invalid')
     await save.click()
     await expect(
       page.getByText('Choose a valid backend label', { exact: false })
     ).toBeVisible()
     expect(await readFile(profile, 'utf8')).toEqual(initial)
-    await label.fill('After')
+    await setLabel('After')
     await save.click()
     await expect(backendSettings).toBeHidden()
     await expect(sidebar.locator('[data-class-name="After"]')).toBeAttached()

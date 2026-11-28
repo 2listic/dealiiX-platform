@@ -11,7 +11,10 @@ import {
   parseGraphWithQualifiedIds,
 } from '../graph/graphParser'
 import { getEdgesSnapshot, getNodesSnapshot } from '../stores/nodes.svelte'
-import { getRegistryBackend, setRegistry } from '../stores/registryStore.svelte'
+import {
+  getRegistryBackend,
+  setServiceRegistry,
+} from '../stores/registryStore.svelte'
 import { createDefaultSettings } from '../types/settingsTypes'
 import { probeAndSyncExecutionSettings } from '../../../electron/utils/executionProbe'
 import { protocolErrors } from './protocolSchemas'
@@ -40,7 +43,7 @@ it('loads a graph using the registry returned by the register-only backend', asy
     if (probe.metadata?.kind !== 'nodeRegistry')
       throw new Error(probe.status.message)
     expect(protocolErrors('registry', probe.metadata.data)).toEqual([])
-    expect(await setRegistry(probe.metadata.data)).toEqual([])
+    expect(setServiceRegistry(probe.metadata.data)).toEqual([])
 
     const graph = JSON.parse(
       await readFile(join(fixture, 'network.json'), 'utf8')

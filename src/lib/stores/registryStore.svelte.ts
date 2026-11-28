@@ -42,7 +42,7 @@ const sortRegistry = (nodes: RegisteredNodes): RegisteredNodes => {
 type Registry = { nodes: RegisteredNodes; backend?: BackendIdentity }
 
 // The bundled nodes remain available for graph editing before a backend is configured.
-let bundledRegistry = $state<Registry>({ nodes: sortRegistry(defaultNodes) })
+const bundledRegistry: Registry = { nodes: sortRegistry(defaultNodes) }
 let rootRegistry = $state<Registry>()
 
 const persistStoreValue = async (key: string, value: unknown) => {
@@ -53,50 +53,6 @@ const persistStoreValue = async (key: string, value: unknown) => {
   } else {
     console.warn(`Electron store not available while persisting '${key}'`)
   }
-}
-
-const loadBundledRegistry = async () => {
-  const store = globalThis.window?.electron?.store
-  if (!store) return
-  const saved = (await store.get('editor_registry', undefined)) as
-    | Registry
-    | undefined
-  if (saved) {
-    bundledRegistry = saved
-    return
-  }
-
-  // Older versions saved the default registry under "remote" or as a flat object.
-  const legacy = (await store.get('registered_nodes', undefined)) as
-    | RegisteredNodes
-    | { local: RegisteredNodes; remote: RegisteredNodes }
-    | undefined
-  if (!legacy) return
-  const legacyNodes =
-    'local' in legacy && 'remote' in legacy
-      ? (legacy as { remote: RegisteredNodes }).remote
-      : (legacy as RegisteredNodes)
-  const [nodes] = filterValidNodes(legacyNodes)
-  if (Object.keys(nodes).length)
-    bundledRegistry = { nodes: sortRegistry(nodes) }
-}
-loadBundledRegistry()
-
-/**
- * Replace the registry used for standalone graph editing.
- * @param data - Dictionary of node data to register.
- * @returns List of keys that were skipped due to invalid structure.
- */
-export const setRegistry = async (
-  data: Record<string, unknown>
-): Promise<string[]> => {
-  const [nodes, skipped] = filterValidNodes(data)
-  bundledRegistry = {
-    nodes: sortRegistry(nodes),
-    backend: registryBackend(data),
-  }
-  await persistStoreValue('editor_registry', $state.snapshot(bundledRegistry))
-  return skipped
 }
 
 /**
@@ -120,23 +76,6 @@ const activeRegistry = () =>
 export const getRegistryBackend = (): BackendIdentity | undefined => {
   const backend = activeRegistry().backend
   return backend && $state.snapshot(backend)
-}
-
-/**
- * Merge nodes into the standalone editor registry, preserving its backend header.
- * @param data - Dictionary of node data to merge in.
- * @returns List of keys that were skipped due to invalid structure.
- */
-export const mergeRegistry = async (
-  data: Record<string, unknown>
-): Promise<string[]> => {
-  const [nodes, skipped] = filterValidNodes(data)
-  bundledRegistry = {
-    ...bundledRegistry,
-    nodes: sortRegistry({ ...bundledRegistry.nodes, ...nodes }),
-  }
-  await persistStoreValue('editor_registry', $state.snapshot(bundledRegistry))
-  return skipped
 }
 
 /**
