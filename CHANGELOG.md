@@ -4,6 +4,10 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ## [Unreleased]
 
+### Backend
+
+- [#276](https://github.com/2listic/dealiiX-platform/pull/276) Add a Python backend for schema-driven workflows with scoped CORAL registries and status, logs and artifact access.
+
 ### Canvas-graph
 
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) Graphs can be selected and imported directly from JSON files in the configured remote working directory.

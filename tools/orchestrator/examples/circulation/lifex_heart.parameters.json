@@ -1,0 +1,9 @@
+{
+  "condition": {
+    "value": "normal pressure",
+    "default_value": "normal pressure",
+    "documentation": "Select the published MOX case. Hypertension uses the severe systemic hypertension history.",
+    "pattern": "[Selection normal pressure|hypertension ]",
+    "pattern_description": "[Selection normal pressure|hypertension ]"
+  }
+}

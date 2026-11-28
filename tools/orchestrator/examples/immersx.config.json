@@ -1,0 +1,74 @@
+{
+  "runs_directory": {
+    "value": "/tmp/dealiix-immersx/runs",
+    "default_value": "/tmp/dealiix-immersx/runs",
+    "pattern": "[Anything]",
+    "pattern_description": "[Anything]",
+    "documentation": ""
+  },
+  "ImmersXLocal": {
+    "node_id": {
+      "value": "immersx::coral",
+      "default_value": "immersx::coral",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "binary": {
+      "value": "/opt/coral/bin/Release/coral",
+      "default_value": "/opt/coral/bin/Release/coral",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "plugin": {
+      "value": "/opt/immersx/lib/immersx/coral/libcoral_backend_immersx_2.so",
+      "default_value": "/opt/immersx/lib/immersx/coral/libcoral_backend_immersx_2.so",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "working_directory": {
+      "value": "/tmp/dealiix-immersx/local",
+      "default_value": "/tmp/dealiix-immersx/local",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "plugin_id": {
+      "value": "immersx",
+      "default_value": "immersx",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "display_name": {
+      "value": "ImmersX CORAL",
+      "default_value": "ImmersX CORAL",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "class_name": {
+      "value": "ImmersX",
+      "default_value": "ImmersX",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "overload_group": {
+      "value": "ImmersX CORAL",
+      "default_value": "ImmersX CORAL",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    },
+    "variant_name": {
+      "value": "Local",
+      "default_value": "Local",
+      "pattern": "[Anything]",
+      "pattern_description": "[Anything]",
+      "documentation": ""
+    }
+  }
+}
