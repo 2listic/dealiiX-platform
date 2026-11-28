@@ -207,6 +207,8 @@ export type StandardNodeDefinition = {
   overload_group?: string
   /** Optional user-facing label for the logical operation. */
   display_name?: string
+  /** Optional palette section, independent of class and overload metadata. */
+  palette_section?: string
   /** Optional user-facing label for one concrete operation specialization. */
   variant_name?: string
   /** Stable owner class for method-like operations exposed by a plugin. */

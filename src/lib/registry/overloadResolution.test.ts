@@ -102,6 +102,30 @@ describe('buildNodePalette', () => {
     expect(single.tile).toEqual({ label: 'OutputHandler', node: constructor })
   })
 
+  it('uses a declared section and leaves concrete tile names unqualified', () => {
+    const files = ['LocalFile', 'RemoteFile'].map((name) =>
+      entry(`orchestrator::${name}`, {
+        display_name: name,
+        palette_section: 'Orchestrator',
+      })
+    )
+    const coral = entry('orchestrator::immersx::coral', {
+      display_name: 'ImmersX CORAL',
+      class_name: 'ImmersX',
+    })
+
+    const [section, immersx] = buildNodePalette([...files, coral])
+    expect(section).toMatchObject({
+      kind: 'class',
+      label: 'Orchestrator',
+      tiles: [
+        { label: 'LocalFile', node: { type: 'orchestrator::LocalFile' } },
+        { label: 'RemoteFile', node: { type: 'orchestrator::RemoteFile' } },
+      ],
+    })
+    expect(immersx).toMatchObject({ kind: 'class', label: 'ImmersX' })
+  })
+
   it('makes one family tile for dimensional variants', () => {
     const items = buildNodePalette([
       entry('ImmersX::Poisson<1,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),

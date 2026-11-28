@@ -99,16 +99,18 @@ export const nodeOwnerDisplayName = (node: StandardNodeDefinition): string => {
 }
 
 /**
- * Returns the sidebar section a registry entry is listed under: the class
- * named by its `class_name`, without namespace or template arguments.
+ * Returns the sidebar section explicitly declared for this entry, or the
+ * class named by its `class_name` without namespace or template arguments.
  *
  * @param node - Registry definition.
- * @returns The section's key and label, or `undefined` for an entry without
- * `class_name`, which is listed on its own.
+ * @returns The section's key and label, or `undefined` for a standalone tile.
  */
 export const nodeClassSection = (
   node: StandardNodeDefinition
 ): { key: string; label: string } | undefined => {
+  const section = node.palette_section?.trim()
+  if (section)
+    return { key: `section:${section.toLowerCase()}`, label: section }
   const className = node.class_name?.trim()
   const name = className ? classPaletteName(className) : ''
   if (!name) return undefined

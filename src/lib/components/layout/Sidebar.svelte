@@ -42,6 +42,7 @@
         node.type,
         node.operation,
         node.display_name,
+        node.palette_section,
         node.variant_name,
         node.class_name,
         node.method_name,
