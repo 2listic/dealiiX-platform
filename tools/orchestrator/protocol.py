@@ -31,6 +31,8 @@ OPERATIONS = [
     "describe", "validate", "submit", "status", "logs", "outputs",
     "cancel", "pause", "resume", "replay", "migrate", "artifact",
 ]
+WORKFLOW_OPERATIONS = ["list_workflows", "read_workflow", "write_workflow"]
+DIRECTORY_VARIABLES = ("workdir", "rundir", "workflowdir")
 ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
 NODE_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*(?:::[A-Za-z][A-Za-z0-9_-]*)*")
 REGISTRY_LABELS = (
@@ -126,7 +128,8 @@ def clean_parameters(tree):
 
 
 def absolute(path, label):
-    if not isinstance(path, str) or not path or not PurePosixPath(path).is_absolute():
+    if (not isinstance(path, str) or not path or any(ch in path for ch in "\x00\r\n")
+        or not PurePosixPath(path).is_absolute()):
         raise Error("invalid_configuration", f"{label} must be an absolute path")
     return path
 
@@ -156,6 +159,7 @@ class Target:
     mpi_mode: str = "backend"
     display_name: str = ""
     registry_labels: dict[str, str] = dataclass_field(default_factory=dict)
+    workflow_directory: str = ""
 
     @property
     def kind(self):
@@ -166,11 +170,20 @@ class Target:
         return "network" if self.plugin else "void_function"
 
 
+@dataclass(frozen=True)
+class WorkflowLocation:
+    label: str
+    directory: str
+    writable: bool
+    target: Target | None
+
+
 @dataclass
 class Configuration:
     tree: dict
     runs_directory: Path
     targets: dict
+    workflow_locations: dict[str, WorkflowLocation]
 
 
 def configuration(tree):
@@ -192,13 +205,18 @@ def configuration(tree):
     check("parameters", tree, "invalid_configuration")
     settings = values(tree)
     root = Path(absolute(settings.pop("runs_directory", ""), "runs_directory"))
+    location_settings = settings.pop("workflow_locations", {})
+    if not isinstance(location_settings, dict) or len(location_settings) > 64:
+        raise Error("invalid_configuration", "Invalid workflow_locations group")
     targets = {}
+    preferred_locations = {}
     for name, target in settings.items():
         if not ID.fullmatch(name) or not isinstance(target, dict):
             raise Error("invalid_configuration", f"Invalid target section {name!r}")
         unknown = target.keys() - {
             "binary",
             "working_directory",
+            "workflow_location",
             "node_id",
             *REGISTRY_LABELS,
             "plugin",
@@ -333,6 +351,7 @@ def configuration(tree):
         key = f"orchestrator::{node_id}"
         if key in FILE_TYPES or key in {TRANSFER_TYPE, SELECTION_TYPE} or key in targets:
             raise Error("invalid_configuration", f"{name}: duplicate node type {key}")
+        preferred_locations[key] = target.get("workflow_location", "")
         targets[key] = Target(
             name,
             absolute(target.get("binary"), f"{name}.binary"),
@@ -350,7 +369,36 @@ def configuration(tree):
             target.get("display_name", "").strip(),
             {field: target[field].strip() for field in REGISTRY_LABELS if field != "display_name" and target.get(field, "").strip()},
         )
-    return Configuration(tree, root, targets)
+    names = {target.name: target for target in targets.values()}
+    locations = {}
+    for name, location in location_settings.items():
+        if (not ID.fullmatch(name) or len(name) > 64 or not isinstance(location, dict)
+            or location.keys() - {"directory", "label", "target", "writable"}
+            or any(not isinstance(value, str) for value in location.values())):
+            raise Error("invalid_configuration", f"Invalid workflow location {name!r}")
+        target_name = location.get("target", "")
+        writable = location.get("writable", "false")
+        label = location.get("label", name).strip()
+        if (target_name and target_name not in names or writable not in {"true", "false"}
+            or not label or len(label) > 120):
+            raise Error("invalid_configuration", f"Invalid settings for workflow location {name!r}")
+        locations[name] = WorkflowLocation(
+            label, absolute(location.get("directory"), f"{name}.directory"),
+            writable == "true", names.get(target_name),
+        )
+
+    for key, target in targets.items():
+        matching = {
+            name: location for name, location in locations.items()
+            if (location.target.ssh if location.target else {}) == target.ssh
+        }
+        preferred = preferred_locations[key]
+        if preferred and preferred not in matching:
+            raise Error("invalid_configuration", f"{target.name}: workflow_location must be on the execution host")
+        if preferred or len(matching) == 1:
+            selected = matching[preferred] if preferred else next(iter(matching.values()))
+            targets[key] = replace(target, workflow_directory=selected.directory)
+    return Configuration(tree, root, targets, locations)
 
 
 def run_policy():
@@ -391,7 +439,16 @@ def describe(config, discovery):
         "__backend": {
             **IDENTITY,
             "version": VERSION,
-            "operations": OPERATIONS,
+            "operations": OPERATIONS + (
+                [operation for operation in WORKFLOW_OPERATIONS
+                 if operation != "write_workflow" or any(location.writable for location in config.workflow_locations.values())]
+                if config.workflow_locations else []
+            ),
+            "path_variables": list(DIRECTORY_VARIABLES),
+            "workflow_locations": [
+                {"id": name, "label": location.label, "writable": location.writable}
+                for name, location in config.workflow_locations.items()
+            ],
             "configuration_digest": digest(values(config.tree)),
         }
     }
@@ -416,7 +473,7 @@ def describe(config, discovery):
             "optional": leaf("false", "[Bool]", "Allow the file to be absent."),
             "location": leaf(
                 "workdir",
-                "[Selection workdir|rundir ]",
+                "[Selection workdir|rundir|workflowdir ]",
                 "File lifetime and root directory.",
             ),
         },
@@ -745,6 +802,7 @@ class FileBinding:
     optional: bool
     producer_qid: str | None = None
     producer_workdir: str | None = None
+    workflow_directory: str | None = None
     target: Target | None = None
 
     def final_path(self, run_id, consumer_workdir):
@@ -752,6 +810,8 @@ class FileBinding:
             self.producer_workdir
             or (self.target.directory if self.target else consumer_workdir)
         )
+        if self.location == "workflowdir":
+            root = PurePosixPath(self.workflow_directory)
         if self.location == "rundir":
             root = root / run_id / self.producer_qid
         return str(root / self.path)
@@ -838,6 +898,12 @@ def file_declaration(node, definition, supplied, readers, writers):
         )
     options = values(merge_choices(definition["configuration"], supplied, qid))
     path = options["path"]
+    location = options["location"]
+    for keyword in DIRECTORY_VARIABLES:
+        prefix = "{" + keyword + "}/"
+        if path.startswith(prefix):
+            location, path = keyword, path.removeprefix(prefix)
+            break
     if (
         not path
         or any(ch in path for ch in "\x00\n\r{}\\")
@@ -855,10 +921,9 @@ def file_declaration(node, definition, supplied, readers, writers):
             qualified_id=qid,
         )
     input_file, output_file, optional = (value == "true" for value in flags)
-    location = options["location"]
-    if location not in {"workdir", "rundir"}:
+    if location not in DIRECTORY_VARIABLES:
         raise Error(
-            "invalid_file", f"{qid}: location must be workdir or rundir",
+            "invalid_file", f"{qid}: location must be workdir, rundir or workflowdir",
             qualified_id=qid,
         )
     if not input_file and not output_file:
@@ -925,6 +990,15 @@ def bind_files(workflow, stages, registry, config, configuration_bindings):
             config, node["type"], binding.qid, requested, producer, consumers
         )
         binding.target = target
+        if binding.location == "workflowdir":
+            stage_targets = [producer.target] if producer and not producer.transfer else [
+                stage.target for stage in consumers if not stage.transfer
+            ]
+            directories = {item.workflow_directory for item in ([target] if target else stage_targets)}
+            if len(directories) != 1 or not next(iter(directories), ""):
+                raise Error("missing_workflow_directory", f"{binding.qid}: select a target with a workflow location",
+                            qualified_id=binding.qid)
+            binding.workflow_directory = directories.pop()
         path, qid = binding.path, binding.qid
         if producer is not None:
             if producer.transfer:

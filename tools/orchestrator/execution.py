@@ -288,7 +288,10 @@ def materialize(stage, registry, occupied):
         artifacts = {}
 
         def load(source):
-            return machine.get(stage.target.directory, source).decode("utf-8")
+            if "{rundir}" in source:
+                raise Error("invalid_parameters", f"{stage.qid}: select a parameter source available before execution")
+            _, paths = resolve_references(stage, {}, [source], "run-preview")
+            return machine.get(stage.target.directory, paths[0]).decode("utf-8")
 
         stage_parameter_files(child, load, registry, artifacts, occupied)
         check("network-execution", child, "invalid_network")
@@ -719,7 +722,7 @@ def execute_stage(stage, artifacts, run, touch, tickets, predecessors, expected,
             code = run_direct(machine, argv, directory, stage_run, tick)
         tick()
         if code == 0 and not stopped(run) and stage.outputs:
-            if any(binding.location == "workdir" for binding in stage.outputs.values()):
+            if any(binding.location != "rundir" for binding in stage.outputs.values()):
                 current = check_inputs(stage, machine, run.name)
                 if input_digests(stage, machine, run.name, current) != input_hashes:
                     raise Error("input_changed", f"{stage.qid}: an input changed during execution")

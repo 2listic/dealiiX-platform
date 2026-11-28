@@ -217,13 +217,21 @@ select one explicitly.
   existing file at that path.
 - `rundir` is specific to the run. A producer is required, and all consumers
   use the file in that producer's run directory.
+- `workflowdir` uses the collection configured on the execution host.
+  Published outputs follow the same exclusive-write rule as `workdir`.
 
-Use `{input:mesh/mesh.msh}` or `{output:solution.vtu}` in executable arguments,
-parameter values or CORAL string literals to pass the resolved path to the
-program. An output placeholder always resolves to the fresh file within that
-stage's run directory. Consumers get the published path for a permanent file.
-A generated file can be shared directly among stages on the same execution host.
-Use **Transfer** to copy it to a different path or host.
+| Placeholder | Resolved value |
+| --- | --- |
+| `{input:inputs/file.csv}` | The path of the connected input File with declared path `inputs/file.csv`. |
+| `{input_dir:inputs/file.csv}` | The parent directory of that connected input. |
+| `{output:solution.vtu}` | The fresh output path inside the current stage's run directory. |
+
+Use these placeholders in executable arguments, parameter values or CORAL
+string literals. The text after the colon matches the File node's declared
+relative path, and the file must be wired to the stage. Consumers receive the
+published path for a permanent output. A generated file can be shared directly
+among stages on the same execution host. Use **Transfer** to copy it to a
+different path or host.
 
 Validation checks required external inputs and verifies that the producer and
 consumer relationships are acyclic. Inputs with a producer are checked before
@@ -286,3 +294,22 @@ and named file ports. The current prototype uses deal.II parameter patterns,
 port positions and explicit File nodes in a saved workflow. Status is polled
 by run ID. CORAL subnetworks own their implementation graph and artifact paths
 are interpreted by the backend.
+
+### Workflow locations
+
+In the Python profile, add a `workflow_locations` group. Each named entry
+contains parameter leaves `directory` (absolute path), optional `label`,
+`writable` (default `false`), and optional `target` (name of a configured
+execution target whose SSH connection to reuse). With no target the directory
+is on the orchestrator host. The directory must already exist. Collections
+contain top-level regular JSON files up to 4 MiB. Writes use a content revision
+and atomically publish a complete file within the collection.
+
+Each execution target uses the sole collection on its host by default. If it
+has multiple choices, set the target's `workflow_location` to one of their
+IDs. A runtime reference to `{workflowdir}` requires an unambiguous collection
+on the stage's host. The backend also expands `{workdir}` and `{rundir}` in
+arguments, runtime parameters and nested CORAL string values. A parameter
+source that must be read during validation can use `{workdir}` or
+`{workflowdir}`. File nodes accept these names in `location`, or as a leading
+placeholder in `path` such as `{workflowdir}/input.json`.

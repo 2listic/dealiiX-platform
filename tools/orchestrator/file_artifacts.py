@@ -8,7 +8,7 @@ from pathlib import PurePosixPath
 
 from protocol import Error, encode, read, values
 
-REFERENCE = re.compile(r"\{(input|input_dir|output):([^{}]+)\}")
+REFERENCE = re.compile(r"\{(?:(input|input_dir|output):([^{}]+)|(workdir|rundir|workflowdir))\}")
 SLURM_INPUT_FAILURE = ".input-failure"
 RESERVED = {
     "job.sh",
@@ -38,8 +38,31 @@ print(digest.hexdigest())
 """
 # Link without replacing a pre-existing file, even when two workers publish concurrently.
 PUBLISH_FILES = """
-import json, os, sys
+import errno, json, os, shutil, sys, tempfile
 from pathlib import Path
+
+def publish(source, destination):
+    try:
+        source_stat = source.stat()
+        os.link(source, destination, follow_symlinks=False)
+        return source_stat.st_dev, source_stat.st_ino
+    except OSError as error:
+        if error.errno != errno.EXDEV:
+            raise
+
+    # Work and workflow directories can live on different filesystems.
+    with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=".output-", delete=False) as stream:
+        pending = Path(stream.name)
+        try:
+            with source.open("rb") as original:
+                shutil.copyfileobj(original, stream)
+                os.fchmod(stream.fileno(), os.fstat(original.fileno()).st_mode & 0o666)
+            info = os.fstat(stream.fileno())
+            stream.close()
+            os.link(pending, destination, follow_symlinks=False)
+            return info.st_dev, info.st_ino
+        finally:
+            pending.unlink(missing_ok=True)
 
 files = json.load(sys.stdin)
 created = []
@@ -47,14 +70,15 @@ try:
     for source, destination, root in files:
         source, destination, root = Path(source), Path(destination), Path(root)
         if not destination.parent.resolve().is_relative_to(root.resolve()):
-            raise ValueError(f'Output leaves workdir: {destination}')
+            raise ValueError(f'Output leaves its configured directory: {destination}')
         destination.parent.mkdir(parents=True, exist_ok=True)
-        os.link(source, destination, follow_symlinks=False)
-        created.append((source, destination))
+        identity = publish(source, destination)
+        created.append((destination, identity))
 except (OSError, ValueError) as error:
-    for source, destination in reversed(created):
+    for destination, identity in reversed(created):
         try:
-            if source.samefile(destination):
+            info = destination.lstat()
+            if (info.st_dev, info.st_ino) == identity:
                 destination.unlink()
         except FileNotFoundError:
             pass
@@ -123,6 +147,8 @@ def stage_fingerprint(stage, machine, inputs, files, argv):
             for name, binding in stage.outputs.items()
         },
     }
+    if stage.target.workflow_directory:
+        data["workflow_directory"] = stage.target.workflow_directory
     serialized = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(serialized.encode()).hexdigest()
 
@@ -169,9 +195,21 @@ def resolve_references(stage, files, argv, run_id):
         "output": {name: str(directory / name) for name in stage.outputs},
     }
 
+    directories = {
+        "workdir": stage.target.directory,
+        "rundir": str(directory),
+        "workflowdir": stage.target.workflow_directory,
+    }
+
     def expand(value):
         def replace(match):
-            direction, name = match.groups()
+            direction, name, variable = match.groups()
+            if variable:
+                if not directories[variable]:
+                    raise Error("missing_workflow_directory",
+                                f"{stage.qid}: {{workflowdir}} requires a workflow location",
+                                qualified_id=stage.qid)
+                return directories[variable]
             if name not in paths[direction]:
                 raise Error(
                     "unbound_file", f"{stage.qid}: {match[0]} needs a connected file"
@@ -203,7 +241,7 @@ def cached_outputs(stage, machine, run, fingerprint):
     if (
         stage.choices.get("run_policy", {}).get("value") != "if_missing"
         or not required
-        or any(binding.location != "workdir" for binding in stage.outputs.values())
+        or any(binding.location == "rundir" for binding in stage.outputs.values())
     ):
         return None
     paths = None
@@ -217,7 +255,7 @@ def cached_outputs(stage, machine, run, fingerprint):
             paths = {
                 name: binding.final_path(run.name, stage.target.directory)
                 for name, binding in stage.outputs.items()
-                if binding.location == "workdir"
+                if binding.location != "rundir"
             }
             paths = {
                 name: destination
@@ -254,8 +292,8 @@ def publish_outputs(stage, machine, run_id):
                 qualified_id=binding.qid,
             )
         destination = binding.final_path(run_id, stage.target.directory)
-        if binding.location == "workdir":
-            pending.append((source, destination, stage.target.directory))
+        if binding.location != "rundir":
+            pending.append((source, destination, binding.workflow_directory or stage.target.directory))
         result[name] = destination
         hashes[name] = file_digest(machine, source)
     if pending:

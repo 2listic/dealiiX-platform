@@ -13,6 +13,7 @@ from execution import (
     Machine, SlurmHold, materialize, slurm_input_failure, stage_argv, stream_copy,
     submit_slurm, sync_slurm_hold,
 )
+from file_artifacts import resolve_references
 from protocol import FileBinding, Stage, configuration, describe, leaf, read, write
 
 CLI = Path(__file__).with_name("orchestrator")
@@ -180,12 +181,51 @@ class OrchestratorTest(unittest.TestCase):
         self.assertIn("DEALIIX_MPI_ENABLED=false", argv)
         self.assertIn("DEALIIX_MPI_PROCESSES=1", argv)
 
+    def test_workflow_archive_and_runtime_directory_keywords(self):
+        archive = self.root / "workflow archive"
+        archive.mkdir()
+        tree = read(self.config)
+        tree["workflow_locations"] = {
+            "shared": {"directory": leaf(str(archive), "[Anything]", ""),
+                       "writable": leaf("true", "[Bool]", "")},
+        }
+        target = tree["Success"]
+        target["argv"] = {
+            str(index): leaf(value, "[Anything]", "")
+            for index, value in enumerate(["{workdir}", "{rundir}", "{workflowdir}"])
+        }
+        write(self.config, tree)
+        header = self.exchange("describe")["result"]["__backend"]
+        self.assertEqual(header["workflow_locations"], [{"id": "shared", "label": "shared", "writable": True}])
+        self.assertEqual(header["path_variables"], ["workdir", "rundir", "workflowdir"])
+        params = {"location_id": "shared", "configuration_digest": header["configuration_digest"]}
+        write(archive / "backend-settings.json", {"configuration": {}})
+        self.assertEqual(self.exchange("list_workflows", **params)["result"]["entries"], [])
+        params["workflow_name"] = "example.json"
+        self.write_graph({"0": stage("Success")}, {})
+        document = read(self.network)
+        saved = self.exchange("write_workflow", **params, network=document, expected_revision=None)["result"]
+        self.assertEqual(self.exchange("read_workflow", **params)["result"], {**saved, "network": document})
+        self.assertEqual(self.exchange("write_workflow", **params, network=document, expected_revision=None)["error"]["code"],
+                         "workflow_conflict")
+
+        config = configuration(tree)
+        resolved_target = config.targets["orchestrator::Success"]
+        self.assertEqual(resolved_target.workflow_directory, str(archive))
+        stage_plan = Stage("0", "0", resolved_target, document["workflow"]["nodes"]["0"], {}, (False, 1, 1, "", ""))
+        run = "run-test"
+        artifacts, argv = resolve_references(
+            stage_plan, {"input.prm": "set root = {workflowdir}"}, stage_argv(stage_plan, "unused"), run
+        )
+        self.assertEqual(artifacts["input.prm"], f"set root = {archive}")
+        self.assertEqual(argv[-3:], [str(self.jobs), str(self.jobs / run / "0"), str(archive)])
+
     def test_execution_service_validates_full_messages_and_revisions(self):
         self.write_graph({"0": stage("Success")}, {})
         registry = self.exchange("describe")["result"]
         header = registry["__backend"]
         schema = read(CLI.parents[2] / "schemas" / "execution-service.schema.json")
-        self.assertEqual(set(header["operations"]), set(schema["$defs"]["operation"]["enum"]) - {"configure"})
+        self.assertEqual(set(header["operations"]), set(schema["$defs"]["operation"]["enum"]) - {"configure", "list_workflows", "read_workflow", "write_workflow"})
         revisions = {key: header[key] for key in ("registry_digest", "configuration_digest")}
         self.assertEqual(self.exchange("configure", configuration=read(self.config),
                                        configuration_digest=header["configuration_digest"])["error"]["code"],

@@ -30,6 +30,7 @@ try:
         Stage,
         Target,
         VERSION,
+        WORKFLOW_OPERATIONS,
         check,
         configuration,
         describe,
@@ -407,7 +408,11 @@ def artifact(run, qid, name, offset):
     target = Target(**stage["target"])
     directory = Path(read(run / qid / "state.json")["directory"])
     path = directory / name
-    root = target.directory if Path(name).is_absolute() else str(directory)
+    root = str(directory)
+    if Path(name).is_absolute():
+        root = target.directory
+        if target.workflow_directory and path.is_relative_to(target.workflow_directory):
+            root = target.workflow_directory
     machine = Machine(target)
     python = "python3" if machine.ssh else sys.executable
     data = machine.call([python, "-c", READ_ARTIFACT, str(path), root, str(offset), str(ARTIFACT_CHUNK + 1)]).stdout
@@ -446,6 +451,10 @@ def dispatch(request, path):
     if operation == "configure":
         raise Error("unsupported_operation", "Edit the Python backend profile to configure installations")
     config = configuration(read(path))
+    if operation in WORKFLOW_OPERATIONS:
+        from workflow_archive import access_workflows
+        require_configuration(request, config)
+        return access_workflows(config, request)
     if operation == "describe":
         return registry_for(config)
     if operation == "migrate":
