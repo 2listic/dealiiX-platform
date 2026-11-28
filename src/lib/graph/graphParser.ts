@@ -53,6 +53,7 @@ import {
   parameterPortCoralType,
   normalizeParameterFile,
 } from '../parameters/parameterPorts'
+import { restoreSelectionParameter } from '../parameters/parameterFileFormat'
 import { lowerOverloadFamilies } from '../registry/overloadResolution'
 
 // ==================== From Coral protocol to Svelte xyflow =========================
@@ -287,6 +288,19 @@ const mergeNodeData = (
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
     const storeNodeData = (definitionOf ?? getNodeData)(protocolNode.type)
     const regularNode = protocolNode as LeanStandardNode
+    let configuration = regularNode.configuration
+    const template = storeNodeData.configuration
+    if (configuration && template) {
+      for (const index of storeNodeData.outputs) {
+        const path = storeNodeData.arguments[index]?.configuration_path
+        if (path)
+          configuration = restoreSelectionParameter(
+            template,
+            configuration,
+            path
+          )
+      }
+    }
     return {
       ...storeNodeData,
       position: protocolNode.position,
@@ -299,9 +313,7 @@ const mergeNodeData = (
       ...(regularNode.parameter_file && {
         parameter_file: normalizeParameterFile(regularNode.parameter_file),
       }),
-      ...(regularNode.configuration && {
-        configuration: regularNode.configuration,
-      }),
+      ...(configuration && { configuration }),
       ...(regularNode.configuration_exposures && {
         configuration_exposures: normalizeParameterFile(
           regularNode.configuration_exposures

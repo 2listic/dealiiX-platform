@@ -10,7 +10,10 @@
     isExtraNode,
     isParameterLeaf,
     isParameterTree,
+    isSelectionParameter,
     markAsExtra,
+    parameterSelectionOptions,
+    parameterTreeAtPath,
   } from '../parameters/parameterFileFormat'
   import {
     findParameterExposure,
@@ -98,27 +101,6 @@
   }
 
   /**
-   * Returns the subtree at `path`, or null if any segment is missing or a leaf.
-   * `path` points to the PARENT — the node itself is `getTreeAtPath(root, path)[key]`.
-   * @param root - The root of the tree to navigate.
-   * @param path - Array of keys from the root to the target's parent.
-   */
-  function getTreeAtPath(
-    root: ParameterTree,
-    path: string[]
-  ): ParameterTree | null {
-    let current: ParameterTree = root
-    for (const segment of path) {
-      const next = current[segment]
-      if (!isParameterTree(next)) {
-        return null
-      }
-      current = next
-    }
-    return current
-  }
-
-  /**
    * Opens the duplicate modal pre-filled with a suggested name.
    * The path/key split is intentional: mutation requires a handle to the parent
    * (to insert a sibling), not to the node itself.
@@ -144,7 +126,7 @@
     // Deep-clone so intermediate mutations don't touch the live reactive store.
     const nextParameters = $state.snapshot(parameters) as ParameterTree
     // parentTree is a reference into nextParameters — mutations propagate back via JS reference semantics.
-    const parentTree = getTreeAtPath(nextParameters, duplicateModalPath)
+    const parentTree = parameterTreeAtPath(nextParameters, duplicateModalPath)
     const sourceNode = parentTree?.[duplicateModalKey]
     if (!parentTree || !isParameterTree(sourceNode)) {
       toastState.add({
@@ -203,7 +185,7 @@
     // Deep-clone so intermediate mutations don't touch the live reactive store.
     const next = $state.snapshot(parameters) as ParameterTree
     // parent is a reference into next — mutations propagate back via JS reference semantics.
-    const parent = getTreeAtPath(next, path)
+    const parent = parameterTreeAtPath(next, path)
     if (!parent) return
     // mutation here propagates back to next.
     delete parent[key]
@@ -212,31 +194,11 @@
     toastState.add({ message: `${key} removed`, type: 'success' })
   }
 
-  function parsePatternType(
-    desc: string
-  ): 'bool' | 'selection' | 'number' | 'text' {
+  function parsePatternType(desc: string): 'bool' | 'number' | 'text' {
     if (desc === '[Bool]') return 'bool'
-    if (desc.startsWith('[Selection')) return 'selection'
     if (desc.startsWith('[Integer') || desc.startsWith('[Double'))
       return 'number'
     return 'text'
-  }
-
-  function getSelectionOptions(desc: string): string[] {
-    const match = desc.match(/\[Selection\s+(.*?)\]/)
-    if (!match) return []
-    return splitChoices(match[1])
-  }
-
-  function splitChoices(text: string): string[] {
-    return [
-      ...new Set(
-        text
-          .split('|')
-          .map((value) => value.trim())
-          .filter(Boolean)
-      ),
-    ]
   }
 </script>
 
@@ -260,17 +222,9 @@
         .map(([key]) => key)}
       {#each entries as [key, val] (key)}
         {#if isParameterLeaf(val)}
-          {@const inputType = val.selection_options
+          {@const inputType = isSelectionParameter(val)
             ? 'selection'
             : parsePatternType(val.pattern_description)}
-          {@const optionsLeaf = val.selection_options
-            ? tree[val.selection_options]
-            : undefined}
-          {@const options = val.selection_options
-            ? splitChoices(
-                isParameterLeaf(optionsLeaf) ? optionsLeaf.value : ''
-              )
-            : getSelectionOptions(val.pattern_description)}
           {@const exposure = exposureAt([...path, key])}
           <!-- Column headers before a level's first leaf. Inside a section the
                leaves can form two grid columns (≥900px), each needing its own. -->
@@ -303,6 +257,7 @@
                   }}
                 />
               {:else if inputType === 'selection'}
+                {@const options = parameterSelectionOptions(tree, val)}
                 <select
                   value={val.value}
                   disabled={exposure?.input ?? false}

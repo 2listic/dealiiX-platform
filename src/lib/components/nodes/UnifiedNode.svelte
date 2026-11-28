@@ -63,7 +63,12 @@
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
-  import { nodeParameterExposures } from '../../parameters/parameterPorts'
+  import {
+    findParameterExposure,
+    nodeParameterExposures,
+    parameterAtPath,
+  } from '../../parameters/parameterPorts'
+  import { saveNodeConfiguration } from '../../parameters/parameterNodeCanvas'
   import {
     nodeColors,
     ConnectionType,
@@ -99,7 +104,13 @@
   import ExplosionIcon from '../icons/ExplosionIcon.svelte'
   import MarkIcon from '../icons/MarkIcon.svelte'
   import ParameterFilePorts from './ParameterFilePorts.svelte'
-  import { isParameterFileName } from '../../parameters/parameterFileFormat'
+  import {
+    isParameterFileName,
+    isParameterLeaf,
+    isSelectionParameter,
+    parameterSelectionOptions,
+    parameterTreeAtPath,
+  } from '../../parameters/parameterFileFormat'
   import {
     obsolete,
     workflowService,
@@ -331,6 +342,34 @@
       ? data.configuration
       : undefined
   )
+
+  const configurationSelection = (argumentIndex: number) => {
+    const path = data.arguments[argumentIndex]?.configuration_path
+    if (!configuration || !path?.length) return null
+    const parent = parameterTreeAtPath(configuration, path.slice(0, -1))
+    const leaf = parent?.[path[path.length - 1]]
+    if (!parent || !isParameterLeaf(leaf) || !isSelectionParameter(leaf)) {
+      return null
+    }
+    return {
+      path,
+      value: leaf.value,
+      options: parameterSelectionOptions(parent, leaf),
+      input: findParameterExposure(
+        nodeParameterExposures(data as StandardNodeDefinition),
+        path
+      )?.input,
+    }
+  }
+
+  const saveConfigurationSelection = (path: string[], value: string) => {
+    if (!configuration) return
+    const next = $state.snapshot(configuration)
+    const leaf = parameterAtPath(next, path)
+    if (!leaf || leaf.value === value) return
+    leaf.value = value
+    saveNodeConfiguration(id, next)
+  }
 
   const openConfiguration = () => {
     if (!configuration) return
@@ -643,6 +682,7 @@
       {#each data.outputs as i, index (index)}
         {@const output =
           data.arguments.length > 0 ? outputPortInfo(i, index) : null}
+        {@const selection = output ? configurationSelection(i) : null}
         <div
           class="port-label output-port"
           style="grid-row: {(argumentPortRows.outputs[index] ?? index) + 1};"
@@ -654,9 +694,33 @@
             class={isPassthroughArgument(i) ? 'passthrough-handle' : undefined}
           />
           {#if output}
-            <div class="output-label">
-              {output.name}
-            </div>
+            {#if selection}
+              <select
+                class="output-choice nodrag"
+                aria-label={output.name}
+                value={selection.value}
+                disabled={selection.input || selection.options.length === 0}
+                onchange={(event) =>
+                  saveConfigurationSelection(
+                    selection.path,
+                    event.currentTarget.value
+                  )}
+                onmousedown={(event) => event.stopPropagation()}
+              >
+                {#if !selection.options.includes(selection.value)}
+                  <option value={selection.value} disabled
+                    >Choose an option</option
+                  >
+                {/if}
+                {#each selection.options as option (option)}
+                  <option value={option}>{option}</option>
+                {/each}
+              </select>
+            {:else}
+              <div class="output-label">
+                {output.name}
+              </div>
+            {/if}
             {#each output.types as portType (portType)}
               <div class="output-type">{displayTypeName(portType)}</div>
             {/each}
@@ -1013,6 +1077,20 @@
   .output-label {
     font-weight: bold;
     text-align: right;
+  }
+
+  .output-choice {
+    width: 100%;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--secondary-color);
+    color: inherit;
+  }
+
+  .output-choice:hover:not(:disabled) {
+    border-color: var(--border-color-hover);
+    cursor: pointer;
   }
 
   .output-type {
