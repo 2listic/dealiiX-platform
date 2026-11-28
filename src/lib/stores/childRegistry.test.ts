@@ -67,6 +67,15 @@ it('uses the registered CORAL palette inside each instance and restores its pare
   expect(nodes[second.id].value).toMatchObject({ workflow: { nodes: {} } })
   expect(JSON.stringify(nodes)).not.toContain('"registry"')
 
+  await enterSubnetwork(second.id)
+  expect(graphStackState.canGoBack).toBe(true)
+  expect(getNodesSnapshot()).toEqual([])
+  await loadParentGraph()
+  expect(graphStackState.canGoBack).toBe(false)
+  expect(parseGraphWithQualifiedIds(getNodesSnapshot(), []).workflow).toEqual(
+    saved.workflow
+  )
+
   await importGraphFromProtocol(saved)
   await enterSubnetwork(first.id)
   expect(getAvailableNodes().map(({ type }) => type)).toEqual([innerType])

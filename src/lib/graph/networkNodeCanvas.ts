@@ -420,16 +420,17 @@ export const explodeNetworkNodeInGraph = (
  *
  * @param name - Name for the new network node (used as registry key and display label).
  * @param mode - `'create'` to wrap the selection as-is; `'merge'` to flatten nested subgraphs first.
- * @returns `{ newNodes, newEdges }` — the full canvas node/edge lists after collapsing.
- * @throws {Error} If fewer than two nodes are selected.
+ * @returns `{ newNodes, newEdges }` after collapsing, or undefined for an empty graph.
+ * @throws {Error} If fewer than two nodes are selected in a nonempty graph.
  * @throws {UnresolvedOverloadError} If a family in the selection has more or fewer than one variant left.
  */
 export const collapseSelectionToSubnetwork = async (
   name: string,
   mode: 'create' | 'merge'
-): Promise<{ newNodes: Node[]; newEdges: Edge[] }> => {
+): Promise<{ newNodes: Node[]; newEdges: Edge[] } | undefined> => {
   // Snapshot the live canvas so the rest of this function works on plain objects.
   const allNodes = getNodesSnapshot()
+  if (allNodes.length === 0) return
   const allEdges = getEdgesSnapshot()
 
   // Identify the selected node IDs and guard against trivially small selections.

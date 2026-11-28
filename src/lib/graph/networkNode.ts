@@ -68,7 +68,6 @@ export type BoundaryAnalysis = HandleMaps & {
  * @param {Node[]} currentNodes - Array of nodes (must be snapshots, not reactive)
  * @param {Edge[]} currentEdges - Array of edges (must be snapshots, not reactive)
  * @returns {SubGraphNodeDefinition} A complete network node definition ready to be added to the networkNodes store
- * @throws {Error} If the graph is empty (no nodes)
  */
 export const createNetworkNodeDefinition = (
   name: string,
@@ -99,19 +98,13 @@ export const createNetworkNodeDefinition = (
  * @param {Node[]} currentNodes - Array of nodes in the subgraph (must be snapshots, not reactive)
  * @param {Edge[]} currentEdges - Array of edges in the subgraph (must be snapshots, not reactive)
  * @returns {BoundaryAnalysis} The arguments/inputs/outputs arrays and bidirectional handle maps
- * @throws {Error} If the graph is empty (no nodes)
  * @throws {UnresolvedOverloadError} If an overload family has more or fewer than one variant left
  */
 export const analyzeNetworkBoundary = (
   currentNodes: Node[],
   currentEdges: Edge[]
 ): BoundaryAnalysis => {
-  // Step 1: Validate there are nodes
-  if (currentNodes.length === 0) {
-    throw new Error('Cannot create network node from empty graph')
-  }
-
-  // Step 2: Identify free inputs and outputs
+  // Identify free inputs and outputs.
   // We'll collect them with their node ID for sorting
   interface FreeConnection {
     nodeId: string
@@ -293,7 +286,7 @@ export const analyzeNetworkBoundary = (
     }
   }
 
-  // Step 3: Build the arguments array
+  // Build the arguments array.
   // Sort by node ID, then process to determine final connection_type
   const sortedFreeConnections = Object.values(freeConnectionsMap).sort(
     (a, b) => parseInt(a.nodeId) - parseInt(b.nodeId)
@@ -332,7 +325,7 @@ export const analyzeNetworkBoundary = (
       ...(conn.argument.bases && { bases: [...conn.argument.bases] }),
     })
 
-    // Step 4: Build inputs and outputs arrays
+    // Build the inputs and outputs arrays.
     if (
       finalConnectionType === ConnectionType.INPUT ||
       finalConnectionType === ConnectionType.PASSTHROUGH

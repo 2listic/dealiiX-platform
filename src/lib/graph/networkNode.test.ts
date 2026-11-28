@@ -97,10 +97,14 @@ const protoEdgeToCanvas = (edge: {
 const STEP1_SUBGRAPH_IDS = new Set(['3', '5', '8', '10', '11'])
 
 describe('networkNode utilities', () => {
-  it('rejects creating a network node from an empty graph', () => {
-    expect(() => createNetworkNodeDefinition('Empty', [], [])).toThrow(
-      'Cannot create network node from empty graph'
-    )
+  it('finds no boundary ports in an empty graph', () => {
+    expect(analyzeNetworkBoundary([], [])).toMatchObject({
+      argumentsArray: [],
+      inputsArray: [],
+      outputsArray: [],
+      networkInputToInternalHandle: {},
+      networkOutputToInternalHandle: {},
+    })
   })
 
   it('preserves the input metadata on an exposed network input', () => {

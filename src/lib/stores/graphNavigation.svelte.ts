@@ -117,9 +117,8 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
  * new definition (arguments, inputs, outputs) so the interface reflects
  * any structural changes made while editing.
  *
- * Special case: if the subnetwork is left empty (all nodes deleted), the
- * corresponding canvas node is removed from the parent graph entirely and
- * the network node entry is deleted from the store.
+ * An empty backend-owned workflow returns to the parent without rebuilding
+ * its node. Empty reusable subnetworks are removed from the parent and store.
  */
 export const loadParentGraph = async (): Promise<void> => {
   // Can't go back from the root context.
@@ -143,8 +142,17 @@ export const loadParentGraph = async (): Promise<void> => {
     const ownsWorkflow =
       isNetworkCanvasNode(owner) &&
       Boolean(currentContext.registry && owner.data.value)
-    // Empty subnetwork: remove the node from the parent and clean up the store.
-    if (!ownsWorkflow && currentContext.current.nodes.length === 0) {
+    if (currentContext.current.nodes.length === 0) {
+      if (ownsWorkflow) {
+        graphStackState.collapseToParent(parentContext)
+        applyCanvasState(
+          parentContext.current.nodes,
+          parentContext.current.edges
+        )
+        return
+      }
+
+      // Remove an empty reusable node from the parent and the store.
       if (
         currentContext.originalName &&
         isNodeInNetworkNodes(currentContext.originalName)
@@ -344,6 +352,7 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   // Rebuild the full network node definition under the new name.
   // createNetworkNodeDefinition recomputes arguments/inputs/outputs from the
   // boundary analysis, so this is not a simple key rename in the store.
+  if (refreshedCurrentContext.current.nodes.length === 0) return
   let updatedNetworkNode: SubGraphNodeDefinition
   try {
     updatedNetworkNode = createNetworkNodeDefinition(
