@@ -306,10 +306,18 @@ export type NodePaletteTile = {
   node: StandardNodeDefinition | OverloadNodeDefinition
 }
 
+type NodePaletteSubsection = { label: string; tiles: NodePaletteTile[] }
+
 /** A sidebar entry: a tile on its own, or a class section with its tiles. */
 export type NodePaletteItem =
   | { kind: 'tile'; key: string; tile: NodePaletteTile }
-  | { kind: 'class'; key: string; label: string; tiles: NodePaletteTile[] }
+  | {
+      kind: 'class'
+      key: string
+      label: string
+      tiles: NodePaletteTile[]
+      subsections?: NodePaletteSubsection[]
+    }
 
 /**
  * Builds the sidebar from registry entries: the families of
@@ -324,9 +332,22 @@ export const buildNodePalette = (
   nodes: StandardNodeDefinition[]
 ): NodePaletteItem[] => {
   const items: NodePaletteItem[] = []
-  const sections = new Map<string, NodePaletteTile[]>()
+  const sections = new Map<
+    string,
+    Extract<NodePaletteItem, { kind: 'class' }>
+  >()
+  const peers = new Map<string, StandardNodeDefinition[]>()
+  for (const node of nodes) {
+    const subsection = node.palette_subsection?.trim()
+    const key = subsection
+      ? JSON.stringify([nodeClassSection(node)?.key, subsection])
+      : ''
+    const entries = peers.get(key) ?? []
+    entries.push(node)
+    peers.set(key, entries)
+  }
 
-  for (const node of createOverloadFamilies(nodes)) {
+  for (const node of [...peers.values()].flatMap(createOverloadFamilies)) {
     const representative = isOverloadNodeDefinition(node)
       ? node.candidates[0]
       : node
@@ -341,18 +362,24 @@ export const buildNodePalette = (
       items.push({ kind: 'tile', key: node.type, tile })
       continue
     }
-    const tiles = sections.get(section.key)
-    if (tiles) {
-      tiles.push(tile)
+    let group = sections.get(section.key)
+    if (!group) {
+      group = { kind: 'class', ...section, tiles: [] }
+      sections.set(section.key, group)
+      items.push(group)
+    }
+    const label = representative.palette_subsection?.trim()
+    if (!label) {
+      group.tiles.push(tile)
       continue
     }
-    sections.set(section.key, [tile])
-    items.push({
-      kind: 'class',
-      key: section.key,
-      label: section.label,
-      tiles: sections.get(section.key)!,
-    })
+    const subsections = (group.subsections ??= [])
+    let subsection = subsections.find((entry) => entry.label === label)
+    if (!subsection) {
+      subsection = { label, tiles: [] }
+      subsections.push(subsection)
+    }
+    subsection.tiles.push(tile)
   }
 
   return items

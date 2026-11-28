@@ -126,6 +126,39 @@ describe('buildNodePalette', () => {
     expect(immersx).toMatchObject({ kind: 'class', label: 'ImmersX' })
   })
 
+  it('keeps the same operation under each declared execution host', () => {
+    const files = entry('orchestrator::LocalFile', {
+      display_name: 'LocalFile',
+      palette_section: 'Orchestrator',
+    })
+    const installations = ['Local', 'top'].map((host) =>
+      entry(`orchestrator::Filter-${host}`, {
+        display_name: 'Filter',
+        palette_section: 'Orchestrator',
+        palette_subsection: host,
+        overload_group: 'Filter',
+      })
+    )
+
+    expect(buildNodePalette([files, ...installations])).toMatchObject([
+      {
+        kind: 'class',
+        label: 'Orchestrator',
+        tiles: [{ label: 'LocalFile' }],
+        subsections: [
+          {
+            label: 'Local',
+            tiles: [{ node: { type: 'orchestrator::Filter-Local' } }],
+          },
+          {
+            label: 'top',
+            tiles: [{ node: { type: 'orchestrator::Filter-top' } }],
+          },
+        ],
+      },
+    ])
+  })
+
   it('makes one family tile for dimensional variants', () => {
     const items = buildNodePalette([
       entry('ImmersX::Poisson<1,2>', { node_type: NodeType.EMPTY_CONSTRUCTOR }),

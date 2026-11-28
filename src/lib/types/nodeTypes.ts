@@ -209,6 +209,7 @@ export type StandardNodeDefinition = {
   display_name?: string
   /** Optional palette section, independent of class and overload metadata. */
   palette_section?: string
+  palette_subsection?: string
   /** Optional user-facing label for one concrete operation specialization. */
   variant_name?: string
   /** Stable owner class for method-like operations exposed by a plugin. */
