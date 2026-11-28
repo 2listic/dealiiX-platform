@@ -10,6 +10,8 @@ See [docs/changelog-template.md](docs/changelog-template.md) for formatting your
 
 ### Canvas-graph
 
+- [#277](https://github.com/2listic/dealiiX-platform/pull/277) Use the existing graph editor, palette and configuration panels with the workflow service. Submit the saved graph and display the backend's run status and logs.
+
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) Graphs can be selected and imported directly from JSON files in the configured remote working directory.
 - [#258](https://github.com/2listic/dealiiX-platform/pull/258) Every overload of a registry function is offered in the sidebar and in the connected-node suggestions, saved under Coral's signature key; graphs saved with a free function's plain name no longer load. The bundled default registry, used when no registry has been loaded from Coral, is regenerated from Coral's deal.II plugin, with its labels and signature keys.
 

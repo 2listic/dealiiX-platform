@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import FlowCanvas from './lib/components/FlowCanvas.svelte'
   import ExecutableParametersView from './lib/components/ExecutableParametersView.svelte'
@@ -20,9 +21,14 @@
   import { jobsState } from './lib/stores/jobsStore.svelte'
   import FileParametersView from './lib/components/FileParametersView.svelte'
   import { parameterNodeEditorState } from './lib/stores/parameterNodeEditor.svelte'
+  import { workflowService } from './lib/stores/workflowService.svelte'
 
-  let isCoralMode = $derived(executionSelectionState.isCoralMode)
-  let viewMode = $derived(viewModeState.value)
+  let isCoralMode = $derived(
+    workflowService.enabled || executionSelectionState.isCoralMode
+  )
+  let viewMode = $derived(
+    workflowService.enabled ? 'single' : viewModeState.value
+  )
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
 
   // Keep the per-location registry/params stores pointed at the active location
@@ -34,8 +40,21 @@
     const location = executionSelectionState.location
     setRegistryLocation(location)
     setParamsLocation(location)
-    if (hasSyncedLocationOnce) jobsState.update()
+    if (hasSyncedLocationOnce && !workflowService.enabled) jobsState.update()
     hasSyncedLocationOnce = true
+  })
+
+  onMount(() => {
+    let closed = false
+    let unsubscribe: (() => void) | undefined
+    void workflowService.initialize().then((dispose) => {
+      if (closed) dispose()
+      else unsubscribe = dispose
+    })
+    return () => {
+      closed = true
+      unsubscribe?.()
+    }
   })
 
   // Undo: Ctrl/Cmd+Z — Redo: Ctrl/Cmd+Shift+Z or Ctrl+Y

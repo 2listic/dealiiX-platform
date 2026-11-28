@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/svelte'
+import type { BackendIdentity, RegisteredNodes } from '../types/nodeTypes'
 import { currentProjectState } from './currentProjectStore.svelte.js'
 import {
   getEdgesSnapshot,
@@ -21,6 +22,7 @@ export type GraphContext = {
   originalName: string | null
   /** ID of the network node on the parent canvas that was clicked to enter this level, or null for the root. */
   parentNodeId: string | null
+  registry?: { nodes: RegisteredNodes; backend?: BackendIdentity }
   /** Last navigation-sync snapshot of the canvas at this level.
    *  Updated by syncCurrent() before any navigation action; restored when navigating back.
    *  Not the live canvas state — use getNodesSnapshot()/getEdgesSnapshot() for that. */

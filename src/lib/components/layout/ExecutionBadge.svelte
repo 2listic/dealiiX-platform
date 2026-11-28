@@ -9,6 +9,10 @@
   import { viewModeState } from '../../stores/viewModeStore.svelte'
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import { warnIfUnvalidated } from '../../execution/settingsActions'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
 
   // Two orthogonal-ish selectors: location, and mode (backend kind + pipeline view).
   let location = $derived(executionSelectionState.location)
@@ -26,8 +30,12 @@
   // Selection lives in two leaf stores; the dropdowns write them directly and
   // hint (in single mode) when the resulting combination isn't validated yet.
   const onLocationChange = async (event: Event) => {
-    const value = (event.currentTarget as HTMLSelectElement)
-      .value as ExecutionLocation
+    const select = event.currentTarget as HTMLSelectElement
+    if (workflowService.enabled) {
+      select.value = location
+      return obsolete('Target placement is configured on the backend.')
+    }
+    const value = select.value as ExecutionLocation
     await executionSelectionState.setLocation(value)
     if (viewModeState.value === 'single') {
       warnIfUnvalidated(value, executionSelectionState.backendKind)
@@ -35,9 +43,12 @@
   }
 
   const onModeChange = async (event: Event) => {
-    const value = (event.currentTarget as HTMLSelectElement).value as
-      | BackendKind
-      | 'pipeline'
+    const select = event.currentTarget as HTMLSelectElement
+    if (workflowService.enabled) {
+      select.value = mode
+      return obsolete('Workflow execution is managed by the backend.')
+    }
+    const value = select.value as BackendKind | 'pipeline'
     if (value === 'pipeline') {
       viewModeState.value = 'pipeline'
       return

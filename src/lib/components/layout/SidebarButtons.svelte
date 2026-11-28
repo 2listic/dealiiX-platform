@@ -16,15 +16,9 @@
     downloadParameters,
   } from '../../parameters/parametersFileActions'
   import { parametersState } from '../../stores/parametersStore.svelte'
-  import { buildGraphPayload, openNewWindow } from '../../execution/sshMessages'
+  import { openNewWindow } from '../../execution/sshMessages'
   import { pipelineState } from '../../stores/pipeline.svelte'
-  import {
-    runPipeline,
-    type PipelineProgress,
-  } from '../../orchestration/pipelineOrchestrator'
   import { buildExportMeta } from '../../graph/exportMeta'
-  import { jobsState } from '../../stores/jobsStore.svelte'
-  import PipelineRunNameModal from '../PipelineRunNameModal.svelte'
   import Modal, { getModal } from './Modal.svelte'
   import LoginForm from '../LoginForm.svelte'
   import SaveProjectForm from '../SaveProjectForm.svelte'
@@ -48,7 +42,6 @@
   import ExecuteIcon from '../icons/ExecuteIcon.svelte'
   import SidebarGroupButton from './SidebarGroupButton.svelte'
   import SidebarGroupButtonItem from './SidebarGroupButtonItem.svelte'
-  import JobConfigModal from '../JobConfigModal.svelte'
   import { graphStackState } from '../../stores/graphStack.svelte'
   import GridIcon from '../icons/GridIcon.svelte'
   import PlusIcon from '../icons/PlusIcon.svelte'
@@ -56,6 +49,10 @@
   import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
   import RemoteFilePicker from '../RemoteFilePicker.svelte'
   import { readRemoteGraphFile } from '../../execution/remoteFilePicker'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
 
   const { fitView } = useSvelteFlow()
 
@@ -63,18 +60,24 @@
   const settingsModalId = 'settings-modal'
   const projectsModalId = 'projects-modal'
   const saveProjectModalId = 'save-project-modal'
-  const JobConfigModalId = 'job-config-modal'
-  const runNameModalId = 'pipeline-run-name-modal'
   const remoteGraphPickerModalId = 'remote-graph-picker-modal'
-  let isCoralMode = $derived(executionSelectionState.isCoralMode)
-  let isExecutableMode = $derived(executionSelectionState.isExecutableMode)
+  let isCoralMode = $derived(
+    workflowService.enabled || executionSelectionState.isCoralMode
+  )
+  let isExecutableMode = $derived(
+    !workflowService.enabled && executionSelectionState.isExecutableMode
+  )
   let hasParams = $derived(parametersState.value != null)
   const paramsSyncHint =
     'No parameters loaded — sync an executable from Settings first'
   let hasRemoteServer = $derived(settingsState.hasRemoteServer)
   let hasVisualizer = $derived(settingsState.hasVisualizer)
-  let isSingleMode = $derived(viewModeState.value === 'single')
-  let isPipelineMode = $derived(viewModeState.value === 'pipeline')
+  let isSingleMode = $derived(
+    workflowService.enabled || viewModeState.value === 'single'
+  )
+  let isPipelineMode = $derived(
+    !workflowService.enabled && viewModeState.value === 'pipeline'
+  )
   let isParameterEditorOpen = $derived(parameterNodeEditorState.isOpen)
   let isRemote = $derived(executionSelectionState.location === 'remote')
 
@@ -108,26 +111,26 @@
     toastState.add({ message: 'Logged out', type: 'success' })
   }
 
-  /**
-   * Unified Run entry point. In single mode it opens the job-config modal; in
-   * pipeline mode it validates and opens the run-name modal.
-   */
-  const handleExecution = () => {
-    if (isPipelineMode) {
-      const validation = pipelineState.validate(
-        executionSelectionState.location
-      )
-      if (!validation.runnable) {
-        toastState.add({
-          message: `Cannot run: ${validation.issues.join('; ')}`,
-          type: 'error',
-        })
-        return
-      }
-      getModal(runNameModalId)?.open()
-      return
+  const handleExecution = async () => {
+    if (!workflowService.enabled)
+      return obsolete('Configure a workflow backend to run this graph.')
+    if (graphStackState.canGoBack) return warnSavingFromSubnetwork()
+    if (!workflowService.operations.includes('submit')) {
+      return obsolete('This backend does not offer workflow submission.')
     }
-    getModal(JobConfigModalId)?.open()
+    try {
+      const network = parseGraphWithQualifiedIds(
+        getNodesSnapshot(),
+        getEdgesSnapshot(),
+        getRegistryBackend()
+      )
+      await workflowService.submit({ ...network, version: 1 })
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    }
   }
 
   const handleAddCoralFromFile = async () => {
@@ -158,10 +161,9 @@
 
   const handleAddCoralFromCanvas = () => {
     try {
-      const graph = buildGraphPayload(
+      const graph = parseGraphWithQualifiedIds(
         getNodesSnapshot(),
         getEdgesSnapshot(),
-        false,
         getRegistryBackend(executionSelectionState.location)
       )
       pipelineState.addCoralStage({
@@ -241,32 +243,6 @@
     }
   }
 
-  /** Surfaces a pipeline progress event as a toast; success/error also refreshes the jobs table. */
-  const handlePipelineProgress = (event: PipelineProgress) => {
-    if (event.type === 'info' || event.type === 'success') {
-      toastState.add({ message: event.message, type: event.type })
-    } else {
-      toastState.add({ message: event.message, type: 'error' })
-    }
-    if (event.type !== 'info') jobsState.update()
-  }
-
-  /** Runs the pipeline at the active location, surfacing progress events as toasts. */
-  const handleRunPipeline = (name: string) => {
-    const pipeline = pipelineState.toPipeline()
-    runPipeline(
-      executionSelectionState.location,
-      pipeline,
-      name || undefined,
-      handlePipelineProgress
-    ).catch((error) => {
-      toastState.add({
-        message: error instanceof Error ? error.message : 'Pipeline run failed',
-        type: 'error',
-      })
-    })
-  }
-
   /**
    * Replaces the canvas with an imported graph, toasting each dropped edge
    * and each subnetwork it registers, and detaches the current project.
@@ -311,6 +287,20 @@
       toastState.add({
         message:
           error instanceof Error ? error.message : 'Failed to load graph',
+        type: 'error',
+      })
+    }
+  }
+
+  const openGraph = async () => {
+    if (!workflowService.enabled) return importGraphInput?.click()
+    try {
+      const graph = await workflowService.openGraph()
+      if (graph)
+        await importGraphData(graph as Parameters<typeof importGraphData>[0])
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
         type: 'error',
       })
     }
@@ -597,12 +587,6 @@
       <span class="button-text">Run</span>
     </div>
 
-    <JobConfigModal modalId={JobConfigModalId} />
-    <PipelineRunNameModal
-      modalId={runNameModalId}
-      onConfirm={handleRunPipeline}
-    />
-
     <!-- VTK Visualizer (standalone) -->
     <div class="button-container">
       <label
@@ -660,19 +644,24 @@
         <UploadIcon width="30px" height="30px" />
       {/snippet}
       {#snippet items()}
-        <SidebarGroupButtonItem
-          label="Import Graph"
-          onclick={() => importGraphInput?.click()}
-        />
+        <SidebarGroupButtonItem label="Import Graph" onclick={openGraph} />
         {#if isRemote}
           <SidebarGroupButtonItem
             label="Import Remote Graph"
-            onclick={() => getModal(remoteGraphPickerModalId)?.open()}
+            onclick={() =>
+              workflowService.enabled
+                ? obsolete('Remote file access is managed by the backend.')
+                : getModal(remoteGraphPickerModalId)?.open()}
           />
         {/if}
         <SidebarGroupButtonItem
           label="Import Nodes"
-          onclick={() => importNodesInput?.click()}
+          onclick={() =>
+            workflowService.enabled
+              ? obsolete(
+                  'The backend supplies the registry. Use Validate & Sync in Settings.'
+                )
+              : importNodesInput?.click()}
         />
         <SidebarGroupButtonItem
           label="Download Graph"

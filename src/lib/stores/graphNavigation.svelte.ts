@@ -7,6 +7,7 @@ import {
 } from './nodes.svelte'
 import {
   addNetworkNode,
+  getNodeData,
   getNetworkNodeDefinition,
   isNodeInNetworkNodes,
   removeNetworkNode,
@@ -23,12 +24,18 @@ import type {
   NodeDefinitions,
   SubGraphNodeDefinition,
 } from '../types/nodeTypes'
-import { getBaseTypes, isTypeCompatible } from '../types/nodeTypes'
+import { getBaseTypes, isTypeCompatible, TypeField } from '../types/nodeTypes'
 import {
   overloadInputTypes,
   withOverloadAction,
 } from '../registry/overloadResolution'
 import { toastState } from './toastsStore.svelte.js'
+import {
+  definitionInRegistry,
+  embeddedRegistry,
+  filterValidNodes,
+  registryBackend,
+} from '../registry/registryValidator'
 import { graphStackState } from './graphStack.svelte'
 
 /**
@@ -54,9 +61,25 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
     graphStackState.syncCurrent()
 
     // Convert the subnetwork's stored protocol graph to @xyflow format.
-    const networkNodeData = getNetworkNodeDefinition(targetNode.data.name)
+    const backendNode = targetNode.data.type !== TypeField.CORAL_NETWORK
+    const enclosingRegistry = graphStackState.getTopContext()?.registry
+    const networkNodeData =
+      (backendNode || enclosingRegistry) && targetNode.data.value
+        ? targetNode.data
+        : getNetworkNodeDefinition(targetNode.data.name)
+    let registry = enclosingRegistry
+    if (backendNode) {
+      const document = embeddedRegistry(getNodeData(targetNode.data.type))
+      if (!document)
+        throw new Error('Sync the parent registry to open the CORAL workflow')
+      registry = {
+        nodes: filterValidNodes(document)[0],
+        backend: registryBackend(document),
+      }
+    }
     const nextNodes = nodesFromProtocolToFlow(
-      networkNodeData.value.workflow.nodes
+      networkNodeData.value.workflow.nodes,
+      registry && ((type) => definitionInRegistry(registry.nodes, type))
     )
     const nextEdges = edgesFromProtocolToFlow(
       networkNodeData.value.workflow.edges
@@ -68,6 +91,7 @@ export const enterSubnetwork = async (nodeId: string): Promise<void> => {
       label: targetNode.data.name,
       originalName: targetNode.data.name,
       parentNodeId: nodeId,
+      registry,
       current: { nodes: cloneNodes(nextNodes), edges: cloneEdges(nextEdges) },
       past: [],
       future: [],
@@ -113,8 +137,14 @@ export const loadParentGraph = async (): Promise<void> => {
   }
 
   try {
+    const owner = parentContext.current.nodes.find(
+      (node) => node.id === currentContext.parentNodeId
+    )
+    const ownsWorkflow =
+      isNetworkCanvasNode(owner) &&
+      Boolean(currentContext.registry && owner.data.value)
     // Empty subnetwork: remove the node from the parent and clean up the store.
-    if (currentContext.current.nodes.length === 0) {
+    if (!ownsWorkflow && currentContext.current.nodes.length === 0) {
       if (
         currentContext.originalName &&
         isNodeInNetworkNodes(currentContext.originalName)
@@ -150,9 +180,22 @@ export const loadParentGraph = async (): Promise<void> => {
       currentContext.current.nodes,
       currentContext.current.edges
     )
+    if (ownsWorkflow) {
+      updatedNetworkNode.type = owner.data.type
+      if (owner.data.capabilities?.actions?.includes('open_child_workflow')) {
+        updatedNetworkNode.arguments = owner.data.arguments
+        updatedNetworkNode.inputs = owner.data.inputs
+        updatedNetworkNode.outputs = owner.data.outputs
+      }
+      updatedNetworkNode.value = {
+        ...owner.data.value,
+        workflow: updatedNetworkNode.value.workflow,
+      }
+    }
 
     // If the name changed during editing, remove the stale store entry.
     if (
+      !ownsWorkflow &&
       currentContext.originalName &&
       currentContext.originalName !== updatedNetworkNode.name &&
       isNodeInNetworkNodes(currentContext.originalName)
@@ -161,7 +204,8 @@ export const loadParentGraph = async (): Promise<void> => {
     }
 
     // Persist the updated definition to the network nodes store.
-    await addNetworkNode(updatedNetworkNode.name, updatedNetworkNode)
+    if (!ownsWorkflow)
+      await addNetworkNode(updatedNetworkNode.name, updatedNetworkNode)
 
     // Update the subnetwork's canvas node in the parent context so its
     // handle interface (arguments, inputs, outputs) stays in sync.
@@ -180,6 +224,7 @@ export const loadParentGraph = async (): Promise<void> => {
         data: {
           ...node.data,
           name: updatedNetworkNode.name,
+          ...(ownsWorkflow && { value: updatedNetworkNode.value }),
           arguments: updatedNetworkNode.arguments,
           inputs: updatedNetworkNode.inputs,
           outputs: updatedNetworkNode.outputs,
@@ -268,6 +313,31 @@ export const renameCurrentSubnetwork = async (name: string): Promise<void> => {
   const refreshedCurrentContext = graphStackState.getTopContext()
   const parentContext = graphStackState.getParentContext()
   if (!refreshedCurrentContext || !parentContext) {
+    return
+  }
+
+  const owner = parentContext.current.nodes.find(
+    (node) => node.id === refreshedCurrentContext.parentNodeId
+  )
+  if (
+    isNetworkCanvasNode(owner) &&
+    refreshedCurrentContext.registry &&
+    owner.data.value
+  ) {
+    graphStackState.updateParentContext({
+      current: {
+        ...parentContext.current,
+        nodes: parentContext.current.nodes.map((node) =>
+          node.id === owner.id
+            ? { ...node, data: { ...owner.data, name: trimmedName } }
+            : node
+        ),
+      },
+    })
+    graphStackState.updateTopContext({
+      label: trimmedName,
+      originalName: trimmedName,
+    })
     return
   }
 

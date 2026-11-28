@@ -14,6 +14,7 @@
   import { toastState } from '../stores/toastsStore.svelte'
   import { probeAndSaveExecution } from '../execution/settingsActions'
   import Button from './layout/Button.svelte'
+  import { workflowService } from '../stores/workflowService.svelte'
   import Modal, { getModal } from './layout/Modal.svelte'
 
   let { modalId } = $props()
@@ -74,6 +75,21 @@
   const closeModal = () => getModal(modalId)?.close()
 
   const saveAndSyncExecution = async () => {
+    if (workflowService.enabled) {
+      isSavingExecution = true
+      try {
+        await workflowService.refreshRegistry()
+        toastState.add({ message: 'Backend registry synced', type: 'success' })
+      } catch (error) {
+        toastState.add({
+          message: error instanceof Error ? error.message : String(error),
+          type: 'error',
+        })
+      } finally {
+        isSavingExecution = false
+      }
+      return
+    }
     const execution: ExecutionSettings = {
       local: {
         workingDirectory: localWorkingDirectory,

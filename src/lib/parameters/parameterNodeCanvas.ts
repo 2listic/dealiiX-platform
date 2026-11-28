@@ -5,6 +5,7 @@
  * Handle ids, port types and exposure lookups live in parameterPorts.ts.
  */
 
+import type { ParameterTree } from '../types/parameterTypes'
 import type { Edge } from '@xyflow/svelte'
 import type {
   ParameterExposure,
@@ -40,8 +41,24 @@ export const staleParameterEdges = (
  */
 export const setNodeParameterExposures = (
   nodeId: string,
-  exposures: ParameterExposure[]
-): void => replaceParameterFile(nodeId, { exposures })
+  exposures: ParameterExposure[],
+  storage: 'parameter_file' | 'configuration_exposures' = 'parameter_file'
+): void => replaceParameterMetadata(nodeId, { exposures }, storage)
+
+export const saveNodeConfiguration = (
+  nodeId: string,
+  configuration: ParameterTree
+): void => {
+  if (!getNodes().some((node) => node.id === nodeId)) return
+  graphHistoryState.checkpoint()
+  setNodes(
+    getNodes().map((node) =>
+      node.id === nodeId
+        ? { ...node, data: { ...node.data, configuration } }
+        : node
+    )
+  )
+}
 
 /**
  * Marks a node as a parameter file with no exposed parameters, as one
@@ -52,7 +69,7 @@ export const setNodeParameterExposures = (
  * @returns {void}
  */
 export const markParameterFile = (nodeId: string): void =>
-  replaceParameterFile(nodeId, { exposures: [] })
+  replaceParameterMetadata(nodeId, { exposures: [] }, 'parameter_file')
 
 /**
  * Removes a node's parameter-file marker, and the edges attached to its
@@ -64,28 +81,29 @@ export const markParameterFile = (nodeId: string): void =>
  * @returns {void}
  */
 export const unmarkParameterFile = (nodeId: string): void =>
-  replaceParameterFile(nodeId, undefined)
+  replaceParameterMetadata(nodeId, undefined, 'parameter_file')
 
 // ── Private helpers ──
 
 /** Writes or removes a node's `parameter_file` and drops the edges left without a handle. */
-const replaceParameterFile = (
+const replaceParameterMetadata = (
   nodeId: string,
-  parameterFile: ParameterFileMetadata | undefined
+  metadata: ParameterFileMetadata | undefined,
+  storage: 'parameter_file' | 'configuration_exposures'
 ): void => {
   if (!getNodes().some((node) => node.id === nodeId)) return
   graphHistoryState.checkpoint()
   setNodes(
     getNodes().map((node) => {
       if (node.id !== nodeId) return node
-      const { parameter_file: _previous, ...data } = node.data
+      const { [storage]: _previous, ...data } = node.data
       return {
         ...node,
-        data: parameterFile ? { ...data, parameter_file: parameterFile } : data,
+        data: metadata ? { ...data, [storage]: metadata } : data,
       }
     })
   )
-  const exposures = parameterFile?.exposures ?? []
+  const exposures = metadata?.exposures ?? []
   setEdges(getEdges().filter((edge) => !isStale(edge, nodeId, exposures)))
   // Cached connection checks may refer to handles that came or went.
   clearConnectionCache()

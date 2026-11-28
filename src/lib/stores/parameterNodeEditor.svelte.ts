@@ -6,25 +6,41 @@ import {
   saveParameterFile,
   type ParameterFileTarget,
 } from '../parameters/parameterFileAccess'
-import { setNodeParameterExposures } from '../parameters/parameterNodeCanvas'
+import {
+  saveNodeConfiguration,
+  setNodeParameterExposures,
+} from '../parameters/parameterNodeCanvas'
 
-export type ParameterFileDocument = {
+type ParameterDocument = {
   nodeId: string
-  target: ParameterFileTarget
-  resolvedPath: string
-  format: ParameterFileFormat
   parameters: ParameterTree
   edited: boolean
   saving: boolean
   exposures: ParameterExposure[]
 }
 
+type ParameterFileDocument = ParameterDocument & {
+  kind: 'file'
+  target: ParameterFileTarget
+  resolvedPath: string
+  format: ParameterFileFormat
+}
+
+type ConfigurationDocument = ParameterDocument & {
+  kind: 'configuration'
+  name: string
+  configurationExposable?: boolean
+}
+
 export type ParameterNodeEditorOptions = {
   nodeId: string
   exposures?: ParameterExposure[]
+  configurationExposable?: boolean
 }
 
-let document = $state<ParameterFileDocument | null>(null)
+let document = $state<ParameterFileDocument | ConfigurationDocument | null>(
+  null
+)
 let opening = $state(false)
 
 export const parameterNodeEditorState = {
@@ -54,6 +70,7 @@ export const parameterNodeEditorState = {
     try {
       const loaded = await loadParameterFile(target)
       document = {
+        kind: 'file',
         nodeId: options.nodeId,
         target,
         resolvedPath: loaded.resolvedPath,
@@ -70,6 +87,26 @@ export const parameterNodeEditorState = {
       opening = false
     }
   },
+  openConfiguration(
+    name: string,
+    parameters: ParameterTree,
+    {
+      nodeId,
+      exposures = [],
+      configurationExposable,
+    }: ParameterNodeEditorOptions
+  ): void {
+    document = {
+      kind: 'configuration',
+      name,
+      nodeId,
+      configurationExposable,
+      parameters: structuredClone(parameters),
+      exposures: structuredClone(exposures),
+      edited: false,
+      saving: false,
+    }
+  },
   updateExposures(exposures: ParameterExposure[]): void {
     if (!document) return
     document.exposures = exposures.map((exposure) => ({
@@ -80,7 +117,8 @@ export const parameterNodeEditorState = {
     // opened from: the canvas is unmounted while the editor is open.
     setNodeParameterExposures(
       document.nodeId,
-      $state.snapshot(document.exposures)
+      $state.snapshot(document.exposures),
+      document.kind === 'file' ? 'parameter_file' : 'configuration_exposures'
     )
   },
   replaceParameters(parameters: ParameterTree): void {
@@ -95,11 +133,18 @@ export const parameterNodeEditorState = {
     if (!document) return
     document.saving = true
     try {
-      await saveParameterFile(
-        document.target,
-        document.parameters,
-        document.format
-      )
+      if (document.kind === 'file') {
+        await saveParameterFile(
+          document.target,
+          document.parameters,
+          document.format
+        )
+      } else {
+        saveNodeConfiguration(
+          document.nodeId,
+          $state.snapshot(document.parameters)
+        )
+      }
       document.edited = false
     } finally {
       if (document) document.saving = false

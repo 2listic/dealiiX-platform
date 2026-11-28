@@ -17,8 +17,19 @@
   import TextModal from './TextModal.svelte'
   import NodeStatusModal from './NodeStatusModal.svelte'
   import { getModal } from './Modal.svelte'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
 
-  let jobsData = $derived(jobsState.current)
+  let jobsData = $derived(
+    workflowService.enabled
+      ? [
+          ['Run', 'State'],
+          ...workflowService.runs.map((run) => [run.run_id, run.state]),
+        ]
+      : jobsState.current
+  )
   // $effect(() => console.log('jobsData', $state.snapshot(jobsData)))
   const rotation = new Tween(0, {
     duration: 400,
@@ -47,12 +58,24 @@
   let isJobListExpanded = $state(false)
   const toggleExpand = async () => {
     isJobListExpanded = !isJobListExpanded
-    if (isJobListExpanded) await jobsState.update()
+    if (isJobListExpanded) await refresh()
   }
 
   const updateJobs = async () => {
     rotation.target -= 360
-    await jobsState.update()
+    await refresh()
+  }
+
+  const refresh = async () => {
+    try {
+      if (workflowService.enabled) await workflowService.refreshRuns()
+      else await jobsState.update()
+    } catch (error) {
+      toastState.add({
+        message: error instanceof Error ? error.message : String(error),
+        type: 'error',
+      })
+    }
   }
 
   let outLogText = $state('')
@@ -75,10 +98,14 @@
   const handleLogClick = async (jobId: string) => {
     try {
       currentJobId = jobId
-      outLogText = await getOutFileContent(
-        executionSelectionState.location,
-        jobId
+      if (
+        workflowService.enabled &&
+        !workflowService.operations.includes('logs')
       )
+        return obsolete('This backend does not offer run logs.')
+      outLogText = workflowService.enabled
+        ? await workflowService.logs(jobId)
+        : await getOutFileContent(executionSelectionState.location, jobId)
       getModal(outLogModalId)?.open()
     } catch (error) {
       toastState.add({
@@ -90,6 +117,19 @@
 
   const handleNodesExecutionStatus = async (jobIdSlurm: string) => {
     try {
+      if (workflowService.enabled) {
+        const run = workflowService.runs.find(
+          (entry) => entry.run_id === jobIdSlurm
+        )
+        if (!run) return
+        nodeStatusMap = new Map(
+          Object.entries(run.nodes).map(([id, status]) => [id, [status.state]])
+        )
+        currentStatusJobId = jobIdSlurm
+        currentJobIdInternal = undefined
+        getModal(nodeStatusModalId)?.open()
+        return
+      }
       const jobIdInternal = jobIdMapState.getJobIdInternal(jobIdSlurm)
       if (jobIdInternal === undefined) {
         throw new Error(
@@ -118,12 +158,11 @@
 
 <div class="jobs-table-wrapper">
   <div class="wrap-joblist-buttons">
-    {#if !jobsState.oneOrLess}
+    {#if jobsData.length > 2}
       <div transition:slide>
         <button
           class="button-jobslist"
           onclick={toggleExpand}
-          disabled={jobsState.oneOrLess}
           aria-label="Show or hide submitted jobs"
           title="Show or hide submitted jobs"
         >
@@ -146,7 +185,7 @@
     </button>
   </div>
   <div class="container-table-jobs {isJobListExpanded ? 'expanded' : ''}">
-    {#if !jobsState.isEmpty}
+    {#if jobsData.length > 1}
       <div transition:slide>
         <table transition:fade>
           <colgroup>
@@ -188,7 +227,9 @@
             <td>
               <span>
                 {#if i === 1}
-                  {normalizeJobStatus(bodyCell)}
+                  {workflowService.enabled
+                    ? bodyCell
+                    : normalizeJobStatus(bodyCell)}
                 {:else if JOB_DATE_INDEX.includes(i)}
                   {formatDate(bodyCell)}
                 {:else}
@@ -203,9 +244,13 @@
           >
             {jobIdMapState.getJobWorkingDirectory(line[0]) || '—'}
           </td>
-          <td>{jobIdMapState.getJobBackendKind(line[0]) ?? '—'}</td>
+          <td
+            >{workflowService.enabled
+              ? 'Workflow'
+              : (jobIdMapState.getJobBackendKind(line[0]) ?? '—')}</td
+          >
           <td>
-            {#if isTerminalStatus(normalizeJobStatus(line[1]))}
+            {#if workflowService.enabled || isTerminalStatus(normalizeJobStatus(line[1]))}
               <Button
                 size="xsmall"
                 title="View logs from the current job"
@@ -214,7 +259,7 @@
             {/if}
           </td>
           <td>
-            {#if jobIdMapState.getJobBackendKind(line[0]) === 'coral'}
+            {#if workflowService.enabled || jobIdMapState.getJobBackendKind(line[0]) === 'coral'}
               <Button
                 size="xsmall"
                 title="View the execution status of nodes for the current job"

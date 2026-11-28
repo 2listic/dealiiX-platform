@@ -5,6 +5,7 @@ import {
   type SubGraphNodeDefinition,
   type RegisteredSubGraphNodes,
   NodeType,
+  TypeField,
 } from '../types/nodeTypes'
 import defaultNodesJson from '../data/defaultNodes.json'
 import defaultNetworkNodesJson from '../data/defaultNetworkNodes.json'
@@ -13,6 +14,7 @@ import {
   filterValidNodes,
   registryBackend,
 } from '../registry/registryValidator'
+import { graphStackState } from './graphStack.svelte'
 import type { ExecutionLocation } from '../types/settingsTypes'
 
 // ================= Registered nodes (sidebar) ========================
@@ -152,15 +154,36 @@ export const setRegistry = async (
   return skipped
 }
 
+let serviceRegistry = $state<{ nodes: RegisteredNodes; backend?: BackendIdentity }>()
+
+/** Use the workflow service registry for this session.
+ * @param data - The registry returned by describe.
+ * @returns The registry keys that could not be read by the editor.
+ */
+export const setServiceRegistry = (data: Record<string, unknown>): string[] => {
+  const [nodes, skipped] = filterValidNodes(data)
+  serviceRegistry = { nodes: sortRegistry(nodes), backend: registryBackend(data) }
+  return skipped
+}
+
+const activeRegistry = () =>
+  graphStackState.getTopContext()?.registry?.nodes ?? serviceRegistry?.nodes ?? registries[activeLocation]
+
 /**
- * Get the backend identity of a specific execution location's registry.
- * @param location - Execution location whose registry owns the identity.
+ * Get the backend header of the active location's registry.
+ * @param location - Explicit location for a root registry lookup.
  * @returns A plain copy of the header, or undefined when that registry has none.
  */
 export const getRegistryBackend = (
-  location: ExecutionLocation
+  location?: ExecutionLocation
 ): BackendIdentity | undefined => {
-  const backend = registryBackends[location]
+  const context =
+    location === undefined
+      ? graphStackState.getTopContext()?.registry
+      : undefined
+  const backend = context
+    ? context.backend
+    : serviceRegistry ? serviceRegistry.backend : registryBackends[location ?? activeLocation]
   return backend && $state.snapshot(backend)
 }
 
@@ -191,8 +214,9 @@ export const mergeRegistry = async (
  * @returns {StandardNodeDefinition[]}
  */
 export const getAvailableNodes = (): StandardNodeDefinition[] => {
-  const nodes = Object.values(registries[activeLocation])
-  return nodes
+  return Object.values(activeRegistry()).filter(
+    (node) => node.type !== TypeField.ORCHESTRATOR_GENERIC_FILE
+  )
 }
 
 /**
@@ -207,7 +231,7 @@ export const getNodeData = (type: string): StandardNodeDefinition => {
     console.error(`Node type '${type}' was not found in the available nodes.`)
     throw new Error(`Node type '${type}' was not found in the available nodes.`)
   }
-  return $state.snapshot(registries[activeLocation][key])
+  return $state.snapshot(activeRegistry()[key])
 }
 
 /**
@@ -295,7 +319,9 @@ export const removeNetworkNode = async (name: string) => {
  * @returns {SubGraphNodeDefinition[]}
  */
 export const getStoredNetworkNodes = (): SubGraphNodeDefinition[] => {
-  const nodes = Object.values(networkNodes)
+  const nodes = graphStackState.getTopContext()?.registry
+    ? []
+    : Object.values(networkNodes)
   return nodes
 }
 
@@ -329,7 +355,7 @@ export const isNodeInNetworkNodes = (name: string): boolean => {
 // Canonical type key → the first active-registry key with that form, as Coral picks it.
 const canonicalRegistryKeys = $derived.by(() => {
   const keys: Record<string, string> = Object.create(null)
-  for (const key of Object.keys(registries[activeLocation])) {
+  for (const key of Object.keys(activeRegistry())) {
     const canonical = canonicalTypeKey(key)
     if (!Object.hasOwn(keys, canonical)) keys[canonical] = key
   }
@@ -338,6 +364,6 @@ const canonicalRegistryKeys = $derived.by(() => {
 
 // The stored key for a type: an exact match, else the key with the same canonical spelling.
 const registryKey = (type: string): string | undefined =>
-  Object.hasOwn(registries[activeLocation], type)
+  Object.hasOwn(activeRegistry(), type)
     ? type
     : canonicalRegistryKeys[canonicalTypeKey(type)]

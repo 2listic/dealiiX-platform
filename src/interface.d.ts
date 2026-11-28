@@ -1,5 +1,16 @@
+import type {
+  ExecutionReply,
+  ExecutionRequest,
+} from './lib/types/executionService'
+
 // Electron API types exposed over the context bridge
 export interface ElectronAPI {
+  workflow: {
+    enabled(): Promise<boolean>
+    openWorkflow(): Promise<string | null>
+    exchange(request: ExecutionRequest): Promise<ExecutionReply>
+    subscribe(listener: (response: ExecutionReply) => void): () => void
+  }
   send(channel: string, data?: unknown): void
   on(channel: string, func: (...args: any[]) => void): void
   invoke(channel: string, data?: unknown): Promise<any>

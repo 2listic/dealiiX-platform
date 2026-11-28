@@ -62,7 +62,10 @@
       <ParametersView
         parameters={document.parameters}
         exposures={document.exposures}
-        onExposureChange={changeExposures}
+        onExposureChange={document.kind === 'configuration' &&
+        document.configurationExposable === false
+          ? undefined
+          : changeExposures}
         onChange={(next) => parameterNodeEditorState.replaceParameters(next)}
         onEdit={() => parameterNodeEditorState.markEdited()}
       />
@@ -80,12 +83,19 @@
         <Button size="small" onclick={backToGraph}>Back to graph</Button>
       </div>
       <div class="editor-info">
-        <span class="file-location" title={document.resolvedPath}>
-          {document.target.location} · {document.resolvedPath}
-        </span>
+        {#if document.kind === 'file'}
+          <span class="file-location" title={document.resolvedPath}>
+            {document.target.location} · {document.resolvedPath}
+          </span>
+        {:else}
+          <span class="file-location">{document.name} · Node configuration</span
+          >
+        {/if}
         <span>
-          Values are saved to this file with Save. Exposed inputs and outputs
-          change the graph immediately and can be undone from the graph.
+          Values are saved {document.kind === 'file'
+            ? 'to this file'
+            : 'on this node'} with Save. Exposed inputs and outputs change the graph
+          immediately and can be undone from the graph.
         </span>
       </div>
     </div>

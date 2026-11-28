@@ -21,7 +21,7 @@ import {
   getParameterFileFormat,
   parseParametersFileWithFormat,
 } from './parameterFileFormat'
-import { findExistingFiles } from '../orchestration/fileReferences'
+import { findExistingFiles } from './findExistingFiles'
 import { confirmAction } from '../stores/confirmation.svelte'
 import {
   markParameterFile,

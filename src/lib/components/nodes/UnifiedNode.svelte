@@ -62,6 +62,8 @@
     type NodeProps,
   } from '@xyflow/svelte'
   import Modal, { getModal } from '../layout/Modal.svelte'
+  import { parameterNodeEditorState } from '../../stores/parameterNodeEditor.svelte'
+  import { nodeParameterExposures } from '../../parameters/parameterPorts'
   import {
     nodeColors,
     ConnectionType,
@@ -69,6 +71,7 @@
     PARAMETER_FILE_COLOR,
     SELF,
     Type,
+    TypeField,
     isNumericType,
   } from '../../types/nodeTypes'
   import {
@@ -81,6 +84,7 @@
   } from '../../stores/nodes.svelte'
   import { clearConnectionCache } from '../../graph/connectionsValidation'
   import EditIcon from '../icons/EditIcon.svelte'
+  import SettingsIcon from '../icons/SettingsIcon.svelte'
   import InfoIcon from '../icons/InfoIcon.svelte'
   import RefreshIcon from '../icons/RefreshIcon.svelte'
   import SuccessIcon from '../icons/SuccessIcon.svelte'
@@ -96,6 +100,10 @@
   import MarkIcon from '../icons/MarkIcon.svelte'
   import ParameterFilePorts from './ParameterFilePorts.svelte'
   import { isParameterFileName } from '../../parameters/parameterFileFormat'
+  import {
+    obsolete,
+    workflowService,
+  } from '../../stores/workflowService.svelte'
   import {
     openParameterFile,
     parameterFileUnavailableReason,
@@ -314,6 +322,30 @@
   const { updateNodeData } = useSvelteFlow()
 
   let editNodeModalId = $derived(`edit-node-${id}`)
+  let capabilities = $derived(
+    ('capabilities' in data ? data.capabilities : undefined) ??
+      ('x-dealiix' in data ? data['x-dealiix'] : undefined)
+  )
+  let configuration = $derived(
+    'configuration' in data && capabilities?.actions?.includes('configure')
+      ? data.configuration
+      : undefined
+  )
+
+  const openConfiguration = () => {
+    if (!configuration) return
+    parameterNodeEditorState.openConfiguration(
+      nodeDisplayName,
+      $state.snapshot(configuration),
+      {
+        nodeId: id,
+        configurationExposable: capabilities?.configuration_exposable,
+        exposures: nodeParameterExposures(
+          $state.snapshot(data) as StandardNodeDefinition
+        ),
+      }
+    )
+  }
 
   const isValidNum = (value: string | null | undefined) => {
     // Primitive/elementary nodes may start with a null value; coerce so `.trim()` is always safe.
@@ -474,6 +506,16 @@
       {/if}
     </div>
     <div class="node-buttons">
+      {#if configuration}
+        <button
+          class="node-button"
+          title="Configure node"
+          aria-label={`Configure ${nodeDisplayName}`}
+          onclick={openConfiguration}
+        >
+          <SettingsIcon width="20px" height="20px" />
+        </button>
+      {/if}
       {#if isNetworkNode}
         <button
           class="node-button"
@@ -482,22 +524,31 @@
         >
           <OpenIcon width="20px" height="20px" />
         </button>
-        <button
-          class="node-button"
-          title="Explode subnetwork"
-          onclick={handleExplodeSubnetwork}
-        >
-          <ExplosionIcon width="20px" height="20px" />
-        </button>
+        {#if data.type === TypeField.CORAL_NETWORK}
+          <button
+            class="node-button"
+            title="Explode subnetwork"
+            onclick={handleExplodeSubnetwork}
+          >
+            <ExplosionIcon width="20px" height="20px" />
+          </button>
+        {/if}
       {:else}
         {#if isParameterFile}
           <button
             class="node-button"
-            title={parameterFileUnavailable ?? 'Open parameters'}
+            title={workflowService.enabled
+              ? 'Open parameters'
+              : (parameterFileUnavailable ?? 'Open parameters')}
             aria-label="Open parameters"
-            disabled={Boolean(parameterFileUnavailable)}
+            disabled={!workflowService.enabled &&
+              Boolean(parameterFileUnavailable)}
             onclick={() =>
-              openParameterFile(id, data as StandardNodeDefinition)}
+              workflowService.enabled
+                ? obsolete(
+                    'Parameter file editing needs a backend file operation.'
+                  )
+                : openParameterFile(id, data as StandardNodeDefinition)}
           >
             <OpenIcon width="20px" height="20px" />
           </button>
@@ -615,6 +666,14 @@
     </div>
   {/if}
 
+  {#if configuration}
+    <ParameterFilePorts
+      {id}
+      data={data as StandardNodeDefinition}
+      inlineConfiguration
+    />
+  {/if}
+
   <!-- Elementary constructor / primitive literal input fields -->
   {#if isLiteral && !isParameterFile}
     <div class="value-row">
@@ -650,8 +709,14 @@
           class="node-button"
           title={parameterFileUnavailable ?? 'Use as parameter file'}
           aria-label="Use as parameter file"
-          disabled={Boolean(parameterFileUnavailable)}
-          onclick={() => useAsParameterFile(id, data as StandardNodeDefinition)}
+          disabled={!workflowService.enabled &&
+            Boolean(parameterFileUnavailable)}
+          onclick={() =>
+            workflowService.enabled
+              ? obsolete(
+                  'Marking a parameter file needs backend file discovery.'
+                )
+              : useAsParameterFile(id, data as StandardNodeDefinition)}
         >
           <MarkIcon width="20px" height="20px" />
         </button>

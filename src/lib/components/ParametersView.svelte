@@ -225,10 +225,18 @@
   function getSelectionOptions(desc: string): string[] {
     const match = desc.match(/\[Selection\s+(.*?)\]/)
     if (!match) return []
-    return match[1]
-      .split('|')
-      .map((s) => s.trim())
-      .filter(Boolean)
+    return splitChoices(match[1])
+  }
+
+  function splitChoices(text: string): string[] {
+    return [
+      ...new Set(
+        text
+          .split('|')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      ),
+    ]
   }
 </script>
 
@@ -252,7 +260,17 @@
         .map(([key]) => key)}
       {#each entries as [key, val] (key)}
         {#if isParameterLeaf(val)}
-          {@const inputType = parsePatternType(val.pattern_description)}
+          {@const inputType = val.selection_options
+            ? 'selection'
+            : parsePatternType(val.pattern_description)}
+          {@const optionsLeaf = val.selection_options
+            ? tree[val.selection_options]
+            : undefined}
+          {@const options = val.selection_options
+            ? splitChoices(
+                isParameterLeaf(optionsLeaf) ? optionsLeaf.value : ''
+              )
+            : getSelectionOptions(val.pattern_description)}
           {@const exposure = exposureAt([...path, key])}
           <!-- Column headers before a level's first leaf. Inside a section the
                leaves can form two grid columns (≥900px), each needing its own. -->
@@ -293,7 +311,10 @@
                     markEdited()
                   }}
                 >
-                  {#each getSelectionOptions(val.pattern_description) as opt (opt)}
+                  {#if val.selection_options && !options.includes(val.value)}
+                    <option value={val.value} disabled>Choose an option</option>
+                  {/if}
+                  {#each options as opt (opt)}
                     <option value={opt}>{opt}</option>
                   {/each}
                 </select>

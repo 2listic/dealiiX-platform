@@ -33,6 +33,23 @@ The [protocol v1 reference](schemas/README.md) documents the registry, saved
 graphs, execution graphs and parameter files exchanged by Platform and CORAL.
 It includes JSON Schemas and examples for backend authors.
 
+### Use the workflow service in the desktop editor
+
+Build the desktop and launch it with an absolute backend command and profile:
+
+```sh
+export DEALIIX_CONFIGURATION=/absolute/path/to/backend.config.json
+export DEALIIX_BACKEND_COMMAND='["/absolute/path/to/python","/absolute/path/to/tools/orchestrator/orchestrator"]'
+npm start
+```
+
+**Validate & Sync** refreshes the registry. **Import Graph** opens next to the
+profile and **Run** sends the saved graph to the backend. The existing job
+table displays the backend status. Use the node gear to edit or expose a
+configuration entry. A node with an embedded registry opens in the existing
+subnetwork editor. Toolbar actions that still require the old execution path
+show a `[TODO]` warning.
+
 ## Linting and Formatting
 
 ### Linting

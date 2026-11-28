@@ -16,6 +16,7 @@ import {
   addNetworkNode,
   getNetworkNodeDefinition,
   getNodeData,
+  getRegistryBackend,
 } from '../stores/registryStore.svelte'
 import {
   resolveInputArgument,
@@ -25,10 +26,10 @@ import {
   ConnectionType,
   getBaseTypes,
   isSubGraphNodeDefinition,
+  type BackendIdentity,
   isTypeCompatible,
   SELF,
   TypeField,
-  type BackendIdentity,
   type Network,
   type NetworkEdge,
   type NetworkEdges,
@@ -120,7 +121,10 @@ const addNetworkNodesFromGraph = async (
 ): Promise<string[]> => {
   const networkNodes: string[] = []
   for (const node of Object.values(nodes)) {
-    if (isSubGraphNodeDefinition(node)) {
+    if (
+      isSubGraphNodeDefinition(node) &&
+      node.type === TypeField.CORAL_NETWORK
+    ) {
       await addNetworkNode(node.name, node)
       networkNodes.push(node.name)
     }
@@ -134,7 +138,21 @@ const addNetworkNodesFromGraph = async (
 const validationNodeData = (
   node: LeanNodes[string]
 ): StandardNodeDefinition | SubGraphNodeDefinition => {
-  if (isSubGraphNodeDefinition(node)) return node
+  if (isSubGraphNodeDefinition(node)) {
+    if (
+      node.type === TypeField.CORAL_NETWORK ||
+      node.type === TypeField.CORAL_BACKEND_NETWORK
+    ) {
+      return node
+    }
+    const definition = getNodeData(node.type)
+    return {
+      ...node,
+      arguments: definition.arguments,
+      inputs: definition.inputs,
+      outputs: definition.outputs,
+    }
+  }
 
   return {
     ...getNodeData(node.type),
@@ -142,6 +160,9 @@ const validationNodeData = (
     ...(node.bases !== undefined && { bases: [...node.bases] }),
     ...(node.parameter_file && {
       parameter_file: node.parameter_file,
+    }),
+    ...(node.configuration_exposures && {
+      configuration_exposures: node.configuration_exposures,
     }),
   }
 }
@@ -195,16 +216,20 @@ const protocolOutputTypeCandidates = (
  * Takes nodes from the CORAL network JSON and transforms them into
  * xyflow-compatible node objects with positions and merged data.
  * @param {LeanNodes} nodes - Dictionary of nodes from network protocol
+ * @param definitionOf - Child registry lookup, when opening a backend workflow.
  * @returns {Node[]} Array of nodes formatted for the flow editor
  */
-export const nodesFromProtocolToFlow = (nodes: LeanNodes): Node[] => {
+export const nodesFromProtocolToFlow = (
+  nodes: LeanNodes,
+  definitionOf?: typeof getNodeData
+): Node[] => {
   console.log('nodesFromProtocolToFlow', nodes)
   const arrNodeIds = Object.keys(nodes)
   const xyFlowNodes = arrNodeIds.map((id, index) => {
     const node = nodes[id]
 
     // Get snapshot from store and merge with instance-specific data
-    const nodeData = mergeNodeData(node)
+    const nodeData = mergeNodeData(node, definitionOf)
 
     return {
       id: id,
@@ -224,7 +249,30 @@ export const nodesFromProtocolToFlow = (nodes: LeanNodes): Node[] => {
  * @param {LeanNodes[string]} protocolNode - Node data from network protocol
  * @returns Merged node data for xyflow
  */
-const mergeNodeData = (protocolNode: LeanNodes[string]) => {
+const mergeNodeData = (
+  protocolNode: LeanNodes[string],
+  definitionOf?: typeof getNodeData
+) => {
+  if (
+    isSubGraphNodeDefinition(protocolNode) &&
+    (protocolNode.type !== TypeField.CORAL_NETWORK || definitionOf)
+  ) {
+    if (
+      protocolNode.type !== TypeField.CORAL_NETWORK &&
+      protocolNode.type !== TypeField.CORAL_BACKEND_NETWORK
+    ) {
+      const definition = (definitionOf ?? getNodeData)(protocolNode.type)
+      return {
+        ...definition,
+        ...protocolNode,
+        name: protocolNode.name ?? definition.name ?? protocolNode.type,
+        arguments: definition.arguments,
+        inputs: definition.inputs,
+        outputs: definition.outputs,
+      }
+    }
+    return protocolNode
+  }
   if (protocolNode.type === TypeField.CORAL_NETWORK) {
     // Network nodes: fetch by name, remove value, copy position
     const storeNodeData = getNetworkNodeDefinition(
@@ -237,7 +285,7 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
     }
   } else {
     // Regular nodes: fetch by type, copy position/name/value (instance-specific)
-    const storeNodeData = getNodeData(protocolNode.type)
+    const storeNodeData = (definitionOf ?? getNodeData)(protocolNode.type)
     const regularNode = protocolNode as LeanStandardNode
     return {
       ...storeNodeData,
@@ -250,6 +298,14 @@ const mergeNodeData = (protocolNode: LeanNodes[string]) => {
       ...(regularNode.value !== undefined && { value: regularNode.value }),
       ...(regularNode.parameter_file && {
         parameter_file: normalizeParameterFile(regularNode.parameter_file),
+      }),
+      ...(regularNode.configuration && {
+        configuration: regularNode.configuration,
+      }),
+      ...(regularNode.configuration_exposures && {
+        configuration_exposures: normalizeParameterFile(
+          regularNode.configuration_exposures
+        ),
       }),
     }
   }
@@ -447,8 +503,10 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
     const data = obj.data as NodeDefinitions
 
     if (isSubGraphNodeDefinition(data)) {
-      // Network nodes: get position, data fields + 'value' from registred node
-      const networkNodeData = getNetworkNodeDefinition(data.name)
+      // Backend instances own their workflow. Legacy groups use the saved node library.
+      const networkNodeData = data.value
+        ? data
+        : getNetworkNodeDefinition(data.name)
       acc[obj.id] = {
         type: data.type,
         node_type: data.node_type,
@@ -457,6 +515,7 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
         inputs: data.inputs,
         outputs: data.outputs,
         value: networkNodeData.value,
+        ...(data.configuration && { configuration: data.configuration }),
         position: obj.position,
       }
     } else {
@@ -472,6 +531,15 @@ export const parseGraphToProtocol = (nodes: Node[], edges: Edge[]): Network => {
       // Kept with no exposures: the marker is what makes the node a parameter file.
       if ('parameter_file' in data && data.parameter_file) {
         node.parameter_file = normalizeParameterFile(data.parameter_file)
+      }
+      // A node created from the palette starts from the registry's template.
+      if ('configuration' in data && data.configuration) {
+        node.configuration = data.configuration
+      }
+      if ('configuration_exposures' in data && data.configuration_exposures) {
+        node.configuration_exposures = normalizeParameterFile(
+          data.configuration_exposures
+        )
       }
       acc[obj.id] = node
     }
@@ -548,17 +616,28 @@ export const addQualifiedIds = (
 /**
  * Parse nodes and edges into the CORAL network JSON format with qualified IDs.
  * Use this for all export paths (save, download, execute) where qualified IDs are needed.
+ * The network carries the `backend` header of the active registry, when it has one.
  * @param {Node[]} nodes - Array of node objects (must be plain objects/snapshots, not reactive)
  * @param {Edge[]} edges - Array of edge objects (must be plain objects/snapshots, not reactive)
- * @param backend - Optional identity of the registry chosen by the caller.
+ * @param backend - Identity of an explicitly selected registry.
  * @returns {QualifiedNetwork} Complete network object with qualified_id on all nodes
  */
 export const parseGraphWithQualifiedIds = (
   nodes: Node[],
   edges: Edge[],
-  backend?: BackendIdentity
+  ...identity: [backend?: BackendIdentity]
 ): QualifiedNetwork => {
   const network = parseGraphToProtocol(nodes, edges)
-  if (backend) network.backend = backend
+  const registryHeader = identity.length ? identity[0] : getRegistryBackend()
+  if (registryHeader) {
+    const { id, plugin, version, plugins, registry_digest } = registryHeader
+    network.backend = {
+      id,
+      ...(plugin && { plugin }),
+      ...(version && { version }),
+      ...(plugins && { plugins }),
+      ...(registry_digest && { registry_digest }),
+    }
+  }
   return addQualifiedIds(network)
 }
