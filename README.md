@@ -43,6 +43,7 @@ export DEALIIX_BACKEND_COMMAND='["/absolute/path/to/python","/absolute/path/to/t
 npm start
 ```
 
+The **Settings** menu offers **Frontend Settings** and **Backend Settings**.
 **Frontend Settings** uses the existing parameter editor for the backend command,
 backend profile, theme, visualizer URL, and project server URL. The desktop saves
 this private document as `frontend.config.json` in its Electron user-data

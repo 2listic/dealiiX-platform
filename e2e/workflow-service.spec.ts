@@ -103,7 +103,10 @@ test('the standard editor submits its saved graph to the workflow backend', asyn
     await expect(sidebar.getByTestId('sidebar-node-class')).toHaveText(
       'Independent Independent -> Check'
     )
-    await page.getByTitle('Backend Settings', { exact: true }).click()
+    await page.getByTitle('Settings', { exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Backend Settings', exact: true })
+      .click()
     const backendSettings = page.locator('#settings-modal')
     await expect(
       backendSettings.getByRole('heading', {
@@ -206,7 +209,10 @@ test('Backend Settings edits the private profile in the shared modal and refresh
     await expect(page.getByTestId('flow-canvas')).toBeVisible()
     const sidebar = page.getByTestId('sidebar')
     await expect(sidebar.locator('[data-class-name="Before"]')).toBeAttached()
-    await page.getByTitle('Backend Settings', { exact: true }).click()
+    await page.getByTitle('Settings', { exact: true }).click()
+    await page
+      .getByRole('button', { name: 'Backend Settings', exact: true })
+      .click()
     const backendSettings = page.locator('#settings-modal')
     await expect(
       backendSettings.getByRole('heading', { name: 'Backend Settings' })

@@ -49,8 +49,6 @@ test('frontend settings validate, persist and switch the root backend', async ({
   const app = await launch()
   try {
     const page = await app.firstWindow()
-    const openSettings = () =>
-      page.getByTitle('Frontend Settings', { exact: true }).click()
     const settings = page.locator('#frontend-settings-modal')
     const initialPalette = page.locator(
       '[data-testid=sidebar-node-class][data-class-name=Initial]'
@@ -59,7 +57,15 @@ test('frontend settings validate, persist and switch the root backend', async ({
       '[data-testid=sidebar-node-class][data-class-name=Alternative]'
     )
     await expect(initialPalette).toBeVisible()
-    await openSettings()
+    await page.getByTitle('Settings', { exact: true }).click()
+    await expect(settings).toBeHidden()
+    const menu = page.getByRole('menu')
+    await expect(
+      menu.getByRole('button', { name: 'Backend Settings', exact: true })
+    ).toBeVisible()
+    await menu
+      .getByRole('button', { name: 'Frontend Settings', exact: true })
+      .click()
     await expect(
       settings.getByRole('heading', { name: 'Frontend Settings' })
     ).toBeVisible()

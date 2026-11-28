@@ -608,21 +608,21 @@
     style="display: none"
   />
 
-  {#snippet settingsButton(label: string, open: () => void)}
-    <div class="button-container">
-      <button
-        class="element-label"
-        title={label}
-        aria-label={label}
-        onclick={open}
-      >
-        <SettingsIcon width="30px" height="30px" />
-      </button>
-      <span class="button-text">{label}</span>
-    </div>
-  {/snippet}
-  {@render settingsButton('Backend Settings', () => backendSettings?.open())}
-  {@render settingsButton('Frontend Settings', () => frontendSettings?.open())}
+  <SidebarGroupButton title="Settings">
+    {#snippet icon()}
+      <SettingsIcon width="30px" height="30px" />
+    {/snippet}
+    {#snippet items()}
+      <SidebarGroupButtonItem
+        label="Frontend Settings"
+        onclick={() => frontendSettings?.open()}
+      />
+      <SidebarGroupButtonItem
+        label="Backend Settings"
+        onclick={() => backendSettings?.open()}
+      />
+    {/snippet}
+  </SidebarGroupButton>
   <Settings
     bind:this={backendSettings}
     modalId="settings-modal"
