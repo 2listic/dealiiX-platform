@@ -8,9 +8,25 @@ on:
     types: [opened, synchronize, reopened, edited]
     branches:
       - main
+      - codex/protocol-schema-v1-check
+      - experiment/python-reference-contract
   workflow_dispatch:
 
 jobs:
+  protocol-mock:
+    name: JavaScript protocol contract
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install schema validator
+        run: npm ci --ignore-scripts
+      - name: Exercise the protocol mock
+        run: node --test test_files/protocol-mock/exchange.test.cjs
+
   check-and-test:
     runs-on: ubuntu-latest
 

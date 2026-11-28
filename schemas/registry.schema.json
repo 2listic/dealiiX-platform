@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/registry.schema.json",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/registry.schema.json",
   "title": "registry",
-  "description": "Flat registry of node definitions, keyed by type. A library of saved network nodes uses names as keys. __backend may identify the producer, and __backend_name carries CORAL's backend name.",
+  "description": "Node definitions a backend offers, keyed by `type`; a library of stored network nodes is keyed by `name`. Keys starting with `__` carry registry metadata.",
   "type": "object",
   "properties": {
     "__backend": {
-      "$ref": "common.schema.json#/$defs/backendIdentity"
+      "$ref": "common.schema.json#/$defs/registryBackend"
     },
     "__backend_name": {
       "description": "Backend name CORAL writes when its registry header is switched on.",
@@ -55,10 +55,20 @@
           "type": "string"
         },
         "value": {
-          "description": "Default literal text or the workflow stored by a network node."
+          "description": "Default literal, stored workflow, or embedded registry of a backend node."
         },
         "display_name": {
           "type": "string"
+        },
+        "palette_section": {
+          "description": "Optional visual section in the node palette, independent of the node's class or overload family.",
+          "type": "string",
+          "minLength": 1
+        },
+        "palette_subsection": {
+          "description": "Optional group within the node's palette section or class, such as the name of its execution host.",
+          "type": "string",
+          "minLength": 1
         },
         "variant_name": {
           "type": "string"
@@ -91,6 +101,16 @@
         },
         "derived": {
           "$ref": "common.schema.json#/$defs/typeList"
+        },
+        "configuration": {
+          "description": "Template of the node's parameter document. A node instance starts from it and carries its own copy.",
+          "$ref": "parameters.schema.json"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/capabilities"
+        },
+        "x-dealiix": {
+          "$ref": "#/$defs/extension"
         }
       },
       "required": ["type", "node_type", "arguments", "inputs", "outputs"],
@@ -99,7 +119,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "coral::Network"
+                "enum": ["coral::Network", "network::coral"]
               }
             },
             "required": ["type"]
@@ -131,6 +151,14 @@
                   },
                   {
                     "$ref": "network.schema.json"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "registry": { "$ref": "#" }
+                    },
+                    "required": ["registry"],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -145,6 +173,148 @@
           }
         }
       ]
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": { "enum": ["open_child_workflow", "configure"] },
+          "uniqueItems": true
+        },
+        "configuration_exposable": { "type": "boolean" },
+        "hidden": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "extension": {
+      "description": "Draft editor and execution metadata of a node definition.",
+      "type": "object",
+      "properties": {
+        "actions": {
+          "description": "Editor actions the node supports: entering its child workflow, editing its `configuration`.",
+          "type": "array",
+          "items": {
+            "enum": ["open_child_workflow", "configure"]
+          },
+          "uniqueItems": true
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "description": "`in_process`: the backend runs the node itself. `executable`: the backend launches an external program. `child_workflow`: the node's `value` is a workflow the backend runs, or hands to the backend its header names.",
+              "enum": ["in_process", "executable", "child_workflow"]
+            },
+            "target": {
+              "enum": ["local", "remote", "any"]
+            },
+            "parallelism": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": ["serial", "mpi"]
+                },
+                "processes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "processes_from": {
+                  "description": "Name of the input argument holding the process count.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["mode"],
+              "additionalProperties": false
+            },
+            "run_policy": {
+              "enum": ["always", "if_outputs_missing_or_inputs_changed"]
+            }
+          },
+          "required": ["kind"],
+          "additionalProperties": false
+        },
+        "files": {
+          "type": "object",
+          "properties": {
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/fileInput"
+              }
+            },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/fileOutput"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileInput": {
+      "description": "An input argument whose value is a file path. The backend places the file before the node runs.",
+      "type": "object",
+      "properties": {
+        "argument": {
+          "type": "string",
+          "minLength": 1
+        },
+        "media_type": {
+          "$ref": "#/$defs/mediaType"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": ["argument", "media_type"],
+      "additionalProperties": false
+    },
+    "fileOutput": {
+      "description": "A file the node produces, named by an argument or by a path relative to the run directory.",
+      "type": "object",
+      "properties": {
+        "argument": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "media_type": {
+          "$ref": "#/$defs/mediaType"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "must_exist_after_success": {
+          "type": "boolean"
+        }
+      },
+      "required": ["media_type"],
+      "oneOf": [
+        {
+          "required": ["argument"]
+        },
+        {
+          "required": ["path"]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "mediaType": {
+      "type": "string",
+      "pattern": "^[a-z]+/[^\\s]+$"
     }
   }
 }

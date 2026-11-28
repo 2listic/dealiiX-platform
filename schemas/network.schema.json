@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/network.schema.json",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/network.schema.json",
   "title": "network",
   "description": "A workflow as the editor saves it. Parameter ports may be connected by handle; a backend runs the materialized form described by network-execution.schema.json.",
   "$ref": "#/$defs/network",
@@ -9,7 +9,7 @@
       "type": "object",
       "properties": {
         "backend": {
-          "$ref": "common.schema.json#/$defs/backendIdentity"
+          "$ref": "common.schema.json#/$defs/networkBackend"
         },
         "workflow": {
           "type": "object",
@@ -37,7 +37,7 @@
           "additionalProperties": false
         },
         "version": {
-          "const": 1
+          "enum": [1, "1.1"]
         },
         "author": {
           "type": "string"
@@ -77,10 +77,18 @@
         "value": {
           "description": "Literal text of an elementary node (`null` for a valueless literal), or the workflow of a network node."
         },
+        "configuration": {
+          "description": "The node instance's parameter document.",
+          "$ref": "parameters.schema.json"
+        },
         "position": {
           "$ref": "common.schema.json#/$defs/position"
         },
         "parameter_file": {
+          "$ref": "common.schema.json#/$defs/parameterFile"
+        },
+        "configuration_exposures": {
+          "description": "Editor-only typed ports for an inline configuration.",
           "$ref": "common.schema.json#/$defs/parameterFile"
         },
         "arguments": {
@@ -134,6 +142,7 @@
           "type": "boolean"
         }
       },
+      "dependentRequired": { "configuration_exposures": ["configuration"] },
       "required": ["type"],
       "additionalProperties": false,
       "allOf": [
@@ -141,7 +150,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "coral::Network"
+                "enum": ["coral::Network", "network::coral"]
               }
             },
             "required": ["type"]

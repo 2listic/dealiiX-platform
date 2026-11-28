@@ -1,32 +1,22 @@
-# Register-only protocol fixture
+# JavaScript protocol mock
 
-This fixture demonstrates the registry exchange described in the
-[protocol v1 reference](../../schemas/README.md). It runs with Node.js and
-implements `-p REGISTRY register`, which copies the specified JSON file to
-`node_types.json` in the configured working directory. Other operations,
-including `run`, exit with status 2.
-
-## Load the example graph
-
-1. Select **local** and **coral** with the execution selectors in Platform.
-2. In **Settings → Execution**, choose an empty scratch directory as the
-   working directory. Set **Coral binary path** to the absolute path of
-   [backend.cjs](backend.cjs) and **Coral plugin path** to the absolute path of
-   [registry.json](registry.json).
-3. Click **Validate & Sync**, then close Settings.
-4. Choose **Import / Export → Import Graph** and open
-   [network.json](network.json). The canvas should show a string connected to
-   a `mock::sink` node. Downloading the graph after sync includes the
-   `backend` identity published by the registry.
-
-## Run the integration test
-
-From the repository root after `npm ci`:
+Run the contract suite after installing the npm dependencies.
 
 ```sh
-npm test -- src/lib/testing/protocolMock.test.ts
+node --test test_files/protocol-mock/exchange.test.cjs
 ```
 
-The test invokes the local CORAL probe, imports the graph using the returned
-registry, checks the nodes, edge and exported identity, and verifies the
-mock's rejection of `run`. GitHub Actions runs it as part of `npm test`.
+The tests invoke `backend.cjs --configuration PROFILE exchange` and validate
+its JSON messages against the [protocol schemas](../../schemas/README.md).
+The suite requires a successful exchange for every operation in the schema
+and checks error cases including stale revisions and incompatible identities.
+
+The fixture uses a profile with `backend.id` set to `mock` and a parameter tree
+containing a `Greeting` leaf. `Editable: true` in that tree enables the optional
+`configure` operation. The mock stores run snapshots beside the fixture profile
+and advances the run deterministically when queried. It exercises typed
+bindings, checked and produced files, nested CORAL registries, pause and resume,
+cancellation, replay and chunked artifact responses without external solvers.
+
+The original `backend.cjs -p REGISTRY register` mode copies the registry to
+`node_types.json` for the legacy CORAL probe exercised by the editor tests.

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/parameters.schema.json",
+  "$id": "https://github.com/2listic/dealiiX-platform/schemas/v1.1/parameters.schema.json",
   "title": "parameters",
   "description": "The parameter tree the editor reads and writes: sections of entries in deal.II's full JSON form, every value a string. deal.II alias entries and its compressed `Short` JSON form are outside this tree.",
   "$ref": "#/$defs/tree",
@@ -44,6 +44,11 @@
         },
         "actions": {
           "type": "string"
+        },
+        "selection_options": {
+          "description": "Name of the sibling text parameter containing the pipe-separated choices for this field.",
+          "type": "string",
+          "minLength": 1
         },
         "__extra": {
           "$ref": "#/$defs/extra"

@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2listic/dealiiX-platform/main/schemas/common.schema.json",
+  "title": "common",
+  "description": "Definitions shared by the registry and network schemas.",
+  "$defs": {
+    "nodeType": {
+      "description": "Node category from the registry. The editor uses it for rendering. Backends identify a node by its `type`; CORAL only checks that a node's `node_type`, when given, equals its registry entry's.",
+      "enum": [
+        "elementary_constructor",
+        "primitive",
+        "empty_constructor",
+        "constructor",
+        "abstract",
+        "output_only",
+        "method",
+        "const_method",
+        "void_method",
+        "void_const_method",
+        "function",
+        "void_function",
+        "network"
+      ]
+    },
+    "argument": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "connection_type": {
+          "enum": ["input", "output", "pass_through"]
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bases": {
+          "$ref": "#/$defs/typeList"
+        }
+      },
+      "required": ["name", "type", "connection_type"],
+      "additionalProperties": false
+    },
+    "inputs": {
+      "description": "Indices into `arguments`, one per input port.",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "uniqueItems": true
+    },
+    "outputs": {
+      "description": "Indices into `arguments`, one per output port; -1 is the node itself (SELF).",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -1
+      },
+      "uniqueItems": true
+    },
+    "typeList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "qualifiedId": {
+      "description": "Hierarchical node id, `<parent>_<child>` for nested nodes. It names the node's status files (`<qualified_id>.running`), so it never contains `.`, `/` or `\\`.",
+      "type": "string",
+      "pattern": "^[^./\\\\]+$"
+    },
+    "position": {
+      "description": "Canvas position written by the editor.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": ["x", "y"],
+      "additionalProperties": false
+    },
+    "parameterFile": {
+      "description": "Editor metadata marking a string literal as a parameter file. Each exposure is a parameter port; materialization writes bound inputs into a run copy of the file and removes this metadata before launch.",
+      "type": "object",
+      "properties": {
+        "exposures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "description": "Section names followed by the entry name.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "type": {
+                "enum": ["string", "int", "unsigned int", "double", "bool"]
+              },
+              "input": {
+                "type": "boolean"
+              },
+              "output": {
+                "type": "boolean"
+              }
+            },
+            "required": ["path", "type", "input", "output"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["exposures"],
+      "additionalProperties": false
+    },
+    "plugin": {
+      "description": "Initialization object passed unchanged to the backend plugin. CORAL reads `MPI.enabled`; the deal.II plugin also reads `MPI.args` and `MPI.max_num_threads`. Other keys belong to the plugin.",
+      "type": "object",
+      "properties": {
+        "MPI": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "max_num_threads": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "backendIdentity": {
+      "description": "Logical identity of the backend and, where needed, its plugin. These are identifiers, not installation paths.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "plugin": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        }
+      },
+      "required": ["id"],
+      "additionalProperties": false
+    }
+  }
+}

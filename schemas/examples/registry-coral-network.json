@@ -1,0 +1,150 @@
+{
+  "CORAL :: 2D grid to VTK": {
+    "type": "coral::Network",
+    "node_type": "network",
+    "name": "CORAL :: 2D grid to VTK",
+    "arguments": [],
+    "inputs": [],
+    "outputs": [],
+    "value": {
+      "backend": {
+        "id": "coral",
+        "plugins": [{ "id": "dealii" }]
+      },
+      "workflow": {
+        "nodes": {
+          "0": {
+            "type": "dealii::Triangulation<2, 2>",
+            "node_type": "empty_constructor",
+            "arguments": [],
+            "inputs": [],
+            "outputs": [-1],
+            "position": { "x": 0, "y": 100 }
+          },
+          "1": {
+            "type": "std::string",
+            "value": "hyper_cube",
+            "position": { "x": 0, "y": 220 }
+          },
+          "2": {
+            "type": "std::string",
+            "value": "0.0 : 1.0 : false",
+            "position": { "x": 0, "y": 300 }
+          },
+          "3": {
+            "type": "unsigned int",
+            "value": "2",
+            "position": { "x": 0, "y": 460 }
+          },
+          "4": {
+            "type": "GridGenerator::generate_from_name_and_arguments<2>",
+            "position": { "x": 360, "y": 220 }
+          },
+          "5": {
+            "type": "Triangulation<2>::refine_global",
+            "position": { "x": 700, "y": 300 }
+          },
+          "6": {
+            "type": "dealii::GridOut",
+            "node_type": "empty_constructor",
+            "arguments": [],
+            "inputs": [],
+            "outputs": [-1],
+            "position": { "x": 700, "y": 40 }
+          },
+          "7": {
+            "type": "std::string",
+            "value": "grid.vtk",
+            "position": { "x": 700, "y": 540 }
+          },
+          "8": {
+            "type": "std::ofstream",
+            "position": { "x": 980, "y": 540 }
+          },
+          "9": {
+            "type": "GridOut::write_vtk<2>",
+            "position": { "x": 1280, "y": 300 }
+          }
+        },
+        "edges": {
+          "0": {
+            "source": 0,
+            "target": 4,
+            "source_output": 0,
+            "target_input": 0
+          },
+          "1": {
+            "source": 1,
+            "target": 4,
+            "source_output": 0,
+            "target_input": 1
+          },
+          "2": {
+            "source": 2,
+            "target": 4,
+            "source_output": 0,
+            "target_input": 2
+          },
+          "3": {
+            "source": 4,
+            "target": 5,
+            "source_output": 0,
+            "target_input": 0
+          },
+          "4": {
+            "source": 3,
+            "target": 5,
+            "source_output": 0,
+            "target_input": 1
+          },
+          "5": {
+            "source": 6,
+            "target": 9,
+            "source_output": 0,
+            "target_input": 0
+          },
+          "6": {
+            "source": 5,
+            "target": 9,
+            "source_output": 0,
+            "target_input": 1
+          },
+          "7": {
+            "source": 7,
+            "target": 8,
+            "source_output": 0,
+            "target_input": 0
+          },
+          "8": {
+            "source": 8,
+            "target": 9,
+            "source_output": 0,
+            "target_input": 2
+          }
+        }
+      },
+      "version": 1,
+      "author": "dealiiX-platform mockup",
+      "date_time_utc": "2026-11-17T16:30:00.000Z"
+    },
+    "x-dealiix": {
+      "actions": ["open_child_workflow"],
+      "execution": {
+        "kind": "child_workflow",
+        "target": "any",
+        "parallelism": { "mode": "serial" },
+        "run_policy": "if_outputs_missing_or_inputs_changed"
+      },
+      "files": {
+        "outputs": [
+          {
+            "path": "grid.vtk",
+            "media_type": "application/vnd.vtk",
+            "role": "primary_output",
+            "must_exist_after_success": true
+          }
+        ]
+      }
+    }
+  }
+}
